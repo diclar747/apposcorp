@@ -1,0 +1,343 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Oscorp Premium - Light Mode */
+    --oscorp-primary: 217 91% 60%;
+    --oscorp-primary-dark: 222 47% 31%;
+    --oscorp-secondary: 250 95% 76%;
+    --oscorp-accent: 280 87% 65%;
+    --oscorp-success: 142 76% 36%;
+    --oscorp-warning: 38 92% 50%;
+    --oscorp-danger: 0 84% 60%;
+    
+    /* Card Dark Gradient Colors */
+    --card-dark-start: #1e3a5f;
+    --card-dark-mid: #0d2137;
+    --card-dark-end: #1a2744;
+    
+    /* Shadcn Variables - Light */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 217 91% 95%;
+    --accent-foreground: 217 91% 30%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 1.25rem;
+    
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    /* Oscorp Premium - Dark Mode */
+    --background: 222 47% 6%;
+    --foreground: 0 0% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 30% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 222 30% 12%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 217 50% 18%;
+    --accent-foreground: 217 91% 70%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 30% 15%;
+    --input: 222 30% 15%;
+    --ring: 217 91% 60%;
+    
+    /* Glassmorphism Dark */
+    --glass-bg: rgba(15, 23, 42, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    
+    /* Sidebar Dark */
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 222 30% 15%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  /* Premium Dark Card */
+  .premium-card-dark {
+    @apply relative rounded-3xl overflow-hidden;
+    background: linear-gradient(145deg, #1e3a5f 0%, #0d2137 50%, #1a2744 100%);
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.5),
+      inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+  
+  .premium-card-dark::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 20% 80%, rgba(139, 92, 246, 0.2) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  /* Glass Card */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+  
+  /* Premium Card Light */
+  .premium-card {
+    @apply rounded-3xl overflow-hidden;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  }
+  
+  .dark .premium-card {
+    background: linear-gradient(145deg, hsl(222 47% 10%) 0%, hsl(222 47% 7%) 100%);
+    border: 1px solid hsl(222 30% 15%);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  }
+  
+  /* Glow Effect */
+  .glow-blue {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+  }
+  
+  .dark .glow-blue {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
+  }
+  
+  /* Bottom Navigation */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--glass-border);
+  }
+  
+  /* Floating Action Button - QR */
+  .fab-qr {
+    @apply w-16 h-16 rounded-full flex items-center justify-center;
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    box-shadow: 
+      0 8px 32px rgba(59, 130, 246, 0.4),
+      0 0 0 4px rgba(59, 130, 246, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .fab-qr:hover {
+    transform: scale(1.05);
+    box-shadow: 
+      0 12px 40px rgba(59, 130, 246, 0.5),
+      0 0 0 6px rgba(59, 130, 246, 0.15);
+  }
+  
+  .fab-qr:active {
+    transform: scale(0.95);
+  }
+  
+  /* Chip Style */
+  .card-chip {
+    @apply relative w-10 h-8 rounded-md overflow-hidden;
+    background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%);
+  }
+  
+  .card-chip::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  
+  /* Quick Action Button */
+  .quick-action {
+    @apply flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-200;
+    background: hsl(var(--muted));
+  }
+  
+  .quick-action:hover {
+    background: hsl(var(--accent));
+    transform: translateY(-2px);
+  }
+  
+  .quick-action-icon {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(250 95% 76%) 100%);
+  }
+  
+  /* Transaction Item */
+  .transaction-item {
+    @apply flex items-center gap-4 p-4 rounded-2xl transition-all duration-200;
+  }
+  
+  .transaction-item:hover {
+    background: hsl(var(--muted));
+  }
+  
+  /* Amount Display */
+  .amount-positive {
+    @apply text-emerald-500 font-semibold;
+  }
+  
+  .amount-negative {
+    @apply text-rose-500 font-semibold;
+  }
+  
+  /* Status Badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .status-completed {
+    @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400;
+  }
+  
+  .status-pending {
+    @apply bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400;
+  }
+  
+  /* Chart Styles */
+  .chart-container {
+    @apply rounded-3xl p-4;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+  
+  /* QR Container */
+  .qr-display {
+    @apply rounded-3xl p-8 flex flex-col items-center;
+    background: white;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  }
+  
+  .dark .qr-display {
+    background: hsl(222 47% 10%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  
+  /* Scanner Overlay */
+  .scanner-overlay {
+    @apply fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center;
+  }
+  
+  .scanner-frame {
+    @apply relative w-72 h-72 rounded-3xl overflow-hidden;
+    border: 2px solid #3b82f6;
+    box-shadow: 
+      0 0 0 4px rgba(59, 130, 246, 0.2),
+      0 0 0 100vmax rgba(0, 0, 0, 0.7);
+  }
+  
+  .scanner-line {
+    @apply absolute left-0 right-0 h-0.5;
+    background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+    animation: scan 2s linear infinite;
+  }
+  
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
+}
+
+@layer utilities {
+  /* Safe area for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

@@ -1,0 +1,186 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Download } from 'lucide-react';
+import { mockTransactions, mockUsers } from '@/data/mockData';
+import { formatCurrency, formatDateTime, getTransactionTypeInfo } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+const typeFilters = [
+  { value: 'all', label: 'Todos' },
+  { value: 'income', label: 'Ingresos' },
+  { value: 'expense', label: 'Egresos' },
+  { value: 'transfer', label: 'Transferencias' },
+  { value: 'purchase', label: 'Compras' },
+  { value: 'sale', label: 'Ventas' },
+];
+
+export default function AdminTransactions() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  const filteredTransactions = mockTransactions.filter(transaction => {
+    const user = mockUsers.find(u => u.id === transaction.userId);
+    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || transaction.type.includes(typeFilter);
+    return matchesSearch && matchesType;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Transacciones</h1>
+          <p className="text-gray-500">Historial de todas las transacciones</p>
+        </div>
+        <Button variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          Exportar
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-gray-500">Total Transacciones</p>
+            <p className="text-2xl font-bold text-gray-900">{mockTransactions.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-gray-500">Ingresos</p>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCurrency(mockTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0))}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-gray-500">Egresos</p>
+            <p className="text-2xl font-bold text-red-600">
+              {formatCurrency(Math.abs(mockTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)))}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-gray-500">Completadas</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {mockTransactions.filter(t => t.status === 'completed').length}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Buscar transacciones..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {typeFilters.map((type) => (
+                <Button
+                  key={type.value}
+                  variant={typeFilter === type.value ? 'default' : 'outline'}
+                  onClick={() => setTypeFilter(type.value)}
+                  size="sm"
+                >
+                  {type.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Transactions Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Usuario</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Monto</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTransactions.map((transaction, index) => {
+                  const user = mockUsers.find(u => u.id === transaction.userId);
+                  const typeInfo = getTransactionTypeInfo(transaction.type);
+                  
+                  return (
+                    <motion.tr
+                      key={transaction.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
+                      <TableCell>
+                        <span className="text-sm font-mono text-gray-500">{transaction.id}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <img src={user?.avatar} alt="" className="w-8 h-8 rounded-full" />
+                          <span className="text-sm">{user?.firstName} {user?.lastName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`text-sm capitalize ${typeInfo.color}`}>
+                          {typeInfo.label}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600">{transaction.description}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className={`flex items-center gap-1 font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {transaction.amount > 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600">{formatDateTime(transaction.createdAt)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'}>
+                          {transaction.status === 'completed' ? 'Completada' : transaction.status === 'pending' ? 'Pendiente' : 'Fallida'}
+                        </Badge>
+                      </TableCell>
+                    </motion.tr>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
