@@ -213,37 +213,59 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-// DEBUG: Test password endpoint
-router.post('/test-password', async (req, res) => {
+// DEBUG: Check all users
+router.get('/debug-users', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
-    console.log('=== TEST PASSWORD ===');
-    console.log('Email:', email);
-    console.log('Password:', password);
-    
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, role: true, isActive: true, password: true }
     });
     
-    if (!user) {
-      return res.json({ error: 'User not found', email });
-    }
-    
-    // Test bcrypt compare
+    // Test bcrypt on each user
     const bcrypt = await import('bcryptjs');
-    const testHash = await bcrypt.hash('123456', 10);
-    const isValid = await bcrypt.compare(password, user.password);
-    const isValidTest = await bcrypt.compare('123456', testHash);
+    const testPassword = '123456';
+    
+    const results = await Promise.all(users.map(async (user) => {
+      const isValid = await bcrypt.compare(testPassword, user.password);
+      return {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        passwordLength: user.password?.length,
+        passwordPrefix: user.password?.substring(0, 20),
+        passwordValid: isValid
+      };
+    }));
     
     res.json({
-      email: user.email,
-      storedPasswordLength: user.password?.length,
-      storedPasswordPrefix: user.password?.substring(0, 30),
-      providedPassword: password,
-      bcryptCompareResult: isValid,
-      testHashValid: isValidTest,
-      testHash: testHash?.substring(0, 30),
+      totalUsers: users.length,
+      users: results
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DEBUG: Fix all passwords
+router.get('/fix-passwords', async (req, res) => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    
+    const users = await prisma.user.findMany();
+    
+    const results = [];
+    for (const user of users) {
+      const updated = await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword }
+      });
+      results.push({ email: updated.email, status: 'updated' });
+    }
+    
+    res.json({
+      message: 'All passwords updated to 123456',
+      users: results
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
