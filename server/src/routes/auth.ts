@@ -90,13 +90,6 @@ router.post('/register', async (req, res) => {
             currency: 'USD',
           },
         },
-        virtualCard: {
-          create: {
-            cardNumber,
-            qrData: JSON.stringify({ userId: '', cardNumber }),
-            design: 'gradient_blue',
-          },
-        },
       },
       include: {
         wallet: true,
@@ -104,11 +97,14 @@ router.post('/register', async (req, res) => {
       },
     });
     
-    // Update virtual card with userId
-    await prisma.virtualCard.update({
-      where: { userId: user.id },
+    // Create virtual card
+    await prisma.virtualCard.create({
       data: {
+        userId: user.id,
+        walletId: user.wallet!.id,
+        cardNumber,
         qrData: JSON.stringify({ userId: user.id, cardNumber }),
+        design: 'gradient_blue',
       },
     });
     
