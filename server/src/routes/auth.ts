@@ -11,6 +11,10 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    console.log('=== LOGIN ATTEMPT ===');
+    console.log('Email:', email);
+    console.log('Password provided:', password);
+    
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -21,20 +25,33 @@ router.post('/login', async (req, res) => {
       },
     });
     
+    console.log('User found:', user ? 'YES' : 'NO');
+    if (user) {
+      console.log('User ID:', user.id);
+      console.log('User role:', user.role);
+      console.log('Stored password hash:', user.password?.substring(0, 20) + '...');
+    }
+    
     if (!user) {
+      console.log('ERROR: User not found');
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
     
     if (!user.isActive) {
+      console.log('ERROR: Account disabled');
       return res.status(401).json({ error: 'Conta desativada' });
     }
     
-    // Em produção usar bcrypt.compare, aqui simplificado para teste
+    console.log('Comparing password with bcrypt...');
     const isValidPassword = await bcrypt.compare(password, user.password);
+    console.log('Password match:', isValidPassword);
     
     if (!isValidPassword) {
+      console.log('ERROR: Invalid password');
       return res.status(401).json({ error: 'Senha incorreta' });
     }
+    
+    console.log('=== LOGIN SUCCESS ===');
     
     const token = generateToken({
       userId: user.id,
@@ -193,6 +210,43 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
     res.json(userWithoutPassword);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// DEBUG: Test password endpoint
+router.post('/test-password', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    console.log('=== TEST PASSWORD ===');
+    console.log('Email:', email);
+    console.log('Password:', password);
+    
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+    
+    if (!user) {
+      return res.json({ error: 'User not found', email });
+    }
+    
+    // Test bcrypt compare
+    const bcrypt = await import('bcryptjs');
+    const testHash = await bcrypt.hash('123456', 10);
+    const isValid = await bcrypt.compare(password, user.password);
+    const isValidTest = await bcrypt.compare('123456', testHash);
+    
+    res.json({
+      email: user.email,
+      storedPasswordLength: user.password?.length,
+      storedPasswordPrefix: user.password?.substring(0, 30),
+      providedPassword: password,
+      bcryptCompareResult: isValid,
+      testHashValid: isValidTest,
+      testHash: testHash?.substring(0, 30),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
