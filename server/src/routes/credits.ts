@@ -28,7 +28,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 // Get credit by ID
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const credit = await prisma.credit.findUnique({
       where: { id },
@@ -126,7 +126,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 // Approve credit (admin only)
 router.patch('/:id/approve', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const result = await prisma.$transaction(async (tx) => {
       const credit = await tx.credit.update({
@@ -180,7 +180,7 @@ router.patch('/:id/approve', authenticate, authorize('superadmin'), async (req: 
 // Reject credit (admin only)
 router.patch('/:id/reject', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const credit = await prisma.credit.update({
       where: { id },
@@ -200,7 +200,7 @@ router.patch('/:id/reject', authenticate, authorize('superadmin'), async (req: A
 // Pay installment
 router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { installmentId, paymentMethod } = req.body;
     
     const credit = await prisma.credit.findUnique({

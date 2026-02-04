@@ -25,7 +25,7 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
 // Get user by ID
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     // Only admin or own user can view
     if (req.user!.role !== 'superadmin' && req.user!.userId !== id) {
@@ -60,7 +60,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 // Update user status (admin only)
 router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { isActive } = req.body;
     
     const user = await prisma.user.update({
@@ -78,7 +78,7 @@ router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, r
 // Delete user (admin only)
 router.delete('/:id', authenticate, authorize('superadmin'), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     await prisma.user.delete({
       where: { id },

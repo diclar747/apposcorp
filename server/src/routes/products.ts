@@ -74,7 +74,7 @@ router.get('/featured', async (req, res) => {
 // Get product by ID (public)
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const product = await prisma.product.findUnique({
       where: { id },
@@ -148,7 +148,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 // Update product
 router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const product = await prisma.product.findUnique({
       where: { id },
@@ -182,7 +182,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 // Delete product
 router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const product = await prisma.product.findUnique({
       where: { id },

@@ -86,7 +86,7 @@ router.get('/slug/:slug', async (req, res) => {
 // Get course by ID (public)
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const course = await prisma.course.findUnique({
       where: { id },
@@ -157,7 +157,7 @@ router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest,
 // Update course
 router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const course = await prisma.course.update({
       where: { id },
       data: req.body,
@@ -179,7 +179,7 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthReques
 // Delete course
 router.delete('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     await prisma.course.delete({
       where: { id },
@@ -194,7 +194,7 @@ router.delete('/:id', authenticate, authorize('superadmin'), async (req: AuthReq
 // Enroll in course
 router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const course = await prisma.course.findUnique({
       where: { id },
@@ -312,7 +312,7 @@ router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
 // Update lesson progress
 router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { enrollmentId } = req.params;
+    const enrollmentId = req.params.enrollmentId as string;
     const { lessonId, completed } = req.body;
     
     const enrollment = await prisma.enrollment.findUnique({
@@ -342,10 +342,12 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
       },
     });
     
-    const totalLessons = course?.modules.reduce((acc: number, module: { lessons: { length: number }[] }) =>
-      acc + module.lessons.length,
-      0
-    ) || 0;
+    let totalLessons = 0;
+    if (course?.modules) {
+      for (const module of course.modules) {
+        totalLessons += module.lessons?.length || 0;
+      }
+    }
     
     const progress = totalLessons > 0 
       ? (completedLessons.size / totalLessons) * 100 

@@ -47,7 +47,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 // Get order by ID
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const order = await prisma.order.findUnique({
       where: { id },
@@ -274,7 +274,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 // Update order status
 router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { status, description } = req.body;
     
     const order = await prisma.order.findUnique({
