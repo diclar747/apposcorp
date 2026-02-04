@@ -72,8 +72,15 @@ app.get('/api/setup', async (req, res) => {
     });
     
     if (existingAdmin) {
+      // Atualizar a senha do admin existente
+      const hashedPassword = await bcrypt.hash('123456', 10);
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: { password: hashedPassword }
+      });
+      
       return res.json({ 
-        message: 'Admin já existe', 
+        message: 'Admin atualizado com senha 123456', 
         user: { id: existingAdmin.id, email: existingAdmin.email }
       });
     }
