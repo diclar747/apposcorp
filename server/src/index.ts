@@ -61,6 +61,74 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/credits', creditRoutes);
 
+// Setup endpoint - cria usuário admin se não existir
+app.get('/api/setup', async (req, res) => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    
+    // Verificar se já existe admin
+    const existingAdmin = await prisma.user.findFirst({
+      where: { email: 'admin@oscorp.com' }
+    });
+    
+    if (existingAdmin) {
+      return res.json({ 
+        message: 'Admin já existe', 
+        user: { id: existingAdmin.id, email: existingAdmin.email }
+      });
+    }
+    
+    // Criar usuário admin
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    
+    const admin = await prisma.user.create({
+      data: {
+        email: 'admin@oscorp.com',
+        password: hashedPassword,
+        firstName: 'Administrador',
+        lastName: 'Oscorp',
+        phone: '+1 234 567 8900',
+        address: '123 Admin Street',
+        city: 'New York',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+        role: 'superadmin',
+        isActive: true,
+        wallet: {
+          create: {
+            balance: 10000,
+            currency: 'USD',
+          }
+        }
+      },
+      include: {
+        wallet: true
+      }
+    });
+    
+    // Criar cartão virtual
+    await prisma.virtualCard.create({
+      data: {
+        userId: admin.id,
+        walletId: admin.wallet!.id,
+        cardNumber: 'OSC000001',
+        qrData: JSON.stringify({ userId: admin.id, cardNumber: 'OSC000001' }),
+        design: 'gradient_dark',
+      }
+    });
+    
+    res.json({ 
+      message: 'Admin criado com sucesso!',
+      credentials: {
+        email: 'admin@oscorp.com',
+        password: '123456'
+      }
+    });
+  } catch (error: any) {
+    console.error('Setup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
