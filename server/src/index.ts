@@ -142,7 +142,13 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: 'Algo deu errado!' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📡 API disponível em http://localhost:${PORT}/api`);
-});
+// Only listen if not running on Vercel (for local development)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📡 API disponível em http://localhost:${PORT}/api`);
+  });
+}
+
+// Export for Vercel
+export default app;

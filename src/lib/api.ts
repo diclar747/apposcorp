@@ -1,6 +1,9 @@
 // API Client for Oscorp Platform
-// Use relative URL in production (same domain), localhost in development
-const API_URL = import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_URL || 'http://localhost:3001/api');
+// Detect if running on localhost or production
+const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const API_URL = isLocalhost 
+  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+  : '/api';
 
 // Helper to get token
 const getToken = () => localStorage.getItem('oscorp-token');
