@@ -10,6 +10,7 @@ import orderRoutes from './routes/orders.js';
 import walletRoutes from './routes/wallet.js';
 import courseRoutes from './routes/courses.js';
 import creditRoutes from './routes/credits.js';
+import { prisma } from './utils/prisma.js';
 
 dotenv.config();
 
@@ -27,6 +28,28 @@ app.use(express.json());
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Database check
+app.get('/api/health/db', async (req, res) => {
+  try {
+    const userCount = await prisma.user.count();
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, role: true, firstName: true }
+    });
+    res.json({ 
+      status: 'ok', 
+      userCount, 
+      users,
+      databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      status: 'error', 
+      error: error.message,
+      databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
+    });
+  }
 });
 
 // API Routes
