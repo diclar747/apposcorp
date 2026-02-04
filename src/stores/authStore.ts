@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '@/types';
-import { mockUsers, getUserByEmail } from '@/data/mockData';
+import { authApi } from '@/lib/api';
 
 export interface RegisterData {
   email: string;
@@ -24,9 +24,10 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => void;
+  updateUser: (data: Partial<User>) => Promise<boolean>;
   clearError: () => void;
   hasRole: (roles: UserRole[]) => boolean;
+  fetchCurrentUser: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -40,90 +41,55 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         
-        // Simular delay de red
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const user = getUserByEmail(email);
-        
-        if (!user) {
-          set({ isLoading: false, error: 'Usuario no encontrado' });
+        try {
+          const response = await authApi.login(email, password);
+          
+          // Save token
+          localStorage.setItem('oscorp-token', response.token);
+          
+          set({ 
+            user: response.user, 
+            isAuthenticated: true, 
+            isLoading: false,
+            error: null 
+          });
+          return true;
+        } catch (error: any) {
+          set({ 
+            isLoading: false, 
+            error: error.message || 'Erro ao fazer login' 
+          });
           return false;
         }
-        
-        if (user.password !== password) {
-          set({ isLoading: false, error: 'Contraseña incorrecta' });
-          return false;
-        }
-        
-        if (!user.isActive) {
-          set({ isLoading: false, error: 'Cuenta desactivada' });
-          return false;
-        }
-        
-        set({ 
-          user, 
-          isAuthenticated: true, 
-          isLoading: false,
-          error: null 
-        });
-        return true;
       },
 
       register: async (data: RegisterData) => {
         set({ isLoading: true, error: null });
         
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Verificar si el email ya existe
-        const existingUser = getUserByEmail(data.email);
-        if (existingUser) {
-          set({ isLoading: false, error: 'El email ya está registrado' });
+        try {
+          const response = await authApi.register(data);
+          
+          // Save token
+          localStorage.setItem('oscorp-token', response.token);
+          
+          set({ 
+            user: response.user, 
+            isAuthenticated: true, 
+            isLoading: false,
+            error: null 
+          });
+          return true;
+        } catch (error: any) {
+          set({ 
+            isLoading: false, 
+            error: error.message || 'Erro ao registrar' 
+          });
           return false;
         }
-        
-        // Crear nuevo usuario (en producción iría a la API)
-        const newUser: User = {
-          id: `user-${Date.now()}`,
-          email: data.email,
-          password: data.password,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          address: data.address,
-          city: data.city,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.email}`,
-          role: data.role,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          walletId: `wallet-${Date.now()}`,
-          cardQR: {
-            id: `card-${Date.now()}`,
-            userId: `user-${Date.now()}`,
-            walletId: `wallet-${Date.now()}`,
-            cardNumber: `OSC${String(mockUsers.length + 1).padStart(6, '0')}`,
-            qrCode: '',
-            qrData: JSON.stringify({ userId: `user-${Date.now()}`, cardNumber: `OSC${String(mockUsers.length + 1).padStart(6, '0')}` }),
-            design: 'gradient-blue',
-            isActive: true,
-            createdAt: new Date(),
-          },
-          ingenioAccess: false,
-        };
-        
-        // Agregar a mockUsers (en producción esto iría a la base de datos)
-        mockUsers.push(newUser);
-        
-        set({ 
-          user: newUser, 
-          isAuthenticated: true, 
-          isLoading: false,
-          error: null 
-        });
-        return true;
       },
 
       logout: () => {
+        localStorage.removeItem('oscorp-token');
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -131,17 +97,45 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      updateUser: (data: Partial<User>) => {
-        const { user } = get();
-        if (user) {
-          const updatedUser = { ...user, ...data, updatedAt: new Date() };
-          set({ user: updatedUser });
+      updateUser: async (data: Partial<User>) => {
+        set({ isLoading: true, error: null });
+        
+        try {
+          const user = await authApi.updateMe(data);
           
-          // Actualizar en mockUsers también
-          const index = mockUsers.findIndex(u => u.id === user.id);
-          if (index !== -1) {
-            mockUsers[index] = updatedUser;
-          }
+          set({ 
+            user, 
+            isLoading: false,
+            error: null 
+          });
+          return true;
+        } catch (error: any) {
+          set({ 
+            isLoading: false, 
+            error: error.message || 'Erro ao atualizar usuário' 
+          });
+          return false;
+        }
+      },
+
+      fetchCurrentUser: async () => {
+        const token = localStorage.getItem('oscorp-token');
+        if (!token) return;
+        
+        try {
+          const user = await authApi.getMe();
+          set({ 
+            user, 
+            isAuthenticated: true,
+            error: null 
+          });
+        } catch (error) {
+          // Token inválido, fazer logout
+          localStorage.removeItem('oscorp-token');
+          set({ 
+            user: null, 
+            isAuthenticated: false 
+          });
         }
       },
 

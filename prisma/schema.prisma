@@ -1,0 +1,661 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+enum UserRole {
+  client
+  seller
+  superadmin
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  preparing
+  ready
+  in_transit
+  delivered
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum PaymentMethod {
+  wallet
+  cash
+  card
+  transfer
+}
+
+enum ProductType {
+  physical
+  service
+  digital
+}
+
+enum ProductVisibility {
+  online
+  local
+  both
+}
+
+enum CourseLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+enum CreditStatus {
+  pending
+  approved
+  rejected
+  active
+  completed
+  defaulted
+}
+
+enum TransactionType {
+  income
+  expense
+  transfer_in
+  transfer_out
+  purchase
+  sale
+  withdrawal
+  deposit
+  commission
+  credit
+  fee
+}
+
+enum FinancialType {
+  income
+  expense
+  asset
+  liability
+}
+
+enum CardDesign {
+  gradient_blue
+  gradient_purple
+  gradient_dark
+  minimal
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  address       String?
+  city          String?
+  avatar        String?
+  role          UserRole  @default(client)
+  isActive      Boolean   @default(true)
+  ingenioAccess Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  wallet          Wallet?
+  virtualCard     VirtualCard?
+  bankData        BankData?
+  sellerProfile   SellerProfile?
+  
+  // Orders
+  ordersAsBuyer   Order[]     @relation("BuyerOrders")
+  ordersAsSeller  Order[]     @relation("SellerOrders")
+  
+  // Transactions
+  transactions    Transaction[]
+  
+  // Credits
+  credits         Credit[]
+  
+  // Enrollments
+  enrollments     Enrollment[]
+  
+  // Financial Records
+  financialRecords FinancialRecord[]
+  financialCategories FinancialCategory[]
+  budgets         Budget[]
+  
+  // Notifications
+  notifications   Notification[]
+  
+  // Cart items
+  cartItems       CartItem[]
+
+  @@map("users")
+}
+
+model BankData {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  bankName      String
+  accountNumber String
+  accountType   String   // savings | checking
+  holderName    String
+  documentId    String
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bank_data")
+}
+
+// ============================================
+// SELLER & STORE
+// ============================================
+model SellerProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  storeName       String
+  storeSlug       String   @unique
+  description     String   @db.Text
+  logo            String?
+  banner          String?
+  address         String
+  phone           String
+  email           String
+  whatsappNumber  String
+  isVerified      Boolean  @default(false)
+  planActive      Boolean  @default(false)
+  planExpiryDate  DateTime?
+  commissionRate  Float    @default(5.0)
+  totalSales      Int      @default(0)
+  totalRevenue    Float    @default(0)
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  
+  // Business hours stored as JSON
+  businessHours   Json?
+  socialLinks     Json?
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+  store    Store?
+
+  @@map("seller_profiles")
+}
+
+model Store {
+  id              String   @id @default(uuid())
+  sellerId        String   @unique
+  name            String
+  slug            String   @unique
+  description     String   @db.Text
+  logo            String?
+  banner          String?
+  address         String
+  phone           String
+  email           String
+  whatsappNumber  String
+  isActive        Boolean  @default(true)
+  isOnline        Boolean  @default(true)
+  
+  // Business hours stored as JSON
+  businessHours   Json?
+  socialLinks     Json?
+  
+  sellerProfile SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@map("stores")
+}
+
+// ============================================
+// PRODUCTS
+// ============================================
+model Product {
+  id              String            @id @default(uuid())
+  sellerId        String
+  name            String
+  description     String            @db.Text
+  price           Float
+  comparePrice    Float?
+  stock           Int               @default(0)
+  sku             String            @unique
+  images          String[]
+  category        String
+  subcategory     String?
+  type            ProductType       @default(physical)
+  visibility      ProductVisibility @default(both)
+  status          String            @default("active") // active | inactive | out_of_stock
+  weight          Float?
+  dimensions      Json?             // { length, width, height }
+  tags            String[]
+  isFeatured      Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  seller          SellerProfile     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  variants        ProductVariant[]
+  attributes      ProductAttribute[]
+  orderItems      OrderItem[]
+  cartItems       CartItem[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String  @id @default(uuid())
+  productId String
+  name      String
+  price     Float
+  stock     Int     @default(0)
+  sku       String
+  
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+model ProductAttribute {
+  id        String @id @default(uuid())
+  productId String
+  name      String
+  value     String
+  
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_attributes")
+}
+
+// ============================================
+// WALLET & VIRTUAL CARD
+// ============================================
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  balance       Float    @default(0)
+  currency      String   @default("USD")
+  status        String   @default("active") // active | frozen | suspended
+  dailyLimit    Float    @default(1000)
+  monthlyLimit  Float    @default(10000)
+  totalIn       Float    @default(0)
+  totalOut      Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+model VirtualCard {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  walletId    String     @unique
+  cardNumber  String     @unique
+  qrCode      String?
+  qrData      String?
+  design      CardDesign @default(gradient_blue)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("virtual_cards")
+}
+
+// ============================================
+// TRANSACTIONS
+// ============================================
+model Transaction {
+  id              String          @id @default(uuid())
+  walletId        String
+  userId          String
+  type            TransactionType
+  amount          Float
+  currency        String          @default("USD")
+  description     String
+  category        String?
+  status          String          @default("completed") // pending | completed | failed | cancelled
+  relatedUserId   String?
+  relatedOrderId  String?
+  relatedCreditId String?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+// ============================================
+// ORDERS
+// ============================================
+model Order {
+  id                String        @id @default(uuid())
+  orderNumber       String        @unique
+  buyerId           String
+  sellerId          String
+  subtotal          Float
+  tax               Float         @default(0)
+  shippingCost      Float         @default(0)
+  discount          Float         @default(0)
+  total             Float
+  status            OrderStatus   @default(pending)
+  paymentStatus     PaymentStatus @default(pending)
+  paymentMethod     PaymentMethod @default(wallet)
+  deliveryType      String        // pickup | delivery
+  deliveryAddress   Json?
+  deliveryNotes     String?
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+  commissionAmount  Float         @default(0)
+  sellerEarnings    Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  buyer        User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller       User          @relation("SellerOrders", fields: [sellerId], references: [id])
+  items        OrderItem[]
+  trackingHistory TrackingEvent[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String  @id @default(uuid())
+  orderId       String
+  productId     String
+  productName   String
+  productImage  String?
+  quantity      Int
+  unitPrice     Float
+  total         Float
+  variant       String?
+  
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model TrackingEvent {
+  id          String      @id @default(uuid())
+  orderId     String
+  status      OrderStatus
+  description String
+  timestamp   DateTime    @default(now())
+  location    String?
+  
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("tracking_events")
+}
+
+// ============================================
+// COURSES
+// ============================================
+model Course {
+  id                String     @id @default(uuid())
+  title             String
+  slug              String     @unique
+  description       String     @db.Text
+  shortDescription  String
+  coverImage        String?
+  previewVideo      String?
+  instructorId      String
+  instructorName    String
+  category          String
+  level             CourseLevel @default(beginner)
+  price             Float      @default(0)
+  comparePrice      Float?
+  duration          Int        @default(0) // in minutes
+  isPublished       Boolean    @default(false)
+  isFeatured        Boolean    @default(false)
+  enrolledCount     Int        @default(0)
+  rating            Float      @default(0)
+  reviewCount       Int        @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  modules     Module[]
+  resources   Resource[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+model Module {
+  id          String   @id @default(uuid())
+  courseId    String
+  title       String
+  description String   @db.Text
+  order       Int
+  
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@map("modules")
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  moduleId    String
+  title       String
+  description String   @db.Text
+  videoUrl    String?
+  duration    Int      @default(0) // in minutes
+  order       Int
+  isPreview   Boolean  @default(false)
+  
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  resources Resource[]
+
+  @@map("lessons")
+}
+
+model Resource {
+  id        String @id @default(uuid())
+  courseId  String?
+  lessonId  String?
+  title     String
+  type      String // pdf | video | audio | link
+  url       String
+  
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("resources")
+}
+
+model Enrollment {
+  id                String   @id @default(uuid())
+  userId            String
+  courseId          String
+  progress          Float    @default(0)
+  completedModules  String[] // Array of module IDs
+  completedLessons  String[] // Array of lesson IDs
+  totalTimeSpent    Int      @default(0) // in minutes
+  lastAccessedAt    DateTime @default(now())
+  completedAt       DateTime?
+  certificateIssued Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+// ============================================
+// CREDITS
+// ============================================
+model Credit {
+  id                String   @id @default(uuid())
+  userId            String
+  amount            Float
+  concept           String
+  installments      Int
+  installmentAmount Float
+  totalToPay        Float
+  interestRate      Float    @default(0)
+  status            CreditStatus @default(pending)
+  approvedBy        String?
+  approvedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents       CreditDocument[]
+  paymentSchedule PaymentScheduleItem[]
+  payments        CreditPayment[]
+
+  @@map("credits")
+}
+
+model CreditDocument {
+  id         String   @id @default(uuid())
+  creditId   String
+  type       String   // id_front | id_back | proof_income | other
+  url        String
+  uploadedAt DateTime @default(now())
+  
+  credit Credit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+
+  @@map("credit_documents")
+}
+
+model PaymentScheduleItem {
+  id                String    @id @default(uuid())
+  creditId          String
+  installmentNumber Int
+  dueDate           DateTime
+  amount            Float
+  principal         Float
+  interest          Float
+  status            String    @default("pending") // pending | paid | overdue
+  paidAt            DateTime?
+  
+  credit   Credit          @relation(fields: [creditId], references: [id], onDelete: Cascade)
+  payments CreditPayment[]
+
+  @@map("payment_schedule_items")
+}
+
+model CreditPayment {
+  id            String   @id @default(uuid())
+  creditId      String
+  installmentId String
+  amount        Float
+  paidAt        DateTime @default(now())
+  paymentMethod String
+  
+  credit      Credit                @relation(fields: [creditId], references: [id], onDelete: Cascade)
+  installment PaymentScheduleItem   @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+
+  @@map("credit_payments")
+}
+
+// ============================================
+// FINANCES (INGENIO MILLONARIO)
+// ============================================
+model FinancialCategory {
+  id        String       @id @default(uuid())
+  userId    String
+  name      String
+  type      FinancialType
+  color     String       @default("#3B82F6")
+  icon      String       @default("wallet")
+  isDefault Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records FinancialRecord[]
+
+  @@map("financial_categories")
+}
+
+model FinancialRecord {
+  id                String   @id @default(uuid())
+  userId            String
+  categoryId        String
+  type              FinancialType
+  amount            Float
+  description       String
+  date              DateTime @default(now())
+  isRecurring       Boolean  @default(false)
+  recurrencePattern String?
+  attachments       String[]
+  createdAt         DateTime @default(now())
+  
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category FinancialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("financial_records")
+}
+
+model Budget {
+  id            String   @id @default(uuid())
+  userId        String
+  month         Int
+  year          Int
+  incomeGoal    Float    @default(0)
+  expenseLimit  Float    @default(0)
+  categoryLimits Json?   // Array of { categoryId, limit }
+  createdAt     DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+  @@map("budgets")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  type      String   @default("info") // info | success | warning | error
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ============================================
+// CART
+// ============================================
+model CartItem {
+  id        String @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int    @default(1)
+  
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("cart_items")
+}
