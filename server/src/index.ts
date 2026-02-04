@@ -3,13 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 // Import routes
-import authRoutes from './routes/auth';
-import userRoutes from './routes/users';
-import productRoutes from './routes/products';
-import orderRoutes from './routes/orders';
-import walletRoutes from './routes/wallet';
-import courseRoutes from './routes/courses';
-import creditRoutes from './routes/credits';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import productRoutes from './routes/products.js';
+import orderRoutes from './routes/orders.js';
+import walletRoutes from './routes/wallet.js';
+import courseRoutes from './routes/courses.js';
+import creditRoutes from './routes/credits.js';
 
 dotenv.config();
 

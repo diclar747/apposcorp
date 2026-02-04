@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { prisma } from '../utils/prisma';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { prisma } from '../utils/prisma.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -270,7 +270,7 @@ router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
         where: { creditId: id },
       });
       
-      const allPaid = allInstallments.every(i => i.status === 'paid');
+      const allPaid = allInstallments.every((i: { status: string }) => i.status === 'paid');
       
       if (allPaid) {
         await tx.credit.update({

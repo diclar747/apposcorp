@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { prisma } from '../utils/prisma';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { prisma } from '../utils/prisma.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
     
-    const usersWithoutPassword = users.map(({ password: _, ...user }) => user);
+    const usersWithoutPassword = users.map(({ password: _password, ...user }) => user);
     res.json(usersWithoutPassword);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });

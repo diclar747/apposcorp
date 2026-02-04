@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { prisma } from '../utils/prisma';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { prisma } from '../utils/prisma.js';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -112,7 +112,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     
     // Calculate totals
     let subtotal = 0;
-    const orderItems = [];
+    const orderItems: { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; total: number; variant: string | null; }[] = [];
     
     for (const item of items) {
       const product = await prisma.product.findUnique({

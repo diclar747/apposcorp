@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { prisma } from '../utils/prisma';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { prisma } from '../utils/prisma.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -342,8 +342,8 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
       },
     });
     
-    const totalLessons = course?.modules.reduce(
-      (acc, module) => acc + module.lessons.length,
+    const totalLessons = course?.modules.reduce((acc: number, module: { lessons: { length: number }[] }) =>
+      acc + module.lessons.length,
       0
     ) || 0;
     
