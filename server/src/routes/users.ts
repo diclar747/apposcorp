@@ -14,7 +14,7 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     const usersWithoutPassword = users.map(({ password: _password, ...user }) => user);
     res.json(usersWithoutPassword);
   } catch (error) {
@@ -22,16 +22,129 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
   }
 });
 
+// Update seller profile (seller only)
+router.put('/seller-profile', authenticate, authorize('seller'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.userId;
+    const {
+      storeName,
+      description,
+      address,
+      phone,
+      whatsappNumber,
+      email,
+      logo,
+      banner,
+      socialLinks
+    } = req.body;
+
+    // Check if profile exists
+    const existingProfile = await prisma.sellerProfile.findUnique({
+      where: { userId }
+    });
+
+    if (!existingProfile) {
+      return res.status(404).json({ error: 'Perfil de vendedor não encontrado' });
+    }
+
+    const updatedProfile = await prisma.sellerProfile.update({
+      where: { userId },
+      data: {
+        storeName,
+        description,
+        address,
+        phone,
+        whatsappNumber,
+        email,
+        logo,
+        banner,
+        socialLinks: socialLinks || existingProfile.socialLinks, // Merge or replace
+      }
+    });
+
+    res.json(updatedProfile);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro no servidor ao atualizar perfil' });
+  }
+});
+
+// Update seller profile by ID (admin only)
+router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const {
+      storeName,
+      description,
+      address,
+      phone,
+      whatsappNumber,
+      email,
+      logo,
+      banner,
+      socialLinks
+    } = req.body;
+
+    // Check if user exists and is a seller
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { sellerProfile: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (user.role !== 'seller') {
+      return res.status(400).json({ error: 'Usuário não é um vendedor' });
+    }
+
+    // Upsert profile
+    const updatedProfile = await prisma.sellerProfile.upsert({
+      where: { userId },
+      update: {
+        storeName,
+        description,
+        address,
+        phone,
+        whatsappNumber,
+        email,
+        logo,
+        banner,
+        socialLinks: socialLinks || user.sellerProfile?.socialLinks,
+      },
+      create: {
+        userId,
+        storeName: storeName || `${user.firstName}'s Store`,
+        storeSlug: `store-${Date.now()}`,
+        description: description || '',
+        address: address || '',
+        phone: phone || '',
+        email: email || user.email,
+        whatsappNumber: whatsappNumber || '',
+        logo: logo || '',
+        banner: banner || '',
+        socialLinks: socialLinks || {},
+      }
+    });
+
+    res.json(updatedProfile);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro no servidor ao atualizar perfil' });
+  }
+});
+
 // Get user by ID
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
-    
+
     // Only admin or own user can view
     if (req.user!.role !== 'superadmin' && req.user!.userId !== id) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
-    
+
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
@@ -45,11 +158,11 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
         bankData: true,
       },
     });
-    
+
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
@@ -62,12 +175,12 @@ router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, r
   try {
     const id = req.params.id as string;
     const { isActive } = req.body;
-    
+
     const user = await prisma.user.update({
       where: { id },
       data: { isActive },
     });
-    
+
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
@@ -79,13 +192,67 @@ router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, r
 router.delete('/:id', authenticate, authorize('superadmin'), async (req, res) => {
   try {
     const id = req.params.id as string;
-    
+
     await prisma.user.delete({
       where: { id },
     });
-    
+
     res.json({ message: 'Usuário deletado com sucesso' });
   } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Update Ingenio Access (admin only)
+router.patch('/:id/ingenio', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { hasAccess } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { ingenioAccess: hasAccess },
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Update Bank Data
+router.put('/me/bank-data', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.userId;
+    const { bankName, accountNumber, accountType, holderName, documentId } = req.body;
+
+    if (!bankName || !accountNumber || !holderName || !documentId) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+    }
+
+    const bankData = await prisma.bankData.upsert({
+      where: { userId },
+      update: {
+        bankName,
+        accountNumber,
+        accountType: accountType || 'savings',
+        holderName,
+        documentId
+      },
+      create: {
+        userId,
+        bankName,
+        accountNumber,
+        accountType: accountType || 'savings',
+        holderName,
+        documentId
+      }
+    });
+
+    res.json(bankData);
+  } catch (error) {
+    console.error('Update bank data error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });

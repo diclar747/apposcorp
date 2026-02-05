@@ -1,34 +1,34 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Store, 
-  ShoppingCart, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Store,
+  ShoppingCart,
   DollarSign,
   Package,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import { 
-  mockUsers, 
-  mockStores, 
-  mockProducts, 
-  mockOrders, 
+import {
+  mockUsers,
+  mockStores,
+  mockProducts,
+  mockOrders,
   mockTransactions,
-  mockCredits 
+  mockCredits
 } from '@/data/mockData';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line,
@@ -123,12 +123,12 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">Resumen general del sistema</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-gray-500 dark:text-gray-400">Resumen general del sistema</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Exportar reporte</Button>
-          <Button className="bg-blue-600">Ver detalles</Button>
+          <Button variant="outline" className="dark:text-gray-300 dark:hover:bg-slate-800 dark:border-slate-700">Exportar reporte</Button>
+          <Button className="bg-blue-600 hover:bg-blue-700">Ver detalles</Button>
         </div>
       </div>
 
@@ -141,12 +141,12 @@ export default function AdminDashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{stat.title}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
                     <div className="flex items-center gap-1 mt-2">
                       {stat.trend === 'up' ? (
                         <ArrowUpRight className="w-4 h-4 text-green-500" />
@@ -172,20 +172,20 @@ export default function AdminDashboard() {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales Chart */}
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Ventas y Comisiones</CardTitle>
+            <CardTitle className="dark:text-white">Ventas y Comisiones</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" tickFormatter={(value) => `₲${value / 1000000}M`} />
-                  <Tooltip 
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${value / 1000000}M`} />
+                  <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
                   />
                   <Bar dataKey="ventas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="comisiones" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -196,19 +196,19 @@ export default function AdminDashboard() {
         </Card>
 
         {/* User Growth Chart */}
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Crecimiento de Usuarios</CardTitle>
+            <CardTitle className="dark:text-white">Crecimiento de Usuarios</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={userGrowthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
                   />
                   <Line type="monotone" dataKey="clientes" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6' }} />
                   <Line type="monotone" dataKey="vendedores" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} />
@@ -222,9 +222,9 @@ export default function AdminDashboard() {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Order Status */}
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Estado de Pedidos</CardTitle>
+            <CardTitle className="dark:text-white">Estado de Pedidos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -251,7 +251,7 @@ export default function AdminDashboard() {
               {orderStatusData.map((item) => (
                 <div key={item.name} className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-xs text-gray-600">{item.name}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{item.name}</span>
                 </div>
               ))}
             </div>
@@ -259,44 +259,43 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Recent Orders */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 dark:bg-slate-900 dark:border-slate-800">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Pedidos Recientes</CardTitle>
-            <Button variant="ghost" size="sm">Ver todos</Button>
+            <CardTitle className="dark:text-white">Pedidos Recientes</CardTitle>
+            <Button variant="ghost" size="sm" className="dark:text-gray-300 dark:hover:bg-slate-800">Ver todos</Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Pedido</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Cliente</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Tienda</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Total</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Estado</th>
+                  <tr className="border-b border-gray-200 dark:border-slate-800">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Pedido</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Cliente</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Tienda</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Total</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium text-gray-900">{order.orderNumber}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">
+                    <tr key={order.id} className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                      <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{order.orderNumber}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
                         {mockUsers.find(u => u.id === order.buyerId)?.firstName} {mockUsers.find(u => u.id === order.buyerId)?.lastName}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">
+                      <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
                         {mockStores.find(s => s.id === order.storeId)?.name}
                       </td>
-                      <td className="py-3 px-4 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
+                      <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(order.total)}</td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          order.status === 'in_transit' ? 'bg-blue-100 text-blue-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              order.status === 'in_transit' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }`}>
                           {order.status === 'delivered' ? 'Entregado' :
-                           order.status === 'pending' ? 'Pendiente' :
-                           order.status === 'in_transit' ? 'En camino' : order.status}
+                            order.status === 'pending' ? 'Pendiente' :
+                              order.status === 'in_transit' ? 'En camino' : order.status}
                         </span>
                       </td>
                     </tr>
@@ -333,22 +332,20 @@ export default function AdminDashboard() {
                     <td className="py-3 px-4 text-sm font-mono text-gray-500">{transaction.id}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 capitalize">{transaction.type}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{transaction.description}</td>
-                    <td className={`py-3 px-4 text-sm font-medium ${
-                      transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <td className={`py-3 px-4 text-sm font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">
                       {new Date(transaction.createdAt).toLocaleDateString('es-PY')}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        transaction.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${transaction.status === 'completed' ? 'bg-green-100 text-green-700' :
                         transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
+                          'bg-red-100 text-red-700'
+                        }`}>
                         {transaction.status === 'completed' ? 'Completado' :
-                         transaction.status === 'pending' ? 'Pendiente' : 'Fallido'}
+                          transaction.status === 'pending' ? 'Pendiente' : 'Fallido'}
                       </span>
                     </td>
                   </tr>

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Wallet, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  QrCode, 
-  Send, 
+import {
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft,
+  QrCode,
+  Send,
   Download,
   CreditCard,
   ChevronRight,
@@ -63,7 +63,6 @@ export default function ClientWallet() {
     const categoryMap: Record<string, string> = {
       purchase: 'store',
       sale: 'store',
-      course: 'course',
       deposit: 'wallet',
       withdrawal: 'wallet',
       transfer_in: 'wallet',
@@ -167,7 +166,7 @@ export default function ClientWallet() {
 
       {/* Finance Chart */}
       <div className="px-4">
-        <FinanceChart 
+        <FinanceChart
           data={weeklyData}
           type="area"
           title="Resumen semanal"
@@ -215,7 +214,7 @@ export default function ClientWallet() {
               >
                 <div className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0',
-                  transaction.type === 'income' 
+                  transaction.type === 'income'
                     ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
                     : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'
                 )}>
@@ -225,7 +224,7 @@ export default function ClientWallet() {
                     <ArrowUpRight className="w-5 h-5" />
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-sm truncate">{transaction.description}</p>
@@ -237,7 +236,7 @@ export default function ClientWallet() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{transaction.date}</p>
                 </div>
-                
+
                 <div className="text-right flex-shrink-0">
                   <p className={cn(
                     'font-semibold text-sm',
@@ -246,7 +245,7 @@ export default function ClientWallet() {
                     {transaction.type === 'income' ? '+' : '-'} ₲ {transaction.amount.toLocaleString()}
                   </p>
                 </div>
-                
+
                 <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
               </motion.div>
             ))}

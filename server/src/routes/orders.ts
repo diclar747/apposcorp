@@ -8,11 +8,11 @@ const router = Router();
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const { as = 'buyer' } = req.query;
-    
-    const where = as === 'seller' 
+
+    const where = as === 'seller'
       ? { sellerId: req.user!.userId }
       : { buyerId: req.user!.userId };
-    
+
     const orders = await prisma.order.findMany({
       where,
       include: {
@@ -37,7 +37,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -48,7 +48,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
-    
+
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -78,11 +78,11 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
         },
       },
     });
-    
+
     if (!order) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
-    
+
     // Check if user is buyer, seller, or admin
     if (
       req.user!.role !== 'superadmin' &&
@@ -91,7 +91,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     ) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
-    
+
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -109,23 +109,23 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       deliveryNotes,
       paymentMethod,
     } = req.body;
-    
+
     // Calculate totals
     let subtotal = 0;
     const orderItems: { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; total: number; variant: string | null; }[] = [];
-    
+
     for (const item of items) {
       const product = await prisma.product.findUnique({
         where: { id: item.productId },
       });
-      
+
       if (!product) {
         return res.status(404).json({ error: `Produto ${item.productId} não encontrado` });
       }
-      
+
       const total = product.price * item.quantity;
       subtotal += total;
-      
+
       orderItems.push({
         productId: product.id,
         productName: product.name,
@@ -136,26 +136,26 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         variant: item.variant || null,
       });
     }
-    
+
     const tax = subtotal * 0.1; // 10% tax
-    const shippingCost = deliveryType === 'delivery' ? 10 : 0;
+    const shippingCost = deliveryType === 'delivery' ? 15000 : 0;
     const total = subtotal + tax + shippingCost;
     const commissionAmount = subtotal * 0.05; // 5% commission
     const sellerEarnings = subtotal - commissionAmount;
-    
+
     const orderNumber = `ORD-${Date.now()}`;
-    
+
     // Check wallet balance if paying with wallet
     if (paymentMethod === 'wallet') {
       const wallet = await prisma.wallet.findUnique({
         where: { userId: req.user!.userId },
       });
-      
+
       if (!wallet || wallet.balance < total) {
         return res.status(400).json({ error: 'Saldo insuficiente na carteira' });
       }
     }
-    
+
     const result = await prisma.$transaction(async (tx) => {
       // Create order
       const order = await tx.order.create({
@@ -188,17 +188,17 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           trackingHistory: true,
         },
       });
-      
+
       // If paying with wallet, process payment
       if (paymentMethod === 'wallet') {
         const buyerWallet = await tx.wallet.findUnique({
           where: { userId: req.user!.userId },
         });
-        
+
         const sellerWallet = await tx.wallet.findUnique({
           where: { userId: sellerId },
         });
-        
+
         if (buyerWallet && sellerWallet) {
           // Deduct from buyer
           await tx.wallet.update({
@@ -208,7 +208,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
               totalOut: { increment: total },
             },
           });
-          
+
           // Add to seller (minus commission)
           await tx.wallet.update({
             where: { id: sellerWallet.id },
@@ -217,7 +217,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
               totalIn: { increment: sellerEarnings },
             },
           });
-          
+
           // Create transactions
           await tx.transaction.create({
             data: {
@@ -230,7 +230,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
               relatedOrderId: order.id,
             },
           });
-          
+
           await tx.transaction.create({
             data: {
               walletId: sellerWallet.id,
@@ -242,7 +242,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
               relatedOrderId: order.id,
             },
           });
-          
+
           // Update order payment status
           await tx.order.update({
             where: { id: order.id },
@@ -250,7 +250,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           });
         }
       }
-      
+
       // Update product stock
       for (const item of items) {
         await tx.product.update({
@@ -260,10 +260,10 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           },
         });
       }
-      
+
       return order;
     });
-    
+
     res.status(201).json(result);
   } catch (error) {
     console.error('Create order error:', error);
@@ -276,20 +276,20 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
     const { status, description } = req.body;
-    
+
     const order = await prisma.order.findUnique({
       where: { id },
     });
-    
+
     if (!order) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
-    
+
     // Only seller or admin can update status
     if (req.user!.role !== 'superadmin' && order.sellerId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
-    
+
     const result = await prisma.$transaction(async (tx) => {
       // Update order status
       const updatedOrder = await tx.order.update({
@@ -299,7 +299,7 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
           updatedAt: new Date(),
         },
       });
-      
+
       // Add tracking event
       await tx.trackingEvent.create({
         data: {
@@ -308,10 +308,10 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
           description: description || `Status atualizado para ${status}`,
         },
       });
-      
+
       return updatedOrder;
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });

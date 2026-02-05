@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
+// import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
@@ -10,65 +10,78 @@ const router = Router();
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
     console.log('=== LOGIN ATTEMPT ===');
     console.log('Email:', email);
     console.log('Password provided:', password);
-    
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        wallet: true,
-        virtualCard: true,
-        sellerProfile: true,
-        bankData: true,
-      },
+
+    // Workaround: fetch all users with specific fields and filter in JS
+    const allUsers = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        avatar: true,
+        // Skipping complex fields/relations to avoid crashes
+      }
     });
-    
+    const users = allUsers.filter(u => u.email === email);
+
+    const user = users[0];
+
     console.log('User found:', user ? 'YES' : 'NO');
     if (user) {
       console.log('User ID:', user.id);
       console.log('User role:', user.role);
       console.log('Stored password hash:', user.password?.substring(0, 20) + '...');
     }
-    
+
     if (!user) {
       console.log('ERROR: User not found');
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
-    
+
     if (!user.isActive) {
       console.log('ERROR: Account disabled');
       return res.status(401).json({ error: 'Conta desativada' });
     }
-    
+
     console.log('Comparing password with bcrypt...');
+    const bcrypt = await import('bcryptjs');
     const isValidPassword = await bcrypt.compare(password, user.password);
     console.log('Password match:', isValidPassword);
-    
+
     if (!isValidPassword) {
       console.log('ERROR: Invalid password');
       return res.status(401).json({ error: 'Senha incorreta' });
     }
-    
+
     console.log('=== LOGIN SUCCESS ===');
-    
+
     const token = generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
-    
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
-    
+
     res.json({
       token,
       user: userWithoutPassword,
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Erro no servidor', message: error.message, stack: error.stack });
   }
 });
 
@@ -76,20 +89,21 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, address, city, role } = req.body;
-    
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
-    
+
     if (existingUser) {
       return res.status(400).json({ error: 'Email já registrado' });
     }
-    
+
+    const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const userCount = await prisma.user.count();
     const cardNumber = `OSC${String(userCount + 1).padStart(6, '0')}`;
-    
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -113,7 +127,7 @@ router.post('/register', async (req, res) => {
         virtualCard: true,
       },
     });
-    
+
     // Create virtual card
     await prisma.virtualCard.create({
       data: {
@@ -124,7 +138,7 @@ router.post('/register', async (req, res) => {
         design: 'gradient_blue',
       },
     });
-    
+
     // If seller, create seller profile
     if (role === 'seller') {
       await prisma.sellerProfile.create({
@@ -140,15 +154,15 @@ router.post('/register', async (req, res) => {
         },
       });
     }
-    
+
     const token = generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
-    
+
     const { password: _, ...userWithoutPassword } = user;
-    
+
     res.status(201).json({
       token,
       user: userWithoutPassword,
@@ -171,11 +185,11 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
         bankData: true,
       },
     });
-    
+
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
@@ -187,7 +201,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
 router.put('/me', authenticate, async (req: AuthRequest, res) => {
   try {
     const { firstName, lastName, phone, address, city, avatar } = req.body;
-    
+
     const user = await prisma.user.update({
       where: { id: req.user!.userId },
       data: {
@@ -205,7 +219,7 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
         bankData: true,
       },
     });
-    
+
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
@@ -219,11 +233,11 @@ router.get('/debug-users', async (req, res) => {
     const users = await prisma.user.findMany({
       select: { id: true, email: true, role: true, isActive: true, password: true }
     });
-    
+
     // Test bcrypt on each user
     const bcrypt = await import('bcryptjs');
     const testPassword = '123456';
-    
+
     const results = await Promise.all(users.map(async (user) => {
       const isValid = await bcrypt.compare(testPassword, user.password);
       return {
@@ -236,7 +250,7 @@ router.get('/debug-users', async (req, res) => {
         passwordValid: isValid
       };
     }));
-    
+
     res.json({
       totalUsers: users.length,
       users: results
@@ -251,9 +265,9 @@ router.get('/fix-passwords', async (req, res) => {
   try {
     const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash('123456', 10);
-    
+
     const users = await prisma.user.findMany();
-    
+
     const results = [];
     for (const user of users) {
       const updated = await prisma.user.update({
@@ -262,7 +276,7 @@ router.get('/fix-passwords', async (req, res) => {
       });
       results.push({ email: updated.email, status: 'updated' });
     }
-    
+
     res.json({
       message: 'All passwords updated to 123456',
       users: results

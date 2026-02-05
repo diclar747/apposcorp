@@ -24,8 +24,10 @@ import AdminFinances from '@/pages/admin/Finances';
 import AdminTransactions from '@/pages/admin/Transactions';
 import AdminWithdrawals from '@/pages/admin/Withdrawals';
 import AdminCredits from '@/pages/admin/Credits';
-import AdminCourses from '@/pages/admin/Courses';
 import AdminReports from '@/pages/admin/Reports';
+import AdminCourses from '@/pages/admin/Courses';
+import AdminPushNotifications from '@/pages/admin/PushNotifications';
+import AdminSettings from '@/pages/admin/Settings';
 
 // Seller Pages
 import SellerDashboard from '@/pages/seller/Dashboard';
@@ -35,29 +37,31 @@ import SellerOrders from '@/pages/seller/Orders';
 import SellerSales from '@/pages/seller/Sales';
 import SellerWithdrawals from '@/pages/seller/Withdrawals';
 import SellerReports from '@/pages/seller/Reports';
+import SellerPOS from '@/pages/seller/POS';
 
 // Client Pages
 import ClientHome from '@/pages/client/Home';
 import ClientStore from '@/pages/client/Store';
+import ClientStores from '@/pages/client/Stores';
 import ClientProduct from '@/pages/client/Product';
 import ClientCart from '@/pages/client/Cart';
 import ClientCheckout from '@/pages/client/Checkout';
 import ClientWallet from '@/pages/client/Wallet';
+import ClientScan from '@/pages/client/Scan';
 import ClientCard from '@/pages/client/Card';
-import ClientCourses from '@/pages/client/Courses';
-import ClientCourseDetail from '@/pages/client/CourseDetail';
 import ClientOrders from '@/pages/client/Orders';
 import ClientOrderDetail from '@/pages/client/OrderDetail';
 import ClientProfile from '@/pages/client/Profile';
 import ClientCredits from '@/pages/client/Credits';
 import ClientIngenio from '@/pages/client/Ingenio';
+import ClientNotifications from '@/pages/client/Notifications';
 
 // Protected Route Component
-function ProtectedRoute({ 
-  children, 
-  allowedRoles 
-}: { 
-  children: React.ReactNode; 
+function ProtectedRoute({
+  children,
+  allowedRoles
+}: {
+  children: React.ReactNode;
   allowedRoles: ('client' | 'seller' | 'superadmin')[];
 }) {
   const { isAuthenticated, user } = useAuthStore();
@@ -109,8 +113,10 @@ function App() {
           <Route path="transacciones" element={<AdminTransactions />} />
           <Route path="retiros" element={<AdminWithdrawals />} />
           <Route path="creditos" element={<AdminCredits />} />
-          <Route path="cursos" element={<AdminCourses />} />
           <Route path="reportes" element={<AdminReports />} />
+          <Route path="cursos" element={<AdminCourses />} />
+          <Route path="campanas" element={<AdminPushNotifications />} />
+          <Route path="configuracion" element={<AdminSettings />} />
         </Route>
 
         {/* Seller Routes */}
@@ -127,6 +133,7 @@ function App() {
           <Route path="productos" element={<SellerProducts />} />
           <Route path="pedidos" element={<SellerOrders />} />
           <Route path="ventas" element={<SellerSales />} />
+          <Route path="pos" element={<SellerPOS />} />
           <Route path="retiros" element={<SellerWithdrawals />} />
           <Route path="reportes" element={<SellerReports />} />
         </Route>
@@ -141,19 +148,20 @@ function App() {
           }
         >
           <Route index element={<ClientHome />} />
-          <Route path="tienda" element={<ClientStore />} />
+          <Route path="tiendas" element={<ClientStores />} />
+          <Route path="tienda" element={<Navigate to="/app/tiendas" replace />} />
           <Route path="producto/:id" element={<ClientProduct />} />
           <Route path="carrito" element={<ClientCart />} />
           <Route path="checkout" element={<ClientCheckout />} />
+          <Route path="escanear" element={<ClientScan />} />
           <Route path="wallet" element={<ClientWallet />} />
           <Route path="tarjeta" element={<ClientCard />} />
-          <Route path="cursos" element={<ClientCourses />} />
-          <Route path="cursos/:id" element={<ClientCourseDetail />} />
           <Route path="pedidos" element={<ClientOrders />} />
           <Route path="pedidos/:id" element={<ClientOrderDetail />} />
           <Route path="perfil" element={<ClientProfile />} />
           <Route path="creditos" element={<ClientCredits />} />
           <Route path="ingenio" element={<ClientIngenio />} />
+          <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 
         {/* Fallback */}

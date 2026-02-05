@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Package, Truck, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Package, Truck, CheckCircle, Clock, ChevronRight, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import { mockOrders, mockStores } from '@/data/mockData';
+import { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getOrderStatusInfo } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import type { Order } from '@/types';
 
 const statusFilters = [
   { value: 'all', label: 'Todos' },
@@ -19,12 +20,35 @@ const statusFilters = [
 export default function ClientOrders() {
   const { user } = useAuthStore();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const userOrders = mockOrders.filter(o => o.buyerId === user?.id);
-  
-  const filteredOrders = userOrders.filter(order => {
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await ordersApi.getAll();
+        setOrders(data);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  const filteredOrders = orders.filter(order => {
     return statusFilter === 'all' || order.status === statusFilter;
   });
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-6">
@@ -54,9 +78,9 @@ export default function ClientOrders() {
       {/* Orders List */}
       <div className="px-4 space-y-3">
         {filteredOrders.map((order, index) => {
-          const store = mockStores.find(s => s.id === order.storeId);
           const statusInfo = getOrderStatusInfo(order.status);
-          
+          const sellerName = order.seller ? `${order.seller.firstName} ${order.seller.lastName}` : 'Tienda';
+
           return (
             <Link key={order.id} to={`/app/pedidos/${order.id}`}>
               <motion.div
@@ -79,24 +103,20 @@ export default function ClientOrders() {
 
                     {/* Store */}
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-gray-100 overflow-hidden">
-                        {store?.logo ? (
-                          <img src={store.logo} alt={store.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="w-4 h-4 text-gray-400" />
-                          </div>
-                        )}
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingBag className="w-4 h-4 text-gray-400" />
+                        </div>
                       </div>
-                      <span className="text-sm font-medium">{store?.name}</span>
+                      <span className="text-sm font-medium">{sellerName}</span>
                     </div>
 
                     {/* Products */}
                     <div className="flex gap-2 mb-3">
-                      {order.items.slice(0, 3).map((item) => (
+                      {order.items?.slice(0, 3).map((item: any) => (
                         <div key={item.id} className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
                           {item.productImage ? (
-                            <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                            <img src={item.productImage} alt={item.productName || 'Producto'} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Package className="w-6 h-6 text-gray-300" />
@@ -104,7 +124,7 @@ export default function ClientOrders() {
                           )}
                         </div>
                       ))}
-                      {order.items.length > 3 && (
+                      {order.items?.length > 3 && (
                         <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center">
                           <span className="text-sm text-gray-500">+{order.items.length - 3}</span>
                         </div>
@@ -114,7 +134,7 @@ export default function ClientOrders() {
                     {/* Footer */}
                     <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                       <div>
-                        <p className="text-sm text-gray-500">{order.items.length} productos</p>
+                        <p className="text-sm text-gray-500">{order.items?.length || 0} productos</p>
                         <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
                       </div>
                       <ChevronRight className="w-5 h-5 text-gray-400" />

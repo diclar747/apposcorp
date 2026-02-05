@@ -45,14 +45,6 @@ const reportTypes = [
     formats: ['Excel', 'PDF'],
     lastGenerated: '2024-02-20',
   },
-  {
-    title: 'Reporte de Cursos',
-    description: 'Inscripciones, progreso y rendimiento de cursos',
-    icon: PieChart,
-    color: 'bg-pink-500',
-    formats: ['Excel', 'PDF'],
-    lastGenerated: '2024-02-15',
-  },
 ];
 
 export default function AdminReports() {
@@ -111,7 +103,7 @@ export default function AdminReports() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{report.title}</h3>
                     <p className="text-sm text-gray-500 mt-1">{report.description}</p>
-                    
+
                     <div className="flex gap-2 mt-3">
                       {report.formats.map((format) => (
                         <Badge key={format} variant="secondary" className="text-xs">
@@ -119,11 +111,11 @@ export default function AdminReports() {
                         </Badge>
                       ))}
                     </div>
-                    
+
                     <p className="text-xs text-gray-400 mt-3">
                       Última generación: {report.lastGenerated}
                     </p>
-                    
+
                     <div className="flex gap-2 mt-4">
                       <Button size="sm" className="flex-1">
                         <FileText className="w-4 h-4 mr-2" />

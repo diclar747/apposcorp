@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { 
-  CreditCard, 
-  QrCode, 
-  Copy, 
-  Eye, 
-  EyeOff, 
+import {
+  CreditCard,
+  QrCode,
+  Copy,
+  Eye,
+  EyeOff,
   Wifi,
   ChevronRight
 } from 'lucide-react';
@@ -23,14 +23,14 @@ interface VirtualCardProps {
   className?: string;
 }
 
-export function VirtualCard({ 
-  balance, 
-  cardNumber, 
-  cardHolder, 
-  expiryDate, 
-  cvv, 
+export function VirtualCard({
+  balance,
+  cardNumber,
+  cardHolder,
+  expiryDate,
+  cvv,
   qrValue,
-  className 
+  className
 }: VirtualCardProps) {
   const [showQR, setShowQR] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -57,75 +57,88 @@ export function VirtualCard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="premium-card-dark aspect-[1.586/1] p-6 flex flex-col justify-between relative"
+            className="relative aspect-[1.586/1] p-6 flex flex-col justify-between overflow-hidden rounded-2xl shadow-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            }}
           >
+            {/* Background Texture */}
+            <div className="absolute inset-0 opacity-30 pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)',
+                backgroundSize: '100% 100%'
+              }}
+            />
+
             {/* Card Header */}
-            <div className="flex items-start justify-between relative z-10">
-              <div className="flex items-center gap-3">
-                <div className="card-chip" />
-                <Wifi className="w-5 h-5 text-white/40" />
+            <div className="flex items-start justify-between relative z-10 w-full">
+              {/* Chip and Contactless */}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-9 rounded-md bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600 shadow-inner border border-yellow-600/50 flex items-center justify-center overflow-hidden relative">
+                  <div className="absolute inset-0 opacity-50 border-[0.5px] border-black/20 rounded-[5px]" />
+                  <div className="w-full h-[1px] bg-black/20 absolute top-1/3" />
+                  <div className="w-full h-[1px] bg-black/20 absolute bottom-1/3" />
+                  <div className="h-full w-[1px] bg-black/20 absolute left-1/3" />
+                  <div className="h-full w-[1px] bg-black/20 absolute right-1/3" />
+                </div>
+                <Wifi className="w-8 h-8 text-white/60 rotate-90" />
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                  onClick={() => setShowDetails(!showDetails)}
-                >
-                  {showDetails ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                  onClick={() => setShowQR(true)}
-                >
-                  <QrCode className="w-4 h-4" />
-                </Button>
+
+              {/* Bank/Brand Name */}
+              <div className="text-right">
+                <h3 className="text-white/90 font-bold text-lg tracking-wider italic">OSCORP</h3>
+                <p className="text-white/50 text-[10px] uppercase tracking-widest">Platinum</p>
               </div>
             </div>
 
-            {/* Card Number */}
-            <div className="space-y-2 relative z-10">
-              <p className="text-white/50 text-xs">Card Number</p>
-              <div className="flex items-center gap-3">
-                <span className="text-white text-2xl tracking-wider font-mono">
-                  {formatCardNumber(cardNumber)}
-                </span>
-                <button
-                  onClick={() => copyToClipboard(cardNumber.replace(/\s/g, ''))}
-                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                >
-                  {copied ? (
-                    <span className="text-emerald-400 text-xs">✓</span>
-                  ) : (
-                    <Copy className="w-3 h-3 text-white/60" />
-                  )}
-                </button>
+            {/* Card Body - Number & QR */}
+            <div className="flex items-center justify-between relative z-10 mt-2">
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <span className="text-white text-[22px] sm:text-[26px] tracking-[0.15em] font-mono drop-shadow-md" style={{ fontFamily: '"Courier Prime", monospace', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                    {cardNumber}
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(cardNumber.replace(/\s/g, ''))}
+                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  >
+                    {copied ? (
+                      <span className="text-emerald-400 text-[10px]">✓</span>
+                    ) : (
+                      <Copy className="w-3 h-3 text-white/40" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Mini QR on Card */}
+              <div className="bg-white p-1 rounded-md shadow-sm opacity-90">
+                <QRCodeSVG
+                  value={qrValue}
+                  size={45}
+                  level="M"
+                  includeMargin={false}
+                />
               </div>
             </div>
 
             {/* Card Footer */}
             <div className="flex items-end justify-between relative z-10">
-              <div className="space-y-1">
-                <p className="text-white/50 text-[10px] uppercase tracking-wider">Card Holder</p>
-                <p className="text-white font-medium uppercase tracking-wider">{cardHolder}</p>
-              </div>
-              <div className="flex gap-6">
-                <div>
-                  <p className="text-white/50 text-[10px] uppercase tracking-wider">Expires</p>
-                  <p className="text-white font-medium">{showDetails ? expiryDate : '••/••'}</p>
+              <div className="flex items-end gap-8">
+                <div className="space-y-0.5">
+                  <p className="text-white/40 text-[8px] uppercase tracking-widest ml-1">Holder</p>
+                  <p className="text-white font-medium uppercase tracking-widest text-sm sm:text-base drop-shadow-sm">{cardHolder}</p>
                 </div>
-                <div>
-                  <p className="text-white/50 text-[10px] uppercase tracking-wider">CVV</p>
-                  <p className="text-white font-medium">{showDetails ? cvv : '•••'}</p>
+                <div className="space-y-0.5">
+                  <p className="text-white/40 text-[8px] uppercase tracking-widest ml-1">Expires</p>
+                  <p className="text-white font-medium text-sm sm:text-base tracking-wider drop-shadow-sm">{expiryDate}</p>
                 </div>
               </div>
-              
-              {/* Mastercard Logo */}
-              <div className="flex -space-x-2">
-                <div className="w-10 h-10 rounded-full bg-red-500/90" />
-                <div className="w-10 h-10 rounded-full bg-yellow-500/90" />
+
+              {/* Visa Logo Style */}
+              <div className="italic font-black text-2xl text-white tracking-tighter opacity-90 pr-2">
+                VISA
               </div>
             </div>
           </motion.div>
@@ -146,7 +159,7 @@ export function VirtualCard({
             >
               <CreditCard className="w-4 h-4" />
             </Button>
-            
+
             <div className="bg-white p-4 rounded-2xl shadow-lg">
               <QRCodeSVG
                 value={qrValue}
@@ -157,7 +170,7 @@ export function VirtualCard({
                 fgColor="#1e3a5f"
               />
             </div>
-            
+
             <div className="mt-4 text-center">
               <p className="font-semibold text-foreground">{cardHolder}</p>
               <p className="text-sm text-muted-foreground">Scan to pay</p>
@@ -170,12 +183,12 @@ export function VirtualCard({
 }
 
 // Compact version for dashboard
-export function VirtualCardCompact({ 
-  balance, 
+export function VirtualCardCompact({
+  balance,
   onShowQR,
-  className 
-}: { 
-  balance: number; 
+  className
+}: {
+  balance: number;
   onShowQR?: () => void;
   className?: string;
 }) {
@@ -198,12 +211,12 @@ export function VirtualCardCompact({
             <div className="w-6 h-6 rounded-full bg-yellow-500/90" />
           </div>
         </div>
-        
+
         <div className="mb-4">
           <p className="text-white/50 text-xs mb-1">Current Balance</p>
           <p className="text-white text-3xl font-bold">₲ {balance.toLocaleString()}</p>
         </div>
-        
+
         <div className="flex items-center justify-between">
           <span className="text-white/40 text-sm font-mono">•••• 4589</span>
           <Button

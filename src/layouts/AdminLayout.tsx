@@ -19,11 +19,13 @@ import {
   X,
   ChevronDown,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Send
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,8 +47,9 @@ const sidebarItems = [
   { icon: Wallet, label: 'Transacciones', href: '/admin/transacciones' },
   { icon: DollarSign, label: 'Retiros', href: '/admin/retiros' },
   { icon: CreditCard, label: 'Créditos', href: '/admin/creditos' },
-  { icon: BookOpen, label: 'Cursos', href: '/admin/cursos' },
   { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
+  { icon: BookOpen, label: 'Cursos', href: '/admin/cursos' },
+  { icon: Send, label: 'Campañas', href: '/admin/campanas' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
 ];
 
@@ -63,43 +66,34 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex transition-colors duration-300">
       {/* Sidebar Desktop */}
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 260 : 72 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
         className={cn(
-          'fixed left-0 top-0 h-full bg-slate-900 text-white z-40',
-          'hidden lg:flex flex-col'
+          'fixed left-0 top-0 h-full bg-slate-900 dark:bg-slate-900 border-r border-slate-800 text-white z-40',
+          'hidden lg:flex flex-col shadow-xl'
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-slate-800">
-          <Link to="/admin" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-bold text-white">O</span>
-            </div>
-            <AnimatePresence>
-              {sidebarOpen && (
-                <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="font-semibold text-lg whitespace-nowrap"
-                >
-                  Oscorp
-                </motion.span>
-              )}
-            </AnimatePresence>
+        <div className="h-20 flex items-center px-6 border-b border-slate-800">
+          <Link to="/admin">
+            <BrandLogo
+              variant="dark"
+              showText={sidebarOpen}
+              subtitle="Panel Admin"
+              className="py-1"
+            />
           </Link>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {sidebarItems.map((item) => {
-            const isActive = location.pathname === item.href || 
-                           (item.href !== '/admin' && location.pathname.startsWith(item.href));
+            const isActive = location.pathname === item.href ||
+              (item.href !== '/admin' && location.pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -172,11 +166,8 @@ export default function AdminLayout() {
               className="fixed left-0 top-0 h-full w-72 bg-slate-900 text-white z-50 lg:hidden"
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
-                <Link to="/admin" className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-lg font-bold text-white">O</span>
-                  </div>
-                  <span className="font-semibold text-lg">Oscorp</span>
+                <Link to="/admin">
+                  <BrandLogo variant="dark" subtitle="Panel Admin" size="sm" />
                 </Link>
                 <button onClick={() => setMobileMenuOpen(false)}>
                   <X className="w-6 h-6 text-slate-400" />
@@ -184,8 +175,8 @@ export default function AdminLayout() {
               </div>
               <nav className="p-4 space-y-1">
                 {sidebarItems.map((item) => {
-                  const isActive = location.pathname === item.href || 
-                                 (item.href !== '/admin' && location.pathname.startsWith(item.href));
+                  const isActive = location.pathname === item.href ||
+                    (item.href !== '/admin' && location.pathname.startsWith(item.href));
                   return (
                     <Link
                       key={item.href}
@@ -214,17 +205,17 @@ export default function AdminLayout() {
         !sidebarOpen && 'lg:ml-[72px]'
       )}>
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-30">
+        <header className="h-16 bg-white dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 sticky top-0 z-30 transition-colors duration-300">
           <div className="h-full px-4 flex items-center justify-between">
             {/* Left */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-600 dark:text-gray-300"
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="text-lg font-semibold text-gray-800 hidden sm:block">
+              <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden sm:block">
                 Panel de Administración
               </h1>
             </div>
@@ -232,43 +223,43 @@ export default function AdminLayout() {
             {/* Right */}
             <div className="flex items-center gap-3">
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
+              <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
               </button>
 
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 px-2">
-                    <Avatar className="w-8 h-8">
+                  <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-gray-100 dark:hover:bg-slate-800">
+                    <Avatar className="w-8 h-8 ring-2 ring-white dark:ring-slate-700">
                       <AvatarImage src={user?.avatar} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
                         {user ? getInitials(user.firstName, user.lastName) : 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:block text-left">
-                      <p className="text-sm font-medium text-gray-700">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="text-xs text-gray-500">Administrador</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Administrador</p>
                     </div>
-                    <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
+                    <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/admin/perfil')}>
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+                  <DropdownMenuLabel className="dark:text-white">Mi Cuenta</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="dark:bg-slate-800" />
+                  <DropdownMenuItem onClick={() => navigate('/admin/perfil')} className="dark:text-gray-300 dark:focus:bg-slate-800 cursor-pointer">
                     <User className="w-4 h-4 mr-2" />
                     Perfil
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/configuracion')}>
+                  <DropdownMenuItem onClick={() => navigate('/admin/configuracion')} className="dark:text-gray-300 dark:focus:bg-slate-800 cursor-pointer">
                     <Settings className="w-4 h-4 mr-2" />
                     Configuración
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuSeparator className="dark:bg-slate-800" />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400 dark:focus:bg-slate-800 cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Cerrar Sesión
                   </DropdownMenuItem>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Wallet, CreditCard, Truck, Check, ChevronRight } from 'lucide-react';
 import { useAuthStore, useCartStore, useWalletStore } from '@/stores';
+import { ordersApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,7 +25,7 @@ export default function ClientCheckout() {
   const { user } = useAuthStore();
   const { items, total, clearCart } = useCartStore();
   const { wallet } = useWalletStore();
-  
+
   const [paymentMethod, setPaymentMethod] = useState('wallet');
   const [deliveryMethod, setDeliveryMethod] = useState('delivery');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,13 +39,43 @@ export default function ClientCheckout() {
     }
 
     setIsProcessing(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    clearCart();
-    toast.success('¡Compra realizada con éxito!');
-    navigate('/app/pedidos');
+
+    try {
+      const orderData = {
+        sellerId: items[0]?.product.sellerId, // Assuming all items from same seller for now, or backend handles it
+        // Note: Real world scenario should handle multi-seller cart or enforce single seller
+        items: items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          variant: null
+        })),
+        deliveryType: deliveryMethod,
+        deliveryAddress: {
+          street: user?.address || '',
+          number: '',
+          city: user?.city || '',
+        }, // Should prompt for address if missing
+        deliveryNotes: '',
+        paymentMethod,
+      };
+
+      await ordersApi.create(orderData);
+
+      clearCart();
+      toast.success('¡Compra realizada con éxito!');
+      navigate('/app/pedidos');
+
+      // Refresh wallet
+      if (paymentMethod === 'wallet') {
+        const { fetchWallet } = useWalletStore.getState();
+        if (user?.id) fetchWallet(user.id);
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast.error(error.message || 'Error al procesar la compra');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -140,7 +171,7 @@ export default function ClientCheckout() {
                 ))}
               </div>
             </RadioGroup>
-            
+
             {paymentMethod === 'wallet' && (
               <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                 <div className="flex items-center justify-between">
@@ -160,7 +191,7 @@ export default function ClientCheckout() {
             <span className="text-lg font-bold">Total a pagar</span>
             <span className="text-2xl font-bold text-gray-900">{formatCurrency(finalTotal)}</span>
           </div>
-          <Button 
+          <Button
             className="w-full bg-blue-600"
             onClick={handleCheckout}
             disabled={isProcessing}

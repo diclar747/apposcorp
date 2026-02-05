@@ -34,7 +34,7 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const navigate = useNavigate();
   const { register } = useAuthStore();
 
@@ -62,12 +62,12 @@ export default function RegisterPage() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    
+
     const success = await register(formData as RegisterData);
-    
+
     if (success) {
       toast.success('¡Cuenta creada exitosamente!');
-      
+
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
         if (currentUser?.role === 'seller') {
@@ -79,7 +79,7 @@ export default function RegisterPage() {
     } else {
       toast.error('Error al crear la cuenta');
     }
-    
+
     setIsLoading(false);
   };
 
@@ -93,8 +93,8 @@ export default function RegisterPage() {
       >
         {/* Logo */}
         <div className="text-center mb-6">
-          <Link to="/" className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-3">
-            <span className="text-xl font-bold text-white">O</span>
+          <Link to="/" className="inline-flex items-center justify-center mb-3">
+            <img src="https://oscorp-two.vercel.app/oscorp-logo.png" alt="Oscorp" className="w-14 h-14 object-contain" />
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Crear cuenta</h1>
           <p className="text-gray-500 mt-1">Únete a Oscorp y comienza tu viaje</p>
@@ -137,7 +137,7 @@ export default function RegisterPage() {
           {currentStep === 1 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Datos personales</h2>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nombre *</Label>
@@ -221,7 +221,7 @@ export default function RegisterPage() {
           {currentStep === 2 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">¿Qué tipo de cuenta necesitas?</h2>
-              
+
               <div className="space-y-3">
                 {accountTypes.map((type) => (
                   <button

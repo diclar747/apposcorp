@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Heart, Share2, Store, Star, Minus, Plus, Check, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, Store, Star, Minus, Plus, Check, ArrowLeft, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/stores';
-import { mockProducts, mockStores } from '@/data/mockData';
+import { productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,12 +13,37 @@ export default function ClientProduct() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addItem, isInCart, getItemQuantity } = useCartStore();
-  
-  const product = mockProducts.find(p => p.id === id);
-  const store = mockStores.find(s => s.id === product?.storeId);
-  
+
+  const [product, setProduct] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchProduct = async () => {
+      try {
+        const data = await productsApi.getById(id);
+        setProduct(data);
+      } catch (error) {
+        console.error('Error fetching product:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -30,6 +55,12 @@ export default function ClientProduct() {
       </div>
     );
   }
+
+  // Assuming backend returns seller info, we map it to store display
+  const store = product.seller ? {
+    name: `${product.seller.firstName} ${product.seller.lastName}`,
+    logo: null
+  } : null;
 
   const handleAddToCart = () => {
     addItem(product, quantity);
@@ -52,10 +83,10 @@ export default function ClientProduct() {
       {/* Images */}
       <div className="px-4">
         <div className="aspect-square bg-gray-100 rounded-2xl overflow-hidden">
-          {product.images[selectedImage] ? (
-            <img 
-              src={product.images[selectedImage]} 
-              alt={product.name} 
+          {product.images && product.images[selectedImage] ? (
+            <img
+              src={product.images[selectedImage]}
+              alt={product.name}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -64,15 +95,14 @@ export default function ClientProduct() {
             </div>
           )}
         </div>
-        {product.images.length > 1 && (
+        {product.images && product.images.length > 1 && (
           <div className="flex gap-2 mt-3 overflow-x-auto">
-            {product.images.map((image, index) => (
+            {product.images.map((image: string, index: number) => (
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
-                className={`w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
-                  selectedImage === index ? 'border-blue-500' : 'border-transparent'
-                }`}
+                className={`w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 ${selectedImage === index ? 'border-blue-500' : 'border-transparent'
+                  }`}
               >
                 <img src={image} alt="" className="w-full h-full object-cover" />
               </button>
@@ -110,13 +140,9 @@ export default function ClientProduct() {
         {store && (
           <div className="flex items-center gap-3 mt-4 p-3 bg-gray-50 rounded-xl">
             <div className="w-10 h-10 rounded-lg bg-white overflow-hidden">
-              {store.logo ? (
-                <img src={store.logo} alt={store.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Store className="w-5 h-5 text-gray-400" />
-                </div>
-              )}
+              <div className="w-full h-full flex items-center justify-center">
+                <Store className="w-5 h-5 text-gray-400" />
+              </div>
             </div>
             <div className="flex-1">
               <p className="font-medium text-sm">{store.name}</p>
@@ -148,14 +174,14 @@ export default function ClientProduct() {
         <div className="max-w-lg mx-auto flex items-center gap-4">
           {/* Quantity */}
           <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-            <button 
+            <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="w-8 h-8 flex items-center justify-center hover:bg-white rounded-md transition-colors"
             >
               <Minus className="w-4 h-4" />
             </button>
             <span className="w-8 text-center font-medium">{quantity}</span>
-            <button 
+            <button
               onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
               className="w-8 h-8 flex items-center justify-center hover:bg-white rounded-md transition-colors"
             >
@@ -164,7 +190,7 @@ export default function ClientProduct() {
           </div>
 
           {/* Add Button */}
-          <Button 
+          <Button
             className="flex-1 bg-blue-600"
             onClick={handleAddToCart}
             disabled={inCart}

@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ShoppingBag, 
-  BookOpen, 
-  ArrowRight, 
+import {
+  ShoppingBag,
+  ArrowRight,
   TrendingUp,
   Star,
   Bell,
   Search
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useNotificationStore } from '@/stores';
-import { mockProducts, mockCourses, mockOrders } from '@/data/mockData';
+import { mockProducts, mockOrders } from '@/data/mockData';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +52,6 @@ export default function ClientHome() {
   }, [user, fetchWallet, fetchNotifications]);
 
   const featuredProducts = mockProducts.filter(p => p.isFeatured).slice(0, 4);
-  const featuredCourses = mockCourses.filter(c => c.isFeatured).slice(0, 2);
   const userOrders = mockOrders.filter(o => o.buyerId === user?.id).slice(0, 3);
 
   return (
@@ -87,7 +85,7 @@ export default function ClientHome() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <VirtualCardCompact 
+          <VirtualCardCompact
             balance={wallet?.balance || 8545000}
             onShowQR={() => setShowQR(true)}
           />
@@ -108,7 +106,7 @@ export default function ClientHome() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <TransactionList 
+          <TransactionList
             transactions={mockTransactions}
             title="Transaction"
             showViewAll={true}
@@ -121,7 +119,7 @@ export default function ClientHome() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <FinanceChart 
+          <FinanceChart
             data={weeklyData}
             type="area"
             title="Statistics"
@@ -177,7 +175,7 @@ export default function ClientHome() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">Featured Products</h3>
-            <Link to="/app/tienda">
+            <Link to="/app/tiendas">
               <Button variant="ghost" size="sm" className="text-primary">
                 See All
                 <ArrowRight className="w-4 h-4 ml-1" />
@@ -186,17 +184,17 @@ export default function ClientHome() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {featuredProducts.map((product, index) => (
-              <Link key={product.id} to={`/app/producto/${product.id}`}>
+              <Link key={product.id} to={`/producto/${product.slug || product.id}`}>
                 <motion.div
                   whileTap={{ scale: 0.98 }}
                   className="premium-card overflow-hidden"
                 >
                   <div className="h-28 bg-muted relative">
                     {product.images[0] ? (
-                      <img 
-                        src={product.images[0]} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover" 
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -216,59 +214,10 @@ export default function ClientHome() {
           </div>
         </motion.div>
 
-        {/* Featured Courses */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Recommended Courses</h3>
-            <Link to="/app/cursos">
-              <Button variant="ghost" size="sm" className="text-primary">
-                See All
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {featuredCourses.map((course) => (
-              <Link key={course.id} to={`/app/cursos/${course.id}`}>
-                <motion.div
-                  whileTap={{ scale: 0.98 }}
-                  className="premium-card p-3 flex gap-3"
-                >
-                  <div className="w-20 h-20 rounded-xl bg-muted flex-shrink-0 overflow-hidden">
-                    {course.coverImage ? (
-                      <img 
-                        src={course.coverImage} 
-                        alt={course.title} 
-                        className="w-full h-full object-cover" 
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen className="w-8 h-8 text-muted-foreground/50" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium line-clamp-2">{course.title}</p>
-                    <p className="text-sm text-muted-foreground">{course.instructorName}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">{course.rating}</span>
-                    </div>
-                    <p className="font-bold text-primary mt-1">{formatCurrency(course.price)}</p>
-                  </div>
-                </motion.div>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
       </div>
 
       {/* QR Payment Modal */}
-      <QRPayment 
+      <QRPayment
         isOpen={showQR}
         onClose={() => setShowQR(false)}
         userId={user?.id || 'guest'}

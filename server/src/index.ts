@@ -8,8 +8,10 @@ import userRoutes from './routes/users.js';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import walletRoutes from './routes/wallet.js';
-import courseRoutes from './routes/courses.js';
 import creditRoutes from './routes/credits.js';
+import notificationRoutes from './routes/notifications.js';
+import financeRoutes from './routes/finances.js';
+import settingsRoutes from './routes/settings.js';
 import { prisma } from './utils/prisma.js';
 
 dotenv.config();
@@ -37,15 +39,15 @@ app.get('/api/health/db', async (req, res) => {
     const users = await prisma.user.findMany({
       select: { id: true, email: true, role: true, firstName: true }
     });
-    res.json({ 
-      status: 'ok', 
-      userCount, 
+    res.json({
+      status: 'ok',
+      userCount,
       users,
       databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
     });
   } catch (error: any) {
-    res.status(500).json({ 
-      status: 'error', 
+    res.status(500).json({
+      status: 'error',
       error: error.message,
       databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
     });
@@ -53,22 +55,28 @@ app.get('/api/health/db', async (req, res) => {
 });
 
 // API Routes
+import campaignRoutes from './routes/campaigns.js';
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
-app.use('/api/courses', courseRoutes);
 app.use('/api/credits', creditRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/finances', financeRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Setup endpoint - cria todos os usuários de teste
 app.get('/api/setup', async (req, res) => {
   try {
     const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash('123456', 10);
-    
+
     const results = [];
-    
+
     // 1. Criar/Atualizar Admin
     const admin = await prisma.user.upsert({
       where: { email: 'admin@oscorp.com' },
@@ -89,7 +97,7 @@ app.get('/api/setup', async (req, res) => {
       },
       include: { wallet: true }
     });
-    
+
     // Criar cartão virtual para admin se não existir
     const adminCard = await prisma.virtualCard.upsert({
       where: { userId: admin.id },
@@ -103,7 +111,7 @@ app.get('/api/setup', async (req, res) => {
       }
     });
     results.push({ email: admin.email, role: admin.role, status: 'ok' });
-    
+
     // 2. Criar Seller 1
     const seller1 = await prisma.user.upsert({
       where: { email: 'seller1@oscorp.com' },
@@ -123,7 +131,7 @@ app.get('/api/setup', async (req, res) => {
       },
       include: { wallet: true }
     });
-    
+
     await prisma.virtualCard.upsert({
       where: { userId: seller1.id },
       update: {},
@@ -135,7 +143,7 @@ app.get('/api/setup', async (req, res) => {
         design: 'gradient_blue',
       }
     });
-    
+
     await prisma.sellerProfile.upsert({
       where: { userId: seller1.id },
       update: {},
@@ -158,7 +166,7 @@ app.get('/api/setup', async (req, res) => {
       }
     });
     results.push({ email: seller1.email, role: seller1.role, status: 'ok' });
-    
+
     // 3. Criar Seller 2
     const seller2 = await prisma.user.upsert({
       where: { email: 'seller2@oscorp.com' },
@@ -178,7 +186,7 @@ app.get('/api/setup', async (req, res) => {
       },
       include: { wallet: true }
     });
-    
+
     await prisma.virtualCard.upsert({
       where: { userId: seller2.id },
       update: {},
@@ -190,7 +198,7 @@ app.get('/api/setup', async (req, res) => {
         design: 'gradient_purple',
       }
     });
-    
+
     await prisma.sellerProfile.upsert({
       where: { userId: seller2.id },
       update: {},
@@ -213,7 +221,7 @@ app.get('/api/setup', async (req, res) => {
       }
     });
     results.push({ email: seller2.email, role: seller2.role, status: 'ok' });
-    
+
     // 4. Criar Client 1
     const client1 = await prisma.user.upsert({
       where: { email: 'client1@oscorp.com' },
@@ -234,7 +242,7 @@ app.get('/api/setup', async (req, res) => {
       },
       include: { wallet: true }
     });
-    
+
     await prisma.virtualCard.upsert({
       where: { userId: client1.id },
       update: {},
@@ -247,7 +255,7 @@ app.get('/api/setup', async (req, res) => {
       }
     });
     results.push({ email: client1.email, role: client1.role, status: 'ok' });
-    
+
     // 5. Criar Client 2
     const client2 = await prisma.user.upsert({
       where: { email: 'client2@oscorp.com' },
@@ -267,7 +275,7 @@ app.get('/api/setup', async (req, res) => {
       },
       include: { wallet: true }
     });
-    
+
     await prisma.virtualCard.upsert({
       where: { userId: client2.id },
       update: {},
@@ -280,8 +288,8 @@ app.get('/api/setup', async (req, res) => {
       }
     });
     results.push({ email: client2.email, role: client2.role, status: 'ok' });
-    
-    res.json({ 
+
+    res.json({
       message: 'Todos os usuários criados/atualizados com sucesso!',
       users: results,
       credentials: {

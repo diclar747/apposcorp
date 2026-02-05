@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, ArrowUpRight, ArrowDownRight, Download } from 'lucide-react';
-import { mockTransactions, mockUsers } from '@/data/mockData';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2 } from 'lucide-react';
+import { walletApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getTransactionTypeInfo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,14 +28,40 @@ const typeFilters = [
 export default function AdminTransactions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredTransactions = mockTransactions.filter(transaction => {
-    const user = mockUsers.find(u => u.id === transaction.userId);
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const data = await walletApi.getAllTransactions();
+        setTransactions(data);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  const filteredTransactions = transactions.filter(transaction => {
+    const user = transaction.user;
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase());
+      user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.id.includes(searchTerm);
     const matchesType = typeFilter === 'all' || transaction.type.includes(typeFilter);
     return matchesSearch && matchesType;
   });
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -55,14 +81,14 @@ export default function AdminTransactions() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-gray-500">Total Transacciones</p>
-            <p className="text-2xl font-bold text-gray-900">{mockTransactions.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-gray-500">Ingresos</p>
             <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(mockTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0))}
+              {formatCurrency(transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0))}
             </p>
           </CardContent>
         </Card>
@@ -70,7 +96,7 @@ export default function AdminTransactions() {
           <CardContent className="p-4">
             <p className="text-sm text-gray-500">Egresos</p>
             <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(Math.abs(mockTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)))}
+              {formatCurrency(Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)))}
             </p>
           </CardContent>
         </Card>
@@ -78,7 +104,7 @@ export default function AdminTransactions() {
           <CardContent className="p-4">
             <p className="text-sm text-gray-500">Completadas</p>
             <p className="text-2xl font-bold text-gray-900">
-              {mockTransactions.filter(t => t.status === 'completed').length}
+              {transactions.filter(t => t.status === 'completed').length}
             </p>
           </CardContent>
         </Card>
@@ -131,9 +157,9 @@ export default function AdminTransactions() {
               </TableHeader>
               <TableBody>
                 {filteredTransactions.map((transaction, index) => {
-                  const user = mockUsers.find(u => u.id === transaction.userId);
+                  const user = transaction.user;
                   const typeInfo = getTransactionTypeInfo(transaction.type);
-                  
+
                   return (
                     <motion.tr
                       key={transaction.id}
@@ -143,12 +169,12 @@ export default function AdminTransactions() {
                       className="border-b border-gray-100 hover:bg-gray-50"
                     >
                       <TableCell>
-                        <span className="text-sm font-mono text-gray-500">{transaction.id}</span>
+                        <span className="text-sm font-mono text-gray-500">{transaction.id.slice(0, 8)}...</span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <img src={user?.avatar} alt="" className="w-8 h-8 rounded-full" />
-                          <span className="text-sm">{user?.firstName} {user?.lastName}</span>
+                          {user?.avatar && <img src={user.avatar} alt="" className="w-8 h-8 rounded-full" />}
+                          <span className="text-sm">{user ? `${user.firstName} ${user.lastName}` : 'Desconocido'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -162,7 +188,7 @@ export default function AdminTransactions() {
                       <TableCell>
                         <div className={`flex items-center gap-1 font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {transaction.amount > 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                          {formatCurrency(transaction.amount)}
                         </div>
                       </TableCell>
                       <TableCell>

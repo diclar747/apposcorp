@@ -1,10 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Home, 
-  Wallet, 
-  ShoppingBag, 
-  GraduationCap, 
+import {
+  Home,
+  Wallet,
+  ShoppingBag,
+  GraduationCap,
   User,
   QrCode,
   ScanLine
@@ -21,7 +21,6 @@ const navItems: NavItem[] = [
   { icon: Home, label: 'Home', path: '/app' },
   { icon: Wallet, label: 'Wallet', path: '/app/wallet' },
   { icon: ShoppingBag, label: 'Shop', path: '/app/tienda' },
-  { icon: GraduationCap, label: 'Learn', path: '/app/cursos' },
   { icon: User, label: 'Profile', path: '/app/perfil' },
 ];
 
@@ -45,15 +44,15 @@ export function BottomNav({ onQRClick }: BottomNavProps) {
           {navItems.slice(0, 2).map((item) => {
             const active = isActive(item.path);
             const Icon = item.icon;
-            
+
             return (
               <li key={item.path}>
                 <Link
                   to={item.path}
                   className={cn(
                     'flex flex-col items-center gap-1 py-2 px-3 rounded-2xl transition-all duration-200',
-                    active 
-                      ? 'text-primary' 
+                    active
+                      ? 'text-primary'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
@@ -68,7 +67,7 @@ export function BottomNav({ onQRClick }: BottomNavProps) {
               </li>
             );
           })}
-          
+
           {/* QR Button - Center */}
           <li className="-mt-6">
             <motion.button
@@ -79,20 +78,20 @@ export function BottomNav({ onQRClick }: BottomNavProps) {
               <QrCode className="w-7 h-7 text-white" />
             </motion.button>
           </li>
-          
+
           {/* Right items */}
           {navItems.slice(2).map((item) => {
             const active = isActive(item.path);
             const Icon = item.icon;
-            
+
             return (
               <li key={item.path}>
                 <Link
                   to={item.path}
                   className={cn(
                     'flex flex-col items-center gap-1 py-2 px-3 rounded-2xl transition-all duration-200',
-                    active 
-                      ? 'text-primary' 
+                    active
+                      ? 'text-primary'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >

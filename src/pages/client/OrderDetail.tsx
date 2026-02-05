@@ -1,21 +1,24 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Package, 
-  Truck, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  Package,
+  Truck,
+  CheckCircle,
   Clock,
   MapPin,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Loader2
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import { mockOrders, mockStores, mockUsers } from '@/data/mockData';
+import { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getOrderStatusInfo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import type { Order } from '@/types';
 
 const statusSteps = [
   { status: 'pending', label: 'Pedido recibido', icon: Clock },
@@ -29,10 +32,34 @@ export default function ClientOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  
-  const order = mockOrders.find(o => o.id === id && o.buyerId === user?.id);
-  const store = order ? mockStores.find(s => s.id === order.storeId) : null;
-  const seller = order ? mockUsers.find(u => u.id === order.sellerId) : null;
+
+  const [order, setOrder] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchOrder = async () => {
+      try {
+        const data = await ordersApi.getById(id);
+        setOrder(data);
+      } catch (error) {
+        console.error('Error fetching order:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -42,6 +69,13 @@ export default function ClientOrderDetail() {
       </div>
     );
   }
+
+  // Helper to extract store info safely
+  const store = order.seller ? {
+    name: `${order.seller.firstName} ${order.seller.lastName}`,
+    phone: order.seller.phone,
+    logo: null
+  } : null;
 
   const currentStatusIndex = statusSteps.findIndex(s => s.status === order.status);
   const statusInfo = getOrderStatusInfo(order.status);
@@ -72,7 +106,7 @@ export default function ClientOrderDetail() {
                   {statusInfo.label}
                 </Badge>
                 <p className="text-sm text-gray-500">
-                  {order.status === 'delivered' 
+                  {order.status === 'delivered'
                     ? `Entregado el ${formatDateTime(order.actualDelivery || order.updatedAt)}`
                     : 'Tu pedido está en camino'
                   }
@@ -87,7 +121,7 @@ export default function ClientOrderDetail() {
                 const StepIcon = step.icon;
                 const isCompleted = index <= currentStatusIndex;
                 const isCurrent = index === currentStatusIndex;
-                
+
                 return (
                   <motion.div
                     key={step.status}
@@ -96,9 +130,8 @@ export default function ClientOrderDetail() {
                     transition={{ delay: index * 0.1 }}
                     className="relative flex items-center gap-4 py-3"
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                      isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                      }`}>
                       <StepIcon className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-gray-400'}`} />
                     </div>
                     <div>
@@ -123,7 +156,7 @@ export default function ClientOrderDetail() {
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3">Productos</h3>
             <div className="space-y-3">
-              {order.items.map((item) => (
+              {order.items.map((item: any) => (
                 <div key={item.id} className="flex items-center gap-3">
                   <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
                     {item.productImage ? (
@@ -142,7 +175,7 @@ export default function ClientOrderDetail() {
                 </div>
               ))}
             </div>
-            
+
             <div className="border-t mt-4 pt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Subtotal</span>
@@ -166,16 +199,12 @@ export default function ClientOrderDetail() {
         <div className="px-4">
           <Card>
             <CardContent className="p-4">
-              <h3 className="font-semibold mb-3">Información de la tienda</h3>
+              <h3 className="font-semibold mb-3">Información del vendedor</h3>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden">
-                  {store.logo ? (
-                    <img src={store.logo} alt={store.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-6 h-6 text-gray-300" />
-                    </div>
-                  )}
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-6 h-6 text-gray-300" />
+                  </div>
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">{store.name}</p>

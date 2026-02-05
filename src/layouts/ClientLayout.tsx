@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
+  Store,
   ShoppingBag,
   Wallet,
   GraduationCap,
@@ -27,6 +28,7 @@ import { useAuthStore, useCartStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
   Sheet,
   SheetContent,
@@ -63,14 +65,14 @@ const menuSections: MenuSection[] = [
   {
     title: 'Shopping',
     items: [
-      { icon: ShoppingBag, label: 'Store', href: '/app/tienda' },
+      { icon: Store, label: 'Tiendas', href: '/app/tiendas' },
+      { icon: ShoppingBag, label: 'Productos', href: '/app/tienda' },
       { icon: Package, label: 'My Orders', href: '/app/pedidos' },
     ]
   },
   {
-    title: 'Learning',
+    title: 'Finanzas',
     items: [
-      { icon: GraduationCap, label: 'My Courses', href: '/app/cursos' },
       { icon: TrendingUp, label: 'Ingenio Millonario', href: '/app/ingenio', premium: true },
     ]
   },
@@ -183,8 +185,8 @@ export default function ClientLayout() {
                               }}
                               className={cn(
                                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left',
-                                active 
-                                  ? 'bg-primary/10 text-primary' 
+                                active
+                                  ? 'bg-primary/10 text-primary'
                                   : 'hover:bg-muted text-foreground',
                                 item.premium && 'text-violet-600 dark:text-violet-400'
                               )}
@@ -226,11 +228,8 @@ export default function ClientLayout() {
           </Sheet>
 
           {/* Center - Logo */}
-          <Link to="/app" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
-              <span className="text-sm font-bold text-white">O</span>
-            </div>
-            <span className="font-semibold">Oscorp</span>
+          <Link to="/app">
+            <BrandLogo size="sm" showText={true} />
           </Link>
 
           {/* Right - Actions */}
@@ -283,7 +282,7 @@ export default function ClientLayout() {
       <BottomNav onQRClick={() => setShowQR(true)} />
 
       {/* QR Payment Modal */}
-      <QRPayment 
+      <QRPayment
         isOpen={showQR}
         onClose={() => setShowQR(false)}
         userId={user?.id || 'guest'}

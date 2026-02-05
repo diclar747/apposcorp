@@ -22,25 +22,25 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const navigate = useNavigate();
   const { login, user } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error('Por favor completa todos los campos');
       return;
     }
 
     setIsLoading(true);
-    
+
     const success = await login(email, password);
-    
+
     if (success) {
       toast.success('¡Bienvenido de vuelta!');
-      
+
       // Redirect based on role
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
@@ -55,21 +55,21 @@ export default function LoginPage() {
     } else {
       toast.error('Credenciales incorrectas');
     }
-    
+
     setIsLoading(false);
   };
 
   const handleQuickLogin = async (email: string, password: string) => {
     setEmail(email);
     setPassword(password);
-    
+
     setIsLoading(true);
-    
+
     const success = await login(email, password);
-    
+
     if (success) {
       toast.success('¡Bienvenido de vuelta!');
-      
+
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
         if (currentUser?.role === 'superadmin') {
@@ -81,7 +81,7 @@ export default function LoginPage() {
         }
       }, 500);
     }
-    
+
     setIsLoading(false);
   };
 
@@ -99,9 +99,13 @@ export default function LoginPage() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring' }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4"
+            className="inline-flex items-center justify-center mb-4"
           >
-            <span className="text-2xl font-bold text-white">O</span>
+            <img
+              src="https://oscorp-two.vercel.app/oscorp-logo.png"
+              alt="Oscorp"
+              className="w-48 h-20 object-contain drop-shadow-md"
+            />
           </motion.div>
           <h1 className="text-2xl font-bold text-gray-900">Bienvenido a Oscorp</h1>
           <p className="text-gray-500 mt-1">Inicia sesión para continuar</p>

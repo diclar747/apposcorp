@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from '@/stores';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,11 +34,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/vendedor' },
+  { icon: ShoppingCart, label: 'Punto de Venta', href: '/vendedor/pos' },
   { icon: Store, label: 'Mi Tienda', href: '/vendedor/tienda' },
   { icon: Package, label: 'Productos', href: '/vendedor/productos' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/vendedor/pedidos' },
   { icon: TrendingUp, label: 'Ventas', href: '/vendedor/ventas' },
-  { icon: DollarSign, label: 'Retiros', href: '/vendedor/retiros' },
   { icon: BarChart3, label: 'Reportes', href: '/vendedor/reportes' },
   { icon: Settings, label: 'Configuración', href: '/vendedor/configuracion' },
 ];
@@ -61,51 +62,45 @@ export default function SellerLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex transition-colors duration-300">
       {/* Sidebar Desktop */}
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 260 : 72 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
         className={cn(
-          'fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-40',
-          'hidden lg:flex flex-col'
+          'fixed left-0 top-0 h-full bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 z-40',
+          'hidden lg:flex flex-col shadow-lg dark:shadow-none'
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-gray-200">
-          <Link to="/vendedor" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-bold text-white">O</span>
-            </div>
-            <AnimatePresence>
-              {sidebarOpen && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                >
-                  <span className="font-semibold text-gray-900 block leading-tight">Oscorp</span>
-                  <span className="text-xs text-gray-500">Panel Vendedor</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <div className="h-20 flex items-center px-6 border-b border-gray-100 dark:border-slate-800">
+          <Link to="/vendedor">
+            <BrandLogo
+              variant="light"
+              size="lg"
+              showText={sidebarOpen}
+              subtitle="Panel Vendedor"
+              className="py-1"
+            />
           </Link>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {sidebarItems.map((item) => {
-            const isActive = location.pathname === item.href || 
-                           (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
+            const isActive = location.pathname === item.href ||
+              (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 to={item.href}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                  'hover:bg-gray-100 group',
-                  isActive ? 'bg-green-50 text-green-700' : 'text-gray-600'
+                  'hover:bg-gray-100 dark:hover:bg-slate-800 group',
+                  isActive
+                    ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+                    : 'text-gray-600 dark:text-gray-400'
                 )}
               >
                 <item.icon className={cn(
@@ -165,9 +160,7 @@ export default function SellerLayout() {
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
                 <Link to="/vendedor" className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                    <span className="text-lg font-bold text-white">O</span>
-                  </div>
+                  <img src="https://oscorp-two.vercel.app/oscorp-logo.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
                   <div>
                     <span className="font-semibold text-gray-900 block">Oscorp</span>
                     <span className="text-xs text-gray-500">Panel Vendedor</span>
@@ -179,8 +172,8 @@ export default function SellerLayout() {
               </div>
               <nav className="p-4 space-y-1">
                 {sidebarItems.map((item) => {
-                  const isActive = location.pathname === item.href || 
-                                 (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
+                  const isActive = location.pathname === item.href ||
+                    (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
                   return (
                     <Link
                       key={item.href}
@@ -209,17 +202,17 @@ export default function SellerLayout() {
         !sidebarOpen && 'lg:ml-[72px]'
       )}>
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-30">
+        <header className="h-16 bg-white dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 sticky top-0 z-30 transition-colors duration-300">
           <div className="h-full px-4 flex items-center justify-between">
             {/* Left */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-600 dark:text-gray-300"
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="text-lg font-semibold text-gray-800 hidden sm:block">
+              <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden sm:block">
                 {user?.sellerProfile?.storeName || 'Mi Tienda'}
               </h1>
             </div>
@@ -231,50 +224,50 @@ export default function SellerLayout() {
                 variant="outline"
                 size="sm"
                 onClick={viewStore}
-                className="hidden sm:flex items-center gap-2"
+                className="hidden sm:flex items-center gap-2 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-800"
               >
                 <Globe className="w-4 h-4" />
                 Ver Tienda
               </Button>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
+              <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
               </button>
 
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 px-2">
-                    <Avatar className="w-8 h-8">
+                  <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-gray-100 dark:hover:bg-slate-800">
+                    <Avatar className="w-8 h-8 ring-2 ring-white dark:ring-slate-700">
                       <AvatarImage src={user?.avatar} />
                       <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm">
                         {user ? getInitials(user.firstName, user.lastName) : 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:block text-left">
-                      <p className="text-sm font-medium text-gray-700">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="text-xs text-gray-500">Vendedor</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Vendedor</p>
                     </div>
-                    <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
+                    <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/vendedor/perfil')}>
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
+                  <DropdownMenuLabel className="dark:text-white">Mi Cuenta</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="dark:bg-slate-800" />
+                  <DropdownMenuItem onClick={() => navigate('/vendedor/perfil')} className="dark:text-gray-300 dark:focus:bg-slate-800 cursor-pointer">
                     <User className="w-4 h-4 mr-2" />
                     Perfil
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/vendedor/configuracion')}>
+                  <DropdownMenuItem onClick={() => navigate('/vendedor/configuracion')} className="dark:text-gray-300 dark:focus:bg-slate-800 cursor-pointer">
                     <Settings className="w-4 h-4 mr-2" />
                     Configuración
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuSeparator className="dark:bg-slate-800" />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400 dark:focus:bg-slate-800 cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Cerrar Sesión
                   </DropdownMenuItem>

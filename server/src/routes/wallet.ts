@@ -1,8 +1,30 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
+
+// Get all transactions (Admin only)
+router.get('/all-transactions', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const transactions = await prisma.transaction.findMany({
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener transacciones' });
+  }
+});
 
 // Get wallet of current user
 router.get('/', authenticate, async (req: AuthRequest, res) => {
@@ -16,11 +38,11 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         },
       },
     });
-    
+
     if (!wallet) {
       return res.status(404).json({ error: 'Carteira não encontrada' });
     }
-    
+
     res.json(wallet);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -31,14 +53,14 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 router.get('/transactions', authenticate, async (req: AuthRequest, res) => {
   try {
     const { limit = '20', offset = '0' } = req.query;
-    
+
     const transactions = await prisma.transaction.findMany({
       where: { userId: req.user!.userId },
       orderBy: { createdAt: 'desc' },
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
     });
-    
+
     res.json(transactions);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -49,19 +71,19 @@ router.get('/transactions', authenticate, async (req: AuthRequest, res) => {
 router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
   try {
     const { amount, description } = req.body;
-    
+
     if (amount <= 0) {
       return res.status(400).json({ error: 'Valor inválido' });
     }
-    
+
     const wallet = await prisma.wallet.findUnique({
       where: { userId: req.user!.userId },
     });
-    
+
     if (!wallet) {
       return res.status(404).json({ error: 'Carteira não encontrada' });
     }
-    
+
     const result = await prisma.$transaction(async (tx) => {
       // Update wallet balance
       const updatedWallet = await tx.wallet.update({
@@ -71,7 +93,7 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
           totalIn: { increment: amount },
         },
       });
-      
+
       // Create transaction record
       await tx.transaction.create({
         data: {
@@ -83,10 +105,10 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
           status: 'completed',
         },
       });
-      
+
       return updatedWallet;
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -97,27 +119,27 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
 router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
   try {
     const { toUserId, amount, description } = req.body;
-    
+
     if (amount <= 0) {
       return res.status(400).json({ error: 'Valor inválido' });
     }
-    
+
     const fromWallet = await prisma.wallet.findUnique({
       where: { userId: req.user!.userId },
     });
-    
+
     const toWallet = await prisma.wallet.findUnique({
       where: { userId: toUserId },
     });
-    
+
     if (!fromWallet || !toWallet) {
       return res.status(404).json({ error: 'Carteira não encontrada' });
     }
-    
+
     if (fromWallet.balance < amount) {
       return res.status(400).json({ error: 'Saldo insuficiente' });
     }
-    
+
     const result = await prisma.$transaction(async (tx) => {
       // Deduct from sender
       await tx.wallet.update({
@@ -127,7 +149,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           totalOut: { increment: amount },
         },
       });
-      
+
       // Add to receiver
       await tx.wallet.update({
         where: { id: toWallet.id },
@@ -136,7 +158,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           totalIn: { increment: amount },
         },
       });
-      
+
       // Create transaction for sender
       await tx.transaction.create({
         data: {
@@ -149,7 +171,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           relatedUserId: toUserId,
         },
       });
-      
+
       // Create transaction for receiver
       await tx.transaction.create({
         data: {
@@ -162,10 +184,62 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           relatedUserId: req.user!.userId,
         },
       });
-      
+
       return { message: 'Transferência realizada com sucesso' };
     });
-    
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Request withdrawal
+router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { amount, description } = req.body;
+
+    if (amount <= 0) {
+      return res.status(400).json({ error: 'Valor inválido' });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user!.userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({ error: 'Carteira não encontrada' });
+    }
+
+    if (wallet.balance < amount) {
+      return res.status(400).json({ error: 'Saldo insuficiente' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Deduct from wallet
+      const updatedWallet = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          balance: { decrement: amount },
+          totalOut: { increment: amount },
+        },
+      });
+
+      // Create transaction record
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: req.user!.userId,
+          type: 'withdrawal',
+          amount: -amount,
+          description: description || 'Solicitação de saque',
+          status: 'pending', // Withdrawals usually require approval
+        },
+      });
+
+      return updatedWallet;
+    });
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -178,11 +252,11 @@ router.get('/card', authenticate, async (req: AuthRequest, res) => {
     const card = await prisma.virtualCard.findUnique({
       where: { userId: req.user!.userId },
     });
-    
+
     if (!card) {
       return res.status(404).json({ error: 'Cartão não encontrado' });
     }
-    
+
     res.json(card);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -193,12 +267,12 @@ router.get('/card', authenticate, async (req: AuthRequest, res) => {
 router.patch('/card/design', authenticate, async (req: AuthRequest, res) => {
   try {
     const { design } = req.body;
-    
+
     const card = await prisma.virtualCard.update({
       where: { userId: req.user!.userId },
       data: { design },
     });
-    
+
     res.json(card);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });

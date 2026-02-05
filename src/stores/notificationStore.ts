@@ -1,18 +1,18 @@
 import { create } from 'zustand';
 import type { Notification } from '@/types';
-import { mockNotifications } from '@/data/mockData';
+import { notificationsApi } from '@/lib/api';
 
 interface NotificationState {
   notifications: Notification[];
   isLoading: boolean;
-  
+
   // Getters
   unreadCount: number;
-  
+
   // Actions
   fetchNotifications: (userId: string) => Promise<void>;
-  markAsRead: (id: string) => void;
-  markAllAsRead: (userId: string) => void;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: (userId: string) => Promise<void>;
   addNotification: (notification: Notification) => void;
 }
 
@@ -26,52 +26,54 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   fetchNotifications: async (userId: string) => {
     set({ isLoading: true });
-    
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const notifications = mockNotifications.filter(n => n.userId === userId);
-    
-    set({ 
-      notifications: notifications.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-      isLoading: false 
-    });
+
+    try {
+      const notifications = await notificationsApi.getAll();
+      set({
+        notifications,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      set({ isLoading: false });
+    }
   },
 
-  markAsRead: (id: string) => {
+  markAsRead: async (id: string) => {
+    // Optimistic update
     set({
       notifications: get().notifications.map(n =>
         n.id === id ? { ...n, isRead: true } : n
       )
     });
-    
-    // Actualizar en mockNotifications también
-    const notif = mockNotifications.find(n => n.id === id);
-    if (notif) {
-      notif.isRead = true;
+
+    try {
+      await notificationsApi.markAsRead(id);
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+      // Revert if needed, but for read status it's usually fine
     }
   },
 
-  markAllAsRead: (userId: string) => {
+  markAllAsRead: async (userId: string) => {
+    // Optimistic update
     set({
       notifications: get().notifications.map(n =>
         n.userId === userId ? { ...n, isRead: true } : n
       )
     });
-    
-    // Actualizar en mockNotifications
-    mockNotifications.forEach(n => {
-      if (n.userId === userId) {
-        n.isRead = true;
-      }
-    });
+
+    try {
+      await notificationsApi.markAllAsRead();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
   },
 
   addNotification: (notification: Notification) => {
-    mockNotifications.push(notification);
     set({
       notifications: [notification, ...get().notifications]
     });
   },
 }));
+

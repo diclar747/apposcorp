@@ -1,7 +1,7 @@
 // API Client for Oscorp Platform
 // Detect if running on localhost or production
 const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-const API_URL = isLocalhost 
+const API_URL = isLocalhost
   ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
   : '/api';
 
@@ -11,26 +11,26 @@ const getToken = () => localStorage.getItem('oscorp-token');
 // Generic fetch with auth
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = getToken();
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...options.headers as Record<string, string>,
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   const response = await fetch(`${API_URL}${url}`, {
     ...options,
     headers,
   });
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `HTTP ${response.status}`);
   }
-  
+
   return response.json();
 }
 
@@ -41,15 +41,15 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  
+
   register: (data: any) =>
     fetchWithAuth('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   getMe: () => fetchWithAuth('/auth/me'),
-  
+
   updateMe: (data: any) =>
     fetchWithAuth('/auth/me', {
       method: 'PUT',
@@ -69,6 +69,21 @@ export const usersApi = {
   delete: (id: string) =>
     fetchWithAuth(`/users/${id}`, {
       method: 'DELETE',
+    }),
+  updateSellerProfile: (data: any) =>
+    fetchWithAuth('/users/seller-profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  updateSellerProfileById: (userId: string, data: any) =>
+    fetchWithAuth(`/users/${userId}/seller-profile`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  updateBankData: (data: any) =>
+    fetchWithAuth('/users/me/bank-data', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     }),
 };
 
@@ -136,41 +151,14 @@ export const walletApi = {
       method: 'PATCH',
       body: JSON.stringify({ design }),
     }),
+  withdraw: (amount: number, description?: string) =>
+    fetchWithAuth('/wallet/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amount, description }),
+    }),
+  getAllTransactions: () => fetchWithAuth('/wallet/all-transactions'),
 };
 
-// Courses API
-export const coursesApi = {
-  getAll: (params?: { category?: string; level?: string; search?: string }) => {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    return fetchWithAuth(`/courses${query ? `?${query}` : ''}`);
-  },
-  getBySlug: (slug: string) => fetchWithAuth(`/courses/slug/${slug}`),
-  getById: (id: string) => fetchWithAuth(`/courses/${id}`),
-  create: (data: any) =>
-    fetchWithAuth('/courses', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  update: (id: string, data: any) =>
-    fetchWithAuth(`/courses/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-  delete: (id: string) =>
-    fetchWithAuth(`/courses/${id}`, {
-      method: 'DELETE',
-    }),
-  enroll: (id: string) =>
-    fetchWithAuth(`/courses/${id}/enroll`, {
-      method: 'POST',
-    }),
-  getMyEnrollments: () => fetchWithAuth('/courses/my/enrollments'),
-  updateProgress: (enrollmentId: string, lessonId: string, completed: boolean) =>
-    fetchWithAuth(`/courses/enrollment/${enrollmentId}/progress`, {
-      method: 'PATCH',
-      body: JSON.stringify({ lessonId, completed }),
-    }),
-};
 
 // Credits API
 export const creditsApi = {
@@ -197,12 +185,56 @@ export const creditsApi = {
   getAllAdmin: () => fetchWithAuth('/credits/admin/all'),
 };
 
+// Notifications API
+export const notificationsApi = {
+  getAll: () => fetchWithAuth('/notifications'),
+  markAsRead: (id: string) =>
+    fetchWithAuth(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    }),
+  markAllAsRead: () =>
+    fetchWithAuth('/notifications/read-all', {
+      method: 'PATCH',
+    }),
+  sendBroadcast: (data: { title: string; message: string; targetRole: string; actionUrl?: string; imageUrl?: string }) =>
+    fetchWithAuth('/notifications/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  trackClick: (id: string) =>
+    fetchWithAuth(`/notifications/${id}/click`, {
+      method: 'PATCH',
+    }),
+};
+
+export const campaignsApi = {
+  getAll: () => fetchWithAuth('/campaigns'),
+  create: (data: any) =>
+    fetchWithAuth('/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/campaigns/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/campaigns/${id}`, {
+      method: 'DELETE',
+    }),
+  send: (id: string) =>
+    fetchWithAuth(`/campaigns/${id}/send`, {
+      method: 'POST',
+    }),
+};
+
 export default {
   auth: authApi,
   users: usersApi,
   products: productsApi,
   orders: ordersApi,
   wallet: walletApi,
-  courses: coursesApi,
   credits: creditsApi,
+  notifications: notificationsApi,
 };

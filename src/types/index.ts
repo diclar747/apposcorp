@@ -36,6 +36,7 @@ export interface User {
   bankData?: BankData;
   sellerProfile?: SellerProfile;
   ingenioAccess: boolean;
+  reviews?: Review[];
 }
 
 export interface BankData {
@@ -108,7 +109,38 @@ export interface Store {
   whatsappNumber: string;
   isActive: boolean;
   isOnline: boolean;
+  category: string; // classification
   products: Product[];
+  reviews?: Review[];
+  isVerified?: boolean;
+  rating?: number;
+}
+
+export interface Supplier {
+  id: string;
+  sellerId: string;
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  taxId?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'SALE' | 'RETURN';
+  quantity: number;
+  reason?: string;
+  reference?: string;
+  supplierId?: string;
+  cost?: number; // Unit cost
+  createdAt: Date;
 }
 
 // ============================================
@@ -120,8 +152,11 @@ export interface Product {
   sellerId: string;
   storeId: string;
   name: string;
+  slug?: string;
   description: string;
   price: number;
+  cost?: number;
+  profitPercentage?: number;
   comparePrice?: number;
   stock: number;
   sku: string;
@@ -133,10 +168,12 @@ export interface Product {
   status: 'active' | 'inactive' | 'out_of_stock';
   attributes?: ProductAttribute[];
   variants?: ProductVariant[];
+  stockMovements?: StockMovement[];
   weight?: number;
   dimensions?: Dimensions;
   tags: string[];
   isFeatured: boolean;
+  reviews?: Review[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -158,6 +195,22 @@ export interface Dimensions {
   length: number;
   width: number;
   height: number;
+}
+
+// ============================================
+// RESEÑAS Y CALIFICACIONES
+// ============================================
+
+export interface Review {
+  id: string;
+  userId: string;
+  user?: Partial<User>;
+  productId?: string;
+  storeId?: string;
+  rating: number;
+  comment?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ============================================
@@ -446,12 +499,36 @@ export interface CategoryLimit {
 export interface Notification {
   id: string;
   userId: string;
+  campaignId?: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error' | 'campaign';
   isRead: boolean;
+  imageUrl?: string;
   actionUrl?: string;
-  createdAt: Date;
+  clickedAt?: string;
+  createdAt: string;
+}
+
+export interface Campaign {
+  id: string;
+  title: string;
+  message: string;
+  imageUrl?: string;
+  actionUrl?: string;
+  targetRole: string;
+  status: 'draft' | 'sent';
+  sentAt?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  stats?: {
+    sent: number;
+    read: number;
+    clicked: number;
+    readRate: number;
+    clickRate: number;
+  };
 }
 
 // ============================================

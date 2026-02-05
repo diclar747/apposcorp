@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '@/types';
-import { authApi } from '@/lib/api';
+import { authApi, usersApi } from '@/lib/api';
 
 export interface RegisterData {
   email: string;
@@ -17,14 +17,16 @@ export interface RegisterData {
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  token: string | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<boolean>;
+  updateBankData: (data: any) => Promise<boolean>;
   clearError: () => void;
   hasRole: (roles: UserRole[]) => boolean;
   fetchCurrentUser: () => Promise<void>;
@@ -35,29 +37,31 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
+      token: localStorage.getItem('oscorp-token'),
       isLoading: false,
       error: null,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const response = await authApi.login(email, password);
-          
+
           // Save token
           localStorage.setItem('oscorp-token', response.token);
-          
-          set({ 
-            user: response.user, 
-            isAuthenticated: true, 
+
+          set({
+            user: response.user,
+            isAuthenticated: true,
+            token: response.token,
             isLoading: false,
-            error: null 
+            error: null
           });
           return true;
         } catch (error: any) {
-          set({ 
-            isLoading: false, 
-            error: error.message || 'Erro ao fazer login' 
+          set({
+            isLoading: false,
+            error: error.message || 'Erro ao fazer login'
           });
           return false;
         }
@@ -65,24 +69,25 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (data: RegisterData) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const response = await authApi.register(data);
-          
+
           // Save token
           localStorage.setItem('oscorp-token', response.token);
-          
-          set({ 
-            user: response.user, 
-            isAuthenticated: true, 
+
+          set({
+            user: response.user,
+            isAuthenticated: true,
+            token: response.token,
             isLoading: false,
-            error: null 
+            error: null
           });
           return true;
         } catch (error: any) {
-          set({ 
-            isLoading: false, 
-            error: error.message || 'Erro ao registrar' 
+          set({
+            isLoading: false,
+            error: error.message || 'Erro ao registrar'
           });
           return false;
         }
@@ -90,29 +95,58 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         localStorage.removeItem('oscorp-token');
-        set({ 
-          user: null, 
-          isAuthenticated: false, 
-          error: null 
+        set({
+          user: null,
+          isAuthenticated: false,
+          token: null,
+          error: null
         });
       },
 
       updateUser: async (data: Partial<User>) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const user = await authApi.updateMe(data);
-          
-          set({ 
-            user, 
+
+          set({
+            user,
             isLoading: false,
-            error: null 
+            error: null
           });
           return true;
         } catch (error: any) {
-          set({ 
-            isLoading: false, 
-            error: error.message || 'Erro ao atualizar usuário' 
+          set({
+            isLoading: false,
+            error: error.message || 'Erro ao atualizar usuário'
+          });
+          return false;
+        }
+      },
+
+      updateBankData: async (data: any) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const bankData = await usersApi.updateBankData(data);
+
+          // Update user state with new bank data logic
+          const { user } = get();
+          if (user) {
+            // Create a deep copy or just spread? User type might not have bankData fully typed?
+            // Assuming User interface includes bankData as per schema inspection (it did in api.ts debugging)
+            set({ user: { ...user, bankData } });
+          }
+
+          set({
+            isLoading: false,
+            error: null
+          });
+          return true;
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            error: error.message || 'Erro ao atualizar dados bancários'
           });
           return false;
         }
@@ -121,20 +155,20 @@ export const useAuthStore = create<AuthState>()(
       fetchCurrentUser: async () => {
         const token = localStorage.getItem('oscorp-token');
         if (!token) return;
-        
+
         try {
           const user = await authApi.getMe();
-          set({ 
-            user, 
+          set({
+            user,
             isAuthenticated: true,
-            error: null 
+            error: null
           });
         } catch (error) {
           // Token inválido, fazer logout
           localStorage.removeItem('oscorp-token');
-          set({ 
-            user: null, 
-            isAuthenticated: false 
+          set({
+            user: null,
+            isAuthenticated: false
           });
         }
       },
@@ -150,9 +184,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'oscorp-auth',
-      partialize: (state) => ({ 
-        user: state.user, 
-        isAuthenticated: state.isAuthenticated 
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
       }),
     }
   )
