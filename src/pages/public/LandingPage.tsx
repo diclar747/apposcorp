@@ -101,7 +101,9 @@ const Navbar = () => {
                 href={link.href}
                 className={cn(
                   "text-sm font-medium transition-colors duration-300",
-                  isScrolled ? "text-gray-700 hover:text-blue-600" : "text-white/90 hover:text-white"
+                  isScrolled
+                    ? "text-gray-700 hover:text-blue-600"
+                    : "text-slate-700 dark:text-white/90 hover:text-blue-600 dark:hover:text-white"
                 )}
               >
                 {link.label}
@@ -116,7 +118,7 @@ const Navbar = () => {
                 "p-2 rounded-full transition-all duration-300",
                 isScrolled
                   ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-md"
+                  : "bg-black/5 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-black/10 dark:hover:bg-white/20 backdrop-blur-md"
               )}
               title="Alternar tema"
             >
@@ -125,7 +127,9 @@ const Navbar = () => {
             <Link to="/login">
               <Button variant="ghost" className={cn(
                 "transition-colors duration-300",
-                isScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/10"
+                isScrolled
+                  ? "text-gray-700 hover:bg-gray-100"
+                  : "text-slate-700 dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
               )}>
                 Iniciar Sesión
               </Button>
@@ -133,7 +137,9 @@ const Navbar = () => {
             <Link to="/register">
               <Button className={cn(
                 "bg-gradient-to-r hover:opacity-90 transition-opacity",
-                isScrolled ? "from-blue-600 to-violet-600 text-white" : "bg-white text-blue-900 hover:bg-white/90"
+                isScrolled
+                  ? "from-blue-600 to-violet-600 text-white"
+                  : "bg-slate-900 dark:bg-white text-white dark:text-blue-900 hover:bg-slate-800 dark:hover:bg-white/90"
               )}>
                 Crear Cuenta
               </Button>
@@ -144,16 +150,16 @@ const Navbar = () => {
             <button
               onClick={toggleTheme}
               className={cn(
-                "p-2 rounded-full transition-colors",
-                isScrolled ? "bg-gray-100 text-gray-900" : "bg-white/10 text-white"
+                "p-2 rounded-full transition-colors md:hidden",
+                isScrolled ? "bg-gray-100 text-gray-900" : "bg-black/5 dark:bg-white/10 text-slate-700 dark:text-white"
               )}
             >
               {resolvedTheme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
               className={cn(
-                "p-2 rounded-lg transition-colors",
-                isScrolled ? "text-gray-900" : "text-white"
+                "p-2 rounded-lg transition-colors md:hidden",
+                isScrolled ? "text-gray-900" : "text-slate-700 dark:text-white"
               )}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
