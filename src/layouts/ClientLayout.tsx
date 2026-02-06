@@ -38,6 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { BottomNav } from '@/components/client/BottomNav';
 import { QRPayment } from '@/components/client/QRPayment';
+import { PushPermissionPrompt } from '@/components/push/PushPermissionPrompt';
 
 interface MenuItem {
   icon: typeof Home;
@@ -288,6 +289,9 @@ export default function ClientLayout() {
         userId={user?.id || 'guest'}
         userName={`${user?.firstName || 'Usuario'} ${user?.lastName || ''}`}
       />
+
+      {/* Push Notification Permission Prompt */}
+      <PushPermissionPrompt />
     </div>
   );
 }

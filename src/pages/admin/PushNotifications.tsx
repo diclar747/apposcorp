@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
-import { campaignsApi } from '@/lib/api';
+import { campaignsApi, pushApi } from '@/lib/api';
 import type { Campaign } from '@/types';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,6 +20,7 @@ export default function AdminPushNotifications() {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'editor'>('dashboard');
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [pushStats, setPushStats] = useState({ totalSubscriptions: 0, byRole: {} as Record<string, number> });
 
     // Editor State
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function AdminPushNotifications() {
 
     useEffect(() => {
         fetchCampaigns();
+        pushApi.getStats().then(setPushStats).catch(() => {});
     }, []);
 
     const fetchCampaigns = async () => {
@@ -169,7 +171,7 @@ export default function AdminPushNotifications() {
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
 
                             {/* Stats Summary */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-b border-gray-200 dark:border-slate-800">
+                            <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b border-gray-200 dark:border-slate-800">
                                 <div className="p-6">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -204,6 +206,17 @@ export default function AdminPushNotifications() {
                                             <h3 className="text-2xl font-bold">
                                                 {Math.round(campaigns.reduce((acc, c) => acc + (c.stats?.clickRate || 0), 0) / (campaigns.length || 1))}%
                                             </h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                                            <Smartphone className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500">Suscriptores Push</p>
+                                            <h3 className="text-2xl font-bold">{pushStats.totalSubscriptions}</h3>
                                         </div>
                                     </div>
                                 </div>

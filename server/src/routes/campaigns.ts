@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { sendPushToRole } from '../services/pushService.js';
 
 const router = Router();
 
@@ -182,6 +183,15 @@ async function sendCampaignNotifications(campaignId: string) {
     await prisma.notification.createMany({
         data: notificationsData
     });
+
+    // Send web push notifications
+    sendPushToRole(campaign.targetRole, {
+        title: campaign.title,
+        body: campaign.message,
+        image: campaign.imageUrl || undefined,
+        url: campaign.actionUrl || '/app/notificaciones',
+        tag: `campaign-${campaign.id}`,
+    }).catch((err) => console.error('Campaign push error:', err));
 }
 
 export default router;

@@ -31,6 +31,7 @@ model User {
   financialCategories FinancialCategory[]
   financialRecords    FinancialRecord[]
   notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
   ordersAsBuyer       Order[]             @relation("BuyerOrders")
   ordersAsSeller      Order[]             @relation("SellerOrders")
   reviews             Review[]
@@ -582,6 +583,20 @@ model Campaign {
   notifications Notification[]
 
   @@map("campaigns")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }
 
 model CartItem {

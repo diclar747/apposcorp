@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
 
@@ -170,7 +171,15 @@ router.patch('/:id/approve', authenticate, authorize('superadmin'), async (req: 
       
       return credit;
     });
-    
+
+    // Push notification: credit approved
+    sendPushToUser(result.userId, {
+      title: 'Credito aprobado',
+      body: `Tu credito de ₲${result.amount.toLocaleString()} por "${result.concept}" fue aprobado`,
+      url: '/app/creditos',
+      tag: 'credit-approved',
+    }).catch(() => {});
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -190,7 +199,15 @@ router.patch('/:id/reject', authenticate, authorize('superadmin'), async (req: A
         approvedAt: new Date(),
       },
     });
-    
+
+    // Push notification: credit rejected
+    sendPushToUser(credit.userId, {
+      title: 'Credito rechazado',
+      body: `Tu solicitud de credito por "${credit.concept}" fue rechazada`,
+      url: '/app/creditos',
+      tag: 'credit-rejected',
+    }).catch(() => {});
+
     res.json(credit);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });

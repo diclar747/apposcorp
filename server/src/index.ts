@@ -15,6 +15,7 @@ import settingsRoutes from './routes/settings.js';
 import supplierRoutes from './routes/suppliers.js';
 import purchaseRoutes from './routes/purchases.js';
 import courseRoutes from './routes/courses.js';
+import pushRoutes from './routes/push.js';
 import { prisma } from './utils/prisma.js';
 
 dotenv.config();
@@ -73,6 +74,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/push', pushRoutes);
 
 // Setup endpoint - cria todos os usuários de teste
 app.get('/api/setup', async (req, res) => {

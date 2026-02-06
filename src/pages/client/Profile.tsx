@@ -25,6 +25,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VirtualCard } from '@/components/client/VirtualCard';
+import { Switch } from '@/components/ui/switch';
+import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '@/lib/pushNotifications';
 
 const menuItems = [
   { icon: User, label: 'Editar perfil', href: '#' },
@@ -46,6 +48,38 @@ export default function ClientProfile() {
     }
   }, [user]);
   const [formData, setFormData] = useState<any>({});
+
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const pushSupported = isPushSupported();
+
+  useEffect(() => {
+    if (pushSupported) {
+      isSubscribedToPush().then(setPushEnabled);
+    }
+  }, [pushSupported]);
+
+  const handlePushToggle = async (enabled: boolean) => {
+    setPushLoading(true);
+    try {
+      if (enabled) {
+        const success = await subscribeToPush();
+        setPushEnabled(success);
+        if (success) toast.success('Notificaciones push activadas');
+        else toast.error('No se pudo activar las notificaciones');
+      } else {
+        const success = await unsubscribeFromPush();
+        if (success) {
+          setPushEnabled(false);
+          toast.success('Notificaciones push desactivadas');
+        }
+      }
+    } catch {
+      toast.error('Error al cambiar configuracion');
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const [isBankOpen, setIsBankOpen] = useState(false);
   const [bankFormData, setBankFormData] = useState({
@@ -376,6 +410,27 @@ export default function ClientProfile() {
                       </div>
                     </DialogContent>
                   </Dialog>
+                );
+              }
+              if (item.label === 'Notificaciones' && pushSupported) {
+                return (
+                  <div
+                    key={item.label}
+                    className={`w-full flex items-center justify-between p-4 ${index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Bell className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <span className="text-gray-700">Notificaciones Push</span>
+                        <p className="text-xs text-gray-400">Recibir alertas en tu dispositivo</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={pushEnabled}
+                      onCheckedChange={handlePushToggle}
+                      disabled={pushLoading}
+                    />
+                  </div>
                 );
               }
               return (

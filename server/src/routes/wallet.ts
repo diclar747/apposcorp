@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
 
@@ -109,6 +110,14 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
       return updatedWallet;
     });
 
+    // Push notification for deposit
+    sendPushToUser(req.user!.userId, {
+      title: 'Deposito acreditado',
+      body: `Se acreditaron ₲${amount.toLocaleString()} a tu billetera`,
+      url: '/app/wallet',
+      tag: 'deposit',
+    }).catch(() => {});
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -187,6 +196,18 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
 
       return { message: 'Transferência realizada com sucesso' };
     });
+
+    // Push notification to receiver
+    const sender = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { firstName: true, lastName: true },
+    });
+    sendPushToUser(toUserId, {
+      title: 'Transferencia recibida',
+      body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString()}`,
+      url: '/app/wallet',
+      tag: 'transfer-in',
+    }).catch(() => {});
 
     res.json(result);
   } catch (error) {

@@ -226,6 +226,12 @@ export const campaignsApi = {
     }),
 };
 
+// Push Notifications API
+export const pushApi = {
+  getStats: () => fetchWithAuth('/push/stats'),
+  getStatus: () => fetchWithAuth('/push/status'),
+};
+
 // Suppliers API
 export const suppliersApi = {
   getAll: () => fetchWithAuth('/suppliers'),
