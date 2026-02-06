@@ -180,6 +180,11 @@ export const creditsApi = {
       body: JSON.stringify({ installmentId, paymentMethod }),
     }),
   getAllAdmin: () => fetchWithAuth('/credits/admin/all'),
+  uploadDocument: (creditId: string, type: string, dataUrl: string) =>
+    fetchWithAuth(`/credits/${creditId}/documents`, {
+      method: 'POST',
+      body: JSON.stringify({ type, dataUrl }),
+    }),
 };
 
 // Notifications API

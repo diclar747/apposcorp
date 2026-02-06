@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight, Loader2 } from 'lucide-react';
+import { CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight, Loader2, Upload, Camera, X } from 'lucide-react';
 import { creditsApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +28,15 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-700', icon: AlertCircle },
 };
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ClientCredits() {
   const [credits, setCredits] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +44,12 @@ export default function ClientCredits() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestForm, setRequestForm] = useState({ amount: '', concept: '', installments: '3' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [idFrontFile, setIdFrontFile] = useState<File | null>(null);
+  const [idBackFile, setIdBackFile] = useState<File | null>(null);
+  const [idFrontPreview, setIdFrontPreview] = useState<string | null>(null);
+  const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
+  const idFrontRef = useRef<HTMLInputElement>(null);
+  const idBackRef = useRef<HTMLInputElement>(null);
 
   const fetchCredits = async () => {
     try {
@@ -42,7 +57,7 @@ export default function ClientCredits() {
       const data = await creditsApi.getAll();
       setCredits(data);
     } catch (error) {
-      toast.error('Error al cargar créditos');
+      toast.error('Error al cargar creditos');
     } finally {
       setIsLoading(false);
     }
@@ -69,33 +84,89 @@ export default function ClientCredits() {
     }
   };
 
+  const handleFileSelect = async (file: File, side: 'front' | 'back') => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten imagenes');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no debe superar 5MB');
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    if (side === 'front') {
+      setIdFrontFile(file);
+      setIdFrontPreview(preview);
+    } else {
+      setIdBackFile(file);
+      setIdBackPreview(preview);
+    }
+  };
+
   const handleRequestCredit = async () => {
     const amount = parseFloat(requestForm.amount);
     if (!amount || amount <= 0) {
-      toast.error('Ingresa un monto válido');
+      toast.error('Ingresa un monto valido');
       return;
     }
     if (!requestForm.concept.trim()) {
-      toast.error('Ingresa el concepto del crédito');
+      toast.error('Ingresa el concepto del credito');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await creditsApi.create({
+
+      // 1. Create credit request
+      const credit = await creditsApi.create({
         amount,
         concept: requestForm.concept,
         installments: parseInt(requestForm.installments),
       });
-      toast.success('Solicitud de crédito enviada');
+
+      // 2. Upload documents if provided
+      const uploadPromises: Promise<any>[] = [];
+
+      if (idFrontFile) {
+        const dataUrl = await fileToDataUrl(idFrontFile);
+        uploadPromises.push(
+          creditsApi.uploadDocument(credit.id, 'id_front', dataUrl)
+        );
+      }
+
+      if (idBackFile) {
+        const dataUrl = await fileToDataUrl(idBackFile);
+        uploadPromises.push(
+          creditsApi.uploadDocument(credit.id, 'id_back', dataUrl)
+        );
+      }
+
+      if (uploadPromises.length > 0) {
+        await Promise.all(uploadPromises);
+      }
+
+      toast.success('Solicitud de credito enviada');
       setShowRequestModal(false);
       setRequestForm({ amount: '', concept: '', installments: '3' });
+      setIdFrontFile(null);
+      setIdBackFile(null);
+      setIdFrontPreview(null);
+      setIdBackPreview(null);
       await fetchCredits();
     } catch (error: any) {
-      toast.error(error.message || 'Error al solicitar crédito');
+      toast.error(error.message || 'Error al solicitar credito');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetModal = () => {
+    setShowRequestModal(false);
+    setRequestForm({ amount: '', concept: '', installments: '3' });
+    setIdFrontFile(null);
+    setIdBackFile(null);
+    setIdFrontPreview(null);
+    setIdBackPreview(null);
   };
 
   if (isLoading) {
@@ -110,8 +181,8 @@ export default function ClientCredits() {
     <div className="space-y-6 pb-6">
       {/* Header */}
       <div className="px-4 pt-2">
-        <h1 className="text-xl font-bold text-gray-900">Mis Créditos</h1>
-        <p className="text-sm text-gray-500">Gestiona tus préstamos</p>
+        <h1 className="text-xl font-bold text-gray-900">Mis Creditos</h1>
+        <p className="text-sm text-gray-500">Gestiona tus prestamos</p>
       </div>
 
       {/* Quick Action */}
@@ -125,8 +196,8 @@ export default function ClientCredits() {
                     <Plus className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="font-semibold">Solicitar nuevo crédito</p>
-                    <p className="text-sm text-white/80">Obtén financiamiento rápido</p>
+                    <p className="font-semibold">Solicitar nuevo credito</p>
+                    <p className="text-sm text-white/80">Obtene financiamiento rapido</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5" />
@@ -160,7 +231,7 @@ export default function ClientCredits() {
 
       {/* Credits List */}
       <div className="px-4 space-y-3">
-        <h2 className="font-semibold text-gray-900">Historial de créditos</h2>
+        <h2 className="font-semibold text-gray-900">Historial de creditos</h2>
 
         {credits.map((credit: any, index: number) => {
           const status = statusConfig[credit.status] || statusConfig.pending;
@@ -200,6 +271,14 @@ export default function ClientCredits() {
                     </div>
                   </div>
 
+                  {/* Documents indicator */}
+                  {credit.documents && credit.documents.length > 0 && (
+                    <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                      <span>{credit.documents.length} documento(s) adjunto(s)</span>
+                    </div>
+                  )}
+
                   {credit.status === 'active' && (
                     <div>
                       <div className="flex items-center justify-between text-sm mb-1">
@@ -209,7 +288,7 @@ export default function ClientCredits() {
                       <Progress value={progress} className="h-2" />
                       {nextInstallment && (
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-sm text-gray-500">Próxima cuota</span>
+                          <span className="text-sm text-gray-500">Proxima cuota</span>
                           <span className="font-medium">{formatCurrency(credit.installmentAmount)}</span>
                         </div>
                       )}
@@ -237,19 +316,19 @@ export default function ClientCredits() {
       {credits.length === 0 && (
         <div className="text-center py-12">
           <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No tienes créditos</h3>
-          <p className="text-gray-500 mb-4">Solicita tu primer crédito</p>
-          <Button onClick={() => setShowRequestModal(true)}>Solicitar crédito</Button>
+          <h3 className="text-lg font-medium text-gray-900">No tenes creditos</h3>
+          <p className="text-gray-500 mb-4">Solicita tu primer credito</p>
+          <Button onClick={() => setShowRequestModal(true)}>Solicitar credito</Button>
         </div>
       )}
 
       {/* Request Credit Modal */}
-      <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
-        <DialogContent>
+      <Dialog open={showRequestModal} onOpenChange={(open) => { if (!open) resetModal(); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Solicitar Crédito</DialogTitle>
+            <DialogTitle>Solicitar Credito</DialogTitle>
             <DialogDescription>
-              Completa los datos para solicitar un nuevo crédito.
+              Completa los datos para solicitar un nuevo credito.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -267,7 +346,7 @@ export default function ClientCredits() {
               <Label htmlFor="credit-concept">Concepto</Label>
               <Textarea
                 id="credit-concept"
-                placeholder="Describe para qué necesitas el crédito..."
+                placeholder="Describe para que necesitas el credito..."
                 value={requestForm.concept}
                 onChange={(e) => setRequestForm({ ...requestForm, concept: e.target.value })}
               />
@@ -287,9 +366,107 @@ export default function ClientCredits() {
                 <option value="24">24 cuotas</option>
               </select>
             </div>
+
+            {/* Document Upload Section */}
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-sm font-semibold">Documentos de verificacion</Label>
+              <p className="text-xs text-gray-500 mb-3">Subi fotos de tu cedula (frente y dorso) para agilizar la aprobacion.</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* ID Front */}
+                <div>
+                  <Label className="text-xs text-gray-600 mb-1 block">Cedula - Frente</Label>
+                  <input
+                    ref={idFrontRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileSelect(file, 'front');
+                    }}
+                  />
+                  {idFrontPreview ? (
+                    <div className="relative">
+                      <img
+                        src={idFrontPreview}
+                        alt="Cedula frente"
+                        className="w-full h-28 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIdFrontFile(null);
+                          setIdFrontPreview(null);
+                          if (idFrontRef.current) idFrontRef.current.value = '';
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => idFrontRef.current?.click()}
+                      className="w-full h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <Camera className="w-5 h-5 text-gray-400" />
+                      <span className="text-xs text-gray-500">Subir foto</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* ID Back */}
+                <div>
+                  <Label className="text-xs text-gray-600 mb-1 block">Cedula - Dorso</Label>
+                  <input
+                    ref={idBackRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileSelect(file, 'back');
+                    }}
+                  />
+                  {idBackPreview ? (
+                    <div className="relative">
+                      <img
+                        src={idBackPreview}
+                        alt="Cedula dorso"
+                        className="w-full h-28 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIdBackFile(null);
+                          setIdBackPreview(null);
+                          if (idBackRef.current) idBackRef.current.value = '';
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => idBackRef.current?.click()}
+                      className="w-full h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <Camera className="w-5 h-5 text-gray-400" />
+                      <span className="text-xs text-gray-500">Subir foto</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRequestModal(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={resetModal}>Cancelar</Button>
             <Button onClick={handleRequestCredit} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Enviar solicitud
