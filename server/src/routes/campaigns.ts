@@ -21,35 +21,45 @@ router.get('/', async (req, res) => {
 
         // Aggregate stats efficiently
         const result = await Promise.all(campaigns.map(async (c) => {
-            const stats = await prisma.notification.groupBy({
-                by: ['isRead'],
-                where: { campaignId: c.id },
-                _count: true
-            });
+            try {
+                // Use simple counts instead of groupBy to avoid potential issues
+                const read = await prisma.notification.count({
+                    where: { campaignId: c.id, isRead: true }
+                });
 
-            const clickedCount = await prisma.notification.count({
-                where: { campaignId: c.id, clickedAt: { not: null } }
-            });
+                const clickedCount = await prisma.notification.count({
+                    where: { campaignId: c.id, clickedAt: { not: null } }
+                });
 
-            const sent = c._count.notifications;
-            const read = stats.find(s => s.isRead)?._count || 0;
+                const sent = c._count.notifications;
 
-            return {
-                ...c,
-                stats: {
-                    sent,
-                    read,
-                    clicked: clickedCount,
-                    readRate: sent > 0 ? Math.round((read / sent) * 100) : 0,
-                    clickRate: read > 0 ? Math.round((clickedCount / read) * 100) : 0
-                }
-            };
+                return {
+                    ...c,
+                    stats: {
+                        sent,
+                        read,
+                        clicked: clickedCount,
+                        readRate: sent > 0 ? Math.round((read / sent) * 100) : 0,
+                        clickRate: read > 0 ? Math.round((clickedCount / read) * 100) : 0
+                    }
+                };
+            } catch (err) {
+                console.error(`Error calculating stats for campaign ${c.id}:`, err);
+                // Return campaign with zero stats on error to prevent full failure
+                return {
+                    ...c,
+                    stats: { sent: 0, read: 0, clicked: 0, readRate: 0, clickRate: 0 }
+                };
+            }
         }));
 
         res.json(result);
     } catch (error) {
         console.error('Get campaigns error:', error);
-        res.status(500).json({ error: 'Falha ao buscar campanhas' });
+        if (error instanceof Error) {
+            console.error(error.stack);
+        }
+        res.status(500).json({ error: 'Falha ao buscar campanhas', details: error instanceof Error ? error.message : String(error) });
     }
 });
 

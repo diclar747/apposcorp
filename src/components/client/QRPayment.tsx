@@ -85,7 +85,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="w-5 h-5" />
             </Button>
-            <h2 className="font-semibold">QR Payment</h2>
+            <h2 className="font-semibold">Pago QR</h2>
             <div className="w-10" />
           </div>
 
@@ -102,7 +102,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                 )}
               >
                 <ScanLine className="w-4 h-4" />
-                My QR
+                Mi QR
               </button>
               <button
                 onClick={() => setMode('scan')}
@@ -114,7 +114,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                 )}
               >
                 <Camera className="w-4 h-4" />
-                Scan
+                Escanear
               </button>
             </div>
           </div>
@@ -159,31 +159,31 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                   {/* User Info */}
                   <div className="text-center mb-6">
                     <p className="font-semibold text-lg">{userName}</p>
-                    <p className="text-sm text-muted-foreground">Show this QR to receive payment</p>
+                    <p className="text-sm text-muted-foreground">Muestra este QR para recibir pagos</p>
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-3">
                     <Button variant="outline" className="rounded-xl" onClick={downloadQR}>
                       <Download className="w-4 h-4 mr-2" />
-                      Save
+                      Guardar
                     </Button>
                     <Button variant="outline" className="rounded-xl" onClick={copyToClipboard}>
                       {copied ? (
                         <>
                           <Check className="w-4 h-4 mr-2 text-emerald-500" />
-                          Copied
+                          Copiado
                         </>
                       ) : (
                         <>
                           <Copy className="w-4 h-4 mr-2" />
-                          Copy
+                          Copiar
                         </>
                       )}
                     </Button>
                     <Button variant="outline" className="rounded-xl" onClick={() => setShowFullscreen(true)}>
                       <Maximize2 className="w-4 h-4 mr-2" />
-                      Full
+                      Ampliar
                     </Button>
                   </div>
                 </motion.div>
@@ -196,13 +196,13 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                   className="flex flex-col items-center"
                 >
                   <p className="text-center text-muted-foreground mb-6">
-                    Point your camera at a QR code to pay
+                    Apunta tu cámara a un código QR para pagar
                   </p>
                   
                   <ScanEffect />
                   
                   <p className="text-center text-sm text-muted-foreground mt-6">
-                    The scanner will automatically detect the QR code
+                    El escáner detectará automáticamente el código QR
                   </p>
                 </motion.div>
               )}
@@ -242,7 +242,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                 </motion.div>
                 
                 <p className="text-white text-center mt-6 font-semibold">{userName}</p>
-                <p className="text-white/60 text-sm">Scan to pay</p>
+                <p className="text-white/60 text-sm">Escanea para pagar</p>
               </motion.div>
             )}
           </AnimatePresence>

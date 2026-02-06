@@ -102,7 +102,7 @@ export default function LoginPage() {
             className="inline-flex items-center justify-center mb-4"
           >
             <img
-              src="https://oscorp-two.vercel.app/oscorp-logo.png"
+              src="https://www.oscorp.com.py/assets/images/logos/logo2.png"
               alt="Oscorp"
               className="w-48 h-20 object-contain drop-shadow-md"
             />

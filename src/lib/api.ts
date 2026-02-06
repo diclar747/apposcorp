@@ -1,9 +1,5 @@
 // API Client for Oscorp Platform
-// Detect if running on localhost or production
-const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-const API_URL = isLocalhost
-  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
-  : '/api';
+const API_URL = '/api';
 
 // Helper to get token
 const getToken = () => localStorage.getItem('oscorp-token');
@@ -85,6 +81,7 @@ export const usersApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  search: (query: string) => fetchWithAuth(`/users/search?query=${query}`),
 };
 
 // Products API
@@ -229,6 +226,35 @@ export const campaignsApi = {
     }),
 };
 
+// Suppliers API
+export const suppliersApi = {
+  getAll: () => fetchWithAuth('/suppliers'),
+  create: (data: any) =>
+    fetchWithAuth('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/suppliers/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+// Purchases API
+export const purchasesApi = {
+  getAll: () => fetchWithAuth('/purchases'),
+  create: (data: any) =>
+    fetchWithAuth('/purchases', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 export default {
   auth: authApi,
   users: usersApi,
@@ -237,4 +263,6 @@ export default {
   wallet: walletApi,
   credits: creditsApi,
   notifications: notificationsApi,
+  suppliers: suppliersApi,
+  purchases: purchasesApi,
 };

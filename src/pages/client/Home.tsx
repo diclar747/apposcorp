@@ -4,89 +4,98 @@ import { motion } from 'framer-motion';
 import {
   ShoppingBag,
   ArrowRight,
-  TrendingUp,
-  Star,
-  Bell,
-  Search
+  ArrowDownLeft,
+  ArrowUpRight,
+  Loader2,
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useNotificationStore } from '@/stores';
-import { mockProducts, mockOrders } from '@/data/mockData';
+import { useAuthStore, useWalletStore } from '@/stores';
+import { productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { VirtualCardCompact } from '@/components/client/VirtualCard';
 import { QuickActions } from '@/components/client/QuickActions';
-import { TransactionList, mockTransactions } from '@/components/client/TransactionList';
-import { FinanceChart, CategoryChart } from '@/components/client/FinanceChart';
+import { FinanceChart } from '@/components/client/FinanceChart';
 import { QRPayment } from '@/components/client/QRPayment';
 
-// Chart data
-const weeklyData = [
-  { name: 'Oct', value: 450000 },
-  { name: 'Nov', value: 520000 },
-  { name: 'Dec', value: 380000 },
-  { name: 'Jan', value: 610000 },
-  { name: 'Feb', value: 720000 },
-  { name: 'Mar', value: 850000 },
-];
+// Build monthly chart data from real transactions
+const buildMonthlyData = (txs: any[]) => {
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const now = new Date();
+  const data: { name: string; income: number; expense: number }[] = [];
 
-const categoryData = [
-  { name: 'Transaction', value: 45 },
-  { name: 'Food', value: 25 },
-  { name: 'Transfer', value: 15 },
-  { name: 'Shopping', value: 10 },
-  { name: 'Travel', value: 5 },
-];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthIdx = d.getMonth();
+    const year = d.getFullYear();
+    let income = 0;
+    let expense = 0;
+
+    txs.forEach((t: any) => {
+      const txDate = new Date(t.createdAt);
+      if (txDate.getMonth() === monthIdx && txDate.getFullYear() === year) {
+        if (t.amount > 0) income += t.amount;
+        else expense += Math.abs(t.amount);
+      }
+    });
+
+    data.push({ name: months[monthIdx], income, expense });
+  }
+  return data;
+};
 
 export default function ClientHome() {
   const { user } = useAuthStore();
-  const { wallet, fetchWallet } = useWalletStore();
-  const { unreadCount, fetchNotifications } = useNotificationStore();
+  const { wallet, transactions, fetchWallet, fetchTransactions } = useWalletStore();
   const [showQR, setShowQR] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchWallet(user.id);
-      fetchNotifications(user.id);
+      fetchTransactions(user.walletId);
     }
-  }, [user, fetchWallet, fetchNotifications]);
+  }, [user, fetchWallet, fetchTransactions]);
 
-  const featuredProducts = mockProducts.filter(p => p.isFeatured).slice(0, 4);
-  const userOrders = mockOrders.filter(o => o.buyerId === user?.id).slice(0, 3);
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const data = await productsApi.getAll();
+        setProducts(data.slice(0, 4));
+      } catch {
+        setProducts([]);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  // Recent transactions for display
+  const recentTransactions = transactions.slice(0, 5).map((t: any) => ({
+    id: t.id,
+    type: t.amount > 0 ? 'income' : 'expense',
+    description: t.description,
+    amount: Math.abs(t.amount),
+    date: new Date(t.createdAt).toLocaleDateString('es-PY', { day: 'numeric', month: 'short' }),
+  }));
 
   return (
     <div className="min-h-screen pb-28">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
-          <div>
-            <p className="text-xs text-muted-foreground">Welcome back,</p>
-            <h1 className="font-semibold">{user?.firstName || 'User'}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="w-9 h-9 rounded-full">
-              <Search className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="w-9 h-9 rounded-full relative">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <div className="p-4 space-y-6 max-w-lg mx-auto">
+        {/* Greeting */}
+        <div>
+          <p className="text-xs text-muted-foreground">Bienvenido,</p>
+          <h1 className="font-semibold">{user?.firstName || 'Usuario'}</h1>
+        </div>
+
         {/* Virtual Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <VirtualCardCompact
-            balance={wallet?.balance || 8545000}
+            balance={wallet?.balance || 0}
             onShowQR={() => setShowQR(true)}
           />
         </motion.div>
@@ -106,11 +115,47 @@ export default function ClientHome() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <TransactionList
-            transactions={mockTransactions}
-            title="Transaction"
-            showViewAll={true}
-          />
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Transacciones</h3>
+            <Link to="/app/wallet">
+              <Button variant="ghost" size="sm" className="text-primary">
+                Ver todo
+              </Button>
+            </Link>
+          </div>
+          <div className="space-y-1">
+            {recentTransactions.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No hay transacciones recientes</p>
+            )}
+            {recentTransactions.map((t, i) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-colors"
+              >
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                  t.type === 'income'
+                    ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                    : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                }`}>
+                  {t.type === 'income' ? (
+                    <ArrowDownLeft className="w-5 h-5" />
+                  ) : (
+                    <ArrowUpRight className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{t.description}</p>
+                  <p className="text-xs text-muted-foreground">{t.date}</p>
+                </div>
+                <p className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {t.type === 'income' ? '+' : '-'}₲ {t.amount.toLocaleString()}
+                </p>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
 
         {/* Statistics Chart */}
@@ -120,100 +165,66 @@ export default function ClientHome() {
           transition={{ delay: 0.3 }}
         >
           <FinanceChart
-            data={weeklyData}
+            data={buildMonthlyData(transactions)}
             type="area"
-            title="Statistics"
+            title="Estadísticas"
           />
-        </motion.div>
-
-        {/* Category Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <CategoryChart data={categoryData} />
-        </motion.div>
-
-        {/* Transaction History */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Transaction History</h3>
-            <Link to="/app/wallet">
-              <Button variant="ghost" size="sm" className="text-primary">
-                See All
-              </Button>
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {mockTransactions.slice(0, 3).map((t, i) => (
-              <div key={t.id} className="flex items-center gap-4 p-3 rounded-2xl bg-muted/50">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <ShoppingBag className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{t.title}</p>
-                  <p className="text-xs text-muted-foreground">{t.subtitle}</p>
-                </div>
-                <p className={t.type === 'income' ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
-                  {t.type === 'income' ? '+' : '-'}₲ {t.amount.toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
         </motion.div>
 
         {/* Featured Products */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.4 }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Featured Products</h3>
+            <h3 className="font-semibold">Productos Destacados</h3>
             <Link to="/app/tiendas">
               <Button variant="ghost" size="sm" className="text-primary">
-                See All
+                Ver todo
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {featuredProducts.map((product, index) => (
-              <Link key={product.id} to={`/producto/${product.slug || product.id}`}>
-                <motion.div
-                  whileTap={{ scale: 0.98 }}
-                  className="premium-card overflow-hidden"
-                >
-                  <div className="h-28 bg-muted relative">
-                    {product.images[0] ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ShoppingBag className="w-8 h-8 text-muted-foreground/50" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-medium line-clamp-1">{product.name}</p>
-                    <p className="text-primary font-bold mt-1">
-                      {formatCurrency(product.price)}
-                    </p>
-                  </div>
-                </motion.div>
-              </Link>
-            ))}
-          </div>
+          {loadingProducts ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : products.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No hay productos disponibles</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {products.map((product) => (
+                <Link key={product.id} to={`/app/producto/${product.slug || product.id}`}>
+                  <motion.div
+                    whileTap={{ scale: 0.98 }}
+                    className="premium-card overflow-hidden"
+                  >
+                    <div className="h-28 bg-muted relative">
+                      {product.images?.[0] ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingBag className="w-8 h-8 text-muted-foreground/50" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-medium line-clamp-1">{product.name}</p>
+                      <p className="text-primary font-bold mt-1">
+                        {formatCurrency(product.price)}
+                      </p>
+                    </div>
+                  </motion.div>
+                </Link>
+              ))}
+            </div>
+          )}
         </motion.div>
-
       </div>
 
       {/* QR Payment Modal */}
@@ -221,7 +232,7 @@ export default function ClientHome() {
         isOpen={showQR}
         onClose={() => setShowQR(false)}
         userId={user?.id || 'guest'}
-        userName={`${user?.firstName || 'User'} ${user?.lastName || ''}`}
+        userName={`${user?.firstName || 'Usuario'} ${user?.lastName || ''}`}
         balance={wallet?.balance}
       />
     </div>

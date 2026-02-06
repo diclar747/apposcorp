@@ -108,7 +108,7 @@ export default function ClientProfile() {
 
   const handleSaveBankData = async () => {
     if (!bankFormData.bankName || !bankFormData.accountNumber || !bankFormData.holderName || !bankFormData.documentId) {
-      toast.error('Todos os campos são obrigatórios');
+      toast.error('Todos los campos son obligatorios');
       return;
     }
 
@@ -291,10 +291,10 @@ export default function ClientProfile() {
         <div className="transform scale-[0.98] origin-center">
           <VirtualCard
             balance={wallet?.balance || 0}
-            cardNumber="4532 1234 5678 9012"
+            cardNumber={user?.virtualCard?.cardNumber || 'OSC000000'}
             cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
             expiryDate="12/28"
-            cvv="123"
+            cvv="***"
             qrValue={`oscorp://pay?user=${user?.id}&name=${user?.firstName}`}
           />
         </div>

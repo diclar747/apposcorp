@@ -1,29 +1,72 @@
-import { motion } from 'framer-motion';
-import { TrendingUp, ShoppingCart, DollarSign, Package, Users, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, ShoppingCart, DollarSign, Package, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import { mockOrders, mockProducts } from '@/data/mockData';
+import { ordersApi, productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const salesData = [
-  { name: 'Lun', ventas: 1200000 },
-  { name: 'Mar', ventas: 1900000 },
-  { name: 'Mie', ventas: 1500000 },
-  { name: 'Jue', ventas: 2200000 },
-  { name: 'Vie', ventas: 2800000 },
-  { name: 'Sab', ventas: 3500000 },
-  { name: 'Dom', ventas: 2100000 },
-];
+import { useNavigate } from 'react-router-dom';
 
 export default function SellerDashboard() {
   const { user } = useAuthStore();
-  const sellerOrders = mockOrders.filter(o => o.sellerId === user?.id);
-  const sellerProducts = mockProducts.filter(p => p.sellerId === user?.id);
-  
-  const totalSales = sellerOrders.reduce((sum, o) => sum + o.total, 0);
-  const totalEarnings = sellerOrders.reduce((sum, o) => sum + o.sellerEarnings, 0);
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [ordersData, productsData] = await Promise.all([
+          ordersApi.getAll('seller'),
+          productsApi.getAll({ sellerId: user?.id }),
+        ]);
+        setOrders(ordersData);
+        setProducts(productsData);
+      } catch (error) {
+        console.error('Error cargando dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [user?.id]);
+
+  const totalSales = orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+  const totalEarnings = orders.reduce((sum: number, o: any) => sum + (o.sellerEarnings || 0), 0);
+
+  // Build weekly sales data from real orders
+  const buildWeeklyData = () => {
+    const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    const weekData = days.map(name => ({ name, ventas: 0 }));
+
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    orders.forEach((order: any) => {
+      const orderDate = new Date(order.createdAt);
+      if (orderDate >= weekAgo) {
+        const dayIndex = orderDate.getDay();
+        weekData[dayIndex].ventas += order.total || 0;
+      }
+    });
+
+    // Reorder starting from Monday
+    return [...weekData.slice(1), weekData[0]];
+  };
+
+  const salesData = buildWeeklyData();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -68,7 +111,7 @@ export default function SellerDashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Pedidos</p>
-                <p className="text-xl font-bold">{sellerOrders.length}</p>
+                <p className="text-xl font-bold">{orders.length}</p>
               </div>
             </div>
           </CardContent>
@@ -81,7 +124,7 @@ export default function SellerDashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Productos</p>
-                <p className="text-xl font-bold">{sellerProducts.length}</p>
+                <p className="text-xl font-bold">{products.length}</p>
               </div>
             </div>
           </CardContent>
@@ -99,7 +142,7 @@ export default function SellerDashboard() {
               <BarChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="name" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" tickFormatter={(value) => `₲${value / 1000000}M`} />
+                <YAxis stroke="#6b7280" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Bar dataKey="ventas" fill="#22c55e" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -112,25 +155,32 @@ export default function SellerDashboard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Pedidos Recientes</CardTitle>
-          <Button variant="ghost" size="sm">Ver todos</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/vendedor/pedidos')}>Ver todos</Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {sellerOrders.slice(0, 3).map((order) => (
+            {orders.length === 0 && (
+              <p className="text-center text-gray-500 py-4">No hay pedidos aún</p>
+            )}
+            {orders.slice(0, 5).map((order: any) => (
               <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium">{order.orderNumber}</p>
-                  <p className="text-sm text-gray-500">{order.items.length} productos</p>
+                  <p className="text-sm text-gray-500">{order.items?.length || 0} productos</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold">{formatCurrency(order.total)}</p>
-                  <p className={`text-sm ${
-                    order.status === 'delivered' ? 'text-green-600' : 
-                    order.status === 'pending' ? 'text-yellow-600' : 'text-blue-600'
-                  }`}>
-                    {order.status === 'delivered' ? 'Entregado' : 
-                     order.status === 'pending' ? 'Pendiente' : 'En proceso'}
-                  </p>
+                  <Badge variant={
+                    order.status === 'delivered' ? 'default' :
+                    order.status === 'pending' ? 'secondary' : 'outline'
+                  }>
+                    {order.status === 'delivered' ? 'Entregado' :
+                     order.status === 'pending' ? 'Pendiente' :
+                     order.status === 'confirmed' ? 'Confirmado' :
+                     order.status === 'preparing' ? 'Preparando' :
+                     order.status === 'ready' ? 'Listo' :
+                     order.status === 'in_transit' ? 'En camino' : order.status}
+                  </Badge>
                 </div>
               </div>
             ))}

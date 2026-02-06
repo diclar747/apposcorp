@@ -38,6 +38,8 @@ import SellerSales from '@/pages/seller/Sales';
 import SellerWithdrawals from '@/pages/seller/Withdrawals';
 import SellerReports from '@/pages/seller/Reports';
 import SellerPOS from '@/pages/seller/POS';
+import SellerSuppliers from '@/pages/seller/Suppliers';
+import SellerPurchases from '@/pages/seller/Purchases';
 
 // Client Pages
 import ClientHome from '@/pages/client/Home';
@@ -55,6 +57,7 @@ import ClientProfile from '@/pages/client/Profile';
 import ClientCredits from '@/pages/client/Credits';
 import ClientIngenio from '@/pages/client/Ingenio';
 import ClientNotifications from '@/pages/client/Notifications';
+import TransferMoney from '@/pages/client/TransferMoney';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -136,6 +139,8 @@ function App() {
           <Route path="pos" element={<SellerPOS />} />
           <Route path="retiros" element={<SellerWithdrawals />} />
           <Route path="reportes" element={<SellerReports />} />
+          <Route path="proveedores" element={<SellerSuppliers />} />
+          <Route path="compras" element={<SellerPurchases />} />
         </Route>
 
         {/* Client Routes */}
@@ -155,6 +160,7 @@ function App() {
           <Route path="checkout" element={<ClientCheckout />} />
           <Route path="escanear" element={<ClientScan />} />
           <Route path="wallet" element={<ClientWallet />} />
+          <Route path="wallet/transferir" element={<TransferMoney />} />
           <Route path="tarjeta" element={<ClientCard />} />
           <Route path="pedidos" element={<ClientOrders />} />
           <Route path="pedidos/:id" element={<ClientOrderDetail />} />

@@ -16,7 +16,9 @@ import {
   X,
   ChevronDown,
   Globe,
-  Bell
+  Bell,
+  Truck,
+  FileText
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { cn, getInitials } from '@/lib/utils';
@@ -37,6 +39,8 @@ const sidebarItems = [
   { icon: ShoppingCart, label: 'Punto de Venta', href: '/vendedor/pos' },
   { icon: Store, label: 'Mi Tienda', href: '/vendedor/tienda' },
   { icon: Package, label: 'Productos', href: '/vendedor/productos' },
+  { icon: Truck, label: 'Proveedores', href: '/vendedor/proveedores' },
+  { icon: FileText, label: 'Compras', href: '/vendedor/compras' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/vendedor/pedidos' },
   { icon: TrendingUp, label: 'Ventas', href: '/vendedor/ventas' },
   { icon: BarChart3, label: 'Reportes', href: '/vendedor/reportes' },
@@ -160,7 +164,7 @@ export default function SellerLayout() {
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
                 <Link to="/vendedor" className="flex items-center gap-3">
-                  <img src="https://oscorp-two.vercel.app/oscorp-logo.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
+                  <img src="https://www.oscorp.com.py/assets/images/logos/logo2.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
                   <div>
                     <span className="font-semibold text-gray-900 block">Oscorp</span>
                     <span className="text-xs text-gray-500">Panel Vendedor</span>

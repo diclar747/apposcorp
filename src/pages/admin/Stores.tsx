@@ -22,6 +22,16 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 
 interface StoreData {
@@ -36,6 +46,12 @@ interface StoreData {
   email: string;
   isActive: boolean;
   productCount: number;
+  // Added fields
+  firstName: string;
+  lastName: string;
+  whatsappNumber: string;
+  facebook: string;
+  instagram: string;
 }
 
 export default function AdminStores() {
@@ -45,6 +61,9 @@ export default function AdminStores() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [storeToDelete, setStoreToDelete] = useState<string | null>(null);
+  const [viewingStore, setViewingStore] = useState<StoreData | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null); // For edit mode
 
   // New Store Form State
   const [formData, setFormData] = useState({
@@ -80,7 +99,13 @@ export default function AdminStores() {
         phone: u.sellerProfile?.phone || u.phone || '',
         email: u.sellerProfile?.email || u.email || '',
         isActive: u.isActive,
-        productCount: u.sellerProfile?.products?.length || 0 // Assuming products are included if needed or we might need another call
+        productCount: u.sellerProfile?.products?.length || 0,
+        // New fields
+        firstName: u.firstName || '',
+        lastName: u.lastName || '',
+        whatsappNumber: u.sellerProfile?.whatsappNumber || '',
+        facebook: u.sellerProfile?.socialLinks?.facebook || '',
+        instagram: u.sellerProfile?.socialLinks?.instagram || ''
       }));
 
       setStores(formattedSellers);
@@ -97,34 +122,37 @@ export default function AdminStores() {
   }, []);
 
   const handleCreateStore = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.storeName) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.storeName) {
       toast.error('Por favor completa los campos obligatorios');
       return;
     }
 
     setCreating(true);
     try {
-      // 1. Create User
-      const registerRes: any = await authApi.register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone,
-        address: formData.address,
-        role: 'seller'
-      });
+      let userId = editingId;
 
-      const newUserId = registerRes.user.id;
+      if (!userId) {
+        // 1. Create User (Only if not editing)
+        const registerRes: any = await authApi.register({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password || '123456', // Default password if not provided
+          phone: formData.phone,
+          address: formData.address,
+          role: 'seller'
+        });
+        userId = registerRes.user.id;
+      }
 
       // 2. Update Seller Profile
-      await usersApi.updateSellerProfileById(newUserId, {
+      await usersApi.updateSellerProfileById(userId as string, {
         storeName: formData.storeName,
         description: formData.description,
         address: formData.address,
         phone: formData.phone,
         whatsappNumber: formData.whatsappNumber,
-        email: formData.email, // Contact email matches login
+        email: formData.email,
         logo: formData.logo,
         banner: formData.banner,
         socialLinks: {
@@ -133,19 +161,74 @@ export default function AdminStores() {
         }
       });
 
-      toast.success('Tienda creada con éxito');
+      toast.success(editingId ? 'Tienda actualizada con éxito' : 'Tienda creada con éxito');
       setIsCreateOpen(false);
-      setFormData({
-        firstName: '', lastName: '', email: '', password: '', phone: '',
-        storeName: '', description: '', address: '', whatsappNumber: '',
-        logo: '', banner: '', facebook: '', instagram: ''
-      });
+      resetForm();
       fetchStores();
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || 'Error al crear tienda');
+      toast.error(error.message || 'Error al guardar tienda');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      firstName: '', lastName: '', email: '', password: '', phone: '',
+      storeName: '', description: '', address: '', whatsappNumber: '',
+      logo: '', banner: '', facebook: '', instagram: ''
+    });
+    setEditingId(null);
+  };
+
+  const handleEditClick = (store: StoreData) => {
+    setEditingId(store.id);
+    setFormData({
+      firstName: store.firstName,
+      lastName: store.lastName,
+      email: store.email,
+      password: '', // Can't retrieve password
+      phone: store.phone,
+      storeName: store.name,
+      description: store.description,
+      address: store.address,
+      whatsappNumber: store.whatsappNumber,
+      logo: store.logo,
+      banner: store.banner,
+      facebook: store.facebook,
+      instagram: store.instagram
+    });
+    setIsCreateOpen(true);
+  };
+
+  const handleToggleStatus = async (storeId: string, currentStatus: boolean) => {
+    try {
+      await usersApi.updateStatus(storeId, !currentStatus);
+      toast.success(currentStatus ? 'Tienda desactivada' : 'Tienda activada');
+      fetchStores();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al actualizar estado');
+    }
+  };
+
+  const handleDeleteClick = (storeId: string) => {
+    setStoreToDelete(storeId);
+  };
+
+  const confirmDeleteStore = async () => {
+    if (!storeToDelete) return;
+
+    try {
+      await usersApi.delete(storeToDelete);
+      toast.success('Tienda eliminada con éxito');
+      fetchStores();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al eliminar tienda');
+    } finally {
+      setStoreToDelete(null);
     }
   };
 
@@ -184,7 +267,7 @@ export default function AdminStores() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Crear Nueva Tienda</DialogTitle>
+              <DialogTitle>{editingId ? 'Editar Tienda' : 'Crear Nueva Tienda'}</DialogTitle>
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
@@ -221,12 +304,12 @@ export default function AdminStores() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Contraseña *</Label>
+                  <Label>Contraseña {editingId && '(Dejar en blanco para mantener)'} *</Label>
                   <Input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder={editingId ? "Sin cambios" : "Mínimo 6 caracteres"}
                   />
                 </div>
 
@@ -338,7 +421,7 @@ export default function AdminStores() {
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
               <Button onClick={handleCreateStore} disabled={creating}>
                 {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Crear Tienda Completa
+                {editingId ? 'Guardar Cambios' : 'Crear Tienda Completa'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -411,9 +494,15 @@ export default function AdminStores() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                        <DropdownMenuItem>Editar tienda</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">Desactivar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setViewingStore(store)}>Ver detalles</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditClick(store)}>Editar tienda</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteClick(store.id)}>Eliminar tienda</DropdownMenuItem>
+                        <DropdownMenuItem
+                          className={store.isActive ? "text-orange-600" : "text-green-600"}
+                          onClick={() => handleToggleStatus(store.id, store.isActive)}
+                        >
+                          {store.isActive ? 'Desactivar' : 'Activar'}
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -483,6 +572,128 @@ export default function AdminStores() {
           <p className="text-gray-500">Intenta con otros filtros de búsqueda</p>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!storeToDelete} onOpenChange={(open) => !open && setStoreToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro absolutamente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que deseas eliminar esta tienda permanentemente? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteStore} className="bg-red-600 hover:bg-red-700">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={!!viewingStore} onOpenChange={(open) => !open && setViewingStore(null)}>
+        {viewingStore && (
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Detalles de {viewingStore.name}</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Cover & Logo */}
+              <div className="h-40 bg-gray-200 rounded-lg relative overflow-hidden">
+                {viewingStore.banner ? (
+                  <img src={viewingStore.banner} alt="Banner" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500" />
+                )}
+                <div className="absolute -bottom-6 left-6">
+                  <div className="w-24 h-24 bg-white rounded-lg p-1 shadow-lg">
+                    {viewingStore.logo ? (
+                      <img src={viewingStore.logo} alt="Logo" className="w-full h-full rounded-md object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
+                        <Store className="w-10 h-10 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">Información Principal</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Store className="w-4 h-4 text-gray-500 mt-1" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{viewingStore.name}</p>
+                        <p className="text-sm text-gray-500">{viewingStore.description || 'Sin descripción'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{viewingStore.address || 'No especificada'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className={`w-4 h-4 ${viewingStore.isActive ? 'text-green-500' : 'text-red-500'}`} />
+                      <span className="text-sm text-gray-700">{viewingStore.isActive ? 'Tienda Activa' : 'Tienda Inactiva'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">Contacto y Redes</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-gray-500" />
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-700">{viewingStore.phone} (Móvil)</span>
+                        {viewingStore.whatsappNumber && <span className="text-xs text-gray-500">{viewingStore.whatsappNumber} (WhatsApp)</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700 break-all">{viewingStore.email}</span>
+                    </div>
+                    {(viewingStore.facebook || viewingStore.instagram) && (
+                      <div className="flex gap-3 mt-2">
+                        {viewingStore.facebook && (
+                          <a href={viewingStore.facebook} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors">
+                            <Facebook className="w-4 h-4" />
+                          </a>
+                        )}
+                        {viewingStore.instagram && (
+                          <a href={viewingStore.instagram.startsWith('http') ? viewingStore.instagram : `https://instagram.com/${viewingStore.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-pink-50 text-pink-600 rounded-full hover:bg-pink-100 transition-colors">
+                            <Instagram className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-sm text-gray-900 mb-2">Datos del Propietario</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Nombre:</span>
+                    <span className="ml-2 text-gray-900">{viewingStore.firstName} {viewingStore.lastName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">ID Usuario:</span>
+                    <span className="ml-2 text-gray-900 font-mono text-xs">{viewingStore.id}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => setViewingStore(null)}>Cerrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

@@ -1,14 +1,24 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight } from 'lucide-react';
-import { useAuthStore } from '@/stores';
-import { mockCredits } from '@/data/mockData';
+import { CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight, Loader2 } from 'lucide-react';
+import { creditsApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -19,12 +29,82 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 export default function ClientCredits() {
-  const { user } = useAuthStore();
-  const userCredits = mockCredits.filter(c => c.userId === user?.id);
-  
-  const activeCredits = userCredits.filter(c => c.status === 'active');
-  const pendingCredits = userCredits.filter(c => c.status === 'pending');
-  const completedCredits = userCredits.filter(c => c.status === 'completed');
+  const [credits, setCredits] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [payingCreditId, setPayingCreditId] = useState<string | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestForm, setRequestForm] = useState({ amount: '', concept: '', installments: '3' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchCredits = async () => {
+    try {
+      setIsLoading(true);
+      const data = await creditsApi.getAll();
+      setCredits(data);
+    } catch (error) {
+      toast.error('Error al cargar créditos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCredits();
+  }, []);
+
+  const activeCredits = credits.filter((c: any) => c.status === 'active');
+  const pendingCredits = credits.filter((c: any) => c.status === 'pending');
+  const completedCredits = credits.filter((c: any) => c.status === 'completed');
+
+  const handlePayInstallment = async (creditId: string, installmentId: string) => {
+    try {
+      setPayingCreditId(creditId);
+      await creditsApi.payInstallment(creditId, installmentId, 'wallet');
+      toast.success('Cuota pagada exitosamente');
+      await fetchCredits();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al pagar cuota');
+    } finally {
+      setPayingCreditId(null);
+    }
+  };
+
+  const handleRequestCredit = async () => {
+    const amount = parseFloat(requestForm.amount);
+    if (!amount || amount <= 0) {
+      toast.error('Ingresa un monto válido');
+      return;
+    }
+    if (!requestForm.concept.trim()) {
+      toast.error('Ingresa el concepto del crédito');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await creditsApi.create({
+        amount,
+        concept: requestForm.concept,
+        installments: parseInt(requestForm.installments),
+      });
+      toast.success('Solicitud de crédito enviada');
+      setShowRequestModal(false);
+      setRequestForm({ amount: '', concept: '', installments: '3' });
+      await fetchCredits();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al solicitar crédito');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-6">
@@ -36,7 +116,7 @@ export default function ClientCredits() {
 
       {/* Quick Action */}
       <div className="px-4">
-        <Link to="/app/creditos/solicitar">
+        <button onClick={() => setShowRequestModal(true)} className="w-full text-left">
           <Card className="bg-gradient-to-br from-blue-500 to-purple-600 text-white hover:shadow-lg transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -46,14 +126,14 @@ export default function ClientCredits() {
                   </div>
                   <div>
                     <p className="font-semibold">Solicitar nuevo crédito</p>
-                    <p className="text-sm text-white/80">Obtén hasta ₲ 10.000.000</p>
+                    <p className="text-sm text-white/80">Obtén financiamiento rápido</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5" />
               </div>
             </CardContent>
           </Card>
-        </Link>
+        </button>
       </div>
 
       {/* Stats */}
@@ -81,13 +161,14 @@ export default function ClientCredits() {
       {/* Credits List */}
       <div className="px-4 space-y-3">
         <h2 className="font-semibold text-gray-900">Historial de créditos</h2>
-        
-        {userCredits.map((credit, index) => {
-          const status = statusConfig[credit.status];
+
+        {credits.map((credit: any, index: number) => {
+          const status = statusConfig[credit.status] || statusConfig.pending;
           const StatusIcon = status.icon;
-          const paidInstallments = credit.payments.length;
-          const progress = (paidInstallments / credit.installments) * 100;
-          
+          const paidInstallments = credit.payments?.length || 0;
+          const progress = credit.installments > 0 ? (paidInstallments / credit.installments) * 100 : 0;
+          const nextInstallment = credit.paymentSchedule?.find((s: any) => s.status === 'pending');
+
           return (
             <motion.div
               key={credit.id}
@@ -126,16 +207,24 @@ export default function ClientCredits() {
                         <span className="font-medium">{paidInstallments}/{credit.installments} cuotas</span>
                       </div>
                       <Progress value={progress} className="h-2" />
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm text-gray-500">Próxima cuota</span>
-                        <span className="font-medium">{formatCurrency(credit.installmentAmount)}</span>
-                      </div>
+                      {nextInstallment && (
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm text-gray-500">Próxima cuota</span>
+                          <span className="font-medium">{formatCurrency(credit.installmentAmount)}</span>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {credit.status === 'active' && (
-                    <Button className="w-full mt-3" variant="outline">
-                      Pagar cuota
+                  {credit.status === 'active' && nextInstallment && (
+                    <Button
+                      className="w-full mt-3"
+                      variant="outline"
+                      onClick={() => handlePayInstallment(credit.id, nextInstallment.id)}
+                      disabled={payingCreditId === credit.id}
+                    >
+                      {payingCreditId === credit.id && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      Pagar cuota - {formatCurrency(credit.installmentAmount)}
                     </Button>
                   )}
                 </CardContent>
@@ -145,16 +234,69 @@ export default function ClientCredits() {
         })}
       </div>
 
-      {userCredits.length === 0 && (
+      {credits.length === 0 && (
         <div className="text-center py-12">
           <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900">No tienes créditos</h3>
           <p className="text-gray-500 mb-4">Solicita tu primer crédito</p>
-          <Link to="/app/creditos/solicitar">
-            <Button>Solicitar crédito</Button>
-          </Link>
+          <Button onClick={() => setShowRequestModal(true)}>Solicitar crédito</Button>
         </div>
       )}
+
+      {/* Request Credit Modal */}
+      <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Solicitar Crédito</DialogTitle>
+            <DialogDescription>
+              Completa los datos para solicitar un nuevo crédito.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="credit-amount">Monto solicitado</Label>
+              <Input
+                id="credit-amount"
+                type="number"
+                placeholder="Ej: 500000"
+                value={requestForm.amount}
+                onChange={(e) => setRequestForm({ ...requestForm, amount: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="credit-concept">Concepto</Label>
+              <Textarea
+                id="credit-concept"
+                placeholder="Describe para qué necesitas el crédito..."
+                value={requestForm.concept}
+                onChange={(e) => setRequestForm({ ...requestForm, concept: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="credit-installments">Cuotas</Label>
+              <select
+                id="credit-installments"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={requestForm.installments}
+                onChange={(e) => setRequestForm({ ...requestForm, installments: e.target.value })}
+              >
+                <option value="3">3 cuotas</option>
+                <option value="6">6 cuotas</option>
+                <option value="12">12 cuotas</option>
+                <option value="18">18 cuotas</option>
+                <option value="24">24 cuotas</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRequestModal(false)}>Cancelar</Button>
+            <Button onClick={handleRequestCredit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Enviar solicitud
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

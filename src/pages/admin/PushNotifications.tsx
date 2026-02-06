@@ -437,11 +437,15 @@ export default function AdminPushNotifications() {
                                             className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-lg border border-gray-100 dark:border-slate-700 space-y-3"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                                                    <Bell className="w-4 h-4 text-white" />
+                                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden p-1">
+                                                    <img
+                                                        src="https://www.oscorp.com.py/assets/images/logos/logo2.png"
+                                                        alt="Oscorp"
+                                                        className="w-full h-full object-contain"
+                                                    />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h5 className="text-sm font-semibold text-gray-900 dark:text-white">OpCorp</h5>
+                                                    <h5 className="text-sm font-semibold text-gray-900 dark:text-white">OSCORP</h5>
                                                     <p className="text-xs text-gray-500">Ahora</p>
                                                 </div>
                                             </div>

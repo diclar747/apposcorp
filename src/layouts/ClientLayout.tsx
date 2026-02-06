@@ -54,20 +54,20 @@ interface MenuSection {
 
 const menuSections: MenuSection[] = [
   {
-    title: 'Main',
+    title: 'Principal',
     items: [
-      { icon: Home, label: 'Home', href: '/app' },
-      { icon: Wallet, label: 'My Wallet', href: '/app/wallet' },
-      { icon: CreditCard, label: 'My Card', href: '/app/tarjeta' },
-      { icon: QrCode, label: 'QR Payment', href: '#', action: 'qr' },
+      { icon: Home, label: 'Inicio', href: '/app' },
+      { icon: Wallet, label: 'Mi Billetera', href: '/app/wallet' },
+      { icon: CreditCard, label: 'Mi Tarjeta', href: '/app/tarjeta' },
+      { icon: QrCode, label: 'Pago QR', href: '#', action: 'qr' },
     ]
   },
   {
-    title: 'Shopping',
+    title: 'Compras',
     items: [
       { icon: Store, label: 'Tiendas', href: '/app/tiendas' },
       { icon: ShoppingBag, label: 'Productos', href: '/app/tienda' },
-      { icon: Package, label: 'My Orders', href: '/app/pedidos' },
+      { icon: Package, label: 'Mis Pedidos', href: '/app/pedidos' },
     ]
   },
   {
@@ -77,10 +77,10 @@ const menuSections: MenuSection[] = [
     ]
   },
   {
-    title: 'Settings',
+    title: 'Configuración',
     items: [
-      { icon: Settings, label: 'Settings', href: '/app/ajustes' },
-      { icon: HelpCircle, label: 'Help', href: '/app/ayuda' },
+      { icon: Settings, label: 'Ajustes', href: '/app/ajustes' },
+      { icon: HelpCircle, label: 'Ayuda', href: '/app/ayuda' },
     ]
   }
 ];
@@ -151,11 +151,11 @@ export default function ClientLayout() {
                     </div>
                     <div className="mt-4 flex gap-3">
                       <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2">
-                        <p className="text-xs text-white/60">Balance</p>
+                        <p className="text-xs text-white/60">Saldo</p>
                         <p className="font-semibold text-white">₲ 8,545,000</p>
                       </div>
                       <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2">
-                        <p className="text-xs text-white/60">Points</p>
+                        <p className="text-xs text-white/60">Puntos</p>
                         <p className="font-semibold text-white">2,450</p>
                       </div>
                     </div>
@@ -220,7 +220,7 @@ export default function ClientLayout() {
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 transition-colors justify-start"
                   >
                     <LogOut className="w-5 h-5" />
-                    <span className="font-medium">Logout</span>
+                    <span className="font-medium">Cerrar sesión</span>
                   </Button>
                 </div>
               </div>
@@ -286,7 +286,7 @@ export default function ClientLayout() {
         isOpen={showQR}
         onClose={() => setShowQR(false)}
         userId={user?.id || 'guest'}
-        userName={`${user?.firstName || 'User'} ${user?.lastName || ''}`}
+        userName={`${user?.firstName || 'Usuario'} ${user?.lastName || ''}`}
       />
     </div>
   );

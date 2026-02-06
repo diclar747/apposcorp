@@ -18,10 +18,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: Home, label: 'Home', path: '/app' },
-  { icon: Wallet, label: 'Wallet', path: '/app/wallet' },
-  { icon: ShoppingBag, label: 'Shop', path: '/app/tienda' },
-  { icon: User, label: 'Profile', path: '/app/perfil' },
+  { icon: Home, label: 'Inicio', path: '/app' },
+  { icon: Wallet, label: 'Billetera', path: '/app/wallet' },
+  { icon: ShoppingBag, label: 'Tienda', path: '/app/tienda' },
+  { icon: User, label: 'Perfil', path: '/app/perfil' },
 ];
 
 interface BottomNavProps {

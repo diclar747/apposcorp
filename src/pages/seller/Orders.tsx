@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Package, Truck, CheckCircle, Clock, Eye, ArrowRight } from 'lucide-react';
-import { useAuthStore } from '@/stores';
-import { mockOrders, mockUsers } from '@/data/mockData';
+import { Search, Eye, ArrowRight, Loader2 } from 'lucide-react';
+import { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getOrderStatusInfo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 const statusOptions = [
   { value: 'pending', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700' },
@@ -34,22 +34,55 @@ const statusOptions = [
 ];
 
 export default function SellerOrders() {
-  const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  
-  const sellerOrders = mockOrders.filter(o => o.sellerId === user?.id);
-  
-  const filteredOrders = sellerOrders.filter(order => {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  const fetchOrders = async () => {
+    try {
+      setIsLoading(true);
+      const data = await ordersApi.getAll('seller');
+      setOrders(data);
+    } catch (error) {
+      toast.error('Error al cargar pedidos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const filteredOrders = orders.filter((order: any) => {
     const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const updateStatus = (orderId: string, newStatus: string) => {
-    // In a real app, this would update the order status
-    console.log('Updating order', orderId, 'to', newStatus);
+  const updateStatus = async (orderId: string, newStatus: string) => {
+    try {
+      setUpdatingOrderId(orderId);
+      const statusLabel = statusOptions.find(s => s.value === newStatus)?.label || newStatus;
+      await ordersApi.updateStatus(orderId, newStatus, `Estado cambiado a ${statusLabel}`);
+      toast.success(`Pedido actualizado a "${statusLabel}"`);
+      await fetchOrders();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al actualizar pedido');
+    } finally {
+      setUpdatingOrderId(null);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -61,7 +94,7 @@ export default function SellerOrders() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statusOptions.slice(0, 4).map((status) => {
-          const count = sellerOrders.filter(o => o.status === status.value).length;
+          const count = orders.filter((o: any) => o.status === status.value).length;
           return (
             <Card key={status.value}>
               <CardContent className="p-4">
@@ -120,12 +153,19 @@ export default function SellerOrders() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order, index) => {
-                  const buyer = mockUsers.find(u => u.id === order.buyerId);
+                {filteredOrders.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      No hay pedidos
+                    </TableCell>
+                  </TableRow>
+                )}
+                {filteredOrders.map((order: any, index: number) => {
+                  const buyer = order.buyer;
                   const statusInfo = getOrderStatusInfo(order.status);
                   const currentStatusIndex = statusOptions.findIndex(s => s.value === order.status);
                   const nextStatus = statusOptions[currentStatusIndex + 1];
-                  
+
                   return (
                     <motion.tr
                       key={order.id}
@@ -136,16 +176,15 @@ export default function SellerOrders() {
                     >
                       <TableCell>
                         <p className="font-medium text-gray-900">{order.orderNumber}</p>
-                        <p className="text-xs text-gray-500">{order.id}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <img src={buyer?.avatar} alt="" className="w-8 h-8 rounded-full" />
+                          {buyer?.avatar && <img src={buyer.avatar} alt="" className="w-8 h-8 rounded-full" />}
                           <span className="text-sm">{buyer?.firstName} {buyer?.lastName}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-600">{order.items.length} items</span>
+                        <span className="text-sm text-gray-600">{order.items?.length || 0} items</span>
                       </TableCell>
                       <TableCell>
                         <span className="font-medium text-gray-900">{formatCurrency(order.total)}</span>
@@ -161,12 +200,19 @@ export default function SellerOrders() {
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
                           {nextStatus && (
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               onClick={() => updateStatus(order.id, nextStatus.value)}
+                              disabled={updatingOrderId === order.id}
                             >
-                              {nextStatus.label}
-                              <ArrowRight className="w-4 h-4 ml-1" />
+                              {updatingOrderId === order.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  {nextStatus.label}
+                                  <ArrowRight className="w-4 h-4 ml-1" />
+                                </>
+                              )}
                             </Button>
                           )}
                           <Dialog>
@@ -193,11 +239,11 @@ export default function SellerOrders() {
                                     <p className="text-sm text-gray-600">{order.deliveryAddress?.city}</p>
                                   </div>
                                 </div>
-                                
+
                                 <div>
                                   <p className="text-sm text-gray-500 mb-2">Productos</p>
                                   <div className="space-y-2">
-                                    {order.items.map((item) => (
+                                    {order.items?.map((item: any) => (
                                       <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
                                         {item.productImage && (
                                           <img src={item.productImage} alt="" className="w-12 h-12 rounded-lg object-cover" />
@@ -211,11 +257,21 @@ export default function SellerOrders() {
                                     ))}
                                   </div>
                                 </div>
-                                
+
                                 <div className="border-t pt-4">
-                                  <div className="flex justify-between text-lg font-bold">
-                                    <span>Total</span>
-                                    <span>{formatCurrency(order.total)}</span>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Subtotal</span>
+                                    <span>{formatCurrency(order.subtotal)}</span>
+                                  </div>
+                                  {order.commissionAmount > 0 && (
+                                    <div className="flex justify-between text-sm text-gray-500">
+                                      <span>Comisión plataforma</span>
+                                      <span>-{formatCurrency(order.commissionAmount)}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between text-lg font-bold mt-2">
+                                    <span>Tu ganancia</span>
+                                    <span className="text-green-600">{formatCurrency(order.sellerEarnings)}</span>
                                   </div>
                                 </div>
                               </div>

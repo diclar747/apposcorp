@@ -101,7 +101,7 @@ interface TransactionListProps {
 
 export function TransactionList({ 
   transactions, 
-  title = 'Transaction',
+  title = 'Transacciones',
   showViewAll = true,
   className 
 }: TransactionListProps) {
@@ -112,7 +112,7 @@ export function TransactionList({
         <h3 className="font-semibold">{title}</h3>
         {showViewAll && (
           <button className="text-sm text-primary font-medium hover:underline">
-            Sell All
+            Ver todo
           </button>
         )}
       </div>

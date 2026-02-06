@@ -169,6 +169,8 @@ export interface Product {
   attributes?: ProductAttribute[];
   variants?: ProductVariant[];
   stockMovements?: StockMovement[];
+  supplierId?: string | null;
+  supplier?: Supplier;
   weight?: number;
   dimensions?: Dimensions;
   tags: string[];

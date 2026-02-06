@@ -15,12 +15,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    console.log('=== LOGIN ATTEMPT ===');
-    console.log('Email:', email);
-    console.log('Password provided:', password);
-
-    // Workaround: fetch all users with specific fields and filter in JS
-    const allUsers = await prisma.user.findMany({
+    const user = await prisma.user.findUnique({
+      where: { email },
       select: {
         id: true,
         email: true,
@@ -30,41 +26,23 @@ router.post('/login', async (req, res) => {
         lastName: true,
         isActive: true,
         avatar: true,
-        // Skipping complex fields/relations to avoid crashes
       }
     });
-    const users = allUsers.filter(u => u.email === email);
-
-    const user = users[0];
-
-    console.log('User found:', user ? 'YES' : 'NO');
-    if (user) {
-      console.log('User ID:', user.id);
-      console.log('User role:', user.role);
-      console.log('Stored password hash:', user.password?.substring(0, 20) + '...');
-    }
 
     if (!user) {
-      console.log('ERROR: User not found');
-      return res.status(401).json({ error: 'Usuário não encontrado' });
+      return res.status(401).json({ error: 'Usuario no encontrado' });
     }
 
     if (!user.isActive) {
-      console.log('ERROR: Account disabled');
-      return res.status(401).json({ error: 'Conta desativada' });
+      return res.status(401).json({ error: 'Cuenta desactivada' });
     }
 
-    console.log('Comparing password with bcrypt...');
     const bcrypt = await import('bcryptjs');
     const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('Password match:', isValidPassword);
 
     if (!isValidPassword) {
-      console.log('ERROR: Invalid password');
-      return res.status(401).json({ error: 'Senha incorreta' });
+      return res.status(401).json({ error: 'Contraseña incorrecta' });
     }
-
-    console.log('=== LOGIN SUCCESS ===');
 
     const token = generateToken({
       userId: user.id,
@@ -81,7 +59,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Erro no servidor', message: error.message, stack: error.stack });
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
@@ -227,63 +205,5 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-// DEBUG: Check all users
-router.get('/debug-users', async (req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      select: { id: true, email: true, role: true, isActive: true, password: true }
-    });
-
-    // Test bcrypt on each user
-    const bcrypt = await import('bcryptjs');
-    const testPassword = '123456';
-
-    const results = await Promise.all(users.map(async (user) => {
-      const isValid = await bcrypt.compare(testPassword, user.password);
-      return {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        passwordLength: user.password?.length,
-        passwordPrefix: user.password?.substring(0, 20),
-        passwordValid: isValid
-      };
-    }));
-
-    res.json({
-      totalUsers: users.length,
-      users: results
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DEBUG: Fix all passwords
-router.get('/fix-passwords', async (req, res) => {
-  try {
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash('123456', 10);
-
-    const users = await prisma.user.findMany();
-
-    const results = [];
-    for (const user of users) {
-      const updated = await prisma.user.update({
-        where: { id: user.id },
-        data: { password: hashedPassword }
-      });
-      results.push({ email: updated.email, status: 'updated' });
-    }
-
-    res.json({
-      message: 'All passwords updated to 123456',
-      users: results
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 export default router;

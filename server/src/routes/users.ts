@@ -22,6 +22,43 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
   }
 });
 
+// Search users by email, phone or name (for transfers)
+router.get('/search', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || (query as string).length < 3) {
+      return res.json([]);
+    }
+
+    const users = await prisma.user.findMany({
+      where: {
+        id: { not: req.user!.userId },
+        isActive: true,
+        OR: [
+          { email: { contains: query as string, mode: 'insensitive' } },
+          { firstName: { contains: query as string, mode: 'insensitive' } },
+          { lastName: { contains: query as string, mode: 'insensitive' } },
+          { phone: { contains: query as string, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        avatar: true,
+        phone: true,
+      },
+      take: 10,
+    });
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar usuários' });
+  }
+});
+
 // Update seller profile (seller only)
 router.put('/seller-profile', authenticate, authorize('seller'), async (req: AuthRequest, res) => {
   try {
@@ -184,6 +221,38 @@ router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, r
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Update user (admin only)
+router.put('/:id', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { firstName, lastName, email, phone, role, password } = req.body;
+
+    const updateData: any = {
+      firstName,
+      lastName,
+      email,
+      phone,
+      role,
+    };
+
+    if (password) {
+      const bcrypt = await import('bcryptjs');
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });

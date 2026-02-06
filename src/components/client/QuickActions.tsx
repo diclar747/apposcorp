@@ -19,25 +19,25 @@ interface QuickAction {
 const actions: QuickAction[] = [
   {
     icon: ArrowUp,
-    label: 'Sent',
+    label: 'Enviar',
     href: '/app/wallet/transferir',
     color: 'from-blue-500 to-blue-600',
   },
   {
     icon: ArrowDown,
-    label: 'Receive',
+    label: 'Recibir',
     href: '/app/wallet/recargar',
     color: 'from-emerald-500 to-emerald-600',
   },
   {
     icon: Wallet,
-    label: 'Loan',
+    label: 'Préstamos',
     href: '/app/creditos',
     color: 'from-violet-500 to-violet-600',
   },
   {
     icon: ScanLine,
-    label: 'Topup',
+    label: 'Recargar',
     href: '/app/escanear',
     color: 'from-orange-500 to-orange-600',
   },

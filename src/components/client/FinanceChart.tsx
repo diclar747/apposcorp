@@ -32,10 +32,10 @@ interface FinanceChartProps {
 type Period = 'day' | 'week' | 'month' | 'year';
 
 const periods: { value: Period; label: string }[] = [
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'year', label: 'Year' },
+  { value: 'day', label: 'Día' },
+  { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mes' },
+  { value: 'year', label: 'Año' },
 ];
 
 const pieColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -99,7 +99,7 @@ export function FinanceChart({
                 strokeWidth={2}
                 fillOpacity={1} 
                 fill="url(#colorBalance)" 
-                name="Balance"
+                name="Saldo"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -197,7 +197,7 @@ export function CategoryChart({
   
   return (
     <div className={cn('chart-container flex flex-col items-center', className)}>
-      <h3 className="font-semibold mb-4 self-start">Category Chart</h3>
+      <h3 className="font-semibold mb-4 self-start">Categorías</h3>
       
       <div className="relative">
         <ResponsiveContainer width={200} height={200}>
@@ -222,7 +222,7 @@ export function CategoryChart({
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-bold">{Math.round((data[0]?.value || 0) / total * 100)}%</span>
-          <span className="text-xs text-muted-foreground">Transaction</span>
+          <span className="text-xs text-muted-foreground">Transacción</span>
         </div>
       </div>
       

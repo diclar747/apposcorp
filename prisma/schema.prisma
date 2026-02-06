@@ -81,6 +81,7 @@ model SellerProfile {
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   store          Store?
   suppliers      Supplier[]
+  purchases      Purchase[]
 
   @@map("seller_profiles")
 }
@@ -116,15 +117,50 @@ model Supplier {
   email          String?
   phone          String?
   address        String?
-  taxId          String?
+  taxId          String?         // RUC
+  paymentTerms   String?         // Forma de pago: crédito, contado, etc.
   notes          String?
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   stockMovements StockMovement[]
+  purchases      Purchase[]
+  products       Product[]
   seller         SellerProfile   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@map("suppliers")
+}
+
+model Purchase {
+  id            String         @id @default(uuid())
+  sellerId      String
+  supplierId    String
+  invoiceName   String?
+  invoiceNumber String
+  purchaseDate  DateTime       @default(now())
+  totalAmount   Float          @default(0)
+  status        String         @default("completed") // completed, pending, cancelled
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         PurchaseItem[]
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
+  seller        SellerProfile  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid())
+  purchaseId  String
+  productId   String
+  quantity    Int
+  unitCost    Float
+  totalCost   Float
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@map("purchase_items")
 }
 
 model StockMovement {
@@ -149,6 +185,8 @@ model Product {
   name           String
   description    String
   price          Float
+  cost           Float?             @default(0)
+  profitPercentage Float?           @default(0)
   comparePrice   Float?
   stock          Int                @default(0)
   sku            String             @unique
@@ -171,6 +209,9 @@ model Product {
   seller         SellerProfile      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   reviews        Review[]
   stockMovements StockMovement[]
+  purchaseItems  PurchaseItem[]
+  supplierId     String?
+  supplier       Supplier?          @relation(fields: [supplierId], references: [id])
 
   @@map("products")
 }

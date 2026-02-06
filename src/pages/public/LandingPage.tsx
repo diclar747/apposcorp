@@ -42,22 +42,19 @@ import { useThemeStore } from '@/stores/themeStore';
 // Oscorp Logo Component
 const OscorpLogo = ({ className = '', size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' | 'xl' }) => {
   const sizes = {
-    sm: 'h-8',
-    md: 'h-10',
-    lg: 'h-14',
-    xl: 'h-20'
+    sm: 'h-12',
+    md: 'h-16',
+    lg: 'h-24',
+    xl: 'h-32'
   };
 
   return (
     <div className={cn('flex flex-col items-center', className)}>
       <img
-        src="https://oscorp-two.vercel.app/oscorp-logo.png"
+        src="https://www.oscorp.com.py/assets/images/logos/logo.png"
         alt="Oscorp"
         className={cn('w-auto object-contain', sizes[size])}
       />
-      <span className="text-[9px] tracking-[0.25em] text-gray-500 font-medium mt-0.5">
-        INGENIO EMPRESARIAL
-      </span>
     </div>
   );
 };
@@ -236,14 +233,14 @@ const HeroSection = () => {
               </Badge>
             </motion.div>
 
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[0.95] mb-8">
-              Creer. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-600 to-indigo-600 dark:from-blue-400 dark:via-violet-400 dark:to-indigo-400">Crear.</span> <br />
-              Crecer.
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.1] mb-8">
+              Somos una Empresa <br />
+              Paraguaya <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-600 to-indigo-600 dark:from-blue-400 dark:via-violet-400 dark:to-indigo-400">Economía Colaborativa</span>
             </h1>
 
             <p className="text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-lg leading-relaxed font-light">
-              <span className="font-semibold text-slate-900 dark:text-white">Somos una Empresa Paraguaya de Economía Colaborativa.</span> Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones.
+              Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones
             </p>
 
             <div className="flex flex-wrap gap-5">
@@ -845,12 +842,6 @@ const Footer = () => {
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           <div>
             <OscorpLogo className="mb-4" size="md" />
-            <p className="text-gray-400 text-sm">
-              "Te conectamos con tu éxito financiero"
-            </p>
-            <p className="text-gray-500 text-xs mt-2">
-              CREER · CREAR · CRECER
-            </p>
           </div>
 
           <div>

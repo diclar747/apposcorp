@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import { productsApi } from '@/lib/api';
+import { productsApi, suppliersApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,20 @@ import {
 import { toast } from 'sonner';
 import type { Product, ProductType, ProductVisibility } from '@/types';
 
+const PRODUCT_CATEGORIES = [
+  'Tecnología',
+  'Ropa y Accesorios',
+  'Hogar y Muebles',
+  'Alimentos y Bebidas',
+  'Salud y Belleza',
+  'Deportes y Fitness',
+  'Juguetes y Hobbies',
+  'Libros y Papelería',
+  'Automotriz',
+  'Servicios',
+  'Otros'
+];
+
 export default function SellerProducts() {
   const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +64,7 @@ export default function SellerProducts() {
 
   // State for products
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch products
@@ -68,8 +83,18 @@ export default function SellerProducts() {
     }
   };
 
+  const fetchSuppliers = async () => {
+    try {
+      const data = await suppliersApi.getAll();
+      setSuppliers(data);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchSuppliers();
   }, [user?.id]);
 
   // State for modal
@@ -89,7 +114,8 @@ export default function SellerProducts() {
     type: 'physical',
     visibility: 'both',
     status: 'active',
-    images: []
+    images: [],
+    supplierId: null
   });
 
   const filteredProducts = products.filter(product => {
@@ -117,7 +143,8 @@ export default function SellerProducts() {
         type: 'physical',
         visibility: 'both',
         status: 'active',
-        images: ['https://images.unsplash.com/photo-1586769852836-bc069f19e1b6?w=600&h=600&fit=crop']
+        images: ['https://images.unsplash.com/photo-1586769852836-bc069f19e1b6?w=600&h=600&fit=crop'],
+        supplierId: null
       });
     }
     setIsModalOpen(true);
@@ -232,6 +259,7 @@ export default function SellerProducts() {
                   <TableHead>Producto</TableHead>
                   <TableHead>Precio</TableHead>
                   <TableHead>Stock</TableHead>
+                  <TableHead>Proveedor</TableHead>
                   <TableHead>Visibilidad</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -272,6 +300,11 @@ export default function SellerProducts() {
                     <TableCell>
                       <span className={`font-medium ${product.stock < 5 ? 'text-red-600' : 'text-gray-900'}`}>
                         {product.stock} unidades
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-600">
+                        {product.supplier?.name || '-'}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -354,12 +387,21 @@ export default function SellerProducts() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Categoría *</Label>
-                <Input
-                  id="category"
+                <Select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="Ej: Tecnología"
-                />
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="stock">Stock Inicial</Label>
@@ -370,6 +412,24 @@ export default function SellerProducts() {
                   onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Proveedor (Opcional)</Label>
+              <Select
+                value={formData.supplierId || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, supplierId: value === 'none' ? null : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar proveedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin proveedor</SelectItem>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="border-t pt-4 mt-2">

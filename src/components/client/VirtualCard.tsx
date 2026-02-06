@@ -88,7 +88,7 @@ export function VirtualCard({
               {/* Bank/Brand Name */}
               <div className="text-right">
                 <h3 className="text-white/90 font-bold text-lg tracking-wider italic">OSCORP</h3>
-                <p className="text-white/50 text-[10px] uppercase tracking-widest">Platinum</p>
+                <p className="text-white/50 text-[10px] uppercase tracking-widest">Platino</p>
               </div>
             </div>
 
@@ -127,11 +127,11 @@ export function VirtualCard({
             <div className="flex items-end justify-between relative z-10">
               <div className="flex items-end gap-8">
                 <div className="space-y-0.5">
-                  <p className="text-white/40 text-[8px] uppercase tracking-widest ml-1">Holder</p>
+                  <p className="text-white/40 text-[8px] uppercase tracking-widest ml-1">Titular</p>
                   <p className="text-white font-medium uppercase tracking-widest text-sm sm:text-base drop-shadow-sm">{cardHolder}</p>
                 </div>
                 <div className="space-y-0.5">
-                  <p className="text-white/40 text-[8px] uppercase tracking-widest ml-1">Expires</p>
+                  <p className="text-white/40 text-[8px] uppercase tracking-widest ml-1">Vencimiento</p>
                   <p className="text-white font-medium text-sm sm:text-base tracking-wider drop-shadow-sm">{expiryDate}</p>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export function VirtualCard({
 
             <div className="mt-4 text-center">
               <p className="font-semibold text-foreground">{cardHolder}</p>
-              <p className="text-sm text-muted-foreground">Scan to pay</p>
+              <p className="text-sm text-muted-foreground">Escanear para pagar</p>
             </div>
           </motion.div>
         )}
@@ -213,7 +213,7 @@ export function VirtualCardCompact({
         </div>
 
         <div className="mb-4">
-          <p className="text-white/50 text-xs mb-1">Current Balance</p>
+          <p className="text-white/50 text-xs mb-1">Saldo Actual</p>
           <p className="text-white text-3xl font-bold">₲ {balance.toLocaleString()}</p>
         </div>
 

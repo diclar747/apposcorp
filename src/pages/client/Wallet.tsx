@@ -6,42 +6,44 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   QrCode,
-  Send,
-  Download,
-  CreditCard,
   ChevronRight,
-  Plus,
   MoreHorizontal,
-  TrendingUp,
-  TrendingDown,
   Eye,
   EyeOff
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
-import { formatCurrency, formatDateTime, getTransactionTypeInfo } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VirtualCard } from '@/components/client/VirtualCard';
-import { TransactionList } from '@/components/client/TransactionList';
 import { FinanceChart } from '@/components/client/FinanceChart';
-import { QuickActions } from '@/components/client/QuickActions';
 
-// Chart data
-const weeklyData = [
-  { name: 'Lun', income: 450000, expense: 320000 },
-  { name: 'Mar', income: 520000, expense: 280000 },
-  { name: 'Mie', income: 380000, expense: 410000 },
-  { name: 'Jue', income: 610000, expense: 350000 },
-  { name: 'Vie', income: 720000, expense: 420000 },
-  { name: 'Sab', income: 850000, expense: 580000 },
-  { name: 'Dom', income: 490000, expense: 310000 },
-];
+// Build weekly chart data from real transactions
+const buildWeeklyData = (txs: any[]) => {
+  const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+  const weekData = days.map(name => ({ name, income: 0, expense: 0 }));
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  txs.forEach((t: any) => {
+    const txDate = new Date(t.createdAt);
+    if (txDate >= weekAgo) {
+      const dayIndex = txDate.getDay();
+      if (t.amount > 0) {
+        weekData[dayIndex].income += t.amount;
+      } else {
+        weekData[dayIndex].expense += Math.abs(t.amount);
+      }
+    }
+  });
+  return [...weekData.slice(1), weekData[0]];
+};
 
 const quickActions = [
-  { icon: Download, label: 'Recargar', href: '/app/wallet/recargar', color: 'bg-green-500', bgColor: 'bg-green-100 dark:bg-green-500/20' },
-  { icon: Send, label: 'Transferir', href: '/app/wallet/transferir', color: 'bg-blue-500', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
-  { icon: QrCode, label: 'Escanear', href: '/app/escanear', color: 'bg-purple-500', bgColor: 'bg-purple-100 dark:bg-purple-500/20' },
-  { icon: CreditCard, label: 'Retirar', href: '/app/wallet/retirar', color: 'bg-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
+  { icon: ArrowUpRight, label: 'Enviar', href: '/app/wallet/transferir', color: 'bg-blue-500', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
+  { icon: ArrowDownLeft, label: 'Recibir', href: '/app/tarjeta', color: 'bg-green-500', bgColor: 'bg-green-100 dark:bg-green-500/20' },
+  { icon: Wallet, label: 'Préstamos', href: '/app/creditos', color: 'bg-purple-500', bgColor: 'bg-purple-100 dark:bg-purple-500/20' },
+  { icon: QrCode, label: 'Cargar', href: '/app/escanear', color: 'bg-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
 ];
 
 export default function ClientWallet() {
@@ -99,7 +101,7 @@ export default function ClientWallet() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Mi Billetera</p>
-            <h1 className="text-2xl font-bold">Wallet</h1>
+            <h1 className="text-2xl font-bold">Billetera</h1>
           </div>
           <Button
             variant="ghost"
@@ -115,11 +117,11 @@ export default function ClientWallet() {
       {/* Virtual Card */}
       <div className="px-4">
         <VirtualCard
-          balance={showBalance ? (wallet?.balance || 2500000) : 0}
-          cardNumber="4532 1234 5678 9012"
+          balance={showBalance ? (wallet?.balance || 0) : 0}
+          cardNumber={user?.virtualCard?.cardNumber || 'OSC000000'}
           cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
           expiryDate="12/28"
-          cvv="123"
+          cvv="***"
           qrValue={`oscorp://pay?user=${user?.id}&name=${user?.firstName}`}
         />
       </div>
@@ -127,11 +129,11 @@ export default function ClientWallet() {
       {/* Quick Stats */}
       <div className="px-4 grid grid-cols-2 gap-3">
         <div className="premium-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Income</p>
+          <p className="text-xs text-muted-foreground mb-1">Ingresos</p>
           <p className="text-lg font-bold text-emerald-500">+₲ {totalIncome.toLocaleString()}</p>
         </div>
         <div className="premium-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Expense</p>
+          <p className="text-xs text-muted-foreground mb-1">Egresos</p>
           <p className="text-lg font-bold text-rose-500">-₲ {totalExpense.toLocaleString()}</p>
         </div>
       </div>
@@ -167,7 +169,7 @@ export default function ClientWallet() {
       {/* Finance Chart */}
       <div className="px-4">
         <FinanceChart
-          data={weeklyData}
+          data={buildWeeklyData(transactions)}
           type="area"
           title="Resumen semanal"
         />

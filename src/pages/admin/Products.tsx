@@ -41,6 +41,21 @@ import {
 import { toast } from 'sonner';
 import type { Product, ProductType, ProductVisibility } from '@/types';
 import { useAuthStore } from '@/stores';
+import { usersApi } from '@/lib/api';
+
+const PRODUCT_CATEGORIES = [
+  'Tecnología',
+  'Ropa y Accesorios',
+  'Hogar y Muebles',
+  'Alimentos y Bebidas',
+  'Salud y Belleza',
+  'Deportes y Fitness',
+  'Juguetes y Hobbies',
+  'Libros y Papelería',
+  'Automotriz',
+  'Servicios',
+  'Otros'
+];
 
 export default function AdminProducts() {
   const { user } = useAuthStore();
@@ -48,13 +63,15 @@ export default function AdminProducts() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'out_of_stock'>('all');
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [sellers, setSellers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSellerId, setSelectedSellerId] = useState<string>('');
 
-  // Fetch products
+  // Fetch products and sellers
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const data = await productsApi.getAll(); // Admin fetches ALL products
+      const data = await productsApi.getAll();
       setProducts(data);
     } catch (error) {
       toast.error('Error al cargar productos');
@@ -64,8 +81,18 @@ export default function AdminProducts() {
     }
   };
 
+  const fetchSellers = async () => {
+    try {
+      const allUsers = await usersApi.getAll();
+      setSellers(allUsers.filter((u: any) => u.role === 'seller'));
+    } catch (error) {
+      console.error('Error cargando vendedores:', error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchSellers();
   }, []);
 
   // Modal State
@@ -136,20 +163,19 @@ export default function AdminProducts() {
       return;
     }
 
+    if (!editingProduct && !selectedSellerId) {
+      toast.error('Selecciona un vendedor para el producto');
+      return;
+    }
+
     try {
       if (editingProduct) {
         await productsApi.update(editingProduct.id, formData);
         toast.success('Producto actualizado correctamente');
       } else {
-        // Admin needs to provide a sellerId if they are creating it. 
-        // For now, we assume they are creating for themselves (if they have a seller profile) or we might need a "Select Seller" field later.
-        // If user is superadmin but has no seller profile, this might fail on backend depending on logic.
-        // Let's try passing the user's ID as sellerId for now, or fallback to a system default if needed.
-
         await productsApi.create({
           ...formData,
-          sellerId: user?.id, // Will be handled by backend to prefer sellerProfile or direct ID
-          storeId: 'admin-store' // Placeholder
+          sellerId: selectedSellerId,
         });
         toast.success('Producto creado correctamente');
       }
@@ -309,6 +335,26 @@ export default function AdminProducts() {
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {!editingProduct && (
+              <div className="space-y-2">
+                <Label>Vendedor *</Label>
+                <Select
+                  value={selectedSellerId}
+                  onValueChange={(value) => setSelectedSellerId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sellers.map((seller: any) => (
+                      <SelectItem key={seller.id} value={seller.id}>
+                        {seller.firstName} {seller.lastName} - {seller.sellerProfile?.storeName || seller.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre del Producto *</Label>
@@ -343,12 +389,21 @@ export default function AdminProducts() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Categoría *</Label>
-                <Input
-                  id="category"
+                <Select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="Ej: Tecnología"
-                />
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="stock">Stock Inicial</Label>

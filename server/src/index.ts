@@ -12,6 +12,9 @@ import creditRoutes from './routes/credits.js';
 import notificationRoutes from './routes/notifications.js';
 import financeRoutes from './routes/finances.js';
 import settingsRoutes from './routes/settings.js';
+import supplierRoutes from './routes/suppliers.js';
+import purchaseRoutes from './routes/purchases.js';
+import courseRoutes from './routes/courses.js';
 import { prisma } from './utils/prisma.js';
 
 dotenv.config();
@@ -65,9 +68,11 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/credits', creditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/campaigns', campaignRoutes);
-app.use('/api/notifications', notificationRoutes);
 app.use('/api/finances', financeRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/purchases', purchaseRoutes);
+app.use('/api/courses', courseRoutes);
 
 // Setup endpoint - cria todos os usuários de teste
 app.get('/api/setup', async (req, res) => {
