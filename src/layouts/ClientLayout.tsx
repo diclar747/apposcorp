@@ -32,6 +32,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -125,7 +126,8 @@ export default function ClientLayout() {
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 p-0">
+            <SheetContent side="left" className="w-80 p-0" aria-describedby={undefined}>
+              <SheetTitle className="sr-only">Menu de navegacion</SheetTitle>
               <div className="h-full flex flex-col">
                 {/* User Info Header */}
                 <div className="relative overflow-hidden">

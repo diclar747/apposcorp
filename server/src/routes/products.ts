@@ -48,6 +48,7 @@ router.get('/', async (req, res) => {
 
     res.json(products);
   } catch (error) {
+    console.error('Get products error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
@@ -68,6 +69,7 @@ router.get('/featured', async (req, res) => {
 
     res.json(products);
   } catch (error) {
+    console.error('Get featured products error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
@@ -103,11 +105,11 @@ router.get('/:id', async (req, res) => {
 
     res.json(product);
   } catch (error) {
+    console.error('Get product by ID error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
 
-// Create product (seller or admin)
 // Create product (seller or admin)
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
@@ -251,6 +253,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 
     res.json(updatedProduct);
   } catch (error) {
+    console.error('Update product error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
@@ -279,6 +282,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
 
     res.json({ message: 'Produto deletado com sucesso' });
   } catch (error) {
+    console.error('Delete product error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
