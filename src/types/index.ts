@@ -32,7 +32,7 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   walletId: string;
-  cardQR: VirtualCard;
+  virtualCard?: VirtualCard;
   bankData?: BankData;
   sellerProfile?: SellerProfile;
   ingenioAccess: boolean;
