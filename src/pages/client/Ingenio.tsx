@@ -13,7 +13,13 @@ import {
   Home,
   CreditCard,
   BookOpen,
-  Play
+  Play,
+  CheckCircle,
+  Clock,
+  Shield,
+  BarChart3,
+  GraduationCap,
+  Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { formatCurrency } from '@/lib/utils';
@@ -28,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
+import { ingenioApi } from '@/lib/api';
 
 // 5S Methodology Cards
 const ssCards = [
@@ -37,6 +44,26 @@ const ssCards = [
   { title: 'Seiketsu', subtitle: 'Estandarización', description: 'Crea hábitos financieros', color: 'bg-yellow-500', icon: Wallet },
   { title: 'Shitsuke', subtitle: 'Disciplina', description: 'Mantén el control constante', color: 'bg-purple-500', icon: Target },
 ];
+
+interface ProgramInfo {
+  name: string;
+  price: number;
+  currency: string;
+  installmentOptions: { installments: number; amount: number; label: string }[];
+  includes: string[];
+  coursesCount: number;
+  description: string;
+}
+
+interface Subscription {
+  id: string;
+  totalAmount: number;
+  amountPaid: number;
+  installments: number;
+  status: 'pending' | 'partial' | 'completed' | 'cancelled';
+  activatedAt: string | null;
+  payments: { id: string; amount: number; paymentNumber: number; paidAt: string }[];
+}
 
 export default function ClientIngenio() {
   const { user, token } = useAuthStore();
@@ -60,17 +87,28 @@ export default function ClientIngenio() {
     date: new Date().toISOString().split('T')[0]
   });
 
+  // Subscription/Payment State
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+  const [programInfo, setProgramInfo] = useState<ProgramInfo | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [selectedInstallments, setSelectedInstallments] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+
   useEffect(() => {
     if (user?.ingenioAccess) {
       fetchData();
       fetchCourses();
+    } else {
+      fetchSubscriptionStatus();
+      setLoading(false);
     }
   }, [user]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/finances/summary', {
+      const res = await fetch('/api/finances/summary', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -86,9 +124,9 @@ export default function ClientIngenio() {
 
   const fetchCourses = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/courses', {
+      const res = await fetch('/api/courses', {
         headers: { 'Authorization': `Bearer ${token}` }
-      }); // Public endpoint logic in backend, but good to auth
+      });
       if (res.ok) {
         const data = await res.json();
         setCourses(data);
@@ -98,15 +136,94 @@ export default function ClientIngenio() {
     }
   };
 
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const sub = await ingenioApi.getSubscription();
+      setSubscription(sub);
+    } catch {
+      // No subscription yet
+    }
+    try {
+      const walletRes = await fetch('/api/wallet', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (walletRes.ok) {
+        const walletData = await walletRes.json();
+        setWalletBalance(walletData.balance);
+      }
+    } catch {
+      // Wallet not found
+    }
+  };
+
+  const handleOpenAccessModal = async () => {
+    try {
+      const info = await ingenioApi.getProgram();
+      setProgramInfo(info);
+      await fetchSubscriptionStatus();
+      setIsAccessModalOpen(true);
+    } catch {
+      toast.error('Error al cargar información del programa');
+    }
+  };
+
+  const handleSubscribe = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await ingenioApi.subscribe(selectedInstallments);
+      setSubscription(result);
+      toast.success(
+        selectedInstallments === 1
+          ? 'Acceso activado correctamente'
+          : 'Primer pago registrado exitosamente'
+      );
+      if (selectedInstallments === 1) {
+        setIsAccessModalOpen(false);
+        // Reload page to show full dashboard
+        window.location.reload();
+      } else {
+        await fetchSubscriptionStatus();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al procesar el pago');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePayInstallment = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await ingenioApi.pay();
+      setSubscription(result);
+      const isFullyPaid = result.status === 'completed';
+      toast.success(
+        isFullyPaid
+          ? 'Pago completado. Tu acceso ha sido activado'
+          : 'Cuota pagada exitosamente'
+      );
+      if (isFullyPaid) {
+        setIsAccessModalOpen(false);
+        window.location.reload();
+      } else {
+        await fetchSubscriptionStatus();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al procesar el pago');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCreateRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      let url = 'http://localhost:3001/api/finances';
+      let url = '/api/finances';
       let body: any = newRecord;
 
       if (newRecord.type === 'budget') {
         const dateObj = new Date(newRecord.date);
-        url = 'http://localhost:3001/api/finances/budget';
+        url = '/api/finances/budget';
         body = {
           month: dateObj.getMonth() + 1,
           year: dateObj.getFullYear(),
@@ -114,7 +231,6 @@ export default function ClientIngenio() {
           expenseLimit: Number(newRecord.description)
         };
       } else {
-        // Ensure amount is number
         body.amount = Number(body.amount);
       }
 
@@ -132,8 +248,6 @@ export default function ClientIngenio() {
         setIsAddOpen(false);
         setNewRecord({ type: 'expense', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
         fetchData();
-        // Also refresh budget if we are in budget view (we can trigger a reload or context update, but fetchData should handle summary)
-        // Ideally we should reload budget section too if visible.
       } else {
         toast.error('Error al guardar');
       }
@@ -142,24 +256,332 @@ export default function ClientIngenio() {
     }
   };
 
+  // ========== NO ACCESS VIEW ==========
   if (!user?.ingenioAccess) {
+    const hasPartialSubscription = subscription && subscription.status === 'partial';
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-        <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
-          <Target className="w-12 h-12 text-purple-600" />
+      <div className="space-y-6 pb-20">
+        {/* Header */}
+        <div className="px-4 pt-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <Target className="w-4 h-4 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Ingenio Millonario</h1>
+          </div>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Ingenio Millonario</h2>
-        <p className="text-gray-500 max-w-md mx-auto mb-8">
-          Este módulo exclusivo te permite gestionar tus finanzas y acceder a educación premium. Contacta al administrador para activar tu acceso.
-        </p>
-        <Button variant="outline" className="gap-2">
-          <Wallet className="w-4 h-4" />
-          Solicitar Acceso
-        </Button>
+
+        <div className="px-4 space-y-6">
+          {/* Hero Card */}
+          <Card className="overflow-hidden border-none shadow-xl">
+            <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 p-6 text-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Programa Ingenio Millonario</h2>
+                  <p className="text-purple-200 text-sm">Educación Financiera Integral</p>
+                </div>
+              </div>
+              <p className="text-purple-100 text-sm leading-relaxed mb-4">
+                Programa integral de Educación Financiera con metodología de Aula Invertida.
+                Incluye acceso a todos los cursos, herramientas de gestión financiera personal
+                y acompañamiento con la aplicación.
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold">{formatCurrency(700000)}</span>
+                <span className="text-purple-200 text-sm">pago único o en cuotas</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* What's Included */}
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold dark:text-white">
+                Qué incluye el programa
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { icon: GraduationCap, text: 'Todos los cursos de Educación Financiera', color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
+                { icon: BarChart3, text: 'Módulo de Gestión de Ingresos y Egresos', color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+                { icon: Target, text: 'Presupuestos de Gastos y Ganancias', color: 'text-green-600 bg-green-100 dark:bg-green-900/30' },
+                { icon: Shield, text: 'Metodología 5S aplicada a Finanzas', color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30' },
+                { icon: PieChartIcon, text: 'Matriz Financiera Personalizada', color: 'text-red-600 bg-red-100 dark:bg-red-900/30' },
+                { icon: CheckCircle, text: 'Certificación al completar el programa', color: 'text-indigo-600 bg-indigo-100 dark:bg-indigo-900/30' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.color}`}>
+                    <item.icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{item.text}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Partial Payment Progress */}
+          {hasPartialSubscription && (
+            <Card className="border-purple-200 dark:border-purple-800 dark:bg-slate-900">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-purple-600" />
+                    <span className="font-medium text-gray-900 dark:text-white text-sm">Pagos en curso</span>
+                  </div>
+                  <Badge className="bg-purple-100 text-purple-700 border-none">
+                    {subscription!.payments.length}/{subscription!.installments} cuotas
+                  </Badge>
+                </div>
+                <Progress
+                  value={(subscription!.amountPaid / subscription!.totalAmount) * 100}
+                  className="h-2"
+                />
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span>Pagado: {formatCurrency(subscription!.amountPaid)}</span>
+                  <span>Restante: {formatCurrency(subscription!.totalAmount - subscription!.amountPaid)}</span>
+                </div>
+
+                {/* Payment History */}
+                <div className="space-y-2 pt-2 border-t dark:border-slate-800">
+                  {subscription!.payments.map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Cuota {payment.paymentNumber}
+                        </span>
+                      </div>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {formatCurrency(payment.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  onClick={handleOpenAccessModal}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Pagar siguiente cuota
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* CTA Button */}
+          {!hasPartialSubscription && (
+            <Button
+              onClick={handleOpenAccessModal}
+              className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
+            >
+              <Wallet className="w-5 h-5 mr-2" />
+              Solicitar Acceso
+            </Button>
+          )}
+        </div>
+
+        {/* Access Modal */}
+        <Dialog open={isAccessModalOpen} onOpenChange={setIsAccessModalOpen}>
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-purple-600" />
+                {hasPartialSubscription ? 'Pagar Cuota' : 'Acceder a Ingenio Millonario'}
+              </DialogTitle>
+            </DialogHeader>
+
+            {hasPartialSubscription ? (
+              /* Installment Payment View */
+              <div className="space-y-4">
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Total del programa</span>
+                    <span className="font-medium dark:text-white">{formatCurrency(subscription!.totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Ya pagado</span>
+                    <span className="font-medium text-green-600">{formatCurrency(subscription!.amountPaid)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t dark:border-purple-800">
+                    <span className="dark:text-white">Restante</span>
+                    <span className="text-purple-600">{formatCurrency(subscription!.totalAmount - subscription!.amountPaid)}</span>
+                  </div>
+                </div>
+
+                {(() => {
+                  const remaining = subscription!.totalAmount - subscription!.amountPaid;
+                  const remainingInstallments = subscription!.installments - subscription!.payments.length;
+                  const nextAmount = remainingInstallments === 1
+                    ? remaining
+                    : Math.ceil(remaining / remainingInstallments);
+                  return (
+                    <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Próxima cuota</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(nextAmount)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Cuota {subscription!.payments.length + 1} de {subscription!.installments}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Saldo de billetera</p>
+                    <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                  </div>
+                  <Wallet className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <Button
+                  onClick={handlePayInstallment}
+                  disabled={isProcessing}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Pagar Cuota
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              /* New Subscription View */
+              <div className="space-y-4">
+                {/* Program Summary */}
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl p-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Programa completo incluye:</h3>
+                  <ul className="space-y-1.5">
+                    {(programInfo?.includes || [
+                      'Todos los cursos de Educación Financiera',
+                      'Módulo de Gestión de Ingresos y Egresos',
+                      'Presupuestos de gastos y ganancias',
+                      'Metodología 5S aplicada a finanzas',
+                      'Matriz Financiera personalizada',
+                      'Certificación al completar',
+                    ]).map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Price */}
+                <div className="text-center py-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Precio del programa</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(700000)}</p>
+                </div>
+
+                {/* Installment Options */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Forma de pago</Label>
+                  <div className="grid gap-2">
+                    {[
+                      { value: 1, label: 'Pago único', amount: 700000 },
+                      { value: 2, label: '2 cuotas', amount: Math.ceil(700000 / 2) },
+                      { value: 3, label: '3 cuotas', amount: Math.ceil(700000 / 3) },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSelectedInstallments(option.value)}
+                        className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                          selectedInstallments === option.value
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                            : 'border-gray-200 dark:border-slate-700 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            selectedInstallments === option.value
+                              ? 'border-purple-500 bg-purple-500'
+                              : 'border-gray-300 dark:border-slate-600'
+                          }`}>
+                            {selectedInstallments === option.value && (
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-white text-sm">{option.label}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-purple-600">
+                          {formatCurrency(option.amount)}{option.value > 1 ? ' c/u' : ''}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Wallet Balance */}
+                <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Saldo de billetera</p>
+                    <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                  </div>
+                  <Wallet className="w-5 h-5 text-gray-400" />
+                </div>
+
+                {/* Payment Summary */}
+                <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {selectedInstallments === 1 ? 'Total a pagar ahora' : `Primera cuota (1/${selectedInstallments})`}
+                    </span>
+                    <span className="font-bold text-gray-900 dark:text-white">
+                      {formatCurrency(
+                        selectedInstallments === 1
+                          ? 700000
+                          : Math.ceil(700000 / selectedInstallments)
+                      )}
+                    </span>
+                  </div>
+                  {selectedInstallments > 1 && (
+                    <p className="text-xs text-gray-400">
+                      Total del programa: {formatCurrency(700000)} en {selectedInstallments} cuotas
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleSubscribe}
+                  disabled={isProcessing}
+                  className="w-full h-11 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Procesando pago...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      {selectedInstallments === 1 ? 'Pagar y Acceder' : 'Pagar Primera Cuota'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
+  // ========== FULL ACCESS VIEW (existing dashboard) ==========
   return (
     <div className="space-y-6 pb-20">
       {/* Header */}
@@ -221,16 +643,7 @@ export default function ClientIngenio() {
                     <Input
                       type="number"
                       placeholder="0"
-                      value={newRecord.amount} // We'll use 'amount' for Income Goal temporarily or add new state? 
-                      // actually better to check the handler logic below. 
-                      // Let's use 'amount' for Income Goal and 'description' for Expense Limit (parsed) or just use separate temp state in form?
-                      // To avoid complex refactors, let's just add new fields to state in the main component or handle it here with additional inputs controlled by the same state object if we expand it.
-                      // Let's assume we expanded the state or use 'amount' and 'description' cleverly? No, that's hacky.
-                      // Best is to use specific fields. We can add specific fields to newRecord in the `const [newRecord...` line, but I am only replacing the FORM here.
-                      // I need to update the state definition first.
-                      // Wait, I can't update state definition with this tool if it is outside the range.
-                      // The state definition is at lines 56-61. 
-                      // I should probably use a multi_replace to do both safely.
+                      value={newRecord.amount}
                       onChange={(e) => setNewRecord({ ...newRecord, amount: e.target.value })}
                       required
                     />
@@ -240,8 +653,7 @@ export default function ClientIngenio() {
                     <Input
                       type="number"
                       placeholder="0"
-                      value={newRecord.description} // Using description field for expense limit as a hack or better add fields? 
-                      // I strongly prefer adding fields.
+                      value={newRecord.description}
                       onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
                       required
                     />
@@ -293,7 +705,6 @@ export default function ClientIngenio() {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          {/* ... (Existing Dashboard Content) ... */}
           {/* Balance Cards */}
           <div className="grid grid-cols-2 gap-3">
             <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-none shadow-lg">
@@ -469,7 +880,7 @@ function BudgetSection() {
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
 
-      const res = await fetch(`http://localhost:3001/api/finances/budget?month=${month}&year=${year}`, {
+      const res = await fetch(`/api/finances/budget?month=${month}&year=${year}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -494,7 +905,7 @@ function BudgetSection() {
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
 
-      const res = await fetch('http://localhost:3001/api/finances/budget', {
+      const res = await fetch('/api/finances/budget', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -621,4 +1032,3 @@ function BudgetSection() {
     </div>
   );
 }
-

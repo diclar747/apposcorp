@@ -39,6 +39,7 @@ model User {
   transactions        Transaction[]
   virtualCard         VirtualCard?
   wallet              Wallet?
+  ingenioSubscription IngenioSubscription?
 
   @@map("users")
 }
@@ -711,6 +712,40 @@ enum CardDesign {
   gradient_purple
   gradient_dark
   minimal
+}
+
+model IngenioSubscription {
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  totalAmount  Float           @default(700000)
+  amountPaid   Float           @default(0)
+  installments Int             @default(1)
+  status       IngenioStatus   @default(pending)
+  activatedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  payments     IngenioPayment[]
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ingenio_subscriptions")
+}
+
+model IngenioPayment {
+  id             String              @id @default(uuid())
+  subscriptionId String
+  amount         Float
+  paymentNumber  Int
+  paidAt         DateTime            @default(now())
+  subscription   IngenioSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("ingenio_payments")
+}
+
+enum IngenioStatus {
+  pending
+  partial
+  completed
+  cancelled
 }
 
 model SystemSetting {

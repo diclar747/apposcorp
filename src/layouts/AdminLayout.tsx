@@ -20,7 +20,8 @@ import {
   ChevronDown,
   TrendingUp,
   DollarSign,
-  Send
+  Send,
+  Target
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { cn, getInitials } from '@/lib/utils';
@@ -49,6 +50,7 @@ const sidebarItems = [
   { icon: CreditCard, label: 'Créditos', href: '/admin/creditos' },
   { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
   { icon: BookOpen, label: 'Cursos', href: '/admin/cursos' },
+  { icon: Target, label: 'Ingenio Millonario', href: '/admin/ingenio' },
   { icon: Send, label: 'Campañas', href: '/admin/campanas' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
 ];

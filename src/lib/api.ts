@@ -226,6 +226,31 @@ export const campaignsApi = {
     }),
 };
 
+// Ingenio Millonario API
+export const ingenioApi = {
+  getProgram: () => fetchWithAuth('/ingenio/program'),
+  getSubscription: () => fetchWithAuth('/ingenio/subscription'),
+  subscribe: (installments: number) =>
+    fetchWithAuth('/ingenio/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ installments }),
+    }),
+  pay: () =>
+    fetchWithAuth('/ingenio/pay', {
+      method: 'POST',
+    }),
+  // Admin
+  getAllSubscriptions: () => fetchWithAuth('/ingenio/subscriptions'),
+  activateSubscription: (id: string) =>
+    fetchWithAuth(`/ingenio/subscriptions/${id}/activate`, {
+      method: 'PATCH',
+    }),
+  cancelSubscription: (id: string) =>
+    fetchWithAuth(`/ingenio/subscriptions/${id}/cancel`, {
+      method: 'PATCH',
+    }),
+};
+
 // Push Notifications API
 export const pushApi = {
   getStats: () => fetchWithAuth('/push/stats'),
@@ -269,6 +294,7 @@ export default {
   wallet: walletApi,
   credits: creditsApi,
   notifications: notificationsApi,
+  ingenio: ingenioApi,
   suppliers: suppliersApi,
   purchases: purchasesApi,
 };

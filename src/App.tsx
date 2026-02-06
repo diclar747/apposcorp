@@ -26,6 +26,7 @@ import AdminWithdrawals from '@/pages/admin/Withdrawals';
 import AdminCredits from '@/pages/admin/Credits';
 import AdminReports from '@/pages/admin/Reports';
 import AdminCourses from '@/pages/admin/Courses';
+import AdminIngenioSubscriptions from '@/pages/admin/IngenioSubscriptions';
 import AdminPushNotifications from '@/pages/admin/PushNotifications';
 import AdminSettings from '@/pages/admin/Settings';
 
@@ -118,6 +119,7 @@ function App() {
           <Route path="creditos" element={<AdminCredits />} />
           <Route path="reportes" element={<AdminReports />} />
           <Route path="cursos" element={<AdminCourses />} />
+          <Route path="ingenio" element={<AdminIngenioSubscriptions />} />
           <Route path="campanas" element={<AdminPushNotifications />} />
           <Route path="configuracion" element={<AdminSettings />} />
         </Route>
