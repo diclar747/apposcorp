@@ -38,7 +38,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     walletId: 'wallet-1',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
   },
   {
@@ -56,7 +56,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-01-15'),
     updatedAt: new Date('2024-01-15'),
     walletId: 'wallet-2',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
     sellerProfile: {
       id: 'seller-1',
@@ -107,7 +107,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-02-01'),
     updatedAt: new Date('2024-02-01'),
     walletId: 'wallet-3',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: false,
     sellerProfile: {
       id: 'seller-2',
@@ -158,7 +158,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-02-15'),
     updatedAt: new Date('2024-02-15'),
     walletId: 'wallet-4',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
     bankData: {
       bankName: 'Banco Atlas',
@@ -183,7 +183,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-03-01'),
     updatedAt: new Date('2024-03-01'),
     walletId: 'wallet-5',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: false,
   },
   {
@@ -201,7 +201,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-03-15'),
     updatedAt: new Date('2024-03-15'),
     walletId: 'wallet-6',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
   },
   {
@@ -219,7 +219,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-04-01'),
     updatedAt: new Date('2024-04-01'),
     walletId: 'wallet-7',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
     sellerProfile: {
       id: 'seller-3',
@@ -257,7 +257,7 @@ export const mockUsers: User[] = [
     createdAt: new Date('2024-04-02'),
     updatedAt: new Date('2024-04-02'),
     walletId: 'wallet-8',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
     sellerProfile: {
       id: 'seller-4',
@@ -295,7 +295,7 @@ export const mockUsers: User[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
     walletId: 'wallet-9',
-    cardQR: {} as VirtualCard,
+    virtualCard: {} as VirtualCard,
     ingenioAccess: true,
     sellerProfile: {
       id: 'seller-5',
@@ -425,7 +425,7 @@ export const mockCards: VirtualCard[] = mockUsers.map((user, index) => ({
 
 // Actualizar cards en users
 mockUsers.forEach((user, index) => {
-  user.cardQR = mockCards[index];
+  user.virtualCard = mockCards[index];
 });
 
 // ============================================
