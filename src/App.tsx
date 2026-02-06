@@ -58,6 +58,7 @@ import ClientCredits from '@/pages/client/Credits';
 import ClientIngenio from '@/pages/client/Ingenio';
 import ClientNotifications from '@/pages/client/Notifications';
 import TransferMoney from '@/pages/client/TransferMoney';
+import ClientSettings from '@/pages/client/Settings';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -168,6 +169,7 @@ function App() {
           <Route path="creditos" element={<ClientCredits />} />
           <Route path="ingenio" element={<ClientIngenio />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
+          <Route path="ajustes" element={<ClientSettings />} />
         </Route>
 
         {/* Fallback */}
