@@ -40,6 +40,7 @@ import SellerReports from '@/pages/seller/Reports';
 import SellerPOS from '@/pages/seller/POS';
 import SellerSuppliers from '@/pages/seller/Suppliers';
 import SellerPurchases from '@/pages/seller/Purchases';
+import SellerProfile from '@/pages/seller/Profile';
 
 // Client Pages
 import ClientHome from '@/pages/client/Home';
@@ -141,6 +142,8 @@ function App() {
           <Route path="reportes" element={<SellerReports />} />
           <Route path="proveedores" element={<SellerSuppliers />} />
           <Route path="compras" element={<SellerPurchases />} />
+          <Route path="perfil" element={<SellerProfile />} />
+          <Route path="configuracion" element={<SellerProfile />} />
         </Route>
 
         {/* Client Routes */}
