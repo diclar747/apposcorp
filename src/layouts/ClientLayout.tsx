@@ -39,6 +39,7 @@ import { Separator } from '@/components/ui/separator';
 import { BottomNav } from '@/components/client/BottomNav';
 import { QRPayment } from '@/components/client/QRPayment';
 import { PushPermissionPrompt } from '@/components/push/PushPermissionPrompt';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 
 interface MenuItem {
   icon: typeof Home;
@@ -292,6 +293,9 @@ export default function ClientLayout() {
 
       {/* Push Notification Permission Prompt */}
       <PushPermissionPrompt />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }

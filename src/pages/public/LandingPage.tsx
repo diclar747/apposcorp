@@ -38,6 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { mockStores } from '@/data/mockData';
 import { useThemeStore } from '@/stores/themeStore';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 
 // Oscorp Logo Component
 const OscorpLogo = ({ className = '', size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' | 'xl' }) => {
@@ -82,7 +83,7 @@ const Navbar = () => {
   return (
     <nav className={cn(
       'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-      isScrolled ? 'bg-white/90 backdrop-blur-xl shadow-sm py-2' : 'bg-transparent py-4'
+      isScrolled ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-sm dark:shadow-slate-950/50 py-2' : 'bg-transparent py-4'
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -99,7 +100,7 @@ const Navbar = () => {
                 className={cn(
                   "text-sm font-medium transition-colors duration-300",
                   isScrolled
-                    ? "text-gray-700 hover:text-blue-600"
+                    ? "text-gray-700 dark:text-slate-200 hover:text-blue-600"
                     : "text-slate-700 dark:text-white/90 hover:text-blue-600 dark:hover:text-white"
                 )}
               >
@@ -114,7 +115,7 @@ const Navbar = () => {
               className={cn(
                 "p-2 rounded-full transition-all duration-300",
                 isScrolled
-                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-700"
                   : "bg-black/5 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-black/10 dark:hover:bg-white/20 backdrop-blur-md"
               )}
               title="Alternar tema"
@@ -125,7 +126,7 @@ const Navbar = () => {
               <Button variant="ghost" className={cn(
                 "transition-colors duration-300",
                 isScrolled
-                  ? "text-gray-700 hover:bg-gray-100"
+                  ? "text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800"
                   : "text-slate-700 dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
               )}>
                 Iniciar Sesión
@@ -135,7 +136,7 @@ const Navbar = () => {
               <Button className={cn(
                 "bg-gradient-to-r hover:opacity-90 transition-opacity",
                 isScrolled
-                  ? "from-blue-600 to-violet-600 text-white"
+                  ? "from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/25"
                   : "bg-slate-900 dark:bg-white text-white dark:text-blue-900 hover:bg-slate-800 dark:hover:bg-white/90"
               )}>
                 Crear Cuenta
@@ -148,7 +149,7 @@ const Navbar = () => {
               onClick={toggleTheme}
               className={cn(
                 "p-2 rounded-full transition-colors md:hidden",
-                isScrolled ? "bg-gray-100 text-gray-900" : "bg-black/5 dark:bg-white/10 text-slate-700 dark:text-white"
+                isScrolled ? "bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white" : "bg-black/5 dark:bg-white/10 text-slate-700 dark:text-white"
               )}
             >
               {resolvedTheme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -156,7 +157,7 @@ const Navbar = () => {
             <button
               className={cn(
                 "p-2 rounded-lg transition-colors md:hidden",
-                isScrolled ? "text-gray-900" : "text-slate-700 dark:text-white"
+                isScrolled ? "text-gray-900 dark:text-white" : "text-slate-700 dark:text-white"
               )}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -173,14 +174,14 @@ const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-t border-gray-100 shadow-xl"
+            className="md:hidden bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 shadow-xl"
           >
             <div className="px-4 py-4 space-y-3">
               {navLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
-                  className="block py-2 text-gray-900 hover:text-blue-600 font-medium"
+                  className="block py-2 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.label}
@@ -188,7 +189,7 @@ const Navbar = () => {
               ))}
               <div className="pt-4 space-y-2">
                 <Link to="/login" className="block w-full">
-                  <Button variant="outline" className="w-full justify-start text-gray-900">Iniciar Sesión</Button>
+                  <Button variant="outline" className="w-full justify-start text-gray-900 dark:text-white">Iniciar Sesión</Button>
                 </Link>
                 <Link to="/register" className="block w-full">
                   <Button className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white">Crear Cuenta</Button>
@@ -265,8 +266,8 @@ const HeroSection = () => {
                 { value: '₲2B+', label: 'Transacciones' },
               ].map((stat) => (
                 <div key={stat.label}>
-                  <p className="text-3xl font-bold text-white">{stat.value}</p>
-                  <p className="text-sm text-gray-400">{stat.label}</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -910,6 +911,7 @@ export default function LandingPage() {
       <TestimonialsSection />
       <ContactSection />
       <Footer />
+      <InstallPrompt />
     </div>
   );
 }

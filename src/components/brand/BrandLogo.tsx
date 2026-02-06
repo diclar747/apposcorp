@@ -28,15 +28,14 @@ export function BrandLogo({
     return (
         <div className={cn("flex items-center gap-3", className)}>
             <div className={cn(
-                "relative flex items-center justify-center shrink-0 overflow-hidden rounded-xl",
-                variant === 'dark' ? "bg-white text-slate-950" : "bg-slate-900 text-white",
+                "relative flex items-center justify-center shrink-0",
                 sizes[size].split(' ')[0],
                 sizes[size].split(' ')[1]
             )}>
                 <img
                     src={logoUrl}
                     alt="Oscorp Logo"
-                    className="w-full h-full object-contain p-1"
+                    className="w-full h-full object-contain"
                 />
             </div>
 
@@ -44,7 +43,7 @@ export function BrandLogo({
                 <div className="flex flex-col">
                     <span className={cn(
                         "font-black tracking-tighter leading-none uppercase",
-                        variant === 'dark' ? "text-white" : "text-slate-900",
+                        variant === 'dark' ? "text-white" : variant === 'light' ? "text-slate-900" : "text-slate-900 dark:text-white",
                         sizes[size].split(' ')[2]
                     )}>
                         Oscorp
