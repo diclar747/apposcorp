@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, ArrowLeft, CheckCircle, Smartphone, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, CheckCircle, Smartphone, Camera, VideoOff } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency } from '@/lib/utils';
@@ -16,54 +16,152 @@ interface QRData {
     storeName: string;
 }
 
+function parseQRData(text: string): QRData | null {
+    // Try JSON format (from POS wallet payment QR)
+    try {
+        const data = JSON.parse(text);
+        if (data.type === 'payment' && data.toUserId && data.amount) {
+            return data as QRData;
+        }
+    } catch { /* not JSON */ }
+
+    // Try oscorp:// URL format (from "Mi QR" display)
+    try {
+        if (text.startsWith('oscorp://pay?')) {
+            const params = new URLSearchParams(text.split('?')[1]);
+            const userId = params.get('user');
+            const name = params.get('name');
+            if (userId) {
+                return {
+                    type: 'payment',
+                    toUserId: userId,
+                    amount: 0,
+                    storeName: name ? decodeURIComponent(name) : 'Usuario',
+                };
+            }
+        }
+    } catch { /* not a valid URL */ }
+
+    return null;
+}
+
 export default function ClientScan() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuthStore();
     const { fetchWallet, fetchTransactions } = useWalletStore();
 
-    // States
-    const [scanData, setScanData] = useState('');
     const [parsedData, setParsedData] = useState<QRData | null>(null);
     const [processing, setProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [cameraError, setCameraError] = useState<string | null>(null);
 
-    const handleSimulateScan = () => {
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const mountedRef = useRef(true);
+
+    const stopScanner = useCallback(async () => {
         try {
-            const data = JSON.parse(scanData);
-            if (data.type !== 'payment' || !data.toUserId || !data.amount) {
-                toast.error('Código QR inválido');
-                return;
+            const scanner = scannerRef.current;
+            if (scanner) {
+                if (scanner.isScanning) {
+                    await scanner.stop();
+                }
+                scanner.clear();
+                scannerRef.current = null;
             }
-            setParsedData(data);
         } catch (e) {
-            toast.error('Formato de código inválido');
+            console.warn('Error stopping scanner:', e);
         }
-    };
+    }, []);
+
+    const startScanner = useCallback(async () => {
+        await stopScanner();
+        setCameraError(null);
+
+        // Wait for DOM to be ready
+        await new Promise(r => setTimeout(r, 200));
+        if (!mountedRef.current) return;
+
+        const container = document.getElementById('qr-reader');
+        if (!container) return;
+
+        try {
+            const scanner = new Html5Qrcode('qr-reader');
+            scannerRef.current = scanner;
+
+            await scanner.start(
+                { facingMode: 'environment' },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1,
+                },
+                (decodedText) => {
+                    const data = parseQRData(decodedText);
+                    if (data) {
+                        stopScanner();
+                        setParsedData(data);
+                        toast.success('Codigo QR detectado!');
+                    }
+                },
+                () => { /* QR not found in frame - expected */ }
+            );
+        } catch (err: any) {
+            if (!mountedRef.current) return;
+            const msg = String(err);
+            if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+                setCameraError('Permiso de camara denegado. Por favor permite el acceso a la camara en tu navegador.');
+            } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+                setCameraError('No se encontro una camara en este dispositivo.');
+            } else {
+                setCameraError('No se pudo acceder a la camara. Verifica los permisos de tu navegador.');
+            }
+        }
+    }, [stopScanner]);
+
+    // Check for data passed via navigation state (from QRPayment modal)
+    useEffect(() => {
+        const stateData = location.state?.qrData;
+        if (stateData) {
+            const data = parseQRData(stateData);
+            if (data) {
+                setParsedData(data);
+            }
+        }
+    }, [location.state]);
+
+    // Start scanner on mount when no data; stop on unmount
+    useEffect(() => {
+        mountedRef.current = true;
+        if (!parsedData && !success) {
+            startScanner();
+        }
+        return () => {
+            mountedRef.current = false;
+            stopScanner();
+        };
+    }, [parsedData, success, startScanner, stopScanner]);
 
     const handlePayment = async () => {
         if (!parsedData || !user) return;
 
         setProcessing(true);
         try {
-            // Call API to transfer funds
             await walletApi.transfer(
                 parsedData.toUserId,
                 parsedData.amount,
                 `Pago a ${parsedData.storeName}`
             );
 
-            // Refresh wallet data
             await fetchWallet(user.id);
             await fetchTransactions(user.walletId);
 
             setSuccess(true);
-            toast.success('¡Pago realizado con éxito!');
+            toast.success('Pago realizado con exito!');
 
-            // Redirect after delay
             setTimeout(() => {
                 navigate('/app/wallet');
             }, 3000);
-
         } catch (error: any) {
             console.error(error);
             toast.error(error.message || 'Error al procesar el pago');
@@ -82,7 +180,7 @@ export default function ClientScan() {
                 >
                     <CheckCircle className="w-12 h-12 text-green-600" />
                 </motion.div>
-                <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pago Exitoso!</h2>
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Pago Exitoso!</h2>
                 <p className="text-slate-500 mb-8">Has pagado {formatCurrency(parsedData?.amount || 0)} a {parsedData?.storeName}</p>
                 <Button onClick={() => navigate('/app/wallet')} className="w-full max-w-xs font-bold">
                     VOLVER A LA BILLETERA
@@ -103,38 +201,32 @@ export default function ClientScan() {
 
             {!parsedData ? (
                 <div className="space-y-6">
-                    {/* Simulator Area */}
-                    <div className="bg-slate-900 text-white p-8 rounded-3xl aspect-square flex flex-col items-center justify-center text-center relative overflow-hidden">
-                        <div className="absolute inset-0 border-[3px] border-blue-500/30 rounded-3xl m-8 animate-pulse" />
-                        <QrCode className="w-16 h-16 opacity-50 mb-4" />
-                        <p className="text-sm font-medium opacity-70">Apunta la cámara al código QR <br /> del vendedor</p>
+                    {/* Camera Scanner */}
+                    <div className="bg-slate-900 rounded-3xl overflow-hidden relative">
+                        <div
+                            id="qr-reader"
+                            className="qr-scanner-container w-full"
+                        />
 
-                        {/* Simulation Input Overlay */}
-                        <div className="absolute inset-x-8 bottom-8 bg-black/50 backdrop-blur-md p-4 rounded-xl border border-white/10">
-                            <p className="text-[10px] uppercase font-bold text-blue-300 mb-2">Simulador de Cámara</p>
-                            <Input
-                                placeholder='Pegar JSON del QR aquí...'
-                                className="bg-white/10 border-white/20 text-white placeholder:text-white/30 mb-2 text-xs"
-                                value={scanData}
-                                onChange={(e) => setScanData(e.target.value)}
-                            />
-                            <Button
-                                size="sm"
-                                className="w-full bg-blue-600 hover:bg-blue-500 font-bold"
-                                onClick={handleSimulateScan}
-                                disabled={!scanData}
-                            >
-                                SIMULAR ESCANEO
-                            </Button>
-                        </div>
+                        {cameraError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-slate-900">
+                                <VideoOff className="w-16 h-16 text-slate-500 mb-4" />
+                                <p className="text-white text-sm font-medium mb-4">{cameraError}</p>
+                                <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-500"
+                                    onClick={() => startScanner()}
+                                >
+                                    <Camera className="w-4 h-4 mr-2" />
+                                    Reintentar
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
-                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                        <p className="text-xs text-amber-800 leading-relaxed">
-                            <strong>Modo Prueba:</strong> Como no podemos acceder a la cámara en este entorno, copia el código que genera el vendedor y pégalo arriba.
-                        </p>
-                    </div>
+                    <p className="text-center text-sm text-muted-foreground">
+                        Apunta tu camara al codigo QR del vendedor para pagar
+                    </p>
                 </div>
             ) : (
                 <motion.div
@@ -169,7 +261,7 @@ export default function ClientScan() {
                         <Button
                             variant="ghost"
                             className="w-full font-bold text-slate-400"
-                            onClick={() => { setParsedData(null); setScanData(''); }}
+                            onClick={() => { setParsedData(null); }}
                             disabled={processing}
                         >
                             CANCELAR

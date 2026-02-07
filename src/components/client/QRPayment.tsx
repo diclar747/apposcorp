@@ -1,19 +1,23 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { 
-  X, 
-  Download, 
-  Share2, 
-  Copy, 
+import {
+  X,
+  Download,
+  Share2,
+  Copy,
   Check,
   Maximize2,
   ScanLine,
   ArrowLeft,
-  Camera
+  Camera,
+  VideoOff
 } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface QRPaymentProps {
   isOpen: boolean;
@@ -24,10 +28,14 @@ interface QRPaymentProps {
 }
 
 export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QRPaymentProps) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'myqr' | 'scan'>('myqr');
   const [copied, setCopied] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const mountedRef = useRef(true);
 
   const qrValue = `oscorp://pay?user=${userId}&name=${encodeURIComponent(userName)}`;
 
@@ -59,17 +67,86 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
     }
   };
 
-  // Simulated scan effect
-  const ScanEffect = () => (
-    <div className="scanner-frame">
-      <div className="scanner-line" />
-      {/* Corner markers */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-blue-500 rounded-tl-lg" />
-      <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-blue-500 rounded-tr-lg" />
-      <div className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-blue-500 rounded-bl-lg" />
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-blue-500 rounded-br-lg" />
-    </div>
-  );
+  const stopScanner = useCallback(async () => {
+    try {
+      const scanner = scannerRef.current;
+      if (scanner) {
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+        scanner.clear();
+        scannerRef.current = null;
+      }
+    } catch (e) {
+      console.warn('Error stopping scanner:', e);
+    }
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    await stopScanner();
+    setCameraError(null);
+
+    // Wait for DOM to be ready
+    await new Promise(r => setTimeout(r, 300));
+    if (!mountedRef.current) return;
+
+    const container = document.getElementById('qr-modal-reader');
+    if (!container) return;
+
+    try {
+      const scanner = new Html5Qrcode('qr-modal-reader');
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 230, height: 230 },
+          aspectRatio: 1,
+        },
+        (decodedText) => {
+          // QR detected - stop scanning, close modal, navigate to payment page
+          stopScanner();
+          onClose();
+          navigate('/app/escanear', { state: { qrData: decodedText } });
+          toast.success('Codigo QR detectado!');
+        },
+        () => { /* QR not found in frame - expected */ }
+      );
+    } catch (err: any) {
+      if (!mountedRef.current) return;
+      const msg = String(err);
+      if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+        setCameraError('Permiso de camara denegado. Permite el acceso a la camara.');
+      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        setCameraError('No se encontro camara en este dispositivo.');
+      } else {
+        setCameraError('No se pudo acceder a la camara.');
+      }
+    }
+  }, [stopScanner, onClose, navigate]);
+
+  // Manage scanner lifecycle based on mode and modal state
+  useEffect(() => {
+    mountedRef.current = true;
+    if (isOpen && mode === 'scan') {
+      startScanner();
+    } else {
+      stopScanner();
+    }
+    return () => {
+      mountedRef.current = false;
+      stopScanner();
+    };
+  }, [isOpen, mode, startScanner, stopScanner]);
+
+  // Reset mode when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setMode('myqr');
+      setCameraError(null);
+    }
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -131,7 +208,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                   className="flex flex-col items-center"
                 >
                   {/* QR Display */}
-                  <div 
+                  <div
                     ref={qrRef}
                     className="qr-display p-8 mb-6"
                   >
@@ -196,13 +273,34 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                   className="flex flex-col items-center"
                 >
                   <p className="text-center text-muted-foreground mb-6">
-                    Apunta tu cámara a un código QR para pagar
+                    Apunta tu camara a un codigo QR para pagar
                   </p>
-                  
-                  <ScanEffect />
-                  
+
+                  {/* Camera Scanner */}
+                  <div className="w-72 h-72 rounded-3xl overflow-hidden bg-black relative border-2 border-blue-500" style={{ boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.2)' }}>
+                    <div
+                      id="qr-modal-reader"
+                      className="qr-scanner-container w-full h-full"
+                    />
+
+                    {cameraError && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black">
+                        <VideoOff className="w-12 h-12 text-slate-500 mb-3" />
+                        <p className="text-white text-xs font-medium mb-3">{cameraError}</p>
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-500 text-xs"
+                          onClick={() => startScanner()}
+                        >
+                          <Camera className="w-3 h-3 mr-1" />
+                          Reintentar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-center text-sm text-muted-foreground mt-6">
-                    El escáner detectará automáticamente el código QR
+                    El escaner detectara automaticamente el codigo QR
                   </p>
                 </motion.div>
               )}
@@ -225,7 +323,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                 >
                   <X className="w-6 h-6 text-white" />
                 </button>
-                
+
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
@@ -240,7 +338,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                     includeMargin={false}
                   />
                 </motion.div>
-                
+
                 <p className="text-white text-center mt-6 font-semibold">{userName}</p>
                 <p className="text-white/60 text-sm">Escanea para pagar</p>
               </motion.div>
