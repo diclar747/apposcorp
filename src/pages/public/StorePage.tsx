@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,10 +6,10 @@ import {
   MessageCircle, Search, Filter, X, Plus, Minus,
   ChevronRight, ArrowLeft, Share2, ShieldCheck,
   CheckCircle2, Info, StarHalf, MessageSquare,
-  Package, LayoutGrid, List
+  Package, LayoutGrid, List, Loader2
 } from 'lucide-react';
 import { Drawer } from 'vaul';
-import { mockStores, getReviewsByStoreId } from '@/data/mockData';
+import { storesApi } from '@/lib/api';
 import { formatCurrency, isStoreOpen, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,29 +22,53 @@ export default function StorePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [store, setStore] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   // Cart Store
   const { addItem, items, total, removeItem, updateQuantity } = useCartStore();
 
-  const store = mockStores.find(s => s.slug === slug);
-  const reviews = useMemo(() => store ? getReviewsByStoreId(store.id) : [], [store]);
+  useEffect(() => {
+    const fetchStore = async () => {
+      if (!slug) return;
+      try {
+        const data = await storesApi.getBySlug(slug);
+        setStore(data);
+      } catch (error) {
+        console.error('Error fetching store:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStore();
+  }, [slug]);
 
-  const categories = useMemo(() => {
-    if (!store) return [];
-    const cats = new Set(store.products.map(p => p.category));
+  const reviews: any[] = [];
+
+  const categories = useMemo((): string[] => {
+    if (!store?.products) return [];
+    const cats = new Set<string>(store.products.map((p: any) => p.category));
     return ['todos', ...Array.from(cats)];
   }, [store]);
 
   const filteredProducts = useMemo(() => {
-    if (!store) return [];
-    return store.products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!store?.products) return [];
+    return store.products.filter((p: any) => {
+      const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'todos' || p.category === selectedCategory;
       const isVisible = p.visibility !== 'local';
       return matchesSearch && matchesCategory && isVisible;
     });
   }, [store, searchQuery, selectedCategory]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
 
   if (!store) {
     return (
@@ -74,7 +98,7 @@ export default function StorePage() {
     );
   }
 
-  const open = isStoreOpen(store.businessHours);
+  const open = store.businessHours ? isStoreOpen(store.businessHours) : false;
   const avgRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : "5.0";
@@ -159,7 +183,7 @@ export default function StorePage() {
                 </div>
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full">
                   <ShoppingBag className="w-4 h-4 text-white" />
-                  <span>{store.products.length} productos</span>
+                  <span>{store.products?.length || 0} productos</span>
                 </div>
               </div>
             </div>
@@ -269,7 +293,7 @@ export default function StorePage() {
                         viewMode === 'grid' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
                       )}
                     >
-                      {filteredProducts.map((product) => (
+                      {filteredProducts.map((product: any) => (
                         <ProductCard
                           key={product.id}
                           product={product}
@@ -350,16 +374,18 @@ export default function StorePage() {
                     Horarios
                   </h3>
                   <div className="space-y-3 font-medium">
-                    {Object.entries(store.businessHours).map(([day, hours]) => (
+                    {store.businessHours ? Object.entries(store.businessHours).map(([day, hours]: [string, any]) => (
                       <div key={day} className="flex justify-between items-center py-1 border-b border-gray-50 dark:border-slate-800 last:border-0">
                         <span className="capitalize text-gray-500 text-sm">{day}</span>
-                        {hours.isOpen ? (
+                        {hours?.isOpen ? (
                           <span className="text-sm font-black text-gray-900 dark:text-white">{hours.open} - {hours.close}</span>
                         ) : (
                           <span className="text-sm font-bold text-red-400 italic">Cerrado</span>
                         )}
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-gray-400 text-sm">Horarios no disponibles</p>
+                    )}
                   </div>
                 </section>
 
