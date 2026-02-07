@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Store, MapPin, Phone, Mail, Globe, Instagram, Facebook, Edit, Camera, Check, Save, X, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
@@ -16,7 +16,14 @@ export default function SellerStore() {
   const { user, fetchCurrentUser } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isOnline, setIsOnline] = useState(true); // This should ideally come from backend
+  const [isOnline, setIsOnline] = useState(true);
+
+  // Ensure we have fresh user data with sellerProfile
+  useEffect(() => {
+    if (!user?.sellerProfile) {
+      fetchCurrentUser();
+    }
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -96,11 +103,95 @@ export default function SellerStore() {
     }
   };
 
+  // Initial setup form when sellerProfile is not loaded yet
+  const handleInitialSetup = async () => {
+    setLoading(true);
+    try {
+      await usersApi.updateSellerProfile({
+        ...formData,
+        socialLinks: {
+          facebook: formData.facebook,
+          instagram: formData.instagram
+        }
+      });
+      await fetchCurrentUser();
+      toast.success('¡Tienda configurada con éxito! Ya puedes comenzar a vender.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al configurar la tienda');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!user?.sellerProfile) {
     return (
-      <div className="text-center py-12">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
-        <p className="text-gray-500">Cargando perfil de tienda...</p>
+      <div className="max-w-2xl mx-auto space-y-6 pb-20">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <Store className="w-10 h-10 text-blue-600" />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Configura tu Tienda</h1>
+          <p className="text-gray-500 mt-2">Completa los datos de tu negocio para comenzar a vender. Tienes 7 días de prueba gratis.</p>
+        </div>
+
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="storeName">Nombre de la Tienda *</Label>
+                <Input id="storeName" name="storeName" value={formData.storeName} onChange={handleChange} placeholder="Mi Tienda" />
+              </div>
+              <div>
+                <Label htmlFor="email">Email de la Tienda</Label>
+                <Input id="email" name="email" value={formData.email} onChange={handleChange} placeholder="tienda@email.com" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea id="description" name="description" value={formData.description} onChange={handleChange} placeholder="Describe tu negocio..." rows={3} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="address">Dirección</Label>
+                <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Calle, Ciudad" />
+              </div>
+              <div>
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input id="phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="+595 ..." />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="whatsappNumber">WhatsApp Business</Label>
+              <Input id="whatsappNumber" name="whatsappNumber" value={formData.whatsappNumber} onChange={handleChange} placeholder="+595 ..." />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="logo">URL del Logo</Label>
+                <Input id="logo" name="logo" value={formData.logo} onChange={handleChange} placeholder="https://..." />
+              </div>
+              <div>
+                <Label htmlFor="banner">URL del Banner</Label>
+                <Input id="banner" name="banner" value={formData.banner} onChange={handleChange} placeholder="https://..." />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="facebook">Facebook</Label>
+                <Input id="facebook" name="facebook" value={formData.facebook} onChange={handleChange} placeholder="facebook.com/mitienda" />
+              </div>
+              <div>
+                <Label htmlFor="instagram">Instagram</Label>
+                <Input id="instagram" name="instagram" value={formData.instagram} onChange={handleChange} placeholder="@mitienda" />
+              </div>
+            </div>
+
+            <Button onClick={handleInitialSetup} disabled={loading || !formData.storeName} className="w-full h-12 bg-blue-600 hover:bg-blue-700 font-bold text-lg mt-4">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+              Crear Mi Tienda
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

@@ -94,7 +94,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-6">
           <Link to="/" className="inline-flex items-center justify-center mb-3">
-            <img src="https://oscorp-two.vercel.app/oscorp-logo.png" alt="Oscorp" className="w-14 h-14 object-contain" />
+            <img src="/oscorp-logo.png" alt="Oscorp" className="w-14 h-14 object-contain" />
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Crear cuenta</h1>
           <p className="text-gray-500 mt-1">Únete a Oscorp y comienza tu viaje</p>

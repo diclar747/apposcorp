@@ -17,15 +17,11 @@ router.post('/login', async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        role: true,
-        firstName: true,
-        lastName: true,
-        isActive: true,
-        avatar: true,
+      include: {
+        wallet: true,
+        virtualCard: true,
+        sellerProfile: true,
+        bankData: true,
       }
     });
 
@@ -117,7 +113,7 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    // If seller, create seller profile
+    // If seller, create seller profile with 7-day trial
     if (role === 'seller') {
       await prisma.sellerProfile.create({
         data: {
@@ -129,9 +125,22 @@ router.post('/register', async (req, res) => {
           phone: phone || '',
           email,
           whatsappNumber: phone || '',
+          planActive: true,
+          planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       });
     }
+
+    // Re-fetch full user with all relations
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        wallet: true,
+        virtualCard: true,
+        sellerProfile: true,
+        bankData: true,
+      },
+    });
 
     const token = generateToken({
       userId: user.id,
@@ -139,7 +148,7 @@ router.post('/register', async (req, res) => {
       role: user.role,
     });
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = fullUser!;
 
     res.status(201).json({
       token,

@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, MapPin, Star, Store as StoreIcon,
     ChevronRight, Filter, ArrowRight, ShieldCheck,
-    TrendingUp, Sparkles, ShoppingBag, Clock
+    TrendingUp, Sparkles, ShoppingBag, Clock, Loader2
 } from 'lucide-react';
-import { mockStores, mockReviews } from '@/data/mockData';
+import { storesApi } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,17 +17,31 @@ const categories = ['Todas', 'Tecnología', 'Moda', 'Gourmet', 'Servicios', 'Hog
 export default function ClientStores() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('Todas');
+    const [stores, setStores] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const activeStores = useMemo(() => mockStores.filter(s => s.isActive && s.isOnline), []);
+    useEffect(() => {
+        const fetchStores = async () => {
+            try {
+                const data = await storesApi.getAll();
+                setStores(data);
+            } catch (error) {
+                console.error('Error fetching stores:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStores();
+    }, []);
 
     const filteredStores = useMemo(() => {
-        return activeStores.filter(store => {
-            const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                store.description.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = selectedCategory === 'Todas' || store.category === selectedCategory;
+        return stores.filter(store => {
+            const matchesSearch = (store.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (store.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = selectedCategory === 'Todas';
             return matchesSearch && matchesCategory;
         });
-    }, [activeStores, searchTerm, selectedCategory]);
+    }, [stores, searchTerm, selectedCategory]);
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 pb-32">
@@ -219,8 +233,8 @@ function StoreCard({ store, index }: { store: any, index: number }) {
 
                         <div className="absolute bottom-4 left-6 flex items-center gap-1.5 text-white">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-black text-sm">4.9</span>
-                            <span className="text-white/70 text-xs font-bold">(120+)</span>
+                            <span className="font-black text-sm">{store.rating?.toFixed(1) || '5.0'}</span>
+                            <span className="text-white/70 text-xs font-bold">({store.reviewCount || 0})</span>
                         </div>
                     </div>
 
@@ -249,11 +263,11 @@ function StoreCard({ store, index }: { store: any, index: number }) {
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-gray-400">
                                     <MapPin className="w-3.5 h-3.5" />
-                                    <span className="text-[11px] font-black uppercase tracking-wider">{store.address.split(',')[0]}</span>
+                                    <span className="text-[11px] font-black uppercase tracking-wider">{(store.address || 'Sin dirección').split(',')[0]}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-400">
                                     <ShoppingBag className="w-3.5 h-3.5" />
-                                    <span className="text-[11px] font-black uppercase tracking-wider">{store.products.length} Productos</span>
+                                    <span className="text-[11px] font-black uppercase tracking-wider">{store.productCount || store.products?.length || 0} Productos</span>
                                 </div>
                             </div>
 

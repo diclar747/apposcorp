@@ -23,7 +23,7 @@ export function BrandLogo({
         xl: 'w-16 h-16 text-3xl'
     };
 
-    const logoUrl = "https://www.oscorp.com.py/assets/images/logos/logo2.png";
+    const logoUrl = "/oscorp-logo.png";
 
     return (
         <div className={cn("flex items-center gap-3", className)}>

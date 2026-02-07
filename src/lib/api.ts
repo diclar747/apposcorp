@@ -349,6 +349,12 @@ export const financesApi = {
     }),
 };
 
+// Stores API (public marketplace)
+export const storesApi = {
+  getAll: () => fetchWithAuth('/stores'),
+  getBySlug: (slug: string) => fetchWithAuth(`/stores/${slug}`),
+};
+
 export default {
   auth: authApi,
   users: usersApi,

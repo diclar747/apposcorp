@@ -52,7 +52,7 @@ const OscorpLogo = ({ className = '', size = 'md' }: { className?: string; size?
   return (
     <div className={cn('flex flex-col items-center', className)}>
       <img
-        src="https://www.oscorp.com.py/assets/images/logos/logo.png"
+        src="/oscorp-logo.png"
         alt="Oscorp"
         className={cn('w-auto object-contain', sizes[size])}
       />

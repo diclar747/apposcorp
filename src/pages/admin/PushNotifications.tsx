@@ -452,7 +452,7 @@ export default function AdminPushNotifications() {
                                             <div className="flex items-start gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden p-1">
                                                     <img
-                                                        src="https://www.oscorp.com.py/assets/images/logos/logo2.png"
+                                                        src="/oscorp-logo.png"
                                                         alt="Oscorp"
                                                         className="w-full h-full object-contain"
                                                     />
