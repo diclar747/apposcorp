@@ -86,12 +86,16 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
     await stopScanner();
     setCameraError(null);
 
-    // Wait for DOM to be ready
-    await new Promise(r => setTimeout(r, 300));
-    if (!mountedRef.current) return;
+    // Poll for DOM element - AnimatePresence mode="wait" delays mounting
+    let container: HTMLElement | null = null;
+    for (let attempt = 0; attempt < 15; attempt++) {
+      await new Promise(r => setTimeout(r, 200));
+      if (!mountedRef.current) return;
+      container = document.getElementById('qr-modal-reader');
+      if (container) break;
+    }
 
-    const container = document.getElementById('qr-modal-reader');
-    if (!container) return;
+    if (!container || !mountedRef.current) return;
 
     try {
       const scanner = new Html5Qrcode('qr-modal-reader');

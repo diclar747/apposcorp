@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, ShoppingCart, Trash2, Plus, Minus, CreditCard,
     Banknote, Wallet, Receipt, X, Package, Barcode,
-    Printer, History, Keyboard, User as UserIcon, Copy
+    Printer, History, Keyboard, User as UserIcon, Copy,
+    CheckCircle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
@@ -21,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { walletApi } from '@/lib/api';
 
 interface CartItem {
     id: string;
@@ -46,6 +48,11 @@ export default function SellerPOS() {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'wallet'>('cash');
     const [processing, setProcessing] = useState(false);
     const [customerName, setCustomerName] = useState('Consumidor Final');
+    const [walletPaymentStatus, setWalletPaymentStatus] = useState<'waiting' | 'paid' | null>(null);
+
+    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const knownTxIdsRef = useRef<Set<string>>(new Set());
+    const autoCheckoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Trial Logic
     const isTrialExpired = useMemo(() => {
@@ -97,6 +104,85 @@ export default function SellerPOS() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [cart]);
+
+    // Wallet payment polling - detect when client pays via QR
+    useEffect(() => {
+        if (isCheckoutOpen && paymentMethod === 'wallet') {
+            // Record existing transactions as baseline
+            walletApi.getTransactions({ limit: 10 } as any).then((response: any) => {
+                const txs = Array.isArray(response) ? response : (response.transactions || []);
+                knownTxIdsRef.current = new Set(txs.map((t: any) => t.id));
+            }).catch(() => {});
+
+            setWalletPaymentStatus('waiting');
+
+            // Poll for new incoming transfers every 3 seconds
+            pollingRef.current = setInterval(async () => {
+                try {
+                    const response = await walletApi.getTransactions({ limit: 5 } as any);
+                    const txs = Array.isArray(response) ? response : (response.transactions || []);
+                    const newPayment = txs.find((t: any) =>
+                        !knownTxIdsRef.current.has(t.id) &&
+                        t.type === 'transfer_in' &&
+                        t.status === 'completed'
+                    );
+                    if (newPayment) {
+                        if (pollingRef.current) {
+                            clearInterval(pollingRef.current);
+                            pollingRef.current = null;
+                        }
+                        setWalletPaymentStatus('paid');
+                    }
+                } catch {
+                    // Polling error - silently continue
+                }
+            }, 3000);
+        } else {
+            setWalletPaymentStatus(null);
+            if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+            }
+        }
+        return () => {
+            if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+            }
+        };
+    }, [isCheckoutOpen, paymentMethod]);
+
+    // Auto-complete checkout when wallet payment is received
+    useEffect(() => {
+        if (walletPaymentStatus === 'paid') {
+            autoCheckoutTimerRef.current = setTimeout(() => {
+                const saleData = {
+                    id: `V-${Math.floor(1000 + Math.random() * 9000)}`,
+                    date: new Date(),
+                    items: [...cart],
+                    subtotal,
+                    tax,
+                    total,
+                    paymentMethod: 'wallet' as const,
+                    customerName,
+                };
+                setLastSale(saleData);
+                setSalesHistory(prev => [saleData, ...prev].slice(0, 10));
+                setIsCheckoutOpen(false);
+                setCart([]);
+                setIsReceiptOpen(true);
+                setWalletPaymentStatus(null);
+                setCustomerName('Consumidor Final');
+                toast.success('Pago con wallet confirmado');
+            }, 2500);
+        }
+        return () => {
+            if (autoCheckoutTimerRef.current) {
+                clearTimeout(autoCheckoutTimerRef.current);
+            }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [walletPaymentStatus]);
 
     // Cart calculations
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -482,51 +568,105 @@ export default function SellerPOS() {
                                 </div>
                             </TabsContent>
                             <TabsContent value="wallet" className="mt-6">
-                                <div className="p-6 border-2 border-dashed rounded-2xl bg-blue-50/50 text-center space-y-4">
-                                    <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
-                                        <QRCodeSVG
-                                            value={JSON.stringify({
-                                                type: 'payment',
-                                                toUserId: user?.id,
-                                                amount: total,
-                                                storeName: store?.name
-                                            })}
-                                            size={200}
-                                            level="L"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-bold text-slate-700">Escanee el código QR del cliente</p>
-                                        <p className="text-xs text-slate-400">Esperando confirmación de pago...</p>
-                                        <div className="flex justify-center">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const data = JSON.stringify({
+                                <AnimatePresence mode="wait">
+                                    {walletPaymentStatus === 'paid' ? (
+                                        <motion.div
+                                            key="paid"
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="p-8 text-center space-y-4"
+                                        >
+                                            <motion.div
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                transition={{ type: 'spring', stiffness: 200, damping: 10 }}
+                                                className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto"
+                                            >
+                                                <CheckCircle className="w-12 h-12 text-green-600" />
+                                            </motion.div>
+                                            <p className="text-xl font-black text-green-600 uppercase tracking-tight">Pago Recibido!</p>
+                                            <p className="text-sm text-slate-500">Generando comprobante...</p>
+                                            <div className="flex justify-center">
+                                                <motion.div
+                                                    animate={{ rotate: 360 }}
+                                                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                                                    className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full"
+                                                />
+                                            </div>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            key="waiting"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0, scale: 0.9 }}
+                                            className="p-6 border-2 border-dashed rounded-2xl bg-blue-50/50 text-center space-y-4"
+                                        >
+                                            <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
+                                                <QRCodeSVG
+                                                    value={JSON.stringify({
                                                         type: 'payment',
                                                         toUserId: user?.id,
                                                         amount: total,
                                                         storeName: store?.name
-                                                    });
-                                                    navigator.clipboard.writeText(data);
-                                                    toast.success("Código copiado al portapapeles");
-                                                }}
-                                                className="gap-2 text-xs"
-                                            >
-                                                <Copy className="w-3 h-3" /> Copiar Código
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
+                                                    })}
+                                                    size={200}
+                                                    level="L"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <p className="text-sm font-bold text-slate-700">Escanee el codigo QR del cliente</p>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <motion.div
+                                                        animate={{ rotate: 360 }}
+                                                        transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                                                        className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"
+                                                    />
+                                                    <p className="text-xs text-blue-600 font-medium">Esperando confirmacion de pago...</p>
+                                                </div>
+                                                <div className="flex justify-center">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const data = JSON.stringify({
+                                                                type: 'payment',
+                                                                toUserId: user?.id,
+                                                                amount: total,
+                                                                storeName: store?.name
+                                                            });
+                                                            navigator.clipboard.writeText(data);
+                                                            toast.success("Codigo copiado al portapapeles");
+                                                        }}
+                                                        className="gap-2 text-xs"
+                                                    >
+                                                        <Copy className="w-3 h-3" /> Copiar Codigo
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </TabsContent>
                         </Tabs>
                     </div>
 
                     <DialogFooter className="gap-2 sm:gap-0 border-t pt-4">
-                        <Button variant="ghost" onClick={() => setIsCheckoutOpen(false)} className="font-bold text-slate-400">CANCELAR</Button>
-                        <Button onClick={handleCheckout} disabled={processing} className="bg-green-600 hover:bg-green-700 font-bold px-8">
-                            {processing ? 'PROCESANDO...' : 'CONFIRMAR PAGO'}
+                        <Button variant="ghost" onClick={() => setIsCheckoutOpen(false)} className="font-bold text-slate-400" disabled={walletPaymentStatus === 'paid'}>CANCELAR</Button>
+                        <Button
+                            onClick={handleCheckout}
+                            disabled={processing || walletPaymentStatus === 'waiting' || walletPaymentStatus === 'paid'}
+                            className={cn(
+                                'font-bold px-8',
+                                walletPaymentStatus === 'paid'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-green-600 hover:bg-green-700'
+                            )}
+                        >
+                            {processing ? 'PROCESANDO...'
+                                : walletPaymentStatus === 'waiting' ? 'ESPERANDO PAGO...'
+                                : walletPaymentStatus === 'paid' ? 'PAGO CONFIRMADO!'
+                                : 'CONFIRMAR PAGO'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

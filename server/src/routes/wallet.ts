@@ -197,16 +197,35 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
       return { message: 'Transferência realizada com sucesso' };
     });
 
-    // Push notification to receiver
-    const sender = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { firstName: true, lastName: true },
-    });
+    // Fetch sender and receiver info for notifications
+    const [sender, receiver] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: req.user!.userId },
+        select: { firstName: true, lastName: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: toUserId },
+        select: { firstName: true, lastName: true, sellerProfile: { select: { storeName: true } } },
+      }),
+    ]);
+
+    // Push notification to receiver (seller/store)
     sendPushToUser(toUserId, {
-      title: 'Transferencia recibida',
+      title: 'Pago recibido',
       body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString()}`,
       url: '/app/wallet',
       tag: 'transfer-in',
+    }).catch(() => {});
+
+    // Push notification to sender (client who paid)
+    const receiverName = receiver?.sellerProfile?.storeName
+      || `${receiver?.firstName || ''} ${receiver?.lastName || ''}`.trim()
+      || 'destinatario';
+    sendPushToUser(req.user!.userId, {
+      title: 'Pago realizado con exito',
+      body: `Pagaste ₲${amount.toLocaleString()} en ${receiverName}`,
+      url: '/app/wallet',
+      tag: 'transfer-out',
     }).catch(() => {});
 
     res.json(result);
