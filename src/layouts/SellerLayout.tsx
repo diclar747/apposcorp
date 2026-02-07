@@ -18,9 +18,12 @@ import {
   Globe,
   Bell,
   Truck,
-  FileText
+  FileText,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
+import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -53,6 +56,7 @@ export default function SellerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const handleLogout = () => {
     logout();
@@ -129,10 +133,10 @@ export default function SellerLayout() {
         </nav>
 
         {/* Toggle Button */}
-        <div className="p-3 border-t border-gray-200">
+        <div className="p-3 border-t border-gray-200 dark:border-slate-800">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
           >
             <motion.div
               animate={{ rotate: sidebarOpen ? 0 : 180 }}
@@ -160,18 +164,18 @@ export default function SellerLayout() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 h-full w-72 bg-white z-50 lg:hidden"
+              className="fixed left-0 top-0 h-full w-72 bg-white dark:bg-slate-900 z-50 lg:hidden"
             >
-              <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+              <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-slate-800">
                 <Link to="/vendedor" className="flex items-center gap-3">
                   <img src="/oscorp-logo.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
                   <div>
-                    <span className="font-semibold text-gray-900 block">Oscorp</span>
-                    <span className="text-xs text-gray-500">Panel Vendedor</span>
+                    <span className="font-semibold text-gray-900 dark:text-white block">Oscorp</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Panel Vendedor</span>
                   </div>
                 </Link>
                 <button onClick={() => setMobileMenuOpen(false)}>
-                  <X className="w-6 h-6 text-gray-400" />
+                  <X className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                 </button>
               </div>
               <nav className="p-4 space-y-1">
@@ -185,7 +189,7 @@ export default function SellerLayout() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={cn(
                         'flex items-center gap-3 px-3 py-3 rounded-lg transition-colors',
-                        isActive ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-100'
+                        isActive ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-800'
                       )}
                     >
                       <item.icon className="w-5 h-5" />
@@ -233,6 +237,19 @@ export default function SellerLayout() {
                 <Globe className="w-4 h-4" />
                 Ver Tienda
               </Button>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-5 h-5 text-yellow-400" />
+                ) : (
+                  <Moon className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
 
               {/* Notifications */}
               <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">

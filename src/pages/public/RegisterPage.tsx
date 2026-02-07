@@ -84,7 +84,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4 transition-colors duration-300">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -96,8 +96,8 @@ export default function RegisterPage() {
           <Link to="/" className="inline-flex items-center justify-center mb-3">
             <img src="/oscorp-logo.png" alt="Oscorp" className="w-14 h-14 object-contain" />
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Crear cuenta</h1>
-          <p className="text-gray-500 mt-1">Únete a Oscorp y comienza tu viaje</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Crear cuenta</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Únete a Oscorp y comienza tu viaje</p>
         </div>
 
         {/* Progress Steps */}
@@ -109,7 +109,7 @@ export default function RegisterPage() {
                   'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
                   currentStep >= step.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
+                    : 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-gray-400'
                 )}
               >
                 {currentStep > step.id ? <Check className="w-4 h-4" /> : step.id}
@@ -118,7 +118,7 @@ export default function RegisterPage() {
                 <div
                   className={cn(
                     'w-12 h-0.5 mx-1',
-                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-200'
+                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-700'
                   )}
                 />
               )}
@@ -132,17 +132,17 @@ export default function RegisterPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
+          className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
           {currentStep === 1 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900">Datos personales</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Datos personales</h2>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nombre *</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                     <Input
                       id="firstName"
                       placeholder="Juan"
@@ -166,7 +166,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Correo electrónico *</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="email"
                     type="email"
@@ -181,7 +181,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="phone">Teléfono</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="phone"
                     type="tel"
@@ -196,7 +196,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña *</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
@@ -208,19 +208,19 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">Mínimo 6 caracteres</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo 6 caracteres</p>
               </div>
             </div>
           )}
 
           {currentStep === 2 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900">¿Qué tipo de cuenta necesitas?</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">¿Qué tipo de cuenta necesitas?</h2>
 
               <div className="space-y-3">
                 {accountTypes.map((type) => (
@@ -230,20 +230,20 @@ export default function RegisterPage() {
                     className={cn(
                       'w-full p-4 rounded-xl border-2 text-left transition-all',
                       formData.role === type.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
+                        : 'border-gray-200 hover:border-gray-300 dark:border-slate-600 dark:hover:border-slate-500'
                     )}
                   >
                     <div className="flex items-start gap-3">
                       <div className={cn(
                         'w-10 h-10 rounded-lg flex items-center justify-center',
-                        formData.role === type.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                        formData.role === type.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300'
                       )}>
                         <type.icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">{type.label}</h3>
-                        <p className="text-sm text-gray-500">{type.description}</p>
+                        <h3 className="font-medium text-gray-900 dark:text-white">{type.label}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{type.description}</p>
                       </div>
                       {formData.role === type.id && (
                         <Check className="w-5 h-5 text-blue-500 ml-auto" />
@@ -257,18 +257,18 @@ export default function RegisterPage() {
 
           {currentStep === 3 && (
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <Check className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+                <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">¡Todo listo!</h2>
-              <p className="text-gray-600">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">¡Todo listo!</h2>
+              <p className="text-gray-600 dark:text-gray-400">
                 Revisa tus datos antes de crear tu cuenta
               </p>
-              <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2">
-                <p><span className="text-gray-500">Nombre:</span> {formData.firstName} {formData.lastName}</p>
-                <p><span className="text-gray-500">Email:</span> {formData.email}</p>
-                <p><span className="text-gray-500">Teléfono:</span> {formData.phone || 'No especificado'}</p>
-                <p><span className="text-gray-500">Tipo:</span> {formData.role === 'client' ? 'Cliente' : 'Vendedor'}</p>
+              <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 text-left space-y-2">
+                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
+                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
+                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
+                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Cliente' : 'Vendedor'}</p>
               </div>
             </div>
           )}
@@ -315,9 +315,9 @@ export default function RegisterPage() {
         </motion.div>
 
         {/* Login Link */}
-        <p className="text-center text-sm text-gray-600 mt-6">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
           ¿Ya tienes una cuenta?{' '}
-          <Link to="/login" className="text-blue-600 font-medium hover:underline">
+          <Link to="/login" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
             Inicia sesión
           </Link>
         </p>

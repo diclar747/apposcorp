@@ -11,9 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
 const quickLogins = [
-  { email: 'admin@oscorp.com', password: 'admin123', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700' },
-  { email: 'vendedor1@oscorp.com', password: 'seller123', role: 'seller', label: 'Vendedor', icon: Store, color: 'bg-green-100 text-green-700' },
-  { email: 'cliente1@oscorp.com', password: 'client123', role: 'client', label: 'Cliente', icon: User, color: 'bg-blue-100 text-blue-700' },
+  { email: 'admin@oscorp.com', password: 'admin123', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+  { email: 'vendedor1@oscorp.com', password: 'seller123', role: 'seller', label: 'Vendedor', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  { email: 'cliente1@oscorp.com', password: 'client123', role: 'client', label: 'Cliente', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
 ];
 
 export default function LoginPage() {
@@ -86,7 +86,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4 transition-colors duration-300">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -107,8 +107,8 @@ export default function LoginPage() {
               className="w-48 h-20 object-contain drop-shadow-md"
             />
           </motion.div>
-          <h1 className="text-2xl font-bold text-gray-900">Bienvenido a Oscorp</h1>
-          <p className="text-gray-500 mt-1">Inicia sesión para continuar</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bienvenido a Oscorp</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Inicia sesión para continuar</p>
         </div>
 
         {/* Quick Logins */}
@@ -116,9 +116,9 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4"
+          className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-4"
         >
-          <p className="text-xs text-gray-500 mb-3 text-center">Acceso rápido para demo</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Acceso rápido para demo</p>
           <div className="grid grid-cols-3 gap-2">
             {quickLogins.map((login) => (
               <button
@@ -142,13 +142,13 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6"
+          className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <Input
                   id="email"
                   type="email"
@@ -164,7 +164,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -177,7 +177,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -191,11 +191,11 @@ export default function LoginPage() {
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                 />
-                <Label htmlFor="remember" className="text-sm text-gray-600 cursor-pointer">
+                <Label htmlFor="remember" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
                   Recordarme
                 </Label>
               </div>
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <Link to="/forgot-password" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
@@ -217,9 +217,9 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               ¿No tienes una cuenta?{' '}
-              <Link to="/register" className="text-blue-600 font-medium hover:underline">
+              <Link to="/register" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
                 Regístrate
               </Link>
             </p>
@@ -227,11 +227,11 @@ export default function LoginPage() {
         </motion.div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-500 mt-6">
+        <p className="text-center text-xs text-gray-500 dark:text-gray-500 mt-6">
           Al iniciar sesión, aceptas nuestros{' '}
-          <Link to="/terms" className="text-blue-600 hover:underline">Términos de servicio</Link>
+          <Link to="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">Términos de servicio</Link>
           {' '}y{' '}
-          <Link to="/privacy" className="text-blue-600 hover:underline">Política de privacidad</Link>
+          <Link to="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">Política de privacidad</Link>
         </p>
       </motion.div>
     </div>
