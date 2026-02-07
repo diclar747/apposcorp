@@ -5,13 +5,20 @@ import App from './App.tsx';
 import { useThemeStore } from '@/stores/themeStore';
 import { registerServiceWorker } from '@/lib/pushNotifications';
 
-// Theme initializer component
-function ThemeInitializer() {
+// Theme initializer + splash screen hider
+function AppInitializer() {
   useEffect(() => {
     const { resolvedTheme } = useThemeStore.getState();
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(resolvedTheme);
+
+    // Hide splash screen after app mounts
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.classList.add('hide');
+      setTimeout(() => splash.remove(), 500);
+    }
   }, []);
 
   return null;
@@ -19,7 +26,7 @@ function ThemeInitializer() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeInitializer />
+    <AppInitializer />
     <App />
   </StrictMode>,
 );
