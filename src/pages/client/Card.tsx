@@ -215,11 +215,11 @@ export default function ClientCard() {
                     />
                     {/* Logo in center */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-14 h-14 bg-white rounded-xl shadow-lg flex items-center justify-center p-1">
+                      <div className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center p-1">
                         <img
-                          src="/oscorp-logo.png"
+                          src="/images/oscorp-round.png"
                           alt="Oscorp"
-                          className="w-10 h-10 object-contain"
+                          className="w-14 h-14 rounded-full object-cover"
                         />
                       </div>
                     </div>
