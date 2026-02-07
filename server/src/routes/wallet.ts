@@ -124,10 +124,88 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Check if user has PIN set
+router.get('/pin-status', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user!.userId },
+      select: { transactionPin: true },
+    });
+    if (!wallet) return res.status(404).json({ error: 'Billetera no encontrada' });
+    res.json({ hasPin: !!wallet.transactionPin });
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Set transaction PIN (first time)
+router.post('/pin/set', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ error: 'El PIN debe ser de 4 dígitos' });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user!.userId },
+    });
+    if (!wallet) return res.status(404).json({ error: 'Billetera no encontrada' });
+    if (wallet.transactionPin) {
+      return res.status(400).json({ error: 'Ya tienes un PIN configurado' });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const hashedPin = await bcrypt.hash(pin, 10);
+
+    await prisma.wallet.update({
+      where: { id: wallet.id },
+      data: { transactionPin: hashedPin },
+    });
+
+    res.json({ message: 'PIN configurado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Change transaction PIN
+router.post('/pin/change', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { currentPin, newPin } = req.body;
+    if (!newPin || !/^\d{4}$/.test(newPin)) {
+      return res.status(400).json({ error: 'El nuevo PIN debe ser de 4 dígitos' });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user!.userId },
+    });
+    if (!wallet) return res.status(404).json({ error: 'Billetera no encontrada' });
+
+    if (wallet.transactionPin) {
+      if (!currentPin) return res.status(400).json({ error: 'PIN actual requerido' });
+      const bcrypt = await import('bcryptjs');
+      const isValid = await bcrypt.compare(currentPin, wallet.transactionPin);
+      if (!isValid) return res.status(401).json({ error: 'PIN actual incorrecto' });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const hashedPin = await bcrypt.hash(newPin, 10);
+
+    await prisma.wallet.update({
+      where: { id: wallet.id },
+      data: { transactionPin: hashedPin },
+    });
+
+    res.json({ message: 'PIN actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // Transfer money to another user
 router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { toUserId, amount, description } = req.body;
+    const { toUserId, amount, description, pin } = req.body;
 
     if (amount <= 0) {
       return res.status(400).json({ error: 'Valor inválido' });
@@ -137,12 +215,24 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
       where: { userId: req.user!.userId },
     });
 
+    if (!fromWallet) {
+      return res.status(404).json({ error: 'Billetera no encontrada' });
+    }
+
+    // Verify transaction PIN if set
+    if (fromWallet.transactionPin) {
+      if (!pin) return res.status(400).json({ error: 'PIN de transacción requerido' });
+      const bcrypt = await import('bcryptjs');
+      const pinValid = await bcrypt.compare(pin, fromWallet.transactionPin);
+      if (!pinValid) return res.status(401).json({ error: 'PIN incorrecto' });
+    }
+
     const toWallet = await prisma.wallet.findUnique({
       where: { userId: toUserId },
     });
 
-    if (!fromWallet || !toWallet) {
-      return res.status(404).json({ error: 'Carteira não encontrada' });
+    if (!toWallet) {
+      return res.status(404).json({ error: 'Billetera del destinatario no encontrada' });
     }
 
     if (fromWallet.balance < amount) {

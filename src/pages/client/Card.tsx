@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency } from '@/lib/utils';
+import { generateQRValue } from '@/lib/qr';
 
 export default function ClientCard() {
   const { user } = useAuthStore();
@@ -31,7 +32,7 @@ export default function ClientCard() {
   const cardHolder = `${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`;
   const expiryDate = '12/28';
   const cvv = '123';
-  const qrValue = `oscorp://pay?user=${user?.id}&name=${user?.firstName}`;
+  const qrValue = generateQRValue(user?.id || '', user?.firstName || 'Usuario');
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

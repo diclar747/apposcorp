@@ -11,7 +11,7 @@ interface WalletState {
   // Actions
   fetchWallet: (userId: string) => Promise<void>;
   fetchTransactions: (walletId: string) => Promise<void>;
-  transfer: (fromUserId: string, toUserId: string, amount: number, description?: string) => Promise<boolean>;
+  transfer: (fromUserId: string, toUserId: string, amount: number, description?: string, pin?: string) => Promise<boolean>;
   requestWithdrawal: (userId: string, amount: number) => Promise<boolean>;
   deposit: (userId: string, amount: number, description?: string) => Promise<boolean>;
   clearError: () => void;
@@ -50,11 +50,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     }
   },
 
-  transfer: async (fromUserId: string, toUserId: string, amount: number, description?: string) => {
+  transfer: async (fromUserId: string, toUserId: string, amount: number, description?: string, pin?: string) => {
     set({ isLoading: true, error: null });
 
     try {
-      await walletApi.transfer(toUserId, amount, description);
+      await walletApi.transfer(toUserId, amount, description, pin);
 
       // Refresh wallet and transactions
       const { fetchWallet, fetchTransactions, wallet } = get();

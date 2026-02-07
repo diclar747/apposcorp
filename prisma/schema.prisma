@@ -247,9 +247,10 @@ model Wallet {
   status       String        @default("active")
   dailyLimit   Float         @default(1000)
   monthlyLimit Float         @default(10000)
-  totalIn      Float         @default(0)
-  totalOut     Float         @default(0)
-  createdAt    DateTime      @default(now())
+  totalIn        Float         @default(0)
+  totalOut       Float         @default(0)
+  transactionPin String?
+  createdAt      DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

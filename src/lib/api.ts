@@ -137,10 +137,21 @@ export const walletApi = {
       method: 'POST',
       body: JSON.stringify({ amount, description }),
     }),
-  transfer: (toUserId: string, amount: number, description?: string) =>
+  transfer: (toUserId: string, amount: number, description?: string, pin?: string) =>
     fetchWithAuth('/wallet/transfer', {
       method: 'POST',
-      body: JSON.stringify({ toUserId, amount, description }),
+      body: JSON.stringify({ toUserId, amount, description, pin }),
+    }),
+  getPinStatus: () => fetchWithAuth('/wallet/pin-status'),
+  setPin: (pin: string) =>
+    fetchWithAuth('/wallet/pin/set', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    }),
+  changePin: (currentPin: string, newPin: string) =>
+    fetchWithAuth('/wallet/pin/change', {
+      method: 'POST',
+      body: JSON.stringify({ currentPin, newPin }),
     }),
   getCard: () => fetchWithAuth('/wallet/card'),
   updateCardDesign: (design: string) =>

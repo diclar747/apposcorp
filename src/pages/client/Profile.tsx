@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VirtualCard } from '@/components/client/VirtualCard';
 import { Switch } from '@/components/ui/switch';
 import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '@/lib/pushNotifications';
+import { generateQRValue } from '@/lib/qr';
 
 const menuItems = [
   { icon: User, label: 'Editar perfil', href: '#' },
@@ -329,7 +330,7 @@ export default function ClientProfile() {
             cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
             expiryDate="12/28"
             cvv="***"
-            qrValue={`oscorp://pay?user=${user?.id}&name=${user?.firstName}`}
+            qrValue={generateQRValue(user?.id || '', user?.firstName || 'Usuario')}
           />
         </div>
       </div>

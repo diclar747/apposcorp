@@ -1,19 +1,20 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { 
-  X, 
-  Download, 
-  Share2, 
-  Copy, 
+import {
+  X,
+  Download,
+  Copy,
   Check,
   Maximize2,
   ScanLine,
-  ArrowLeft,
   Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { generateQRValue } from '@/lib/qr';
+import { QRCameraScanner } from '@/components/client/QRCameraScanner';
 
 interface QRPaymentProps {
   isOpen: boolean;
@@ -24,12 +25,13 @@ interface QRPaymentProps {
 }
 
 export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QRPaymentProps) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'myqr' | 'scan'>('myqr');
   const [copied, setCopied] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  const qrValue = `oscorp://pay?user=${userId}&name=${encodeURIComponent(userName)}`;
+  const qrValue = generateQRValue(userId, userName);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(qrValue);
@@ -59,17 +61,10 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
     }
   };
 
-  // Simulated scan effect
-  const ScanEffect = () => (
-    <div className="scanner-frame">
-      <div className="scanner-line" />
-      {/* Corner markers */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-blue-500 rounded-tl-lg" />
-      <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-blue-500 rounded-tr-lg" />
-      <div className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-blue-500 rounded-bl-lg" />
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-blue-500 rounded-br-lg" />
-    </div>
-  );
+  const handleCameraScan = (decodedText: string) => {
+    onClose();
+    navigate('/app/escanear', { state: { scannedData: decodedText } });
+  };
 
   return (
     <AnimatePresence>
@@ -193,17 +188,11 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="flex flex-col items-center"
                 >
-                  <p className="text-center text-muted-foreground mb-6">
-                    Apunta tu cámara a un código QR para pagar
-                  </p>
-                  
-                  <ScanEffect />
-                  
-                  <p className="text-center text-sm text-muted-foreground mt-6">
-                    El escáner detectará automáticamente el código QR
-                  </p>
+                  <QRCameraScanner
+                    onScan={handleCameraScan}
+                    active={mode === 'scan' && isOpen}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

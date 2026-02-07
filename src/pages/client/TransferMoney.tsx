@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency, getInitials } from '@/lib/utils';
 import { usersApi, walletApi } from '@/lib/api';
+import { PinDialog } from '@/components/client/PinDialog';
 
 export default function TransferMoney() {
     const navigate = useNavigate();
@@ -34,6 +35,14 @@ export default function TransferMoney() {
     const [description, setDescription] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [showPinDialog, setShowPinDialog] = useState(false);
+    const [pinMode, setPinMode] = useState<'setup' | 'verify'>('verify');
+    const [hasPin, setHasPin] = useState<boolean | null>(null);
+
+    // Check PIN status on mount
+    useEffect(() => {
+        walletApi.getPinStatus().then((r) => setHasPin(r.hasPin)).catch(() => setHasPin(false));
+    }, []);
 
     // Search logic
     useEffect(() => {
@@ -75,28 +84,54 @@ export default function TransferMoney() {
         setStep('confirm');
     };
 
-    const handleProcessTransfer = async () => {
+    const handleProcessTransfer = () => {
+        if (hasPin === false) {
+            setPinMode('setup');
+        } else {
+            setPinMode('verify');
+        }
+        setShowPinDialog(true);
+    };
+
+    const handlePinSubmit = async (pin: string): Promise<boolean> => {
+        if (pinMode === 'setup') {
+            try {
+                await walletApi.setPin(pin);
+                setHasPin(true);
+                toast.success('PIN configurado correctamente');
+                setPinMode('verify');
+                return true;
+            } catch (e: any) {
+                toast.error(e.message || 'Error al configurar PIN');
+                return false;
+            }
+        }
+
+        // Verify mode — do the actual transfer
+        setShowPinDialog(false);
         setIsProcessing(true);
         try {
-            if (!selectedUser) return;
+            if (!selectedUser) return false;
 
             await walletApi.transfer(
                 selectedUser.id,
                 parseFloat(amount),
-                description || `Transferencia para ${selectedUser.firstName}`
+                description || `Transferencia para ${selectedUser.firstName}`,
+                pin
             );
 
-            // Refresh data
             if (currentUser) {
                 await fetchWallet(currentUser.id);
-                await fetchTransactions(currentUser.walletId);
+                if (currentUser.walletId) await fetchTransactions(currentUser.walletId);
             }
 
             setStep('success');
             toast.success('¡Transferencia enviada con éxito!');
+            return true;
         } catch (error: any) {
             console.error(error);
             toast.error(error.message || 'Error al procesar la transferencia');
+            return false;
         } finally {
             setIsProcessing(false);
         }
@@ -377,6 +412,13 @@ export default function TransferMoney() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <PinDialog
+                open={showPinDialog}
+                onClose={() => setShowPinDialog(false)}
+                mode={pinMode}
+                onPinSubmit={handlePinSubmit}
+            />
         </div>
     );
 }

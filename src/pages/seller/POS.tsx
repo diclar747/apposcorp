@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
+import { generateQRValue } from '@/lib/qr';
 import { mockProducts, mockStores, mockUsers } from '@/data/mockData';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -485,12 +486,7 @@ export default function SellerPOS() {
                                 <div className="p-6 border-2 border-dashed rounded-2xl bg-blue-50/50 text-center space-y-4">
                                     <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
                                         <QRCodeSVG
-                                            value={JSON.stringify({
-                                                type: 'payment',
-                                                toUserId: user?.id,
-                                                amount: total,
-                                                storeName: store?.name
-                                            })}
+                                            value={generateQRValue(user?.id || '', store?.name || 'Tienda', total)}
                                             size={200}
                                             level="L"
                                         />
@@ -503,12 +499,7 @@ export default function SellerPOS() {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => {
-                                                    const data = JSON.stringify({
-                                                        type: 'payment',
-                                                        toUserId: user?.id,
-                                                        amount: total,
-                                                        storeName: store?.name
-                                                    });
+                                                    const data = generateQRValue(user?.id || '', store?.name || 'Tienda', total);
                                                     navigator.clipboard.writeText(data);
                                                     toast.success("Código copiado al portapapeles");
                                                 }}

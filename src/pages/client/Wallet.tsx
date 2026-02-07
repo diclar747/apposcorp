@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency } from '@/lib/utils';
+import { generateQRValue } from '@/lib/qr';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VirtualCard } from '@/components/client/VirtualCard';
@@ -122,7 +123,7 @@ export default function ClientWallet() {
           cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
           expiryDate="12/28"
           cvv="***"
-          qrValue={`oscorp://pay?user=${user?.id}&name=${user?.firstName}`}
+          qrValue={generateQRValue(user?.id || '', user?.firstName || 'Usuario')}
         />
       </div>
 
