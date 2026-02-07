@@ -20,13 +20,17 @@ interface VirtualCardProps {
   className?: string;
 }
 
-function OscorpLogo({ className }: { className?: string }) {
+const OSCORP_LOGO = 'https://www.oscorp.com.py/assets/images/logos/logo2.png';
+
+function OscorpLogo({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' }) {
+  const h = size === 'sm' ? 'h-7' : 'h-8';
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
-      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-        <span className="text-white font-black text-sm leading-none">O</span>
-      </div>
-      <span className="text-white font-bold text-base tracking-widest">OSCORP</span>
+    <div className={cn('flex items-center', className)}>
+      <img
+        src={OSCORP_LOGO}
+        alt="Oscorp"
+        className={cn(h, 'w-auto object-contain drop-shadow-[0_2px_6px_rgba(255,255,255,0.15)]')}
+      />
     </div>
   );
 }
@@ -214,7 +218,7 @@ export function VirtualCardCompact({
             <CardChip />
             <Wifi className="w-4 h-4 text-white/30 rotate-90" />
           </div>
-          <OscorpLogo className="scale-90 origin-right" />
+          <OscorpLogo size="sm" />
         </div>
 
         <div className="mb-4">

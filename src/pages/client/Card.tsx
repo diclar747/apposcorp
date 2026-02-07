@@ -146,12 +146,11 @@ export default function ClientCard() {
                   <Wifi className="w-7 h-7 text-white/40 rotate-90" />
                 </div>
                 {/* Brand */}
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <span className="text-white font-black text-base leading-none">O</span>
-                  </div>
-                  <span className="text-white font-bold text-lg tracking-widest">OSCORP</span>
-                </div>
+                <img
+                  src="https://www.oscorp.com.py/assets/images/logos/logo2.png"
+                  alt="Oscorp"
+                  className="h-9 w-auto object-contain drop-shadow-[0_2px_6px_rgba(255,255,255,0.15)]"
+                />
               </div>
 
               {/* Card Number + Mini QR */}
@@ -216,10 +215,12 @@ export default function ClientCard() {
                     />
                     {/* Logo in center */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-14 h-14 bg-white rounded-xl shadow-lg flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">O</span>
-                        </div>
+                      <div className="w-14 h-14 bg-white rounded-xl shadow-lg flex items-center justify-center p-1">
+                        <img
+                          src="https://www.oscorp.com.py/assets/images/logos/logo2.png"
+                          alt="Oscorp"
+                          className="w-10 h-10 object-contain"
+                        />
                       </div>
                     </div>
                   </div>
