@@ -16,6 +16,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate",
     "dev:full": "concurrently \"npm run server:dev\" \"npm run dev\""
   },
   "dependencies": {

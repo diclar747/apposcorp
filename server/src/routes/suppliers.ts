@@ -34,7 +34,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         res.json(suppliers);
     } catch (error) {
         console.error('Get suppliers error:', error);
-        res.status(500).json({ error: 'Error en el servidor' });
+        res.status(500).json({ error: 'Error en el servidor', details: String(error) });
     }
 });
 

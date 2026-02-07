@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
     res.json(products);
   } catch (error) {
     console.error('Get products error:', error);
-    res.status(500).json({ error: 'Error al obtener productos' });
+    res.status(500).json({ error: 'Error al obtener productos', details: String(error) });
   }
 });
 
