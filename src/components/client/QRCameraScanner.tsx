@@ -3,6 +3,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { Camera, CameraOff, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface QRCameraScannerProps {
   onScan: (decodedText: string) => void;
@@ -40,17 +41,34 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
     try {
       setCameraState('requesting');
 
-      // Request camera permission first
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      });
+      // Check if camera API is available (requires HTTPS or localhost)
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraState('error');
+        return;
+      }
+
+      // Request camera permission with a 10s timeout
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Camera timeout')), 10000)
+        ),
+      ]);
       // Release the test stream; html5-qrcode will create its own
       stream.getTracks().forEach((t) => t.stop());
 
       if (!mountedRef.current) return;
 
+      // Wait a tick for React to render the container div
+      await new Promise((r) => setTimeout(r, 100));
+
       const el = document.getElementById(containerId.current);
-      if (!el) return;
+      if (!el) {
+        setCameraState('error');
+        return;
+      }
 
       const scanner = new Html5Qrcode(containerId.current, { verbose: false });
       scannerRef.current = scanner;
@@ -107,82 +125,16 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
     }
   };
 
-  // Requesting permission state
-  if (cameraState === 'requesting') {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center animate-pulse">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        </div>
-        <p className="text-sm text-muted-foreground text-center">
-          Solicitando acceso a la cámara...
-        </p>
-        <p className="text-xs text-muted-foreground/60 text-center">
-          Acepta el permiso cuando el navegador lo solicite
-        </p>
-      </div>
-    );
-  }
-
-  // Permission denied or error — show fallback
-  if (cameraState === 'denied' || cameraState === 'error') {
-    return (
-      <div className="space-y-4">
-        <div className="bg-amber-50 dark:bg-amber-950/30 p-5 rounded-2xl border border-amber-200 dark:border-amber-800 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center">
-              <CameraOff className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-                {cameraState === 'denied' ? 'Permiso de cámara denegado' : 'Error de cámara'}
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                {cameraState === 'denied'
-                  ? 'Permite el acceso en la configuración del navegador'
-                  : 'No se pudo iniciar la cámara'}
-              </p>
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRetry}
-            className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Reintentar
-          </Button>
-        </div>
-
-        {/* Manual input fallback */}
-        <div className="bg-card p-4 rounded-2xl border space-y-3">
-          <p className="text-sm font-semibold">Ingresar código manualmente</p>
-          <p className="text-xs text-muted-foreground">
-            Pide al vendedor el código QR y pégalo aquí:
-          </p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="oscorp://pay?user=..."
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              className="text-xs"
-              onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
-            />
-            <Button size="sm" onClick={handleManualSubmit} disabled={!manualInput.trim()}>
-              Verificar
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Active camera state — html5-qrcode renders the video feed inside the container div
+  // Single return — the video container div is ALWAYS in the DOM
   return (
     <div className="space-y-3">
-      <div className="relative rounded-2xl overflow-hidden bg-black">
+      {/* Video container — ALWAYS in the DOM so html5-qrcode can find it */}
+      <div
+        className={cn(
+          'relative rounded-2xl overflow-hidden bg-black',
+          cameraState !== 'active' && 'hidden'
+        )}
+      >
         <div id={containerId.current} className="w-full" />
         {/* Overlay corners */}
         <div className="absolute inset-0 pointer-events-none">
@@ -193,10 +145,81 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Camera className="w-4 h-4" />
-        <span>Apunta al código QR del vendedor</span>
-      </div>
+      {/* Requesting permission state */}
+      {cameraState === 'requesting' && (
+        <div className="flex flex-col items-center justify-center p-8 space-y-4">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center animate-pulse">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            Solicitando acceso a la cámara...
+          </p>
+          <p className="text-xs text-muted-foreground/60 text-center">
+            Acepta el permiso cuando el navegador lo solicite
+          </p>
+        </div>
+      )}
+
+      {/* Permission denied or error — show fallback */}
+      {(cameraState === 'denied' || cameraState === 'error') && (
+        <div className="space-y-4">
+          <div className="bg-amber-50 dark:bg-amber-950/30 p-5 rounded-2xl border border-amber-200 dark:border-amber-800 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center">
+                <CameraOff className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                  {cameraState === 'denied' ? 'Permiso de cámara denegado' : 'Error de cámara'}
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {cameraState === 'denied'
+                    ? 'Permite el acceso en la configuración del navegador'
+                    : 'No se pudo iniciar la cámara. Verifica que estés en HTTPS.'}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reintentar
+            </Button>
+          </div>
+
+          {/* Manual input fallback */}
+          <div className="bg-card p-4 rounded-2xl border space-y-3">
+            <p className="text-sm font-semibold">Ingresar código manualmente</p>
+            <p className="text-xs text-muted-foreground">
+              Pide al vendedor el código QR y pégalo aquí:
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="oscorp://pay?user=..."
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                className="text-xs"
+                onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
+              />
+              <Button size="sm" onClick={handleManualSubmit} disabled={!manualInput.trim()}>
+                Verificar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active camera — show helper text */}
+      {cameraState === 'active' && (
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Camera className="w-4 h-4" />
+          <span>Apunta al código QR del vendedor</span>
+        </div>
+      )}
     </div>
   );
 }
