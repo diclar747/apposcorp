@@ -1,8 +1,9 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import os from 'os';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -32,10 +33,11 @@ app.use(cors({
 
 app.use(express.json({ limit: '2mb' }));
 
-// Serve uploaded files statically
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// Serve uploaded files statically (local dev only, Vercel uses /tmp)
+const uploadsDir = process.env.NODE_ENV === 'production'
+  ? path.join(os.tmpdir(), 'uploads')
+  : path.join(process.cwd(), 'server', 'uploads');
+app.use('/api/uploads', express.static(uploadsDir));
 
 // Health check
 app.get('/health', (req, res) => {

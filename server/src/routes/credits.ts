@@ -1,17 +1,22 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import os from 'os';
+import fs from 'fs';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { sendPushToUser } from '../services/pushService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configure multer for document uploads - use /tmp on Vercel, local uploads dir otherwise
+const uploadsDir = process.env.NODE_ENV === 'production'
+  ? path.join(os.tmpdir(), 'uploads', 'documents')
+  : path.join(process.cwd(), 'server', 'uploads', 'documents');
 
-// Configure multer for document uploads
+// Ensure directory exists
+try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch { /* ignore */ }
+
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '..', '..', 'uploads', 'documents'),
+  destination: uploadsDir,
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname) || '.jpg';
