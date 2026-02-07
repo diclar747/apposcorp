@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
+import { settingsApi } from '@/lib/api';
 
 interface SystemSetting {
     id: string;
@@ -25,7 +26,6 @@ export default function AdminSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { isAuthenticated } = useAuthStore();
-    const token = localStorage.getItem('oscorp-token');
 
     useEffect(() => {
         fetchSettings();
@@ -33,22 +33,10 @@ export default function AdminSettings() {
 
     const fetchSettings = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/settings', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setSettings(data);
-            } else {
-                // If empty or error, maybe init?
-                if (response.status === 404 || (await response.clone().json()).length === 0) {
-                    // Optional: Auto-init or show empty state
-                }
-            }
+            const data = await settingsApi.get();
+            setSettings(data);
         } catch (error) {
-            toast.error('Erro ao carregar configurações');
+            // Settings may not exist yet - show empty state
         } finally {
             setLoading(false);
         }
@@ -75,21 +63,9 @@ export default function AdminSettings() {
     const handleSave = async () => {
         try {
             setSaving(true);
-            const response = await fetch('http://localhost:3001/api/settings', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ settings })
-            });
-
-            if (response.ok) {
-                toast.success('Configurações salvas com sucesso');
-                fetchSettings(); // Refresh IDs and stuff
-            } else {
-                toast.error('Erro ao salvar configurações');
-            }
+            await settingsApi.update({ settings });
+            toast.success('Configurações salvas com sucesso');
+            fetchSettings();
         } catch (error) {
             toast.error('Erro ao salvar configurações');
         } finally {
@@ -100,14 +76,9 @@ export default function AdminSettings() {
     const initializeDefaults = async () => {
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:3001/api/settings/init', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                toast.success('Configurações padrão inicializadas');
-                fetchSettings();
-            }
+            await settingsApi.init();
+            toast.success('Configurações padrão inicializadas');
+            fetchSettings();
         } catch (err) {
             toast.error('Erro ao inicializar');
         } finally {

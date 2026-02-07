@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
+import { financesApi, coursesApi } from '@/lib/api';
 
 // 5S Methodology Cards
 const ssCards = [
@@ -70,13 +71,8 @@ export default function ClientIngenio() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/finances/summary', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
-      }
+      const data = await financesApi.getSummary();
+      setSummary(data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -86,13 +82,8 @@ export default function ClientIngenio() {
 
   const fetchCourses = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/courses', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }); // Public endpoint logic in backend, but good to auth
-      if (res.ok) {
-        const data = await res.json();
-        setCourses(data);
-      }
+      const data = await coursesApi.getAll();
+      setCourses(data);
     } catch (error) {
       console.error(error);
     }
@@ -101,44 +92,27 @@ export default function ClientIngenio() {
   const handleCreateRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      let url = 'http://localhost:3001/api/finances';
-      let body: any = newRecord;
-
       if (newRecord.type === 'budget') {
         const dateObj = new Date(newRecord.date);
-        url = 'http://localhost:3001/api/finances/budget';
-        body = {
+        await financesApi.createBudget({
           month: dateObj.getMonth() + 1,
           year: dateObj.getFullYear(),
           incomeGoal: Number(newRecord.amount),
           expenseLimit: Number(newRecord.description)
-        };
+        });
       } else {
-        // Ensure amount is number
-        body.amount = Number(body.amount);
+        await financesApi.create({
+          ...newRecord,
+          amount: Number(newRecord.amount)
+        });
       }
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (res.ok) {
-        toast.success(newRecord.type === 'budget' ? 'Presupuesto actualizado' : 'Registro guardado');
-        setIsAddOpen(false);
-        setNewRecord({ type: 'expense', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
-        fetchData();
-        // Also refresh budget if we are in budget view (we can trigger a reload or context update, but fetchData should handle summary)
-        // Ideally we should reload budget section too if visible.
-      } else {
-        toast.error('Error al guardar');
-      }
+      toast.success(newRecord.type === 'budget' ? 'Presupuesto actualizado' : 'Registro guardado');
+      setIsAddOpen(false);
+      setNewRecord({ type: 'expense', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+      fetchData();
     } catch (error) {
-      toast.error('Error de conexión');
+      toast.error('Error al guardar');
     }
   };
 
@@ -469,18 +443,13 @@ function BudgetSection() {
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
 
-      const res = await fetch(`http://localhost:3001/api/finances/budget?month=${month}&year=${year}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const data = await financesApi.getBudget(month, year);
+      setBudget(data.budget);
+      setActuals(data.actuals);
+      setEditForm({
+        incomeGoal: data.budget.incomeGoal.toString(),
+        expenseLimit: data.budget.expenseLimit.toString()
       });
-      if (res.ok) {
-        const data = await res.json();
-        setBudget(data.budget);
-        setActuals(data.actuals);
-        setEditForm({
-          incomeGoal: data.budget.incomeGoal.toString(),
-          expenseLimit: data.budget.expenseLimit.toString()
-        });
-      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -494,29 +463,17 @@ function BudgetSection() {
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
 
-      const res = await fetch('http://localhost:3001/api/finances/budget', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          month,
-          year,
-          incomeGoal: Number(editForm.incomeGoal),
-          expenseLimit: Number(editForm.expenseLimit)
-        })
+      await financesApi.createBudget({
+        month,
+        year,
+        incomeGoal: Number(editForm.incomeGoal),
+        expenseLimit: Number(editForm.expenseLimit)
       });
-
-      if (res.ok) {
-        toast.success('Presupuesto actualizado');
-        setIsEditing(false);
-        fetchBudget();
-      } else {
-        toast.error('Error al guardar presupuesto');
-      }
+      toast.success('Presupuesto actualizado');
+      setIsEditing(false);
+      fetchBudget();
     } catch (error) {
-      toast.error('Error de conexión');
+      toast.error('Error al guardar presupuesto');
     }
   };
 

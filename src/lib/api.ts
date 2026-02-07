@@ -82,6 +82,16 @@ export const usersApi = {
       body: JSON.stringify(data),
     }),
   search: (query: string) => fetchWithAuth(`/users/search?query=${query}`),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  updateIngenio: (id: string, hasAccess: boolean) =>
+    fetchWithAuth(`/users/${id}/ingenio`, {
+      method: 'PATCH',
+      body: JSON.stringify({ hasAccess }),
+    }),
 };
 
 // Products API
@@ -272,6 +282,73 @@ export const purchasesApi = {
     }),
 };
 
+// Courses API
+export const coursesApi = {
+  getAll: () => fetchWithAuth('/courses'),
+  getById: (id: string) => fetchWithAuth(`/courses/${id}`),
+  create: (data: any) =>
+    fetchWithAuth('/courses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/courses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/courses/${id}`, {
+      method: 'DELETE',
+    }),
+  enroll: (id: string) =>
+    fetchWithAuth(`/courses/${id}/enroll`, {
+      method: 'POST',
+    }),
+};
+
+// Settings API
+export const settingsApi = {
+  get: () => fetchWithAuth('/settings'),
+  update: (data: any) =>
+    fetchWithAuth('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  init: () =>
+    fetchWithAuth('/settings/init', {
+      method: 'POST',
+    }),
+};
+
+// Finances API
+export const financesApi = {
+  getAll: () => fetchWithAuth('/finances'),
+  getSummary: () => fetchWithAuth('/finances/summary'),
+  create: (data: any) =>
+    fetchWithAuth('/finances', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getCategories: () => fetchWithAuth('/finances/categories'),
+  createCategory: (data: any) =>
+    fetchWithAuth('/finances/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getBudget: (month?: number, year?: number) => {
+    const params = new URLSearchParams();
+    if (month !== undefined) params.set('month', String(month));
+    if (year !== undefined) params.set('year', String(year));
+    const query = params.toString();
+    return fetchWithAuth(`/finances/budget${query ? `?${query}` : ''}`);
+  },
+  createBudget: (data: any) =>
+    fetchWithAuth('/finances/budget', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 export default {
   auth: authApi,
   users: usersApi,
@@ -282,4 +359,7 @@ export default {
   notifications: notificationsApi,
   suppliers: suppliersApi,
   purchases: purchasesApi,
+  courses: coursesApi,
+  settings: settingsApi,
+  finances: financesApi,
 };

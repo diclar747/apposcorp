@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
+import { usersApi } from '@/lib/api';
 
 // Types
 interface UserData {
@@ -72,7 +73,6 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'client' | 'seller' | 'superadmin'>('all');
   const { isAuthenticated } = useAuthStore();
-  const token = localStorage.getItem('oscorp-token');
 
   // Edit User State
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
@@ -90,15 +90,8 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
-      }
+      const data = await usersApi.getAll();
+      setUsers(data);
     } catch (error) {
       toast.error('Error al cargar usuarios');
     } finally {
@@ -108,19 +101,9 @@ export default function AdminUsers() {
 
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isActive: !currentStatus })
-      });
-
-      if (response.ok) {
-        toast.success(`Usuario ${!currentStatus ? 'activado' : 'desactivado'}`);
-        fetchUsers();
-      }
+      await usersApi.updateStatus(userId, !currentStatus);
+      toast.success(`Usuario ${!currentStatus ? 'activado' : 'desactivado'}`);
+      fetchUsers();
     } catch (error) {
       toast.error('Error al actualizar estado');
     }
@@ -128,19 +111,9 @@ export default function AdminUsers() {
 
   const handleToggleIngenio = async (userId: string, currentAccess: boolean) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userId}/ingenio`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ hasAccess: !currentAccess })
-      });
-
-      if (response.ok) {
-        toast.success(`Acceso a Ingenio ${!currentAccess ? 'concedido' : 'revocado'}`);
-        fetchUsers();
-      }
+      await usersApi.updateIngenio(userId, !currentAccess);
+      toast.success(`Acceso a Ingenio ${!currentAccess ? 'concedido' : 'revocado'}`);
+      fetchUsers();
     } catch (error) {
       toast.error('Error al actualizar acceso a Ingenio');
     }
@@ -164,16 +137,9 @@ export default function AdminUsers() {
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userToDelete.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        toast.success('Usuario eliminado permanentemente');
-        fetchUsers();
-      }
+      await usersApi.delete(userToDelete.id);
+      toast.success('Usuario eliminado permanentemente');
+      fetchUsers();
     } catch (error) {
       toast.error('Error al eliminar usuario');
     } finally {
@@ -185,24 +151,12 @@ export default function AdminUsers() {
     if (!editingUser) return;
     setIsSaving(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${editingUser.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editFormData)
-      });
-
-      if (response.ok) {
-        toast.success('Usuario actualizado correctamente');
-        setEditingUser(null);
-        fetchUsers();
-      } else {
-        toast.error('Erro ao atualizar usuário');
-      }
+      await usersApi.update(editingUser.id, editFormData);
+      toast.success('Usuario actualizado correctamente');
+      setEditingUser(null);
+      fetchUsers();
     } catch (error) {
-      toast.error('Erro ao atualizar usuário');
+      toast.error('Error al actualizar usuario');
     } finally {
       setIsSaving(false);
     }

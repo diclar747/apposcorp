@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
 import { formatCurrency } from '@/lib/utils';
+import { coursesApi } from '@/lib/api';
 
 export default function AdminCourses() {
   const [courses, setCourses] = useState([]);
@@ -58,15 +59,8 @@ export default function AdminCourses() {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/courses', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCourses(data);
-      }
+      const data = await coursesApi.getAll();
+      setCourses(data);
     } catch (error) {
       toast.error('Error al cargar cursos');
     } finally {
@@ -77,44 +71,27 @@ export default function AdminCourses() {
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3001/api/courses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...newCourse,
-          price: Number(newCourse.price),
-          instructorId: user?.id, // Should normally be handled by backend from token, but sending just in case or if flexible
-          slug: newCourse.title.toLowerCase().replace(/ /g, '-') + '-' + Date.now()
-        })
+      await coursesApi.create({
+        ...newCourse,
+        price: Number(newCourse.price),
+        instructorId: user?.id,
+        slug: newCourse.title.toLowerCase().replace(/ /g, '-') + '-' + Date.now()
       });
-
-      if (res.ok) {
-        toast.success('Curso creado exitosamente');
-        setIsCreateOpen(false);
-        setNewCourse({ title: '', description: '', price: '', category: 'Finanzas', level: 'beginner' });
-        fetchCourses();
-      } else {
-        toast.error('Error al crear curso');
-      }
+      toast.success('Curso creado exitosamente');
+      setIsCreateOpen(false);
+      setNewCourse({ title: '', description: '', price: '', category: 'Finanzas', level: 'beginner' });
+      fetchCourses();
     } catch (error) {
-      toast.error('Error de conexión');
+      toast.error('Error al crear curso');
     }
   };
 
   const handleDeleteCourse = async (id: string) => {
     if (!confirm('¿Estás seguro de eliminar este curso?')) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/courses/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        toast.success('Curso eliminado');
-        fetchCourses();
-      }
+      await coursesApi.delete(id);
+      toast.success('Curso eliminado');
+      fetchCourses();
     } catch (error) {
       toast.error('Error al eliminar');
     }
