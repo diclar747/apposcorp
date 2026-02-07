@@ -19,20 +19,11 @@
       "dest": "server/src/index.ts"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/dist/assets/$1"
-    },
-    {
-      "src": "/icons/(.*)",
-      "dest": "/dist/icons/$1"
-    },
-    {
-      "src": "/(manifest\\.json|sw\\.js|favicon\\.png|robots\\.txt)",
-      "dest": "/dist/$1"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/index.html"
+      "dest": "/index.html"
     }
   ]
 }

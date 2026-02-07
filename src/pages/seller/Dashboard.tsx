@@ -22,7 +22,9 @@ export default function SellerDashboard() {
         setIsLoading(true);
         const [ordersData, productsData] = await Promise.all([
           ordersApi.getAll('seller'),
-          productsApi.getAll({ sellerId: user?.sellerProfile?.id }),
+          user?.sellerProfile?.id
+            ? productsApi.getAll({ sellerId: user.sellerProfile.id })
+            : Promise.resolve([]),
         ]);
         setOrders(ordersData);
         setProducts(productsData);

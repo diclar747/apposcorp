@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
       where.category = category as string;
     }
 
-    if (sellerId) {
+    if (sellerId && sellerId !== 'undefined' && sellerId !== 'null') {
       where.sellerId = sellerId as string;
     }
 
@@ -69,7 +69,7 @@ router.get('/featured', async (req, res) => {
 
     res.json(products);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -99,12 +99,12 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ error: 'Produto não encontrado' });
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
     res.json(product);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -118,7 +118,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!user || (user.role !== 'seller' && user.role !== 'superadmin')) {
-      return res.status(403).json({ error: 'Acesso negado' });
+      return res.status(403).json({ error: 'Acceso denegado' });
     }
 
     // Determine sellerId (sellerProfile ID)
@@ -218,7 +218,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     res.status(201).json(product);
   } catch (error) {
     console.error('Create product error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -233,12 +233,12 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ error: 'Produto não encontrado' });
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
     // Only seller owner or admin can update
     if (req.user!.role !== 'superadmin' && product.seller.userId !== req.user!.userId) {
-      return res.status(403).json({ error: 'Acesso negado' });
+      return res.status(403).json({ error: 'Acceso denegado' });
     }
 
     const updatedProduct = await prisma.product.update({
@@ -252,7 +252,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 
     res.json(updatedProduct);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -267,20 +267,20 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ error: 'Produto não encontrado' });
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
     if (req.user!.role !== 'superadmin' && product.seller.userId !== req.user!.userId) {
-      return res.status(403).json({ error: 'Acesso negado' });
+      return res.status(403).json({ error: 'Acceso denegado' });
     }
 
     await prisma.product.delete({
       where: { id },
     });
 
-    res.json({ message: 'Produto deletado com sucesso' });
+    res.json({ message: 'Producto eliminado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
