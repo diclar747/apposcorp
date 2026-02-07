@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { productsApi, suppliersApi } from '@/lib/api';
+import { mockProducts, mockStores, mockSuppliers } from '@/data/mockData';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,17 +68,34 @@ export default function SellerProducts() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch products
+  // Get mock products for the current seller's store
+  const getMockProducts = (): Product[] => {
+    if (!user?.id) return [];
+    const store = mockStores.find(s => s.sellerId === user.id);
+    if (!store) {
+      // Fallback: filter by sellerId directly
+      return mockProducts.filter(p => p.sellerId === user.id);
+    }
+    return mockProducts.filter(p => p.storeId === store.id);
+  };
+
+  // Fetch products - tries API first, falls back to mock data
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
       if (user?.id) {
-        const data = await productsApi.getAll({ sellerId: user.id });
-        setProducts(data);
+        try {
+          const data = await productsApi.getAll({ sellerId: user.id });
+          if (data && data.length > 0) {
+            setProducts(data);
+            return;
+          }
+        } catch {
+          // API not available, will use mock data
+        }
+        // Fallback to mock data
+        setProducts(getMockProducts());
       }
-    } catch (error) {
-      toast.error('Error al cargar productos');
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -86,10 +104,14 @@ export default function SellerProducts() {
   const fetchSuppliers = async () => {
     try {
       const data = await suppliersApi.getAll();
-      setSuppliers(data);
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
+      if (data && data.length > 0) {
+        setSuppliers(data);
+        return;
+      }
+    } catch {
+      // API not available, use mock data
     }
+    setSuppliers(mockSuppliers.filter(s => s.sellerId === user?.id));
   };
 
   useEffect(() => {
@@ -169,18 +191,49 @@ export default function SellerProducts() {
 
     try {
       if (editingProduct) {
-        await productsApi.update(editingProduct.id, formData);
+        try {
+          await productsApi.update(editingProduct.id, formData);
+        } catch {
+          // API not available, update locally
+        }
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...formData } as Product : p));
         toast.success('Producto actualizado correctamente');
       } else {
-        await productsApi.create({
+        const store = mockStores.find(s => s.sellerId === user?.id);
+        const newProduct: Product = {
           ...formData,
-          sellerId: user?.id,
-          storeId: user?.sellerProfile?.id || 'store-generic'
-        });
+          id: `prod-new-${Date.now()}`,
+          sellerId: user?.id || '',
+          storeId: store?.id || 'store-generic',
+          slug: formData.name?.toLowerCase().replace(/\s+/g, '-') || '',
+          description: formData.description || '',
+          price: formData.price || 0,
+          stock: formData.stock || 0,
+          sku: formData.sku || '',
+          images: formData.images || [],
+          category: formData.category || '',
+          type: formData.type || 'physical',
+          visibility: formData.visibility || 'both',
+          status: formData.status || 'active',
+          tags: [],
+          isFeatured: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as Product;
+
+        try {
+          await productsApi.create({
+            ...formData,
+            sellerId: user?.id,
+            storeId: store?.id || 'store-generic'
+          });
+        } catch {
+          // API not available, add locally
+        }
+        setProducts(prev => [...prev, newProduct]);
         toast.success('Producto creado correctamente');
       }
       setIsModalOpen(false);
-      fetchProducts();
     } catch (error) {
       toast.error('Error al guardar el producto');
       console.error(error);
@@ -190,9 +243,13 @@ export default function SellerProducts() {
   const handleDeleteProduct = async (id: string) => {
     if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
       try {
-        await productsApi.delete(id);
+        try {
+          await productsApi.delete(id);
+        } catch {
+          // API not available, delete locally
+        }
+        setProducts(prev => prev.filter(p => p.id !== id));
         toast.success('Producto eliminado');
-        fetchProducts();
       } catch (error) {
         toast.error('Error al eliminar el producto');
         console.error(error);
@@ -204,11 +261,15 @@ export default function SellerProducts() {
     const product = products.find(p => p.id === id);
     if (!product) return;
 
+    const newStatus = product.status === 'active' ? 'inactive' : 'active';
     try {
-      const newStatus = product.status === 'active' ? 'inactive' : 'active';
-      await productsApi.update(id, { status: newStatus });
+      try {
+        await productsApi.update(id, { status: newStatus });
+      } catch {
+        // API not available, toggle locally
+      }
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
       toast.info(`Producto ${newStatus === 'active' ? 'activado' : 'desactivado'}`);
-      fetchProducts();
     } catch (error) {
       toast.error('Error al actualizar estado');
     }
