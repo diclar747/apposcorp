@@ -16,7 +16,13 @@ router.get('/', async (req, res) => {
     }
 
     if (sellerId) {
-      where.sellerId = sellerId as string;
+      // sellerId from query may be a User ID (from frontend auth),
+      // but Product.sellerId references SellerProfile.id.
+      // Try to resolve it via SellerProfile first.
+      const sellerProfile = await prisma.sellerProfile.findUnique({
+        where: { userId: sellerId as string },
+      });
+      where.sellerId = sellerProfile ? sellerProfile.id : sellerId as string;
     }
 
     if (search) {
@@ -48,6 +54,7 @@ router.get('/', async (req, res) => {
 
     res.json(products);
   } catch (error) {
+    console.error('Get products error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
