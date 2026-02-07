@@ -78,45 +78,59 @@ export default function ClientScan() {
         await stopScanner();
         setCameraError(null);
 
-        // Wait for DOM to be ready
-        await new Promise(r => setTimeout(r, 200));
-        if (!mountedRef.current) return;
+        // Poll for DOM element to be ready
+        let container: HTMLElement | null = null;
+        for (let i = 0; i < 10; i++) {
+            await new Promise(r => setTimeout(r, 200));
+            if (!mountedRef.current) return;
+            container = document.getElementById('qr-reader');
+            if (container) break;
+        }
+        if (!container || !mountedRef.current) return;
 
-        const container = document.getElementById('qr-reader');
-        if (!container) return;
+        const scanner = new Html5Qrcode('qr-reader');
+        scannerRef.current = scanner;
+
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        const onSuccess = (decodedText: string) => {
+            const data = parseQRData(decodedText);
+            if (data) {
+                stopScanner();
+                setParsedData(data);
+                toast.success('Codigo QR detectado!');
+            }
+        };
+        const onError = () => { /* QR not found in frame - expected */ };
+
+        // Try rear camera first, then fallback to any available camera
+        try {
+            await scanner.start({ facingMode: 'environment' }, config, onSuccess, onError);
+            return;
+        } catch (e) {
+            console.warn('Rear camera failed, trying fallback:', e);
+        }
 
         try {
-            const scanner = new Html5Qrcode('qr-reader');
-            scannerRef.current = scanner;
-
-            await scanner.start(
-                { facingMode: 'environment' },
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1,
-                },
-                (decodedText) => {
-                    const data = parseQRData(decodedText);
-                    if (data) {
-                        stopScanner();
-                        setParsedData(data);
-                        toast.success('Codigo QR detectado!');
-                    }
-                },
-                () => { /* QR not found in frame - expected */ }
-            );
-        } catch (err: any) {
-            if (!mountedRef.current) return;
-            const msg = String(err);
-            if (msg.includes('NotAllowed') || msg.includes('Permission')) {
-                setCameraError('Permiso de camara denegado. Por favor permite el acceso a la camara en tu navegador.');
-            } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
-                setCameraError('No se encontro una camara en este dispositivo.');
-            } else {
-                setCameraError('No se pudo acceder a la camara. Verifica los permisos de tu navegador.');
+            const cameras = await Html5Qrcode.getCameras();
+            if (cameras && cameras.length > 0) {
+                const backCam = cameras.find(c =>
+                    c.label.toLowerCase().includes('back') ||
+                    c.label.toLowerCase().includes('rear') ||
+                    c.label.toLowerCase().includes('environment')
+                );
+                await scanner.start(
+                    backCam ? backCam.id : cameras[cameras.length - 1].id,
+                    config, onSuccess, onError
+                );
+                return;
             }
+        } catch (e) {
+            console.warn('Camera fallback also failed:', e);
         }
+
+        if (!mountedRef.current) return;
+        scannerRef.current = null;
+        setCameraError('No se pudo acceder a la camara. Verifica los permisos en tu navegador.');
     }, [stopScanner]);
 
     // Check for data passed via navigation state (from QRPayment modal)

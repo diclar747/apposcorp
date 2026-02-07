@@ -105,46 +105,65 @@ export default function SellerPOS() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [cart]);
 
+    // Reset payment method when checkout closes
+    useEffect(() => {
+        if (!isCheckoutOpen) {
+            setPaymentMethod('cash');
+            setWalletPaymentStatus(null);
+        }
+    }, [isCheckoutOpen]);
+
     // Wallet payment polling - detect when client pays via QR
     useEffect(() => {
+        let cancelled = false;
+
         if (isCheckoutOpen && paymentMethod === 'wallet') {
-            // Record existing transactions as baseline
-            walletApi.getTransactions({ limit: 10 } as any).then((response: any) => {
-                const txs = Array.isArray(response) ? response : (response.transactions || []);
-                knownTxIdsRef.current = new Set(txs.map((t: any) => t.id));
-            }).catch(() => {});
-
-            setWalletPaymentStatus('waiting');
-
-            // Poll for new incoming transfers every 3 seconds
-            pollingRef.current = setInterval(async () => {
+            const startPolling = async () => {
+                // Get baseline transactions FIRST before polling
                 try {
-                    const response = await walletApi.getTransactions({ limit: 5 } as any);
+                    const response = await walletApi.getTransactions({ limit: 10 } as any);
                     const txs = Array.isArray(response) ? response : (response.transactions || []);
-                    const newPayment = txs.find((t: any) =>
-                        !knownTxIdsRef.current.has(t.id) &&
-                        t.type === 'transfer_in' &&
-                        t.status === 'completed'
-                    );
-                    if (newPayment) {
-                        if (pollingRef.current) {
-                            clearInterval(pollingRef.current);
-                            pollingRef.current = null;
-                        }
-                        setWalletPaymentStatus('paid');
-                    }
+                    knownTxIdsRef.current = new Set(txs.map((t: any) => t.id));
                 } catch {
-                    // Polling error - silently continue
+                    knownTxIdsRef.current = new Set();
                 }
-            }, 3000);
+
+                if (cancelled) return;
+                setWalletPaymentStatus('waiting');
+
+                // Now start polling for new incoming transfers
+                pollingRef.current = setInterval(async () => {
+                    try {
+                        const response = await walletApi.getTransactions({ limit: 5 } as any);
+                        const txs = Array.isArray(response) ? response : (response.transactions || []);
+                        const newPayment = txs.find((t: any) =>
+                            !knownTxIdsRef.current.has(t.id) &&
+                            t.type === 'transfer_in' &&
+                            t.status === 'completed'
+                        );
+                        if (newPayment) {
+                            if (pollingRef.current) {
+                                clearInterval(pollingRef.current);
+                                pollingRef.current = null;
+                            }
+                            setWalletPaymentStatus('paid');
+                        }
+                    } catch {
+                        // Polling error - silently continue
+                    }
+                }, 3000);
+            };
+
+            startPolling();
         } else {
-            setWalletPaymentStatus(null);
             if (pollingRef.current) {
                 clearInterval(pollingRef.current);
                 pollingRef.current = null;
             }
         }
+
         return () => {
+            cancelled = true;
             if (pollingRef.current) {
                 clearInterval(pollingRef.current);
                 pollingRef.current = null;
@@ -531,7 +550,7 @@ export default function SellerPOS() {
                             <p className="text-4xl font-black text-slate-900 tracking-tighter">{formatCurrency(total)}</p>
                         </div>
 
-                        <Tabs defaultValue="cash" onValueChange={(v) => setPaymentMethod(v as any)} className="w-full">
+                        <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)} className="w-full">
                             <TabsList className="grid w-full grid-cols-3 h-12">
                                 <TabsTrigger value="cash" className="gap-2">
                                     <Banknote className="w-4 h-4" />

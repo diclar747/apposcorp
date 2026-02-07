@@ -97,37 +97,47 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
 
     if (!container || !mountedRef.current) return;
 
-    try {
-      const scanner = new Html5Qrcode('qr-modal-reader');
-      scannerRef.current = scanner;
+    const scanner = new Html5Qrcode('qr-modal-reader');
+    scannerRef.current = scanner;
 
-      await scanner.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 230, height: 230 },
-          aspectRatio: 1,
-        },
-        (decodedText) => {
-          // QR detected - stop scanning, close modal, navigate to payment page
-          stopScanner();
-          onClose();
-          navigate('/app/escanear', { state: { qrData: decodedText } });
-          toast.success('Codigo QR detectado!');
-        },
-        () => { /* QR not found in frame - expected */ }
-      );
-    } catch (err: any) {
-      if (!mountedRef.current) return;
-      const msg = String(err);
-      if (msg.includes('NotAllowed') || msg.includes('Permission')) {
-        setCameraError('Permiso de camara denegado. Permite el acceso a la camara.');
-      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
-        setCameraError('No se encontro camara en este dispositivo.');
-      } else {
-        setCameraError('No se pudo acceder a la camara.');
-      }
+    const config = { fps: 10, qrbox: { width: 230, height: 230 } };
+    const onSuccess = (decodedText: string) => {
+      stopScanner();
+      onClose();
+      navigate('/app/escanear', { state: { qrData: decodedText } });
+      toast.success('Codigo QR detectado!');
+    };
+    const onError = () => { /* QR not found in frame - expected */ };
+
+    // Try rear camera first, then fallback to any available camera
+    try {
+      await scanner.start({ facingMode: 'environment' }, config, onSuccess, onError);
+      return;
+    } catch (e) {
+      console.warn('Rear camera failed, trying fallback:', e);
     }
+
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      if (cameras && cameras.length > 0) {
+        const backCam = cameras.find(c =>
+          c.label.toLowerCase().includes('back') ||
+          c.label.toLowerCase().includes('rear') ||
+          c.label.toLowerCase().includes('environment')
+        );
+        await scanner.start(
+          backCam ? backCam.id : cameras[cameras.length - 1].id,
+          config, onSuccess, onError
+        );
+        return;
+      }
+    } catch (e) {
+      console.warn('Camera fallback also failed:', e);
+    }
+
+    if (!mountedRef.current) return;
+    scannerRef.current = null;
+    setCameraError('No se pudo acceder a la camara. Verifica los permisos.');
   }, [stopScanner, onClose, navigate]);
 
   // Manage scanner lifecycle based on mode and modal state
