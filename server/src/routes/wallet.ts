@@ -41,12 +41,12 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Carteira não encontrada' });
+      return res.status(404).json({ error: 'Billetera no encontrada' });
     }
 
     res.json(wallet);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -64,7 +64,7 @@ router.get('/transactions', authenticate, async (req: AuthRequest, res) => {
 
     res.json(transactions);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -82,7 +82,7 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Carteira não encontrada' });
+      return res.status(404).json({ error: 'Billetera no encontrada' });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -120,7 +120,7 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
 
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -265,7 +265,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           userId: req.user!.userId,
           type: 'transfer_out',
           amount: -amount,
-          description: description || 'Transferência enviada',
+          description: description || 'Transferencia enviada',
           status: 'completed',
           relatedUserId: toUserId,
         },
@@ -278,13 +278,13 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           userId: toUserId,
           type: 'transfer_in',
           amount,
-          description: description || 'Transferência recebida',
+          description: description || 'Transferencia recibida',
           status: 'completed',
           relatedUserId: req.user!.userId,
         },
       });
 
-      return { message: 'Transferência realizada com sucesso' };
+      return { message: 'Transferencia realizada con éxito' };
     });
 
     // Push notification to receiver
@@ -301,7 +301,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
 
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -319,7 +319,7 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Carteira não encontrada' });
+      return res.status(404).json({ error: 'Billetera no encontrada' });
     }
 
     if (wallet.balance < amount) {
@@ -343,7 +343,7 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
           userId: req.user!.userId,
           type: 'withdrawal',
           amount: -amount,
-          description: description || 'Solicitação de saque',
+          description: description || 'Solicitud de retiro',
           status: 'pending', // Withdrawals usually require approval
         },
       });
@@ -353,7 +353,7 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
 
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -365,12 +365,12 @@ router.get('/card', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!card) {
-      return res.status(404).json({ error: 'Cartão não encontrado' });
+      return res.status(404).json({ error: 'Tarjeta no encontrada' });
     }
 
     res.json(card);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -386,7 +386,7 @@ router.patch('/card/design', authenticate, async (req: AuthRequest, res) => {
 
     res.json(card);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 

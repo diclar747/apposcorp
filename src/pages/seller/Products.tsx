@@ -72,7 +72,7 @@ export default function SellerProducts() {
     try {
       setIsLoading(true);
       if (user?.id) {
-        const data = await productsApi.getAll({ sellerId: user.id });
+        const data = await productsApi.getAll({ sellerId: user.sellerProfile?.id || user.id });
         setProducts(data);
       }
     } catch (error) {
@@ -174,7 +174,7 @@ export default function SellerProducts() {
       } else {
         await productsApi.create({
           ...formData,
-          sellerId: user?.id,
+          sellerId: user?.sellerProfile?.id || user?.id,
           storeId: user?.sellerProfile?.id || 'store-generic'
         });
         toast.success('Producto creado correctamente');

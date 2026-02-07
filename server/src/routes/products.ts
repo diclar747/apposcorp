@@ -48,7 +48,8 @@ router.get('/', async (req, res) => {
 
     res.json(products);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    console.error('Get products error:', error);
+    res.status(500).json({ error: 'Error al obtener productos' });
   }
 });
 
