@@ -6,8 +6,8 @@ import {
     Printer, History, Keyboard, User as UserIcon, Copy
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useAuthStore } from '@/stores';
-import { mockProducts, mockStores, mockUsers } from '@/data/mockData';
+import { useAuthStore, useProductStore } from '@/stores';
+import { mockStores, mockUsers } from '@/data/mockData';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,9 +32,19 @@ interface CartItem {
 
 export default function SellerPOS() {
     const { user } = useAuthStore();
+    const { loadProducts, getProductsForStore } = useProductStore();
     const navigate = useNavigate();
     const store = mockStores.find(s => s.sellerId === user?.id);
-    const products = mockProducts.filter(p => p.storeId === store?.id);
+
+    // Load products into shared store on mount
+    useEffect(() => {
+        if (user?.id) {
+            loadProducts(user.id);
+        }
+    }, [user?.id, loadProducts]);
+
+    // Get products from shared store (reflects edits from Products page)
+    const products = user?.id ? getProductsForStore(user.id) : [];
 
     const [searchTerm, setSearchTerm] = useState('');
     const [cart, setCart] = useState<CartItem[]>([]);

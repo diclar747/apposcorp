@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
-import { useAuthStore } from '@/stores';
-import { productsApi, suppliersApi } from '@/lib/api';
-import { mockProducts, mockStores, mockSuppliers } from '@/data/mockData';
+import { useAuthStore, useProductStore } from '@/stores';
+import { suppliersApi } from '@/lib/api';
+import { mockStores, mockSuppliers } from '@/data/mockData';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,46 +60,21 @@ const PRODUCT_CATEGORIES = [
 
 export default function SellerProducts() {
   const { user } = useAuthStore();
+  const { loadProducts, getProductsForStore, updateProduct, deleteProduct, addProduct, toggleStatus } = useProductStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'online' | 'local'>('all');
 
-  // State for products
-  const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Get mock products for the current seller's store
-  const getMockProducts = (): Product[] => {
-    if (!user?.id) return [];
-    const store = mockStores.find(s => s.sellerId === user.id);
-    if (!store) {
-      // Fallback: filter by sellerId directly
-      return mockProducts.filter(p => p.sellerId === user.id);
+  // Load products into shared store
+  useEffect(() => {
+    if (user?.id) {
+      loadProducts(user.id);
     }
-    return mockProducts.filter(p => p.storeId === store.id);
-  };
+  }, [user?.id, loadProducts]);
 
-  // Fetch products - tries API first, falls back to mock data
-  const fetchProducts = async () => {
-    try {
-      setIsLoading(true);
-      if (user?.id) {
-        try {
-          const data = await productsApi.getAll({ sellerId: user.id });
-          if (data && data.length > 0) {
-            setProducts(data);
-            return;
-          }
-        } catch {
-          // API not available, will use mock data
-        }
-        // Fallback to mock data
-        setProducts(getMockProducts());
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Get this seller's products from the shared store
+  const products = user?.id ? getProductsForStore(user.id) : [];
 
   const fetchSuppliers = async () => {
     try {
@@ -115,7 +90,6 @@ export default function SellerProducts() {
   };
 
   useEffect(() => {
-    fetchProducts();
     fetchSuppliers();
   }, [user?.id]);
 
@@ -183,96 +157,56 @@ export default function SellerProducts() {
     setFormData(prev => ({ ...prev, cost, price, profitPercentage: Math.round(margin * 100) / 100 }));
   };
 
-  const handleSaveProduct = async () => {
+  const handleSaveProduct = () => {
     if (!formData.name || !formData.sku || !formData.category) {
       toast.error('Por favor completa los campos obligatorios');
       return;
     }
 
-    try {
-      if (editingProduct) {
-        try {
-          await productsApi.update(editingProduct.id, formData);
-        } catch {
-          // API not available, update locally
-        }
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...formData } as Product : p));
-        toast.success('Producto actualizado correctamente');
-      } else {
-        const store = mockStores.find(s => s.sellerId === user?.id);
-        const newProduct: Product = {
-          ...formData,
-          id: `prod-new-${Date.now()}`,
-          sellerId: user?.id || '',
-          storeId: store?.id || 'store-generic',
-          slug: formData.name?.toLowerCase().replace(/\s+/g, '-') || '',
-          description: formData.description || '',
-          price: formData.price || 0,
-          stock: formData.stock || 0,
-          sku: formData.sku || '',
-          images: formData.images || [],
-          category: formData.category || '',
-          type: formData.type || 'physical',
-          visibility: formData.visibility || 'both',
-          status: formData.status || 'active',
-          tags: [],
-          isFeatured: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as Product;
-
-        try {
-          await productsApi.create({
-            ...formData,
-            sellerId: user?.id,
-            storeId: store?.id || 'store-generic'
-          });
-        } catch {
-          // API not available, add locally
-        }
-        setProducts(prev => [...prev, newProduct]);
-        toast.success('Producto creado correctamente');
-      }
-      setIsModalOpen(false);
-    } catch (error) {
-      toast.error('Error al guardar el producto');
-      console.error(error);
+    if (editingProduct) {
+      updateProduct(editingProduct.id, formData);
+      toast.success('Producto actualizado correctamente');
+    } else {
+      const store = mockStores.find(s => s.sellerId === user?.id);
+      const newProduct: Product = {
+        ...formData,
+        id: `prod-new-${Date.now()}`,
+        sellerId: user?.id || '',
+        storeId: store?.id || 'store-generic',
+        slug: formData.name?.toLowerCase().replace(/\s+/g, '-') || '',
+        description: formData.description || '',
+        price: formData.price || 0,
+        stock: formData.stock || 0,
+        sku: formData.sku || '',
+        images: formData.images || [],
+        category: formData.category || '',
+        type: formData.type || 'physical',
+        visibility: formData.visibility || 'both',
+        status: formData.status || 'active',
+        tags: [],
+        isFeatured: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Product;
+      addProduct(newProduct);
+      toast.success('Producto creado correctamente');
     }
+    setIsModalOpen(false);
   };
 
-  const handleDeleteProduct = async (id: string) => {
+  const handleDeleteProduct = (id: string) => {
     if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-      try {
-        try {
-          await productsApi.delete(id);
-        } catch {
-          // API not available, delete locally
-        }
-        setProducts(prev => prev.filter(p => p.id !== id));
-        toast.success('Producto eliminado');
-      } catch (error) {
-        toast.error('Error al eliminar el producto');
-        console.error(error);
-      }
+      deleteProduct(id);
+      toast.success('Producto eliminado');
     }
   };
 
-  const handleToggleStatus = async (id: string) => {
+  const handleToggleStatus = (id: string) => {
     const product = products.find(p => p.id === id);
     if (!product) return;
-
+    toggleStatus(id);
     const newStatus = product.status === 'active' ? 'inactive' : 'active';
-    try {
-      try {
-        await productsApi.update(id, { status: newStatus });
-      } catch {
-        // API not available, toggle locally
-      }
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
-      toast.info(`Producto ${newStatus === 'active' ? 'activado' : 'desactivado'}`);
-    } catch (error) {
-      toast.error('Error al actualizar estado');
-    }
+    toast.info(`Producto ${newStatus === 'active' ? 'activado' : 'desactivado'}`);
   };
 
   return (
