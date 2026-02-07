@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { usersApi } from '@/lib/api';
+import { ImageUpload } from '@/components/shared/ImageUpload';
 
 export default function SellerStore() {
   const { user, fetchCurrentUser } = useAuthStore();
@@ -167,12 +168,26 @@ export default function SellerStore() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="logo">URL del Logo</Label>
-                <Input id="logo" name="logo" value={formData.logo} onChange={handleChange} placeholder="https://..." />
+                <Label>Logo de la Tienda</Label>
+                <ImageUpload
+                  value={formData.logo || null}
+                  onChange={(val) => setFormData({ ...formData, logo: val || '' })}
+                  shape="circle"
+                  maxWidth={300}
+                  maxHeight={300}
+                  label="Logo"
+                />
               </div>
               <div>
-                <Label htmlFor="banner">URL del Banner</Label>
-                <Input id="banner" name="banner" value={formData.banner} onChange={handleChange} placeholder="https://..." />
+                <Label>Banner de la Tienda</Label>
+                <ImageUpload
+                  value={formData.banner || null}
+                  onChange={(val) => setFormData({ ...formData, banner: val || '' })}
+                  shape="rect"
+                  maxWidth={800}
+                  maxHeight={400}
+                  label="Banner"
+                />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -238,14 +253,14 @@ export default function SellerStore() {
         )}
 
         {isEditing && (
-          <div className="absolute inset-x-0 bottom-0 p-4 bg-black/60 backdrop-blur-sm flex items-center gap-3">
-            <Camera className="w-5 h-5 text-white" />
-            <Input
-              name="banner"
-              value={formData.banner}
-              onChange={handleChange}
-              placeholder="URL del Banner (https://...)"
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-9"
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <ImageUpload
+              value={formData.banner || null}
+              onChange={(val) => setFormData({ ...formData, banner: val || '' })}
+              shape="rect"
+              maxWidth={800}
+              maxHeight={400}
+              label="Cambiar Banner"
             />
           </div>
         )}
@@ -267,13 +282,14 @@ export default function SellerStore() {
                 )}
               </div>
               {isEditing && (
-                <div className="absolute -bottom-10 inset-x-0 pt-2 z-10">
-                  <Input
-                    name="logo"
-                    value={formData.logo}
-                    onChange={handleChange}
-                    placeholder="URL Logo"
-                    className="bg-white shadow-lg text-xs h-8"
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
+                  <ImageUpload
+                    value={formData.logo || null}
+                    onChange={(val) => setFormData({ ...formData, logo: val || '' })}
+                    shape="circle"
+                    maxWidth={300}
+                    maxHeight={300}
+                    label="Logo"
                   />
                 </div>
               )}

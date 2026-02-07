@@ -28,6 +28,7 @@ import { VirtualCard } from '@/components/client/VirtualCard';
 import { Switch } from '@/components/ui/switch';
 import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '@/lib/pushNotifications';
 import { generateQRValue } from '@/lib/qr';
+import { ImageUpload } from '@/components/shared/ImageUpload';
 
 const menuItems = [
   { icon: User, label: 'Editar perfil', href: '#' },
@@ -172,23 +173,13 @@ export default function ClientProfile() {
               {isEditing ? (
                 <div className="w-full space-y-4">
                   <div className="flex justify-center mb-4">
-                    <div className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden relative group">
-                      {formData.avatar ? (
-                        <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                          <User className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>URL del Avatar</Label>
-                    <Input
-                      value={formData.avatar}
-                      onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-                      placeholder="https://..."
+                    <ImageUpload
+                      value={formData.avatar || null}
+                      onChange={(val) => setFormData({ ...formData, avatar: val || '' })}
+                      shape="circle"
+                      maxWidth={300}
+                      maxHeight={300}
+                      label="Foto de perfil"
                     />
                   </div>
 

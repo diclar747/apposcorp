@@ -20,7 +20,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: Home, label: 'Inicio', path: '/app' },
   { icon: Wallet, label: 'Billetera', path: '/app/wallet' },
-  { icon: ShoppingBag, label: 'Tienda', path: '/app/tienda' },
+  { icon: ShoppingBag, label: 'Tienda', path: '/app/tiendas' },
   { icon: User, label: 'Perfil', path: '/app/perfil' },
 ];
 

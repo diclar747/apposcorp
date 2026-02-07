@@ -5,6 +5,7 @@ import {
   Home,
   Store,
   ShoppingBag,
+  ShoppingCart,
   Wallet,
   GraduationCap,
   User,
@@ -240,9 +241,26 @@ export default function ClientLayout() {
               variant="ghost"
               size="icon"
               className="w-9 h-9 rounded-full"
-              onClick={() => navigate('/app/tienda')}
+              onClick={() => navigate('/app/tiendas')}
             >
               <Search className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9 rounded-full relative"
+              onClick={() => navigate('/app/carrito')}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {itemCount > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                >
+                  {itemCount > 9 ? '9+' : itemCount}
+                </motion.span>
+              )}
             </Button>
             <Button
               variant="ghost"

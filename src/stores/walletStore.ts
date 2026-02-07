@@ -39,7 +39,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const transactions = await walletApi.getTransactions();
+      const transactions = await walletApi.getTransactions({ limit: 200 });
       set({
         transactions,
         isLoading: false

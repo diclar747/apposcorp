@@ -1,7 +1,36 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { sendPushToUser } from '../services/pushService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configure multer for document uploads
+const storage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'uploads', 'documents'),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `doc-${uniqueSuffix}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten imágenes (JPEG, PNG, WebP)'));
+    }
+  },
+});
 
 const router = Router();
 
@@ -319,6 +348,45 @@ router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Upload documents for a credit
+router.post('/:id/documents', authenticate, upload.array('documents', 4), async (req: AuthRequest, res) => {
+  try {
+    const creditId = req.params.id as string;
+    const types = req.body.types ? (Array.isArray(req.body.types) ? req.body.types : [req.body.types]) : [];
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No se enviaron archivos' });
+    }
+
+    // Verify the credit belongs to the user
+    const credit = await prisma.credit.findUnique({ where: { id: creditId } });
+    if (!credit) {
+      return res.status(404).json({ error: 'Crédito no encontrado' });
+    }
+    if (credit.userId !== req.user!.userId) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const documents = await Promise.all(
+      files.map((file, i) =>
+        prisma.creditDocument.create({
+          data: {
+            creditId,
+            type: types[i] || 'other',
+            url: `/api/uploads/documents/${file.filename}`,
+          },
+        })
+      )
+    );
+
+    res.status(201).json(documents);
+  } catch (error) {
+    console.error('Upload documents error:', error);
+    res.status(500).json({ error: 'Error al subir documentos' });
+  }
+});
+
 // Get all credits (admin only)
 router.get('/admin/all', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
@@ -329,14 +397,18 @@ router.get('/admin/all', authenticate, authorize('superadmin'), async (req: Auth
             firstName: true,
             lastName: true,
             email: true,
+            avatar: true,
           },
         },
-        paymentSchedule: true,
+        documents: true,
+        paymentSchedule: {
+          orderBy: { installmentNumber: 'asc' },
+        },
         payments: true,
       },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     res.json(credits);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });

@@ -200,6 +200,24 @@ export const creditsApi = {
       method: 'POST',
       body: JSON.stringify({ installmentId, paymentMethod }),
     }),
+  uploadDocuments: async (creditId: string, files: { file: File; type: string }[]) => {
+    const formData = new FormData();
+    files.forEach(({ file, type }) => {
+      formData.append('documents', file);
+      formData.append('types', type);
+    });
+    const token = localStorage.getItem('oscorp-token');
+    const res = await fetch(`${API_URL}/credits/${creditId}/documents`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Error' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
   getAllAdmin: () => fetchWithAuth('/credits/admin/all'),
 };
 

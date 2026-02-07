@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ShoppingBag,
+  ShoppingCart,
   ArrowRight,
   ArrowDownLeft,
   ArrowUpRight,
   Loader2,
+  Check,
 } from 'lucide-react';
-import { useAuthStore, useWalletStore } from '@/stores';
+import { useAuthStore, useWalletStore, useCartStore } from '@/stores';
 import { productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,6 +18,7 @@ import { VirtualCardCompact } from '@/components/client/VirtualCard';
 import { QuickActions } from '@/components/client/QuickActions';
 import { FinanceChart } from '@/components/client/FinanceChart';
 import { QRPayment } from '@/components/client/QRPayment';
+import { toast } from 'sonner';
 
 // Build monthly chart data from real transactions
 const buildMonthlyData = (txs: any[]) => {
@@ -46,6 +49,8 @@ const buildMonthlyData = (txs: any[]) => {
 export default function ClientHome() {
   const { user } = useAuthStore();
   const { wallet, transactions, fetchWallet, fetchTransactions } = useWalletStore();
+  const { addItem, isInCart } = useCartStore();
+  const navigate = useNavigate();
   const [showQR, setShowQR] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -79,6 +84,17 @@ export default function ClientHome() {
     amount: Math.abs(t.amount),
     date: new Date(t.createdAt).toLocaleDateString('es-PY', { day: 'numeric', month: 'short' }),
   }));
+
+  const handleQuickAdd = (e: React.MouseEvent, product: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isInCart(product.id)) {
+      navigate('/app/carrito');
+      return;
+    }
+    addItem(product, 1);
+    toast.success(`${product.name} agregado al carrito`);
+  };
 
   return (
     <div className="min-h-screen pb-28">
@@ -215,9 +231,26 @@ export default function ClientHome() {
                     </div>
                     <div className="p-3">
                       <p className="text-sm font-medium line-clamp-1">{product.name}</p>
-                      <p className="text-primary font-bold mt-1">
-                        {formatCurrency(product.price)}
-                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-primary font-bold">
+                          {formatCurrency(product.price)}
+                        </p>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => handleQuickAdd(e, product)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                            isInCart(product.id)
+                              ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                              : 'bg-primary/10 text-primary hover:bg-primary/20'
+                          }`}
+                        >
+                          {isInCart(product.id) ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <ShoppingCart className="w-4 h-4" />
+                          )}
+                        </motion.button>
+                      </div>
                     </div>
                   </motion.div>
                 </Link>

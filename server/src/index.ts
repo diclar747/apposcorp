@@ -1,6 +1,8 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -19,8 +21,6 @@ import pushRoutes from './routes/push.js';
 import storeRoutes from './routes/stores.js';
 import { prisma } from './utils/prisma.js';
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -30,7 +30,12 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+
+// Serve uploaded files statically
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Health check
 app.get('/health', (req, res) => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Wallet, CreditCard, Truck, Check, ChevronRight } from 'lucide-react';
+import { MapPin, Wallet, CreditCard, Truck, Check } from 'lucide-react';
 import { useAuthStore, useCartStore, useWalletStore } from '@/stores';
 import { ordersApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -42,8 +42,7 @@ export default function ClientCheckout() {
 
     try {
       const orderData = {
-        sellerId: items[0]?.product.sellerId, // Assuming all items from same seller for now, or backend handles it
-        // Note: Real world scenario should handle multi-seller cart or enforce single seller
+        sellerId: items[0]?.product.sellerId,
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -54,7 +53,7 @@ export default function ClientCheckout() {
           street: user?.address || '',
           number: '',
           city: user?.city || '',
-        }, // Should prompt for address if missing
+        },
         deliveryNotes: '',
         paymentMethod,
       };
@@ -65,7 +64,6 @@ export default function ClientCheckout() {
       toast.success('¡Compra realizada con éxito!');
       navigate('/app/pedidos');
 
-      // Refresh wallet
       if (paymentMethod === 'wallet') {
         const { fetchWallet } = useWalletStore.getState();
         if (user?.id) fetchWallet(user.id);
@@ -81,8 +79,8 @@ export default function ClientCheckout() {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No hay productos en el carrito</p>
-        <Button onClick={() => navigate('/app/tienda')} className="mt-4">
+        <p className="text-muted-foreground">No hay productos en el carrito</p>
+        <Button onClick={() => navigate('/app/tiendas')} className="mt-4">
           Ir a la tienda
         </Button>
       </div>
@@ -93,32 +91,32 @@ export default function ClientCheckout() {
     <div className="space-y-4 pb-32">
       {/* Header */}
       <div className="px-4 pt-2">
-        <h1 className="text-xl font-bold text-gray-900">Checkout</h1>
-        <p className="text-sm text-gray-500">Completa tu compra</p>
+        <h1 className="text-xl font-bold text-foreground">Checkout</h1>
+        <p className="text-sm text-muted-foreground">Completa tu compra</p>
       </div>
 
       {/* Products Summary */}
       <div className="px-4">
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3">Resumen de productos</h3>
+            <h3 className="font-semibold text-foreground mb-3">Resumen de productos</h3>
             <div className="space-y-2">
               {items.map((item) => (
                 <div key={item.product.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">{item.quantity}x</span>
-                    <span className="text-sm line-clamp-1">{item.product.name}</span>
+                    <span className="text-sm text-muted-foreground">{item.quantity}x</span>
+                    <span className="text-sm text-foreground line-clamp-1">{item.product.name}</span>
                   </div>
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium text-foreground">
                     {formatCurrency(item.product.price * item.quantity)}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="border-t mt-3 pt-3">
+            <div className="border-t border-border mt-3 pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium">{formatCurrency(total)}</span>
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-medium text-foreground">{formatCurrency(total)}</span>
               </div>
             </div>
           </CardContent>
@@ -129,18 +127,18 @@ export default function ClientCheckout() {
       <div className="px-4">
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3">Método de entrega</h3>
+            <h3 className="font-semibold text-foreground mb-3">Método de entrega</h3>
             <RadioGroup value={deliveryMethod} onValueChange={setDeliveryMethod}>
               <div className="space-y-2">
                 {deliveryMethods.map((method) => (
-                  <div key={method.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <div key={method.id} className="flex items-center space-x-3 p-3 border border-border rounded-lg">
                     <RadioGroupItem value={method.id} id={method.id} />
                     <Label htmlFor={method.id} className="flex-1 flex items-center gap-3 cursor-pointer">
-                      <method.icon className="w-5 h-5 text-gray-500" />
+                      <method.icon className="w-5 h-5 text-muted-foreground" />
                       <div className="flex-1">
-                        <p className="font-medium">{method.label}</p>
+                        <p className="font-medium text-foreground">{method.label}</p>
                       </div>
-                      <span className="text-green-600 font-medium">Gratis</span>
+                      <span className="text-green-600 dark:text-green-400 font-medium">Gratis</span>
                     </Label>
                   </div>
                 ))}
@@ -154,17 +152,17 @@ export default function ClientCheckout() {
       <div className="px-4">
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3">Método de pago</h3>
+            <h3 className="font-semibold text-foreground mb-3">Método de pago</h3>
             <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
               <div className="space-y-2">
                 {paymentMethods.map((method) => (
-                  <div key={method.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <div key={method.id} className="flex items-center space-x-3 p-3 border border-border rounded-lg">
                     <RadioGroupItem value={method.id} id={method.id} />
                     <Label htmlFor={method.id} className="flex-1 flex items-center gap-3 cursor-pointer">
-                      <method.icon className="w-5 h-5 text-gray-500" />
+                      <method.icon className="w-5 h-5 text-muted-foreground" />
                       <div className="flex-1">
-                        <p className="font-medium">{method.label}</p>
-                        <p className="text-sm text-gray-500">{method.description}</p>
+                        <p className="font-medium text-foreground">{method.label}</p>
+                        <p className="text-sm text-muted-foreground">{method.description}</p>
                       </div>
                     </Label>
                   </div>
@@ -173,10 +171,10 @@ export default function ClientCheckout() {
             </RadioGroup>
 
             {paymentMethod === 'wallet' && (
-              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Saldo disponible</span>
-                  <span className="font-bold">{formatCurrency(wallet?.balance || 0)}</span>
+                  <span className="text-sm text-muted-foreground">Saldo disponible</span>
+                  <span className="font-bold text-foreground">{formatCurrency(wallet?.balance || 0)}</span>
                 </div>
               </div>
             )}
@@ -185,14 +183,14 @@ export default function ClientCheckout() {
       </div>
 
       {/* Total */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4">
+      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 z-30">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-lg font-bold">Total a pagar</span>
-            <span className="text-2xl font-bold text-gray-900">{formatCurrency(finalTotal)}</span>
+            <span className="text-lg font-bold text-foreground">Total a pagar</span>
+            <span className="text-2xl font-bold text-foreground">{formatCurrency(finalTotal)}</span>
           </div>
           <Button
-            className="w-full bg-blue-600"
+            className="w-full"
             onClick={handleCheckout}
             disabled={isProcessing}
           >

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight, Loader2 } from 'lucide-react';
+import { CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight, Loader2, Camera, X, ImageIcon, ArrowLeft } from 'lucide-react';
 import { creditsApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';

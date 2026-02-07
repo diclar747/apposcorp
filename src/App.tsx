@@ -28,6 +28,7 @@ import AdminReports from '@/pages/admin/Reports';
 import AdminCourses from '@/pages/admin/Courses';
 import AdminPushNotifications from '@/pages/admin/PushNotifications';
 import AdminSettings from '@/pages/admin/Settings';
+import AdminProfile from '@/pages/admin/Profile';
 
 // Seller Pages
 import SellerDashboard from '@/pages/seller/Dashboard';
@@ -40,6 +41,7 @@ import SellerReports from '@/pages/seller/Reports';
 import SellerPOS from '@/pages/seller/POS';
 import SellerSuppliers from '@/pages/seller/Suppliers';
 import SellerPurchases from '@/pages/seller/Purchases';
+import SellerProfile from '@/pages/seller/Profile';
 
 // Client Pages
 import ClientHome from '@/pages/client/Home';
@@ -120,6 +122,7 @@ function App() {
           <Route path="cursos" element={<AdminCourses />} />
           <Route path="campanas" element={<AdminPushNotifications />} />
           <Route path="configuracion" element={<AdminSettings />} />
+          <Route path="perfil" element={<AdminProfile />} />
         </Route>
 
         {/* Seller Routes */}
@@ -141,6 +144,7 @@ function App() {
           <Route path="reportes" element={<SellerReports />} />
           <Route path="proveedores" element={<SellerSuppliers />} />
           <Route path="compras" element={<SellerPurchases />} />
+          <Route path="perfil" element={<SellerProfile />} />
         </Route>
 
         {/* Client Routes */}
@@ -154,7 +158,7 @@ function App() {
         >
           <Route index element={<ClientHome />} />
           <Route path="tiendas" element={<ClientStores />} />
-          <Route path="tienda" element={<Navigate to="/app/tiendas" replace />} />
+          <Route path="tienda" element={<ClientStore />} />
           <Route path="producto/:id" element={<ClientProduct />} />
           <Route path="carrito" element={<ClientCart />} />
           <Route path="checkout" element={<ClientCheckout />} />

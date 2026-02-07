@@ -19,27 +19,6 @@ import { Badge } from '@/components/ui/badge';
 import { VirtualCard } from '@/components/client/VirtualCard';
 import { FinanceChart } from '@/components/client/FinanceChart';
 
-// Build weekly chart data from real transactions
-const buildWeeklyData = (txs: any[]) => {
-  const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-  const weekData = days.map(name => ({ name, income: 0, expense: 0 }));
-  const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  txs.forEach((t: any) => {
-    const txDate = new Date(t.createdAt);
-    if (txDate >= weekAgo) {
-      const dayIndex = txDate.getDay();
-      if (t.amount > 0) {
-        weekData[dayIndex].income += t.amount;
-      } else {
-        weekData[dayIndex].expense += Math.abs(t.amount);
-      }
-    }
-  });
-  return [...weekData.slice(1), weekData[0]];
-};
-
 const quickActions = [
   { icon: ArrowUpRight, label: 'Enviar', href: '/app/wallet/transferir', color: 'bg-blue-500', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
   { icon: ArrowDownLeft, label: 'Recibir', href: '/app/tarjeta', color: 'bg-green-500', bgColor: 'bg-green-100 dark:bg-green-500/20' },
@@ -170,9 +149,9 @@ export default function ClientWallet() {
       {/* Finance Chart */}
       <div className="px-4">
         <FinanceChart
-          data={buildWeeklyData(transactions)}
+          transactions={transactions}
           type="area"
-          title="Resumen semanal"
+          title="Estadísticas"
         />
       </div>
 
