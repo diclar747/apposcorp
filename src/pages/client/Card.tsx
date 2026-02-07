@@ -1,16 +1,16 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { 
-  ArrowLeft, 
-  Download, 
-  Share2, 
-  Copy, 
+import {
+  ArrowLeft,
+  Download,
+  Share2,
+  Copy,
   Check,
   RefreshCw,
   CreditCard,
   QrCode,
-  Wallet,
+  Wifi,
   Maximize2,
   X
 } from 'lucide-react';
@@ -23,15 +23,14 @@ import { generateQRValue } from '@/lib/qr';
 export default function ClientCard() {
   const { user } = useAuthStore();
   const { wallet } = useWalletStore();
-  const [showQR, setShowQR] = useState(true);
+  const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  const cardNumber = '4532 1234 5678 9012';
+  const cardNumber = user?.virtualCard?.cardNumber || 'OSC 0000 0000 0001';
   const cardHolder = `${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`;
   const expiryDate = '12/28';
-  const cvv = '123';
   const qrValue = generateQRValue(user?.id || '', user?.firstName || 'Usuario');
 
   const copyToClipboard = (text: string) => {
@@ -119,67 +118,76 @@ export default function ClientCard() {
               animate={{ opacity: 1, rotateY: 0 }}
               exit={{ opacity: 0, rotateY: 90 }}
               transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="virtual-card aspect-[1.586/1] p-6 flex flex-col justify-between relative overflow-hidden"
+              className="relative aspect-[1.586/1] p-6 flex flex-col justify-between overflow-hidden rounded-2xl"
+              style={{
+                background: 'linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 50%, #111111 100%)',
+                boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05)'
+              }}
             >
-              {/* Card Background Effects */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-blue-950" />
-              <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl" />
-              
-              {/* Card Content */}
-              <div className="relative z-10">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="card-chip" />
-                    <div className="flex flex-col">
-                      <span className="text-white/60 text-xs">Balance</span>
-                      <span className="text-white font-bold text-lg">
-                        ₲ {(wallet?.balance || 2500000).toLocaleString()}
-                      </span>
-                    </div>
+              {/* Subtle pattern overlay */}
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(16,185,129,0.2) 0%, transparent 40%)`
+                }}
+              />
+
+              {/* Top row: Chip + Contactless + Brand */}
+              <div className="relative z-10 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Chip */}
+                  <div className="w-12 h-9 rounded-md bg-gradient-to-br from-yellow-200 via-yellow-400 to-yellow-600 shadow-inner border border-yellow-700/40 relative overflow-hidden">
+                    <div className="absolute inset-[2px] rounded-[4px] border border-black/15" />
+                    <div className="absolute top-1/3 left-0 right-0 h-[0.5px] bg-black/20" />
+                    <div className="absolute bottom-1/3 left-0 right-0 h-[0.5px] bg-black/20" />
+                    <div className="absolute left-1/3 top-0 bottom-0 w-[0.5px] bg-black/20" />
+                    <div className="absolute right-1/3 top-0 bottom-0 w-[0.5px] bg-black/20" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <Wallet className="w-4 h-4 text-white/60" />
-                    </div>
+                  <Wifi className="w-7 h-7 text-white/40 rotate-90" />
+                </div>
+                {/* Brand */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <span className="text-white font-black text-base leading-none">O</span>
                   </div>
+                  <span className="text-white font-bold text-lg tracking-widest">OSCORP</span>
                 </div>
               </div>
 
-              <div className="relative z-10 space-y-1">
+              {/* Card Number + Mini QR */}
+              <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-white text-2xl tracking-wider font-mono">
+                  <span className="text-white text-xl sm:text-2xl tracking-[0.18em] font-mono"
+                    style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                  >
                     {cardNumber}
                   </span>
                   <button
                     onClick={() => copyToClipboard(cardNumber.replace(/\s/g, ''))}
-                    className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                    className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center transition-colors"
                   >
-                    {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-white/60" />}
+                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-white/30" />}
                   </button>
+                </div>
+                {/* Mini QR */}
+                <div className="bg-white p-[3px] rounded-md shadow-md">
+                  <QRCodeSVG value={qrValue} size={44} level="M" includeMargin={false} />
                 </div>
               </div>
 
+              {/* Bottom: Holder + Expiry + DEBIT */}
               <div className="relative z-10 flex items-end justify-between">
-                <div className="flex gap-6">
+                <div className="flex items-end gap-6">
                   <div>
-                    <span className="text-white/50 text-[10px] uppercase tracking-wider">Titular</span>
+                    <span className="text-white/35 text-[9px] uppercase tracking-[0.2em]">Titular</span>
                     <p className="text-white text-sm font-medium uppercase tracking-wider">{cardHolder}</p>
                   </div>
                   <div>
-                    <span className="text-white/50 text-[10px] uppercase tracking-wider">Vence</span>
-                    <p className="text-white text-sm font-medium">{expiryDate}</p>
-                  </div>
-                  <div>
-                    <span className="text-white/50 text-[10px] uppercase tracking-wider">CVV</span>
-                    <p className="text-white text-sm font-medium">{cvv}</p>
+                    <span className="text-white/35 text-[9px] uppercase tracking-[0.2em]">Vence</span>
+                    <p className="text-white text-sm font-medium tracking-wider">{expiryDate}</p>
                   </div>
                 </div>
-                
-                <div className="flex -space-x-2">
-                  <div className="w-10 h-10 rounded-full bg-red-500/80" />
-                  <div className="w-10 h-10 rounded-full bg-yellow-500/80" />
-                </div>
+                <span className="text-white/50 text-[11px] font-bold uppercase tracking-[0.3em]">Debit</span>
               </div>
             </motion.div>
           ) : (
@@ -192,12 +200,11 @@ export default function ClientCard() {
               className="space-y-4"
             >
               {/* QR Container */}
-              <div 
+              <div
                 ref={qrRef}
                 className="bg-white rounded-3xl p-8 shadow-xl mx-auto max-w-sm"
               >
                 <div className="flex flex-col items-center">
-                  {/* QR Code */}
                   <div className="relative">
                     <QRCodeSVG
                       value={qrValue}
@@ -205,19 +212,18 @@ export default function ClientCard() {
                       level="H"
                       includeMargin={false}
                       bgColor="#ffffff"
-                      fgColor="#1e88e5"
+                      fgColor="#0d0d0d"
                     />
                     {/* Logo in center */}
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-14 h-14 bg-white rounded-xl shadow-lg flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
                           <span className="text-white font-bold text-lg">O</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* User Info */}
+
                   <div className="mt-6 text-center">
                     <p className="font-semibold text-gray-900">{cardHolder}</p>
                     <p className="text-sm text-gray-500 mt-1">Escanea para pagar</p>
@@ -227,19 +233,11 @@ export default function ClientCard() {
 
               {/* Actions */}
               <div className="flex gap-3 justify-center">
-                <Button
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={downloadQR}
-                >
+                <Button variant="outline" className="rounded-xl" onClick={downloadQR}>
                   <Download className="w-4 h-4 mr-2" />
                   Guardar
                 </Button>
-                <Button
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => setShowFullscreen(true)}
-                >
+                <Button variant="outline" className="rounded-xl" onClick={() => setShowFullscreen(true)}>
                   <Maximize2 className="w-4 h-4 mr-2" />
                   Pantalla completa
                 </Button>
@@ -251,10 +249,9 @@ export default function ClientCard() {
         {/* Card Details */}
         <div className="premium-card p-4 space-y-4">
           <h3 className="font-semibold">Detalles de la tarjeta</h3>
-          
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-border">
-              <span className="text-muted-foreground text-sm">Número de tarjeta</span>
+              <span className="text-muted-foreground text-sm">Numero de tarjeta</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono">{cardNumber}</span>
                 <button
@@ -265,34 +262,31 @@ export default function ClientCard() {
                 </button>
               </div>
             </div>
-            
             <div className="flex items-center justify-between py-2 border-b border-border">
               <span className="text-muted-foreground text-sm">Titular</span>
               <span className="font-medium uppercase">{cardHolder}</span>
             </div>
-            
             <div className="flex items-center justify-between py-2 border-b border-border">
               <span className="text-muted-foreground text-sm">Fecha de vencimiento</span>
               <span className="font-mono">{expiryDate}</span>
             </div>
-            
             <div className="flex items-center justify-between py-2">
-              <span className="text-muted-foreground text-sm">CVV</span>
-              <span className="font-mono">{cvv}</span>
+              <span className="text-muted-foreground text-sm">Tipo</span>
+              <span className="font-medium">Debito Oscorp</span>
             </div>
           </div>
         </div>
 
         {/* Security Info */}
-        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-4">
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-4">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
-              <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
+              <RefreshCw className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
               <p className="font-medium text-sm">Tarjeta segura</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Tu tarjeta está protegida con encriptación de 256 bits. Los datos se actualizan automáticamente.
+                Tu tarjeta esta protegida con encriptacion de 256 bits. Los datos se actualizan automaticamente.
               </p>
             </div>
           </div>
@@ -315,7 +309,6 @@ export default function ClientCard() {
             >
               <X className="w-6 h-6 text-white" />
             </button>
-            
             <motion.div
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
@@ -323,12 +316,7 @@ export default function ClientCard() {
               className="bg-white p-8 rounded-3xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <QRCodeSVG
-                value={qrValue}
-                size={300}
-                level="H"
-                includeMargin={false}
-              />
+              <QRCodeSVG value={qrValue} size={300} level="H" includeMargin={false} fgColor="#0d0d0d" />
               <p className="text-center mt-4 font-semibold text-gray-900">{cardHolder}</p>
               <p className="text-center text-sm text-gray-500">Escanea para pagar</p>
             </motion.div>
