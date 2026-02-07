@@ -197,38 +197,43 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
       return { message: 'Transferência realizada com sucesso' };
     });
 
-    // Fetch sender and receiver info for notifications
-    const [sender, receiver] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: req.user!.userId },
-        select: { firstName: true, lastName: true },
-      }),
-      prisma.user.findUnique({
-        where: { id: toUserId },
-        select: { firstName: true, lastName: true, sellerProfile: { select: { storeName: true } } },
-      }),
-    ]);
-
-    // Push notification to receiver (seller/store)
-    sendPushToUser(toUserId, {
-      title: 'Pago recibido',
-      body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString()}`,
-      url: '/app/wallet',
-      tag: 'transfer-in',
-    }).catch(() => {});
-
-    // Push notification to sender (client who paid)
-    const receiverName = receiver?.sellerProfile?.storeName
-      || `${receiver?.firstName || ''} ${receiver?.lastName || ''}`.trim()
-      || 'destinatario';
-    sendPushToUser(req.user!.userId, {
-      title: 'Pago realizado con exito',
-      body: `Pagaste ₲${amount.toLocaleString()} en ${receiverName}`,
-      url: '/app/wallet',
-      tag: 'transfer-out',
-    }).catch(() => {});
-
+    // Return success immediately - transfer is done
     res.json(result);
+
+    // Send push notifications asynchronously (non-blocking)
+    try {
+      const [sender, receiver] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: req.user!.userId },
+          select: { firstName: true, lastName: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: toUserId },
+          select: { firstName: true, lastName: true, sellerProfile: { select: { storeName: true } } },
+        }),
+      ]);
+
+      // Push notification to receiver (seller/store)
+      sendPushToUser(toUserId, {
+        title: 'Pago recibido',
+        body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString()}`,
+        url: '/app/wallet',
+        tag: 'transfer-in',
+      }).catch(() => {});
+
+      // Push notification to sender (client who paid)
+      const receiverName = receiver?.sellerProfile?.storeName
+        || `${receiver?.firstName || ''} ${receiver?.lastName || ''}`.trim()
+        || 'destinatario';
+      sendPushToUser(req.user!.userId, {
+        title: 'Pago realizado con exito',
+        body: `Pagaste ₲${amount.toLocaleString()} en ${receiverName}`,
+        url: '/app/wallet',
+        tag: 'transfer-out',
+      }).catch(() => {});
+    } catch {
+      // Notification failure should never block transfer success
+    }
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
   }
