@@ -805,7 +805,7 @@ const Footer = () => (
 // ─── Main ───────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen bg-white dark:bg-slate-950 overflow-x-hidden">
       <Navbar />
       <HeroSection />
       <ServicesSection />

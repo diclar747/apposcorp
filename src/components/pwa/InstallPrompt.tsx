@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, X, Smartphone } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -80,9 +80,11 @@ export function InstallPrompt() {
           className="fixed bottom-20 left-4 right-4 z-50 sm:bottom-6 sm:left-auto sm:right-6 sm:max-w-sm"
         >
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-black/20 border border-slate-200 dark:border-slate-700 p-4 flex items-start gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-600 rounded-xl flex items-center justify-center shrink-0">
-              <Smartphone className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src="/icons/icon-192x192.png"
+              alt="Oscorp"
+              className="w-12 h-12 rounded-full shrink-0 object-cover"
+            />
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
