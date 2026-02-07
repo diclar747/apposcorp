@@ -116,7 +116,7 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
 
           {/* Content */}
           <div className="flex-1 p-4">
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {mode === 'myqr' ? (
                 <motion.div
                   key="myqr"
