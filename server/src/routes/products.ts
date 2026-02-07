@@ -241,9 +241,36 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
 
+    const {
+      name, description, price, cost, profitPercentage, comparePrice,
+      stock, sku, category, subcategory, images, type, visibility,
+      status, weight, dimensions, tags, isFeatured, supplierId,
+    } = req.body;
+
+    const updateData: Record<string, any> = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = parseFloat(price) || 0;
+    if (cost !== undefined) updateData.cost = parseFloat(cost) || 0;
+    if (profitPercentage !== undefined) updateData.profitPercentage = parseFloat(profitPercentage) || 0;
+    if (comparePrice !== undefined) updateData.comparePrice = parseFloat(comparePrice);
+    if (stock !== undefined) updateData.stock = parseInt(stock) || 0;
+    if (sku !== undefined) updateData.sku = sku;
+    if (category !== undefined) updateData.category = category;
+    if (subcategory !== undefined) updateData.subcategory = subcategory;
+    if (images !== undefined) updateData.images = Array.isArray(images) ? images : [];
+    if (type !== undefined) updateData.type = type;
+    if (visibility !== undefined) updateData.visibility = visibility;
+    if (status !== undefined) updateData.status = status;
+    if (weight !== undefined) updateData.weight = weight;
+    if (dimensions !== undefined) updateData.dimensions = dimensions;
+    if (tags !== undefined) updateData.tags = tags;
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+    if (supplierId !== undefined) updateData.supplierId = supplierId || null;
+
     const updatedProduct = await prisma.product.update({
       where: { id },
-      data: req.body,
+      data: updateData,
       include: {
         variants: true,
         attributes: true,

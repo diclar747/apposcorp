@@ -418,7 +418,7 @@ export const mockCards: VirtualCard[] = mockUsers.map((user, index) => ({
   cardNumber: `OSC${String(index + 1).padStart(6, '0')}`,
   qrCode: '',
   qrData: JSON.stringify({ userId: user.id, cardNumber: `OSC${String(index + 1).padStart(6, '0')}` }),
-  design: (['gradient-blue', 'gradient-purple', 'gradient-dark', 'minimal'][index % 4]) as any,
+  design: (['gradient_blue', 'gradient_purple', 'gradient_dark', 'minimal'][index % 4]) as any,
   isActive: true,
   createdAt: user.createdAt,
 }));

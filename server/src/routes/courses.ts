@@ -83,11 +83,95 @@ router.get('/slug/:slug', async (req, res) => {
   }
 });
 
+// Get my enrollments (must be before /:id to avoid Express matching "my" as :id)
+router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const enrollments = await prisma.enrollment.findMany({
+      where: { userId: req.user!.userId },
+      include: {
+        course: {
+          include: {
+            modules: {
+              include: {
+                lessons: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.json(enrollments);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Update lesson progress (must be before /:id to avoid Express matching "enrollment" as :id)
+router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const enrollmentId = req.params.enrollmentId as string;
+    const { lessonId, completed } = req.body;
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+    });
+
+    if (!enrollment || enrollment.userId !== req.user!.userId) {
+      return res.status(404).json({ error: 'Matrícula não encontrada' });
+    }
+
+    const completedLessons = new Set(enrollment.completedLessons);
+
+    if (completed) {
+      completedLessons.add(lessonId);
+    } else {
+      completedLessons.delete(lessonId);
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: enrollment.courseId },
+      include: {
+        modules: {
+          include: {
+            lessons: true,
+          },
+        },
+      },
+    });
+
+    let totalLessons = 0;
+    if (course?.modules) {
+      for (const module of course.modules) {
+        totalLessons += module.lessons?.length || 0;
+      }
+    }
+
+    const progress = totalLessons > 0
+      ? (completedLessons.size / totalLessons) * 100
+      : 0;
+
+    const updatedEnrollment = await prisma.enrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        completedLessons: Array.from(completedLessons),
+        progress,
+        lastAccessedAt: new Date(),
+        completedAt: progress === 100 ? new Date() : null,
+      },
+    });
+
+    res.json(updatedEnrollment);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
 // Get course by ID (public)
 router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id as string;
-    
+
     const course = await prisma.course.findUnique({
       where: { id },
       include: {
@@ -100,11 +184,11 @@ router.get('/:id', async (req, res) => {
         resources: true,
       },
     });
-    
+
     if (!course) {
       return res.status(404).json({ error: 'Curso não encontrado' });
     }
-    
+
     res.json(course);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
@@ -281,90 +365,6 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
     res.status(201).json({ message: 'Matriculado com sucesso' });
   } catch (error) {
     console.error('Enroll error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Get my enrollments
-router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const enrollments = await prisma.enrollment.findMany({
-      where: { userId: req.user!.userId },
-      include: {
-        course: {
-          include: {
-            modules: {
-              include: {
-                lessons: true,
-              },
-            },
-          },
-        },
-      },
-    });
-    
-    res.json(enrollments);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Update lesson progress
-router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const enrollmentId = req.params.enrollmentId as string;
-    const { lessonId, completed } = req.body;
-    
-    const enrollment = await prisma.enrollment.findUnique({
-      where: { id: enrollmentId },
-    });
-    
-    if (!enrollment || enrollment.userId !== req.user!.userId) {
-      return res.status(404).json({ error: 'Matrícula não encontrada' });
-    }
-    
-    const completedLessons = new Set(enrollment.completedLessons);
-    
-    if (completed) {
-      completedLessons.add(lessonId);
-    } else {
-      completedLessons.delete(lessonId);
-    }
-    
-    const course = await prisma.course.findUnique({
-      where: { id: enrollment.courseId },
-      include: {
-        modules: {
-          include: {
-            lessons: true,
-          },
-        },
-      },
-    });
-    
-    let totalLessons = 0;
-    if (course?.modules) {
-      for (const module of course.modules) {
-        totalLessons += module.lessons?.length || 0;
-      }
-    }
-    
-    const progress = totalLessons > 0 
-      ? (completedLessons.size / totalLessons) * 100 
-      : 0;
-    
-    const updatedEnrollment = await prisma.enrollment.update({
-      where: { id: enrollmentId },
-      data: {
-        completedLessons: Array.from(completedLessons),
-        progress,
-        lastAccessedAt: new Date(),
-        completedAt: progress === 100 ? new Date() : null,
-      },
-    });
-    
-    res.json(updatedEnrollment);
-  } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });

@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
+import { productsApi } from '@/lib/api';
 import { generateQRValue } from '@/lib/qr';
-import { mockProducts, mockStores, mockUsers } from '@/data/mockData';
+import { mockUsers } from '@/data/mockData';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import type { Product } from '@/types';
 
 interface CartItem {
     id: string;
@@ -34,8 +36,11 @@ interface CartItem {
 export default function SellerPOS() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
-    const store = mockStores.find(s => s.sellerId === user?.id);
-    const products = mockProducts.filter(p => p.storeId === store?.id);
+    const sellerProfile = user?.sellerProfile;
+
+    // Products from real API
+    const [products, setProducts] = useState<Product[]>([]);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -48,22 +53,45 @@ export default function SellerPOS() {
     const [processing, setProcessing] = useState(false);
     const [customerName, setCustomerName] = useState('Consumidor Final');
 
+    // Fetch products from real API (same source as Products page)
+    useEffect(() => {
+        const fetchProducts = async () => {
+            if (!sellerProfile?.id) return;
+            try {
+                setIsLoadingProducts(true);
+                const data = await productsApi.getAll({ sellerId: sellerProfile.id });
+                setProducts(data);
+            } catch (error) {
+                console.error('Error fetching POS products:', error);
+                toast.error('Error al cargar productos');
+            } finally {
+                setIsLoadingProducts(false);
+            }
+        };
+        fetchProducts();
+    }, [sellerProfile?.id]);
+
     // Trial Logic
     const isTrialExpired = useMemo(() => {
-        if (!user?.sellerProfile) return false;
-        if (user.sellerProfile.planActive) return false;
-        if (!user.sellerProfile.planExpiryDate) return false;
-        return new Date() > new Date(user.sellerProfile.planExpiryDate);
-    }, [user]);
+        if (!sellerProfile) return false;
+        if (sellerProfile.planActive) return false;
+        if (!sellerProfile.planExpiryDate) return false;
+        return new Date() > new Date(sellerProfile.planExpiryDate);
+    }, [sellerProfile]);
 
     const daysLeft = useMemo(() => {
-        if (!user?.sellerProfile?.planExpiryDate) return 0;
-        const diff = new Date(user.sellerProfile.planExpiryDate).getTime() - new Date().getTime();
+        if (!sellerProfile?.planExpiryDate) return 0;
+        const diff = new Date(sellerProfile.planExpiryDate).getTime() - new Date().getTime();
         const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
         return days > 0 ? days : 0;
-    }, [user]);
+    }, [sellerProfile]);
 
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Store info from sellerProfile
+    const storeName = sellerProfile?.storeName || 'Mi Tienda';
+    const storeAddress = sellerProfile?.address || '';
+    const storePhone = sellerProfile?.phone || '';
 
     // Filter products
     const filteredProducts = useMemo(() => {
@@ -104,7 +132,7 @@ export default function SellerPOS() {
     const tax = subtotal * 0.10; // IVA 10%
     const total = subtotal + tax;
 
-    const addToCart = (product: any) => {
+    const addToCart = (product: Product) => {
         setCart(prev => {
             const existing = prev.find(item => item.id === product.id);
             if (existing) {
@@ -119,7 +147,7 @@ export default function SellerPOS() {
                 name: product.name,
                 price: product.price,
                 quantity: 1,
-                image: product.images[0]
+                image: product.images?.[0] || ''
             }];
         });
     };
@@ -162,7 +190,7 @@ export default function SellerPOS() {
         }, 1000);
     };
 
-    if (!store) {
+    if (!sellerProfile) {
         return (
             <div className="flex items-center justify-center h-[80vh]">
                 <div className="text-center p-8 bg-white rounded-3xl border border-gray-200 shadow-xl max-w-md">
@@ -214,13 +242,13 @@ export default function SellerPOS() {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                             Punto de Venta
-                            {!user?.sellerProfile?.planActive && (
+                            {!sellerProfile?.planActive && (
                                 <Badge variant="secondary" className="bg-amber-50 text-amber-600 border-amber-100 text-[10px] font-black uppercase tracking-tighter">
                                     Trial: {daysLeft} días restantes
                                 </Badge>
                             )}
                         </h1>
-                        <p className="text-gray-500">{store.name} - Caja Principal</p>
+                        <p className="text-gray-500">{storeName} - Caja Principal</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button
@@ -249,6 +277,14 @@ export default function SellerPOS() {
                 {/* Product Grid Area */}
                 <div className="flex-1 flex flex-col gap-4 min-h-0">
                     <ScrollArea className="flex-1 bg-gray-50/50 rounded-xl border border-gray-100 p-4">
+                        {isLoadingProducts ? (
+                            <div className="flex items-center justify-center py-20">
+                                <div className="text-center text-gray-400">
+                                    <Package className="w-16 h-16 mx-auto mb-4 opacity-10 animate-pulse" />
+                                    <p className="text-sm font-medium">Cargando productos...</p>
+                                </div>
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {filteredProducts.map((product) => (
                                 <motion.div
@@ -260,7 +296,13 @@ export default function SellerPOS() {
                                     className="group cursor-pointer bg-white p-3 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all"
                                 >
                                     <div className="aspect-square rounded-lg bg-gray-100 mb-3 overflow-hidden relative">
-                                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                                        {product.images?.[0] ? (
+                                            <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Package className="w-8 h-8 text-gray-300" />
+                                            </div>
+                                        )}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <div className="bg-blue-600 p-1.5 rounded-full shadow-lg text-white">
@@ -278,10 +320,13 @@ export default function SellerPOS() {
                             {filteredProducts.length === 0 && (
                                 <div className="col-span-full py-20 text-center text-gray-400">
                                     <Barcode className="w-16 h-16 mx-auto mb-4 opacity-10" />
-                                    No se encontraron productos
+                                    {products.length === 0
+                                        ? 'No tienes productos registrados. Agrega productos desde la sección Productos.'
+                                        : 'No se encontraron productos'}
                                 </div>
                             )}
                         </div>
+                        )}
                     </ScrollArea>
 
                     {/* Sales History Area */}
@@ -363,7 +408,13 @@ export default function SellerPOS() {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex gap-3 bg-white p-2.5 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors shadow-sm"
                                 >
-                                    <img src={item.image} alt="" className="w-14 h-14 rounded-lg object-cover bg-gray-50 border border-gray-100" />
+                                    {item.image ? (
+                                        <img src={item.image} alt="" className="w-14 h-14 rounded-lg object-cover bg-gray-50 border border-gray-100" />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded-lg bg-gray-100 border border-gray-100 flex items-center justify-center">
+                                            <Package className="w-6 h-6 text-gray-300" />
+                                        </div>
+                                    )}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-gray-900 line-clamp-2 h-8">{item.name}</p>
                                         <p className="text-xs text-blue-600 font-bold mt-1">{formatCurrency(item.price)}</p>
@@ -486,7 +537,7 @@ export default function SellerPOS() {
                                 <div className="p-6 border-2 border-dashed rounded-2xl bg-blue-50/50 text-center space-y-4">
                                     <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
                                         <QRCodeSVG
-                                            value={generateQRValue(user?.id || '', store?.name || 'Tienda', total)}
+                                            value={generateQRValue(user?.id || '', storeName, total)}
                                             size={200}
                                             level="L"
                                         />
@@ -499,7 +550,7 @@ export default function SellerPOS() {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => {
-                                                    const data = generateQRValue(user?.id || '', store?.name || 'Tienda', total);
+                                                    const data = generateQRValue(user?.id || '', storeName, total);
                                                     navigator.clipboard.writeText(data);
                                                     toast.success("Código copiado al portapapeles");
                                                 }}
@@ -531,12 +582,12 @@ export default function SellerPOS() {
                             <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center mx-auto mb-4">
                                 <Receipt className="w-6 h-6 text-white" />
                             </div>
-                            <h2 className="text-2xl font-black uppercase tracking-tighter mb-1">{store.name}</h2>
+                            <h2 className="text-2xl font-black uppercase tracking-tighter mb-1">{storeName}</h2>
                             <p className="text-[10px] text-slate-400 uppercase font-black">Powered by Oscorp Systems</p>
                             <div className="border-b border-dashed border-slate-200 my-6" />
                             <p className="text-xs font-bold">RUC: 80012345-0</p>
-                            <p className="text-xs">{store.address}</p>
-                            <p className="text-xs">Tel: {store.phone}</p>
+                            <p className="text-xs">{storeAddress}</p>
+                            <p className="text-xs">Tel: {storePhone}</p>
                         </div>
 
                         <div className="space-y-1 mb-6 text-xs border-b border-dashed border-slate-200 pb-4">

@@ -12,7 +12,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { generateQRValue } from '@/lib/qr';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -266,7 +266,7 @@ export default function ClientWallet() {
         )}
 
         {/* View All */}
-        <Link to="/app/wallet/historial">
+        <Link to="/app/wallet">
           <Button variant="ghost" className="w-full mt-4 text-primary">
             Ver historial completo
             <ChevronRight className="w-4 h-4 ml-1" />
@@ -299,7 +299,3 @@ export default function ClientWallet() {
   );
 }
 
-// Helper function
-function cn(...classes: (string | undefined | false)[]) {
-  return classes.filter(Boolean).join(' ');
-}

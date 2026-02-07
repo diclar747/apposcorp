@@ -1,7 +1,5 @@
 import webpush from 'web-push';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma.js';
 
 const OSCORP_ICON = 'https://www.oscorp.com.py/assets/images/logos/logo2.png';
 

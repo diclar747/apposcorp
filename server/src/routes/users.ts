@@ -109,7 +109,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
 // Update seller profile by ID (admin only)
 router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (req, res) => {
   try {
-    const userId = req.params.id;
+    const userId = req.params.id as string;
     const {
       storeName,
       description,

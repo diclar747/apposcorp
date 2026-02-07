@@ -150,7 +150,7 @@ export interface StockMovement {
 export interface Product {
   id: string;
   sellerId: string;
-  storeId: string;
+  storeId?: string;
   name: string;
   slug?: string;
   description: string;
@@ -245,7 +245,7 @@ export interface VirtualCard {
   createdAt: Date;
 }
 
-export type CardDesign = 'gradient-blue' | 'gradient-purple' | 'gradient-dark' | 'minimal';
+export type CardDesign = 'gradient_blue' | 'gradient_purple' | 'gradient_dark' | 'minimal';
 
 // ============================================
 // TRANSACCIONES
@@ -278,7 +278,7 @@ export interface Order {
   orderNumber: string;
   buyerId: string;
   sellerId: string;
-  storeId: string;
+  storeId?: string;
   items: OrderItem[];
   subtotal: number;
   tax: number;

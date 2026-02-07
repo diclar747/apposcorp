@@ -22,7 +22,7 @@ export default function ClientNotifications() {
 
     useEffect(() => {
         if (user) {
-            fetchNotifications(user.id);
+            fetchNotifications();
         }
     }, [user, fetchNotifications]);
 
@@ -65,7 +65,7 @@ export default function ClientNotifications() {
                         variant="ghost"
                         size="sm"
                         className="text-xs h-8"
-                        onClick={() => user && markAllAsRead(user.id)}
+                        onClick={() => markAllAsRead()}
                     >
                         Marcar todas leídas
                     </Button>

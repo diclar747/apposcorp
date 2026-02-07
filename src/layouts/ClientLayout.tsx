@@ -100,7 +100,7 @@ export default function ClientLayout() {
 
   useEffect(() => {
     if (user) {
-      fetchNotifications(user.id);
+      fetchNotifications();
     }
   }, [user, fetchNotifications]);
 

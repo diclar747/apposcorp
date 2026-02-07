@@ -82,7 +82,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 // Update a supplier
 router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const user = await prisma.user.findUnique({
             where: { id: req.user!.userId },
             include: { sellerProfile: true },
@@ -116,7 +116,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 // Delete a supplier
 router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const user = await prisma.user.findUnique({
             where: { id: req.user!.userId },
             include: { sellerProfile: true },

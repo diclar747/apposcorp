@@ -2,36 +2,35 @@ import { create } from 'zustand';
 import type { Notification } from '@/types';
 import { notificationsApi } from '@/lib/api';
 
+const calcUnread = (notifications: Notification[]) =>
+  notifications.filter(n => !n.isRead).length;
+
 interface NotificationState {
   notifications: Notification[];
   isLoading: boolean;
-
-  // Getters
   unreadCount: number;
 
   // Actions
-  fetchNotifications: (userId: string) => Promise<void>;
+  fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
-  markAllAsRead: (userId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
   addNotification: (notification: Notification) => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   isLoading: false,
+  unreadCount: 0,
 
-  get unreadCount() {
-    return get().notifications.filter(n => !n.isRead).length;
-  },
-
-  fetchNotifications: async (userId: string) => {
+  fetchNotifications: async () => {
     set({ isLoading: true });
 
     try {
       const notifications = await notificationsApi.getAll();
       set({
         notifications,
-        isLoading: false
+        isLoading: false,
+        unreadCount: calcUnread(notifications),
       });
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -41,26 +40,27 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: async (id: string) => {
     // Optimistic update
+    const newNotifications = get().notifications.map(n =>
+      n.id === id ? { ...n, isRead: true } : n
+    );
     set({
-      notifications: get().notifications.map(n =>
-        n.id === id ? { ...n, isRead: true } : n
-      )
+      notifications: newNotifications,
+      unreadCount: calcUnread(newNotifications),
     });
 
     try {
       await notificationsApi.markAsRead(id);
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
-      // Revert if needed, but for read status it's usually fine
     }
   },
 
-  markAllAsRead: async (userId: string) => {
-    // Optimistic update
+  markAllAsRead: async () => {
+    // Optimistic update - all notifications in store belong to current user
+    const newNotifications = get().notifications.map(n => ({ ...n, isRead: true }));
     set({
-      notifications: get().notifications.map(n =>
-        n.userId === userId ? { ...n, isRead: true } : n
-      )
+      notifications: newNotifications,
+      unreadCount: 0,
     });
 
     try {
@@ -71,9 +71,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   addNotification: (notification: Notification) => {
+    const newNotifications = [notification, ...get().notifications];
     set({
-      notifications: [notification, ...get().notifications]
+      notifications: newNotifications,
+      unreadCount: calcUnread(newNotifications),
     });
   },
 }));
-

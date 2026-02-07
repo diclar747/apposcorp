@@ -2,13 +2,18 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Product, CartItem } from '@/types';
 
+const recalc = (items: CartItem[]) => ({
+  total: items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
+  itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+});
+
 interface CartState {
   items: CartItem[];
-  
-  // Getters
+
+  // Computed values
   total: number;
   itemCount: number;
-  
+
   // Actions
   addItem: (product: Product, quantity: number) => void;
   removeItem: (productId: string) => void;
@@ -22,48 +27,39 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-
-      get total() {
-        return get().items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-      },
-
-      get itemCount() {
-        return get().items.reduce((sum, item) => sum + item.quantity, 0);
-      },
+      total: 0,
+      itemCount: 0,
 
       addItem: (product: Product, quantity: number) => {
         const { items } = get();
         const existingItem = items.find(item => item.product.id === product.id);
-        
+
         if (existingItem) {
           // Verificar stock
           const newQuantity = existingItem.quantity + quantity;
           if (newQuantity > product.stock) {
             return; // No hay suficiente stock
           }
-          
-          set({
-            items: items.map(item =>
-              item.product.id === product.id
-                ? { ...item, quantity: newQuantity }
-                : item
-            )
-          });
+
+          const newItems = items.map(item =>
+            item.product.id === product.id
+              ? { ...item, quantity: newQuantity }
+              : item
+          );
+          set({ items: newItems, ...recalc(newItems) });
         } else {
           if (quantity > product.stock) {
             return; // No hay suficiente stock
           }
-          
-          set({
-            items: [...items, { product, quantity }]
-          });
+
+          const newItems = [...items, { product, quantity }];
+          set({ items: newItems, ...recalc(newItems) });
         }
       },
 
       removeItem: (productId: string) => {
-        set({
-          items: get().items.filter(item => item.product.id !== productId)
-        });
+        const newItems = get().items.filter(item => item.product.id !== productId);
+        set({ items: newItems, ...recalc(newItems) });
       },
 
       updateQuantity: (productId: string, quantity: number) => {
@@ -71,25 +67,24 @@ export const useCartStore = create<CartState>()(
           get().removeItem(productId);
           return;
         }
-        
+
         const { items } = get();
         const item = items.find(i => i.product.id === productId);
-        
+
         if (item && quantity > item.product.stock) {
           return; // No hay suficiente stock
         }
-        
-        set({
-          items: items.map(item =>
-            item.product.id === productId
-              ? { ...item, quantity }
-              : item
-          )
-        });
+
+        const newItems = items.map(item =>
+          item.product.id === productId
+            ? { ...item, quantity }
+            : item
+        );
+        set({ items: newItems, ...recalc(newItems) });
       },
 
       clearCart: () => {
-        set({ items: [] });
+        set({ items: [], total: 0, itemCount: 0 });
       },
 
       isInCart: (productId: string) => {
@@ -104,6 +99,13 @@ export const useCartStore = create<CartState>()(
     {
       name: 'oscorp-cart',
       partialize: (state) => ({ items: state.items }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const computed = recalc(state.items);
+          state.total = computed.total;
+          state.itemCount = computed.itemCount;
+        }
+      },
     }
   )
 );

@@ -26,7 +26,7 @@ const actions: QuickAction[] = [
   {
     icon: ArrowDown,
     label: 'Recibir',
-    href: '/app/wallet/recargar',
+    href: '/app/tarjeta',
     color: 'from-emerald-500 to-emerald-600',
   },
   {

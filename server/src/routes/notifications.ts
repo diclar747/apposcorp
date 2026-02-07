@@ -8,7 +8,7 @@ const router = Router();
 // PATCH /:id/click - Mark notification as clicked
 router.patch('/:id/click', authenticate, async (req: AuthRequest, res) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         // Ensure the notification belongs to the user
         const notification = await prisma.notification.findUnique({
@@ -100,6 +100,20 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     }
 });
 
+// Mark all as read (must be before /:id/read to avoid Express matching "read-all" as :id)
+router.patch('/read-all', authenticate, async (req: AuthRequest, res) => {
+    try {
+        await prisma.notification.updateMany({
+            where: { userId: req.user!.userId, isRead: false },
+            data: { isRead: true },
+        });
+
+        res.json({ message: 'Todas as notificações marcadas como lidas' });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+
 // Mark as read
 router.patch('/:id/read', authenticate, async (req: AuthRequest, res) => {
     try {
@@ -124,20 +138,6 @@ router.patch('/:id/read', authenticate, async (req: AuthRequest, res) => {
         });
 
         res.json(updated);
-    } catch (error) {
-        res.status(500).json({ error: 'Erro no servidor' });
-    }
-});
-
-// Mark all as read
-router.patch('/read-all', authenticate, async (req: AuthRequest, res) => {
-    try {
-        await prisma.notification.updateMany({
-            where: { userId: req.user!.userId, isRead: false },
-            data: { isRead: true },
-        });
-
-        res.json({ message: 'Todas as notificações marcadas como lidas' });
     } catch (error) {
         res.status(500).json({ error: 'Erro no servidor' });
     }
