@@ -1,8 +1,38 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
+
+// Get all orders (admin only)
+router.get('/admin/all', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      include: {
+        items: true,
+        buyer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        seller: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
 
 // Get all orders for current user
 router.get('/', authenticate, async (req: AuthRequest, res) => {

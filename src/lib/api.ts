@@ -112,6 +112,7 @@ export const productsApi = {
 export const ordersApi = {
   getAll: (as: 'buyer' | 'seller' = 'buyer') =>
     fetchWithAuth(`/orders?as=${as}`),
+  getAllAdmin: () => fetchWithAuth('/orders/admin/all'),
   getById: (id: string) => fetchWithAuth(`/orders/${id}`),
   create: (data: any) =>
     fetchWithAuth('/orders', {
