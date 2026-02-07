@@ -113,7 +113,7 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
     // Push notification for deposit
     sendPushToUser(req.user!.userId, {
       title: 'Deposito acreditado',
-      body: `Se acreditaron ₲${amount.toLocaleString()} a tu billetera`,
+      body: `Se acreditaron ₲${amount.toLocaleString('es-PY')} a tu billetera`,
       url: '/app/wallet',
       tag: 'deposit',
     }).catch(() => {});
@@ -294,7 +294,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
     });
     sendPushToUser(toUserId, {
       title: 'Transferencia recibida',
-      body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString()}`,
+      body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString('es-PY')} `,
       url: '/app/wallet',
       tag: 'transfer-in',
     }).catch(() => {});

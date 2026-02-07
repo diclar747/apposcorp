@@ -9,7 +9,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
 import { generateQRValue } from '@/lib/qr';
 import { mockProducts, mockStores, mockUsers } from '@/data/mockData';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, formatGuaranies, parseGuaranies, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,7 @@ export default function SellerPOS() {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'wallet'>('cash');
     const [processing, setProcessing] = useState(false);
     const [customerName, setCustomerName] = useState('Consumidor Final');
+    const [cashReceived, setCashReceived] = useState('');
 
     // Trial Logic
     const isTrialExpired = useMemo(() => {
@@ -158,6 +159,7 @@ export default function SellerPOS() {
             setCart([]);
             setIsReceiptOpen(true);
             setCustomerName('Consumidor Final');
+            setCashReceived('');
             toast.success('Venta realizada con éxito');
         }, 1000);
     };
@@ -465,11 +467,46 @@ export default function SellerPOS() {
                             <TabsContent value="cash" className="mt-6">
                                 <div className="space-y-4">
                                     <Label className="text-xs font-bold uppercase">Monto Recibido</Label>
-                                    <Input type="number" placeholder="0" className="h-12 text-xl font-bold border-2 focus-visible:ring-blue-600" />
-                                    <div className="p-3 bg-blue-50 rounded-xl flex justify-between items-center border border-blue-100">
-                                        <span className="text-sm font-bold text-blue-700">Cambio a devolver:</span>
-                                        <span className="text-lg font-black text-blue-800">₲ 0</span>
-                                    </div>
+                                    <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="0"
+                                        className="h-12 text-xl font-bold border-2 focus-visible:ring-blue-600"
+                                        value={cashReceived}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/\./g, '').replace(/[^\d]/g, '');
+                                            if (raw === '') {
+                                                setCashReceived('');
+                                                return;
+                                            }
+                                            const num = parseInt(raw, 10);
+                                            if (!isNaN(num)) {
+                                                setCashReceived(formatGuaranies(num));
+                                            }
+                                        }}
+                                    />
+                                    {(() => {
+                                        const received = parseGuaranies(cashReceived);
+                                        const change = received > total ? received - total : 0;
+                                        const hasEnough = received >= total && received > 0;
+                                        return (
+                                            <div className={cn(
+                                                "p-3 rounded-xl flex justify-between items-center border",
+                                                hasEnough
+                                                    ? "bg-green-50 border-green-200"
+                                                    : "bg-blue-50 border-blue-100"
+                                            )}>
+                                                <span className={cn(
+                                                    "text-sm font-bold",
+                                                    hasEnough ? "text-green-700" : "text-blue-700"
+                                                )}>Cambio a devolver:</span>
+                                                <span className={cn(
+                                                    "text-lg font-black",
+                                                    hasEnough ? "text-green-800" : "text-blue-800"
+                                                )}>₲ {formatGuaranies(change)}</span>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </TabsContent>
                             <TabsContent value="card" className="mt-6">

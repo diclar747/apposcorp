@@ -5,15 +5,32 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Formatear número con separadores de miles paraguayos (punto como separador)
+// Ejemplo: 1000 → "1.000", 1000000 → "1.000.000"
+export function formatGuaranies(amount: number): string {
+  const rounded = Math.round(amount);
+  const isNegative = rounded < 0;
+  const abs = Math.abs(rounded);
+  const formatted = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return isNegative ? `-${formatted}` : formatted;
+}
+
 // Formatear moneda (Guaraníes Paraguayos)
 export function formatCurrency(amount: number, currency: string = 'PYG'): string {
   if (currency === 'PYG') {
-    return `₲ ${amount.toLocaleString('es-PY')}`;
+    return `₲ ${formatGuaranies(amount)}`;
   }
   return new Intl.NumberFormat('es-PY', {
     style: 'currency',
     currency,
   }).format(amount);
+}
+
+// Parsear texto formateado como guaraníes a número
+// Ejemplo: "1.000.000" → 1000000, "10.000" → 10000
+export function parseGuaranies(text: string): number {
+  const cleaned = text.replace(/\./g, '').replace(/[^\d]/g, '');
+  return parseInt(cleaned, 10) || 0;
 }
 
 // Formatear fecha
@@ -99,9 +116,9 @@ export function calculateChange(current: number, previous: number): number {
   return ((current - previous) / previous) * 100;
 }
 
-// Formatear número con separadores
+// Formatear número con separadores de miles (punto)
 export function formatNumber(num: number): string {
-  return num.toLocaleString('es-PY');
+  return formatGuaranies(num);
 }
 
 // Formatear duración (minutos a horas:minutos)

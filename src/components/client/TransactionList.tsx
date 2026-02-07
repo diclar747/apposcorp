@@ -11,7 +11,7 @@ import {
   Car,
   Smartphone
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 export type TransactionType = 'income' | 'expense';
 
@@ -85,7 +85,7 @@ export function TransactionItem({ transaction, index = 0 }: TransactionItemProps
           'font-bold text-sm',
           isIncome ? 'text-emerald-500' : 'text-rose-500'
         )}>
-          {isIncome ? '+' : '-'}₲ {transaction.amount.toLocaleString()}
+          {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
         </p>
       </div>
     </motion.div>

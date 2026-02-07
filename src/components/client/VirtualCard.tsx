@@ -11,7 +11,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface VirtualCardProps {
   balance: number;
@@ -214,7 +214,7 @@ export function VirtualCardCompact({
 
         <div className="mb-4">
           <p className="text-white/50 text-xs mb-1">Saldo Actual</p>
-          <p className="text-white text-3xl font-bold">₲ {balance.toLocaleString()}</p>
+          <p className="text-white text-3xl font-bold">{formatCurrency(balance)}</p>
         </div>
 
         <div className="flex items-center justify-between">

@@ -151,7 +151,7 @@ export default function ClientHome() {
                   <p className="text-xs text-muted-foreground">{t.date}</p>
                 </div>
                 <p className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {t.type === 'income' ? '+' : '-'}₲ {t.amount.toLocaleString()}
+                  {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                 </p>
               </motion.div>
             ))}

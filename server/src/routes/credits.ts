@@ -175,7 +175,7 @@ router.patch('/:id/approve', authenticate, authorize('superadmin'), async (req: 
     // Push notification: credit approved
     sendPushToUser(result.userId, {
       title: 'Credito aprobado',
-      body: `Tu credito de ₲${result.amount.toLocaleString()} por "${result.concept}" fue aprobado`,
+      body: `Tu credito de ₲${result.amount.toLocaleString('es-PY')} por "${result.concept}" fue aprobado`,
       url: '/app/creditos',
       tag: 'credit-approved',
     }).catch(() => {});

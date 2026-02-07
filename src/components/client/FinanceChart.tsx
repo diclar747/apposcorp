@@ -12,7 +12,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface ChartData {
   name: string;
@@ -56,7 +56,7 @@ export function FinanceChart({
           <p className="text-sm font-medium mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: ₲ {entry.value?.toLocaleString()}
+              {entry.name}: {formatCurrency(entry.value || 0)}
             </p>
           ))}
         </div>

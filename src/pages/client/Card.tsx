@@ -134,7 +134,7 @@ export default function ClientCard() {
                     <div className="flex flex-col">
                       <span className="text-white/60 text-xs">Balance</span>
                       <span className="text-white font-bold text-lg">
-                        ₲ {(wallet?.balance || 2500000).toLocaleString()}
+                        {formatCurrency(wallet?.balance || 2500000)}
                       </span>
                     </div>
                   </div>

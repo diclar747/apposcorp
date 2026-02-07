@@ -24,9 +24,9 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
-import { useAuthStore, useCartStore, useNotificationStore } from '@/stores';
+import { useAuthStore, useCartStore, useNotificationStore, useWalletStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
-import { cn, getInitials } from '@/lib/utils';
+import { cn, getInitials, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
@@ -95,6 +95,7 @@ export default function ClientLayout() {
   const { user, logout } = useAuthStore();
   const { itemCount } = useCartStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
+  const { wallet } = useWalletStore();
   const { resolvedTheme, toggleTheme } = useThemeStore();
   const isDark = resolvedTheme === 'dark';
 
@@ -154,7 +155,7 @@ export default function ClientLayout() {
                     <div className="mt-4 flex gap-3">
                       <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2">
                         <p className="text-xs text-white/60">Saldo</p>
-                        <p className="font-semibold text-white">₲ 8,545,000</p>
+                        <p className="font-semibold text-white">{formatCurrency(wallet?.balance || 0)}</p>
                       </div>
                       <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2">
                         <p className="text-xs text-white/60">Puntos</p>

@@ -131,11 +131,11 @@ export default function ClientWallet() {
       <div className="px-4 grid grid-cols-2 gap-3">
         <div className="premium-card p-4">
           <p className="text-xs text-muted-foreground mb-1">Ingresos</p>
-          <p className="text-lg font-bold text-emerald-500">+₲ {totalIncome.toLocaleString()}</p>
+          <p className="text-lg font-bold text-emerald-500">+{formatCurrency(totalIncome)}</p>
         </div>
         <div className="premium-card p-4">
           <p className="text-xs text-muted-foreground mb-1">Egresos</p>
-          <p className="text-lg font-bold text-rose-500">-₲ {totalExpense.toLocaleString()}</p>
+          <p className="text-lg font-bold text-rose-500">-{formatCurrency(totalExpense)}</p>
         </div>
       </div>
 
@@ -245,7 +245,7 @@ export default function ClientWallet() {
                     'font-semibold text-sm',
                     transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   )}>
-                    {transaction.type === 'income' ? '+' : '-'} ₲ {transaction.amount.toLocaleString()}
+                    {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
                   </p>
                 </div>
 

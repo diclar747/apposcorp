@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatCurrency } from '@/lib/utils';
 
 interface Product {
     id: string;
@@ -245,7 +246,7 @@ export default function Purchases() {
                                         </span>
                                     </TableCell>
                                     <TableCell className="font-bold text-green-600">
-                                        ₲ {purchase.totalAmount.toLocaleString()}
+                                        {formatCurrency(purchase.totalAmount)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="sm">Ver Detalle</Button>
@@ -394,7 +395,7 @@ export default function Purchases() {
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-sm font-medium">
-                                                    ₲ {item.totalCost.toLocaleString()}
+                                                    {formatCurrency(item.totalCost)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Button
@@ -420,7 +421,7 @@ export default function Purchases() {
                             </div>
                             <div className="flex items-center gap-4 text-xl font-bold text-gray-900 dark:text-white">
                                 <span>Total Compra:</span>
-                                <span className="text-green-600">₲ {calculateTotal().toLocaleString()}</span>
+                                <span className="text-green-600">{formatCurrency(calculateTotal())}</span>
                             </div>
                         </div>
                     </div>
