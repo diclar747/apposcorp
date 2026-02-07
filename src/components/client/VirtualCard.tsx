@@ -20,17 +20,21 @@ interface VirtualCardProps {
   className?: string;
 }
 
-const OSCORP_LOGO = 'https://www.oscorp.com.py/assets/images/logos/logo2.png';
+const OSCORP_LOGO = '/oscorp-logo.png';
 
-function OscorpLogo({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' }) {
-  const h = size === 'sm' ? 'h-7' : 'h-8';
+function OscorpBrand({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' }) {
+  const imgH = size === 'sm' ? 'h-6' : 'h-7';
+  const textSize = size === 'sm' ? 'text-[10px]' : 'text-xs';
   return (
-    <div className={cn('flex items-center', className)}>
+    <div className={cn('flex items-center gap-1.5', className)}>
       <img
         src={OSCORP_LOGO}
         alt="Oscorp"
-        className={cn(h, 'w-auto object-contain drop-shadow-[0_2px_6px_rgba(255,255,255,0.15)]')}
+        className={cn(imgH, 'w-auto object-contain drop-shadow-[0_1px_4px_rgba(255,255,255,0.2)]')}
       />
+      <span className={cn(textSize, 'font-black text-white/90 uppercase tracking-wider')}>
+        Oscorp
+      </span>
     </div>
   );
 }
@@ -93,7 +97,7 @@ export function VirtualCard({
                 <CardChip />
                 <Wifi className="w-6 h-6 text-white/40 rotate-90" />
               </div>
-              <OscorpLogo />
+              <OscorpBrand />
             </div>
 
             {/* Middle: Card number + mini QR */}
@@ -218,7 +222,7 @@ export function VirtualCardCompact({
             <CardChip />
             <Wifi className="w-4 h-4 text-white/30 rotate-90" />
           </div>
-          <OscorpLogo size="sm" />
+          <OscorpBrand size="sm" />
         </div>
 
         <div className="mb-4">
