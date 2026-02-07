@@ -146,14 +146,11 @@ export default function ClientCard() {
                   <Wifi className="w-7 h-7 text-white/40 rotate-90" />
                 </div>
                 {/* Brand */}
-                <div className="flex items-center gap-2">
-                  <img
-                    src="/oscorp-logo.png"
-                    alt="Oscorp"
-                    className="h-8 w-auto object-contain drop-shadow-[0_1px_4px_rgba(255,255,255,0.2)]"
-                  />
-                  <span className="text-sm font-black text-white/90 uppercase tracking-wider">Oscorp</span>
-                </div>
+                <img
+                  src="/oscorp-logo.png"
+                  alt="Oscorp"
+                  className="h-10 w-auto object-contain drop-shadow-[0_2px_6px_rgba(255,255,255,0.15)]"
+                />
               </div>
 
               {/* Card Number + Mini QR */}

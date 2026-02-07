@@ -142,10 +142,12 @@ export function QRPayment({ isOpen, onClose, userId, userName, balance = 0 }: QR
                       />
                       {/* Logo in center */}
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-14 h-14 bg-background rounded-xl shadow-lg flex items-center justify-center border border-border">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
-                            <span className="text-white font-bold text-lg">O</span>
-                          </div>
+                        <div className="w-14 h-14 bg-white rounded-xl shadow-lg flex items-center justify-center p-1 border border-border">
+                          <img
+                            src="/oscorp-logo.png"
+                            alt="Oscorp"
+                            className="w-10 h-10 object-contain"
+                          />
                         </div>
                       </div>
                     </div>

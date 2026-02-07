@@ -23,18 +23,14 @@ interface VirtualCardProps {
 const OSCORP_LOGO = '/oscorp-logo.png';
 
 function OscorpBrand({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' }) {
-  const imgH = size === 'sm' ? 'h-6' : 'h-7';
-  const textSize = size === 'sm' ? 'text-[10px]' : 'text-xs';
+  const imgH = size === 'sm' ? 'h-7' : 'h-9';
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
+    <div className={cn('flex items-center', className)}>
       <img
         src={OSCORP_LOGO}
         alt="Oscorp"
-        className={cn(imgH, 'w-auto object-contain drop-shadow-[0_1px_4px_rgba(255,255,255,0.2)]')}
+        className={cn(imgH, 'w-auto object-contain drop-shadow-[0_2px_6px_rgba(255,255,255,0.15)]')}
       />
-      <span className={cn(textSize, 'font-black text-white/90 uppercase tracking-wider')}>
-        Oscorp
-      </span>
     </div>
   );
 }
