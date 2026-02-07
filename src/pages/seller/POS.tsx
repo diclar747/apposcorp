@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
-import { productsApi } from '@/lib/api';
+import { productsApi, walletApi } from '@/lib/api';
 import { generateQRValue } from '@/lib/qr';
+import { Loader2, CheckCircle } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,9 @@ export default function SellerPOS() {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'wallet'>('cash');
     const [processing, setProcessing] = useState(false);
     const [customerName, setCustomerName] = useState('Consumidor Final');
+    const [walletPaymentDetected, setWalletPaymentDetected] = useState(false);
+    const walletPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const initialBalanceRef = useRef<number | null>(null);
 
     // Fetch products from real API (same source as Products page)
     useEffect(() => {
@@ -126,6 +130,83 @@ export default function SellerPOS() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [cart]);
+
+    // Poll for wallet payment when showing QR in checkout
+    useEffect(() => {
+        if (!isCheckoutOpen || paymentMethod !== 'wallet' || cart.length === 0) {
+            // Cleanup
+            if (walletPollingRef.current) {
+                clearInterval(walletPollingRef.current);
+                walletPollingRef.current = null;
+            }
+            initialBalanceRef.current = null;
+            setWalletPaymentDetected(false);
+            return;
+        }
+
+        // Capture initial balance when QR is shown
+        const startPolling = async () => {
+            try {
+                const wallet = await walletApi.getWallet();
+                initialBalanceRef.current = wallet.balance;
+            } catch {
+                initialBalanceRef.current = null;
+            }
+
+            // Poll every 3 seconds for incoming transfer
+            walletPollingRef.current = setInterval(async () => {
+                try {
+                    const wallet = await walletApi.getWallet();
+                    const currentBalance = wallet.balance;
+                    const initialBalance = initialBalanceRef.current;
+
+                    if (initialBalance !== null && currentBalance > initialBalance) {
+                        // Payment received! Balance increased
+                        setWalletPaymentDetected(true);
+
+                        // Stop polling
+                        if (walletPollingRef.current) {
+                            clearInterval(walletPollingRef.current);
+                            walletPollingRef.current = null;
+                        }
+
+                        // Auto-complete the sale after a brief visual confirmation
+                        setTimeout(() => {
+                            const saleData = {
+                                id: `V-${Math.floor(1000 + Math.random() * 9000)}`,
+                                date: new Date(),
+                                items: [...cart],
+                                subtotal,
+                                tax,
+                                total,
+                                paymentMethod: 'wallet' as const,
+                                customerName
+                            };
+                            setLastSale(saleData);
+                            setSalesHistory(prev => [saleData, ...prev].slice(0, 10));
+                            setIsCheckoutOpen(false);
+                            setCart([]);
+                            setIsReceiptOpen(true);
+                            setCustomerName('Consumidor Final');
+                            setWalletPaymentDetected(false);
+                            toast.success('¡Pago con Wallet recibido!');
+                        }, 1500);
+                    }
+                } catch {
+                    // Silently ignore polling errors
+                }
+            }, 3000);
+        };
+
+        startPolling();
+
+        return () => {
+            if (walletPollingRef.current) {
+                clearInterval(walletPollingRef.current);
+                walletPollingRef.current = null;
+            }
+        };
+    }, [isCheckoutOpen, paymentMethod, cart.length > 0]);
 
     // Cart calculations
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -534,33 +615,48 @@ export default function SellerPOS() {
                                 </div>
                             </TabsContent>
                             <TabsContent value="wallet" className="mt-6">
-                                <div className="p-6 border-2 border-dashed rounded-2xl bg-blue-50/50 text-center space-y-4">
-                                    <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
-                                        <QRCodeSVG
-                                            value={generateQRValue(user?.id || '', storeName, total)}
-                                            size={200}
-                                            level="L"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-bold text-slate-700">Escanee el código QR del cliente</p>
-                                        <p className="text-xs text-slate-400">Esperando confirmación de pago...</p>
-                                        <div className="flex justify-center">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const data = generateQRValue(user?.id || '', storeName, total);
-                                                    navigator.clipboard.writeText(data);
-                                                    toast.success("Código copiado al portapapeles");
-                                                }}
-                                                className="gap-2 text-xs"
-                                            >
-                                                <Copy className="w-3 h-3" /> Copiar Código
-                                            </Button>
+                                {walletPaymentDetected ? (
+                                    <div className="p-8 border-2 border-green-200 rounded-2xl bg-green-50 text-center space-y-4">
+                                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                                            <CheckCircle className="w-10 h-10 text-green-600" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-lg font-black text-green-800">¡Pago Recibido!</p>
+                                            <p className="text-sm text-green-600">Generando comprobante...</p>
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="p-6 border-2 border-dashed rounded-2xl bg-blue-50/50 text-center space-y-4">
+                                        <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
+                                            <QRCodeSVG
+                                                value={generateQRValue(user?.id || '', storeName, total)}
+                                                size={200}
+                                                level="L"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-bold text-slate-700">Escanee el código QR del cliente</p>
+                                            <div className="flex items-center justify-center gap-2 text-xs text-blue-600">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                <span>Esperando confirmación de pago...</span>
+                                            </div>
+                                            <div className="flex justify-center">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const data = generateQRValue(user?.id || '', storeName, total);
+                                                        navigator.clipboard.writeText(data);
+                                                        toast.success("Código copiado al portapapeles");
+                                                    }}
+                                                    className="gap-2 text-xs"
+                                                >
+                                                    <Copy className="w-3 h-3" /> Copiar Código
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </TabsContent>
                         </Tabs>
                     </div>
