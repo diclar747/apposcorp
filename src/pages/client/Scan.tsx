@@ -17,7 +17,6 @@ interface QRData {
 }
 
 function parseQRData(text: string): QRData | null {
-    // Try JSON format (from POS wallet payment QR)
     try {
         const data = JSON.parse(text);
         if (data.type === 'payment' && data.toUserId && data.amount) {
@@ -25,7 +24,6 @@ function parseQRData(text: string): QRData | null {
         }
     } catch { /* not JSON */ }
 
-    // Try oscorp:// URL format (from "Mi QR" display)
     try {
         if (text.startsWith('oscorp://pay?')) {
             const params = new URLSearchParams(text.split('?')[1]);
@@ -60,17 +58,21 @@ export default function ClientScan() {
     const mountedRef = useRef(true);
 
     const stopScanner = useCallback(async () => {
+        const scanner = scannerRef.current;
+        scannerRef.current = null;
+        if (!scanner) return;
+
         try {
-            const scanner = scannerRef.current;
-            if (scanner) {
-                if (scanner.isScanning) {
-                    await scanner.stop();
-                }
-                scanner.clear();
-                scannerRef.current = null;
+            if (scanner.isScanning) {
+                await scanner.stop();
             }
         } catch (e) {
             console.warn('Error stopping scanner:', e);
+        }
+        try {
+            scanner.clear();
+        } catch (e) {
+            console.warn('Error clearing scanner:', e);
         }
     }, []);
 
@@ -78,7 +80,7 @@ export default function ClientScan() {
         await stopScanner();
         setCameraError(null);
 
-        // Poll for DOM element to be ready
+        // Poll for DOM element
         let container: HTMLElement | null = null;
         for (let i = 0; i < 10; i++) {
             await new Promise(r => setTimeout(r, 200));
@@ -88,8 +90,8 @@ export default function ClientScan() {
         }
         if (!container || !mountedRef.current) return;
 
-        const scanner = new Html5Qrcode('qr-reader');
-        scannerRef.current = scanner;
+        // Clear any leftover content from previous scanner instances
+        container.innerHTML = '';
 
         const config = { fps: 10, qrbox: { width: 250, height: 250 } };
         const onSuccess = (decodedText: string) => {
@@ -100,16 +102,25 @@ export default function ClientScan() {
                 toast.success('Codigo QR detectado!');
             }
         };
-        const onError = () => { /* QR not found in frame - expected */ };
+        const onError = () => {};
 
-        // Try rear camera first, then fallback to any available camera
+        // Attempt 1: rear camera with facingMode constraint
         try {
+            const scanner = new Html5Qrcode('qr-reader');
+            scannerRef.current = scanner;
             await scanner.start({ facingMode: 'environment' }, config, onSuccess, onError);
             return;
         } catch (e) {
-            console.warn('Rear camera failed, trying fallback:', e);
+            console.warn('Rear camera failed:', e);
+            // Clean up failed instance completely
+            try { scannerRef.current?.clear(); } catch {}
+            scannerRef.current = null;
+            if (container) container.innerHTML = '';
         }
 
+        if (!mountedRef.current) return;
+
+        // Attempt 2: list cameras and use any available one
         try {
             const cameras = await Html5Qrcode.getCameras();
             if (cameras && cameras.length > 0) {
@@ -118,19 +129,22 @@ export default function ClientScan() {
                     c.label.toLowerCase().includes('rear') ||
                     c.label.toLowerCase().includes('environment')
                 );
-                await scanner.start(
-                    backCam ? backCam.id : cameras[cameras.length - 1].id,
-                    config, onSuccess, onError
-                );
+                const cameraId = backCam ? backCam.id : cameras[cameras.length - 1].id;
+
+                // Fresh instance for second attempt
+                const scanner = new Html5Qrcode('qr-reader');
+                scannerRef.current = scanner;
+                await scanner.start(cameraId, config, onSuccess, onError);
                 return;
             }
         } catch (e) {
-            console.warn('Camera fallback also failed:', e);
+            console.warn('Camera fallback failed:', e);
+            try { scannerRef.current?.clear(); } catch {}
+            scannerRef.current = null;
         }
 
         if (!mountedRef.current) return;
-        scannerRef.current = null;
-        setCameraError('No se pudo acceder a la camara. Verifica los permisos en tu navegador.');
+        setCameraError('No se pudo acceder a la camara. Verifica los permisos en la configuracion de tu navegador.');
     }, [stopScanner]);
 
     // Check for data passed via navigation state (from QRPayment modal)
