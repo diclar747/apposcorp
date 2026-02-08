@@ -21,6 +21,7 @@ model User {
   isActive            Boolean             @default(true)
   ingenioAccess       Boolean             @default(false)
   permissions         Json?               // For granular permissions
+  notificationPrefs   Json?               // Notification preferences (push, email, orders, stock, etc.)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   bankData            BankData?

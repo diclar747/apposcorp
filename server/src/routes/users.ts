@@ -326,4 +326,52 @@ router.put('/me/bank-data', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get notification preferences
+router.get('/me/preferences', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { notificationPrefs: true },
+    });
+
+    const defaults = {
+      pushNotifications: true,
+      emailNotifications: true,
+      orderAlerts: true,
+      lowStockAlerts: true,
+      promotionAlerts: false,
+      securityAlerts: true,
+      newReviewAlerts: true,
+      weeklyReport: false,
+    };
+
+    const prefs = user?.notificationPrefs
+      ? { ...defaults, ...(user.notificationPrefs as object) }
+      : defaults;
+
+    res.json(prefs);
+  } catch (error) {
+    console.error('Get preferences error:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Update notification preferences
+router.put('/me/preferences', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const prefs = req.body;
+
+    const user = await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { notificationPrefs: prefs },
+      select: { notificationPrefs: true },
+    });
+
+    res.json(user.notificationPrefs);
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
 export default router;

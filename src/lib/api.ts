@@ -51,6 +51,12 @@ export const authApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    fetchWithAuth('/auth/me/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 };
 
 // Users API
@@ -91,6 +97,12 @@ export const usersApi = {
     fetchWithAuth(`/users/${id}/ingenio`, {
       method: 'PATCH',
       body: JSON.stringify({ hasAccess }),
+    }),
+  getPreferences: () => fetchWithAuth('/users/me/preferences'),
+  updatePreferences: (data: any) =>
+    fetchWithAuth('/users/me/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     }),
 };
 
