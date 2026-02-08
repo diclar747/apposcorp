@@ -83,6 +83,7 @@ model SellerProfile {
   store          Store?
   suppliers      Supplier[]
   purchases      Purchase[]
+  customers      Customer[]
 
   @@map("seller_profiles")
 }
@@ -130,6 +131,23 @@ model Supplier {
   seller         SellerProfile   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@map("suppliers")
+}
+
+model Customer {
+  id        String        @id @default(uuid())
+  sellerId  String
+  fullName  String
+  address   String?
+  phone     String?
+  ruc       String?
+  city      String?
+  notes     String?
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  seller    SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@map("customers")
 }
 
 model Purchase {

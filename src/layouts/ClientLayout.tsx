@@ -74,8 +74,9 @@ const menuSections: MenuSection[] = [
     ]
   },
   {
-    title: 'Finanzas',
+    title: 'Educación',
     items: [
+      { icon: GraduationCap, label: 'Cursos', href: '/app/cursos' },
       { icon: TrendingUp, label: 'Ingenio Millonario', href: '/app/ingenio', premium: true },
     ]
   },

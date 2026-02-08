@@ -40,6 +40,7 @@ import SellerWithdrawals from '@/pages/seller/Withdrawals';
 import SellerReports from '@/pages/seller/Reports';
 import SellerPOS from '@/pages/seller/POS';
 import SellerSuppliers from '@/pages/seller/Suppliers';
+import SellerCustomers from '@/pages/seller/Customers';
 import SellerPurchases from '@/pages/seller/Purchases';
 import SellerProfile from '@/pages/seller/Profile';
 
@@ -58,6 +59,8 @@ import ClientOrderDetail from '@/pages/client/OrderDetail';
 import ClientProfile from '@/pages/client/Profile';
 import ClientCredits from '@/pages/client/Credits';
 import ClientIngenio from '@/pages/client/Ingenio';
+import ClientCourses from '@/pages/client/Courses';
+import ClientCourseDetail from '@/pages/client/CourseDetail';
 import ClientNotifications from '@/pages/client/Notifications';
 import TransferMoney from '@/pages/client/TransferMoney';
 
@@ -143,6 +146,7 @@ function App() {
           <Route path="retiros" element={<SellerWithdrawals />} />
           <Route path="reportes" element={<SellerReports />} />
           <Route path="proveedores" element={<SellerSuppliers />} />
+          <Route path="clientes" element={<SellerCustomers />} />
           <Route path="compras" element={<SellerPurchases />} />
           <Route path="perfil" element={<SellerProfile />} />
         </Route>
@@ -171,6 +175,8 @@ function App() {
           <Route path="perfil" element={<ClientProfile />} />
           <Route path="creditos" element={<ClientCredits />} />
           <Route path="ingenio" element={<ClientIngenio />} />
+          <Route path="cursos" element={<ClientCourses />} />
+          <Route path="cursos/:id" element={<ClientCourseDetail />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 

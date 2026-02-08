@@ -290,6 +290,25 @@ export const suppliersApi = {
     }),
 };
 
+// Customers API
+export const customersApi = {
+  getAll: () => fetchWithAuth('/customers'),
+  create: (data: any) =>
+    fetchWithAuth('/customers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/customers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/customers/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
 // Purchases API
 export const purchasesApi = {
   getAll: () => fetchWithAuth('/purchases'),
@@ -302,8 +321,9 @@ export const purchasesApi = {
 
 // Courses API
 export const coursesApi = {
-  getAll: () => fetchWithAuth('/courses'),
+  getAll: (all?: boolean) => fetchWithAuth(`/courses${all ? '?all=true' : ''}`),
   getById: (id: string) => fetchWithAuth(`/courses/${id}`),
+  getMyEnrollments: () => fetchWithAuth('/courses/my/enrollments'),
   create: (data: any) =>
     fetchWithAuth('/courses', {
       method: 'POST',
@@ -321,6 +341,67 @@ export const coursesApi = {
   enroll: (id: string) =>
     fetchWithAuth(`/courses/${id}/enroll`, {
       method: 'POST',
+    }),
+  requestAccess: (id: string) =>
+    fetchWithAuth(`/courses/${id}/request`, {
+      method: 'POST',
+    }),
+  // Modules
+  addModule: (courseId: string, data: any) =>
+    fetchWithAuth(`/courses/${courseId}/modules`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateModule: (moduleId: string, data: any) =>
+    fetchWithAuth(`/courses/modules/${moduleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteModule: (moduleId: string) =>
+    fetchWithAuth(`/courses/modules/${moduleId}`, {
+      method: 'DELETE',
+    }),
+  // Lessons
+  addLesson: (moduleId: string, data: any) =>
+    fetchWithAuth(`/courses/modules/${moduleId}/lessons`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateLesson: (lessonId: string, data: any) =>
+    fetchWithAuth(`/courses/lessons/${lessonId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteLesson: (lessonId: string) =>
+    fetchWithAuth(`/courses/lessons/${lessonId}`, {
+      method: 'DELETE',
+    }),
+  // Resources
+  addResource: (data: any) =>
+    fetchWithAuth('/courses/resources', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteResource: (resourceId: string) =>
+    fetchWithAuth(`/courses/resources/${resourceId}`, {
+      method: 'DELETE',
+    }),
+  // Enrollments (admin)
+  getEnrollments: (courseId: string) =>
+    fetchWithAuth(`/courses/${courseId}/enrollments`),
+  assignUser: (courseId: string, userId: string) =>
+    fetchWithAuth(`/courses/${courseId}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+  removeEnrollment: (courseId: string, enrollmentId: string) =>
+    fetchWithAuth(`/courses/${courseId}/enrollments/${enrollmentId}`, {
+      method: 'DELETE',
+    }),
+  updateProgress: (enrollmentId: string, lessonId: string, completed: boolean) =>
+    fetchWithAuth(`/courses/enrollment/${enrollmentId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify({ lessonId, completed }),
     }),
 };
 
@@ -382,6 +463,7 @@ export default {
   credits: creditsApi,
   notifications: notificationsApi,
   suppliers: suppliersApi,
+  customers: customersApi,
   purchases: purchasesApi,
   courses: coursesApi,
   settings: settingsApi,

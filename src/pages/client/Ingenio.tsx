@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   TrendingUp,
@@ -9,7 +10,6 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownRight,
-  DollarSign,
   Home,
   CreditCard,
   BookOpen,
@@ -40,7 +40,8 @@ const ssCards = [
 ];
 
 export default function ClientIngenio() {
-  const { user, token } = useAuthStore();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [summary, setSummary] = useState({
     income: 0,
     expenses: 0,
@@ -392,32 +393,43 @@ export default function ClientIngenio() {
 
         <TabsContent value="education" className="space-y-4">
           {courses.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+            <div className="text-center py-10 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
               <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No hay cursos disponibles aún.</p>
+              <p className="text-gray-500 dark:text-gray-400 font-medium">No hay cursos disponibles aún.</p>
+              <Button variant="outline" className="mt-4" onClick={() => navigate('/app/cursos')}>
+                Ver todos los cursos
+              </Button>
             </div>
           ) : (
-            courses.map((course: any) => (
-              <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <div className="h-32 bg-gray-100 relative">
-                  {course.coverImage ? (
-                    <img src={course.coverImage} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
-                      <BookOpen className="w-10 h-10 text-white/50" />
+            <>
+              {courses.map((course: any) => (
+                <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/app/cursos/${course.id}`)}>
+                  <div className="h-32 bg-gray-100 dark:bg-slate-800 relative">
+                    {course.coverImage ? (
+                      <img src={course.coverImage} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                        <BookOpen className="w-10 h-10 text-white/50" />
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-4">
+                    <Badge className="mb-2">{course.category}</Badge>
+                    <h3 className="font-bold text-lg mb-1 dark:text-white">{course.title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">{course.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">{course.modules?.length || 0} módulos</span>
+                      <Button className="bg-slate-900 dark:bg-slate-700 text-white" onClick={(e) => { e.stopPropagation(); navigate(`/app/cursos/${course.id}`); }}>
+                        Ver Contenido <Play className="w-4 h-4 ml-2" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <Badge className="mb-2">{course.category}</Badge>
-                  <h3 className="font-bold text-lg mb-1">{course.title}</h3>
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{course.description}</p>
-                  <Button className="w-full bg-slate-900 text-white">
-                    Ver Contenido <Play className="w-4 h-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              ))}
+              <Button variant="outline" className="w-full" onClick={() => navigate('/app/cursos')}>
+                Ver todos los cursos
+              </Button>
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -426,7 +438,6 @@ export default function ClientIngenio() {
 }
 
 function BudgetSection() {
-  const { token } = useAuthStore();
   const [budget, setBudget] = useState({ incomeGoal: 0, expenseLimit: 0 });
   const [actuals, setActuals] = useState({ income: 0, expenses: 0 });
   const [loading, setLoading] = useState(true);

@@ -4,48 +4,61 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get all courses (public)
-router.get('/', async (req, res) => {
+// Get all courses (public gets published only, admin gets all)
+router.get('/', async (req: any, res) => {
   try {
-    const { category, level, search } = req.query;
-    
-    const where: any = { isPublished: true };
-    
+    const { category, level, search, all } = req.query;
+
+    const where: any = {};
+
+    // If not requesting all (admin), only show published
+    if (all !== 'true') {
+      where.isPublished = true;
+    }
+
     if (category) {
       where.category = category as string;
     }
-    
+
     if (level) {
       where.level = level as string;
     }
-    
+
     if (search) {
       where.OR = [
         { title: { contains: search as string, mode: 'insensitive' } },
         { description: { contains: search as string, mode: 'insensitive' } },
       ];
     }
-    
+
     const courses = await prisma.course.findMany({
       where,
       include: {
         modules: {
           include: {
-            lessons: true,
+            lessons: {
+              include: { resources: true },
+              orderBy: { order: 'asc' },
+            },
           },
+          orderBy: { order: 'asc' },
         },
+        resources: true,
         enrollments: {
           select: {
             id: true,
+            userId: true,
+            progress: true,
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     res.json(courses);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    console.error('Get courses error:', error);
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -53,13 +66,16 @@ router.get('/', async (req, res) => {
 router.get('/slug/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    
+
     const course = await prisma.course.findUnique({
       where: { slug },
       include: {
         modules: {
           include: {
-            lessons: true,
+            lessons: {
+              include: { resources: true },
+              orderBy: { order: 'asc' },
+            },
           },
           orderBy: { order: 'asc' },
         },
@@ -68,18 +84,19 @@ router.get('/slug/:slug', async (req, res) => {
           select: {
             id: true,
             progress: true,
+            userId: true,
           },
         },
       },
     });
-    
+
     if (!course) {
-      return res.status(404).json({ error: 'Curso não encontrado' });
+      return res.status(404).json({ error: 'Curso no encontrado' });
     }
-    
+
     res.json(course);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -93,8 +110,12 @@ router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
           include: {
             modules: {
               include: {
-                lessons: true,
+                lessons: {
+                  include: { resources: true },
+                  orderBy: { order: 'asc' },
+                },
               },
+              orderBy: { order: 'asc' },
             },
           },
         },
@@ -103,7 +124,7 @@ router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
 
     res.json(enrollments);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -118,7 +139,7 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
     });
 
     if (!enrollment || enrollment.userId !== req.user!.userId) {
-      return res.status(404).json({ error: 'Matrícula não encontrada' });
+      return res.status(404).json({ error: 'Matrícula no encontrada' });
     }
 
     const completedLessons = new Set(enrollment.completedLessons);
@@ -163,7 +184,7 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
 
     res.json(updatedEnrollment);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
@@ -177,50 +198,59 @@ router.get('/:id', async (req, res) => {
       include: {
         modules: {
           include: {
-            lessons: true,
+            lessons: {
+              include: { resources: true },
+              orderBy: { order: 'asc' },
+            },
           },
           orderBy: { order: 'asc' },
         },
         resources: true,
+        enrollments: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, email: true, avatar: true },
+            },
+          },
+        },
       },
     });
 
     if (!course) {
-      return res.status(404).json({ error: 'Curso não encontrado' });
+      return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
     res.json(course);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
 // Create course (admin only)
 router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const { modules, ...courseData } = req.body;
-    
+    const { title, description, shortDescription, price, category, level, instructorName, coverImage, previewVideo, isPublished } = req.body;
+
+    // Generate slug from title
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
+
+    // Get instructor name from current user if not provided
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+
     const course = await prisma.course.create({
       data: {
-        ...courseData,
+        title,
+        slug,
+        description: description || '',
+        shortDescription: shortDescription || description?.substring(0, 120) || '',
         instructorId: req.user!.userId,
-        modules: {
-          create: modules?.map((module: any) => ({
-            title: module.title,
-            description: module.description,
-            order: module.order,
-            lessons: {
-              create: module.lessons?.map((lesson: any) => ({
-                title: lesson.title,
-                description: lesson.description,
-                videoUrl: lesson.videoUrl,
-                duration: lesson.duration,
-                order: lesson.order,
-                isPreview: lesson.isPreview,
-              })),
-            },
-          })),
-        },
+        instructorName: instructorName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Admin',
+        category: category || 'General',
+        level: level || 'beginner',
+        price: price ? Number(price) : 0,
+        coverImage: coverImage || null,
+        previewVideo: previewVideo || null,
+        isPublished: isPublished ?? true,
       },
       include: {
         modules: {
@@ -230,11 +260,11 @@ router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest,
         },
       },
     });
-    
+
     res.status(201).json(course);
   } catch (error) {
     console.error('Create course error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error al crear curso' });
   }
 });
 
@@ -242,21 +272,41 @@ router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest,
 router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
+    const { title, description, shortDescription, price, category, level, instructorName, coverImage, previewVideo, isPublished } = req.body;
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
+    if (price !== undefined) updateData.price = Number(price);
+    if (category !== undefined) updateData.category = category;
+    if (level !== undefined) updateData.level = level;
+    if (instructorName !== undefined) updateData.instructorName = instructorName;
+    if (coverImage !== undefined) updateData.coverImage = coverImage;
+    if (previewVideo !== undefined) updateData.previewVideo = previewVideo;
+    if (isPublished !== undefined) updateData.isPublished = isPublished;
+
     const course = await prisma.course.update({
       where: { id },
-      data: req.body,
+      data: updateData,
       include: {
         modules: {
           include: {
-            lessons: true,
+            lessons: {
+              include: { resources: true },
+              orderBy: { order: 'asc' },
+            },
           },
+          orderBy: { order: 'asc' },
         },
+        resources: true,
       },
     });
-    
+
     res.json(course);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    console.error('Update course error:', error);
+    res.status(500).json({ error: 'Error al actualizar curso' });
   }
 });
 
@@ -264,30 +314,322 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthReques
 router.delete('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
-    
+
     await prisma.course.delete({
       where: { id },
     });
-    
-    res.json({ message: 'Curso deletado com sucesso' });
+
+    res.json({ message: 'Curso eliminado exitosamente' });
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error al eliminar curso' });
   }
 });
 
-// Enroll in course
+// ============ MODULES ============
+
+// Add module to course
+router.post('/:id/modules', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const courseId = req.params.id as string;
+    const { title, description } = req.body;
+
+    // Get next order number
+    const lastModule = await prisma.module.findFirst({
+      where: { courseId },
+      orderBy: { order: 'desc' },
+    });
+
+    const module = await prisma.module.create({
+      data: {
+        courseId,
+        title,
+        description: description || '',
+        order: (lastModule?.order || 0) + 1,
+      },
+      include: {
+        lessons: {
+          include: { resources: true },
+        },
+      },
+    });
+
+    res.status(201).json(module);
+  } catch (error) {
+    console.error('Create module error:', error);
+    res.status(500).json({ error: 'Error al crear módulo' });
+  }
+});
+
+// Update module
+router.put('/modules/:moduleId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const moduleId = req.params.moduleId as string;
+    const { title, description, order } = req.body;
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (order !== undefined) updateData.order = order;
+
+    const module = await prisma.module.update({
+      where: { id: moduleId },
+      data: updateData,
+      include: {
+        lessons: {
+          include: { resources: true },
+        },
+      },
+    });
+
+    res.json(module);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar módulo' });
+  }
+});
+
+// Delete module
+router.delete('/modules/:moduleId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const moduleId = req.params.moduleId as string;
+
+    await prisma.module.delete({
+      where: { id: moduleId },
+    });
+
+    res.json({ message: 'Módulo eliminado' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar módulo' });
+  }
+});
+
+// ============ LESSONS / MATERIALS ============
+
+// Add lesson/material to module
+router.post('/modules/:moduleId/lessons', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const moduleId = req.params.moduleId as string;
+    const { title, description, videoUrl, duration, isPreview } = req.body;
+
+    // Get next order number
+    const lastLesson = await prisma.lesson.findFirst({
+      where: { moduleId },
+      orderBy: { order: 'desc' },
+    });
+
+    const lesson = await prisma.lesson.create({
+      data: {
+        moduleId,
+        title,
+        description: description || '',
+        videoUrl: videoUrl || null,
+        duration: duration || 0,
+        order: (lastLesson?.order || 0) + 1,
+        isPreview: isPreview || false,
+      },
+      include: { resources: true },
+    });
+
+    res.status(201).json(lesson);
+  } catch (error) {
+    console.error('Create lesson error:', error);
+    res.status(500).json({ error: 'Error al crear lección' });
+  }
+});
+
+// Update lesson
+router.put('/lessons/:lessonId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const lessonId = req.params.lessonId as string;
+    const { title, description, videoUrl, duration, order, isPreview } = req.body;
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (videoUrl !== undefined) updateData.videoUrl = videoUrl;
+    if (duration !== undefined) updateData.duration = duration;
+    if (order !== undefined) updateData.order = order;
+    if (isPreview !== undefined) updateData.isPreview = isPreview;
+
+    const lesson = await prisma.lesson.update({
+      where: { id: lessonId },
+      data: updateData,
+      include: { resources: true },
+    });
+
+    res.json(lesson);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar lección' });
+  }
+});
+
+// Delete lesson
+router.delete('/lessons/:lessonId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const lessonId = req.params.lessonId as string;
+
+    await prisma.lesson.delete({
+      where: { id: lessonId },
+    });
+
+    res.json({ message: 'Lección eliminada' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar lección' });
+  }
+});
+
+// ============ RESOURCES (PDF, Images, YouTube) ============
+
+// Add resource to a lesson or course
+router.post('/resources', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const { courseId, lessonId, title, type, url } = req.body;
+
+    const resource = await prisma.resource.create({
+      data: {
+        courseId: courseId || null,
+        lessonId: lessonId || null,
+        title,
+        type, // 'pdf', 'image', 'video', 'link'
+        url,
+      },
+    });
+
+    res.status(201).json(resource);
+  } catch (error) {
+    console.error('Create resource error:', error);
+    res.status(500).json({ error: 'Error al crear recurso' });
+  }
+});
+
+// Delete resource
+router.delete('/resources/:resourceId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const resourceId = req.params.resourceId as string;
+
+    await prisma.resource.delete({
+      where: { id: resourceId },
+    });
+
+    res.json({ message: 'Recurso eliminado' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar recurso' });
+  }
+});
+
+// ============ ENROLLMENTS ============
+
+// Get enrollments for a course (admin)
+router.get('/:id/enrollments', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const courseId = req.params.id as string;
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: { courseId },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true, avatar: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(enrollments);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Assign user to course (admin)
+router.post('/:id/assign', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const courseId = req.params.id as string;
+    const { userId } = req.body;
+
+    // Check course exists
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+
+    // Check user exists
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Check if already enrolled
+    const existing = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: 'El usuario ya está inscrito en este curso' });
+    }
+
+    // Create enrollment and activate ingenio access
+    const [enrollment] = await prisma.$transaction([
+      prisma.enrollment.create({
+        data: { userId, courseId },
+        include: {
+          user: {
+            select: { id: true, firstName: true, lastName: true, email: true, avatar: true },
+          },
+        },
+      }),
+      prisma.course.update({
+        where: { id: courseId },
+        data: { enrolledCount: { increment: 1 } },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { ingenioAccess: true },
+      }),
+    ]);
+
+    res.status(201).json(enrollment);
+  } catch (error) {
+    console.error('Assign user error:', error);
+    res.status(500).json({ error: 'Error al asignar usuario' });
+  }
+});
+
+// Remove enrollment (admin)
+router.delete('/:id/enrollments/:enrollmentId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const enrollmentId = req.params.enrollmentId as string;
+
+    const enrollment = await prisma.enrollment.findUnique({ where: { id: enrollmentId } });
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Inscripción no encontrada' });
+    }
+
+    await prisma.$transaction([
+      prisma.enrollment.delete({ where: { id: enrollmentId } }),
+      prisma.course.update({
+        where: { id: enrollment.courseId },
+        data: { enrolledCount: { decrement: 1 } },
+      }),
+    ]);
+
+    res.json({ message: 'Inscripción eliminada' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar inscripción' });
+  }
+});
+
+// Enroll in course (user self-enroll for free courses or paid)
 router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
-    
+
     const course = await prisma.course.findUnique({
       where: { id },
     });
-    
+
     if (!course) {
-      return res.status(404).json({ error: 'Curso não encontrado' });
+      return res.status(404).json({ error: 'Curso no encontrado' });
     }
-    
+
     // Check if already enrolled
     const existingEnrollment = await prisma.enrollment.findUnique({
       where: {
@@ -297,23 +639,23 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
         },
       },
     });
-    
+
     if (existingEnrollment) {
-      return res.status(400).json({ error: 'Já matriculado neste curso' });
+      return res.status(400).json({ error: 'Ya estás inscrito en este curso' });
     }
-    
+
     // If course is paid, check wallet
     if (course.price > 0) {
       const wallet = await prisma.wallet.findUnique({
         where: { userId: req.user!.userId },
       });
-      
+
       if (!wallet || wallet.balance < course.price) {
         return res.status(400).json({ error: 'Saldo insuficiente' });
       }
-      
+
       // Process payment
-      await prisma.$transaction(async (tx) => {
+      const enrollment = await prisma.$transaction(async (tx) => {
         await tx.wallet.update({
           where: { id: wallet.id },
           data: {
@@ -321,23 +663,23 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
             totalOut: { increment: course.price },
           },
         });
-        
+
         await tx.transaction.create({
           data: {
             walletId: wallet.id,
             userId: req.user!.userId,
             type: 'purchase',
             amount: -course.price,
-            description: `Compra do curso: ${course.title}`,
+            description: `Compra del curso: ${course.title}`,
             status: 'completed',
           },
         });
-        
+
         await tx.course.update({
           where: { id },
           data: { enrolledCount: { increment: 1 } },
         });
-        
+
         return tx.enrollment.create({
           data: {
             userId: req.user!.userId,
@@ -345,27 +687,76 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           },
         });
       });
+
+      return res.status(201).json(enrollment);
     } else {
       // Free course, just enroll
       await prisma.course.update({
         where: { id },
         data: { enrolledCount: { increment: 1 } },
       });
-      
+
       const enrollment = await prisma.enrollment.create({
         data: {
           userId: req.user!.userId,
           courseId: id,
         },
       });
-      
+
       return res.status(201).json(enrollment);
     }
-    
-    res.status(201).json({ message: 'Matriculado com sucesso' });
   } catch (error) {
     console.error('Enroll error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error al inscribirse' });
+  }
+});
+
+// Request access to course (user)
+router.post('/:id/request', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const courseId = req.params.id as string;
+    const userId = req.user!.userId;
+
+    // Check course exists
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+
+    // Check if already enrolled
+    const existing = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Ya estás inscrito en este curso' });
+    }
+
+    // Create a notification for the admin
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    // Find admin users
+    const admins = await prisma.user.findMany({
+      where: { role: 'superadmin' },
+      select: { id: true },
+    });
+
+    // Create notification for each admin
+    for (const admin of admins) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.id,
+          type: 'system',
+          title: 'Solicitud de acceso a curso',
+          message: `${user?.firstName} ${user?.lastName} solicita acceso al curso "${course.title}"`,
+          actionUrl: `/admin/cursos?assign=${courseId}&user=${userId}`,
+        },
+      });
+    }
+
+    res.json({ message: 'Solicitud enviada al administrador' });
+  } catch (error) {
+    console.error('Request access error:', error);
+    res.status(500).json({ error: 'Error al enviar solicitud' });
   }
 });
 

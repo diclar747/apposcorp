@@ -4,11 +4,11 @@ import {
   Search, ShoppingCart, Trash2, Plus, Minus, CreditCard,
   Banknote, Wallet, Receipt, X, Package, Barcode,
   Printer, History, Keyboard, User as UserIcon, Copy,
-  ChevronUp, ChevronDown as ChevronDownIcon
+  ChevronUp, ChevronDown as ChevronDownIcon, Users
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
-import { productsApi, walletApi } from '@/lib/api';
+import { productsApi, walletApi, customersApi } from '@/lib/api';
 import { generateQRValue } from '@/lib/qr';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '@/types';
@@ -73,6 +74,11 @@ export default function SellerPOS() {
   const walletPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialBalanceRef = useRef<number | null>(null);
 
+  // Sale type & customer for crédito
+  const [saleType, setSaleType] = useState<'contado' | 'credito'>('contado');
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customers, setCustomers] = useState<any[]>([]);
+
   // Mobile cart drawer
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   // Sales history toggle (mobile)
@@ -97,6 +103,11 @@ export default function SellerPOS() {
     };
     fetchProducts();
   }, [sellerProfile?.id]);
+
+  // Fetch customers for crédito sales
+  useEffect(() => {
+    customersApi.getAll().then(setCustomers).catch(() => {});
+  }, []);
 
   // Trial Logic
   const isTrialExpired = useMemo(() => {
@@ -187,7 +198,9 @@ export default function SellerPOS() {
                 items: [...cart],
                 subtotal, tax, total,
                 paymentMethod: 'wallet' as const,
-                customerName
+                customerName: saleType === 'credito' && selectedCustomer ? selectedCustomer.fullName : customerName,
+                saleType,
+                customer: saleType === 'credito' ? selectedCustomer : null,
               };
               setLastSale(saleData);
               setSalesHistory(prev => [saleData, ...prev].slice(0, 10));
@@ -196,6 +209,8 @@ export default function SellerPOS() {
               setMobileCartOpen(false);
               setIsReceiptOpen(true);
               setCustomerName('Consumidor Final');
+              setSaleType('contado');
+              setSelectedCustomer(null);
               setWalletPaymentDetected(false);
               toast.success('¡Pago con Wallet recibido!');
             }, 1500);
@@ -261,7 +276,9 @@ export default function SellerPOS() {
         items: [...cart],
         subtotal, tax, total,
         paymentMethod,
-        customerName
+        customerName: saleType === 'credito' && selectedCustomer ? selectedCustomer.fullName : customerName,
+        saleType,
+        customer: saleType === 'credito' ? selectedCustomer : null,
       };
       setLastSale(saleData);
       setSalesHistory(prev => [saleData, ...prev].slice(0, 10));
@@ -271,6 +288,8 @@ export default function SellerPOS() {
       setMobileCartOpen(false);
       setIsReceiptOpen(true);
       setCustomerName('Consumidor Final');
+      setSaleType('contado');
+      setSelectedCustomer(null);
       toast.success('Venta realizada con éxito');
     }, 1000);
   };
@@ -552,6 +571,7 @@ export default function SellerPOS() {
                           <th className="px-4 py-2 font-semibold text-[11px] uppercase tracking-wider">ID</th>
                           <th className="px-4 py-2 font-semibold text-[11px] uppercase tracking-wider">Cliente</th>
                           <th className="px-4 py-2 font-semibold text-[11px] uppercase tracking-wider text-right">Monto</th>
+                          <th className="px-4 py-2 font-semibold text-[11px] uppercase tracking-wider text-center">Tipo</th>
                           <th className="px-4 py-2 font-semibold text-[11px] uppercase tracking-wider text-center">Pago</th>
                           <th className="px-4 py-2 font-semibold text-[11px] uppercase tracking-wider text-right">Ticket</th>
                         </tr>
@@ -562,6 +582,16 @@ export default function SellerPOS() {
                             <td className="px-4 py-2 font-mono text-xs text-blue-600 dark:text-blue-400 font-medium">{sale.id}</td>
                             <td className="px-4 py-2 text-foreground text-xs">{sale.customerName}</td>
                             <td className="px-4 py-2 text-right font-bold text-foreground text-xs">{formatCurrency(sale.total)}</td>
+                            <td className="px-4 py-2 text-center">
+                              <span className={cn(
+                                "text-[10px] font-bold uppercase px-2 py-0.5 rounded",
+                                sale.saleType === 'credito'
+                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
+                              )}>
+                                {sale.saleType === 'credito' ? 'Crédito' : 'Contado'}
+                              </span>
+                            </td>
                             <td className="px-4 py-2 text-center">
                               <span className="text-[10px] font-bold uppercase bg-muted text-muted-foreground px-2 py-0.5 rounded">
                                 {sale.paymentMethod}
@@ -579,7 +609,7 @@ export default function SellerPOS() {
                         ))}
                         {salesHistory.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground italic text-xs">
+                            <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground italic text-xs">
                               No hay ventas en esta sesión
                             </td>
                           </tr>
@@ -710,6 +740,70 @@ export default function SellerPOS() {
               <p className="text-3xl sm:text-4xl font-black text-foreground tracking-tighter">{formatCurrency(total)}</p>
             </div>
 
+            {/* Sale Type: Contado / Crédito */}
+            <div className="space-y-3">
+              <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Tipo de Venta</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => { setSaleType('contado'); setSelectedCustomer(null); }}
+                  className={cn(
+                    'py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition-all',
+                    saleType === 'contado'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                      : 'border-muted bg-background text-muted-foreground hover:border-gray-300'
+                  )}
+                >
+                  <Banknote className="w-4 h-4 inline mr-1.5" />
+                  Contado
+                </button>
+                <button
+                  onClick={() => setSaleType('credito')}
+                  className={cn(
+                    'py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition-all',
+                    saleType === 'credito'
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                      : 'border-muted bg-background text-muted-foreground hover:border-gray-300'
+                  )}
+                >
+                  <CreditCard className="w-4 h-4 inline mr-1.5" />
+                  Crédito
+                </button>
+              </div>
+
+              {saleType === 'credito' && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Cliente</Label>
+                  {customers.length > 0 ? (
+                    <Select
+                      value={selectedCustomer?.id || ''}
+                      onValueChange={(id) => setSelectedCustomer(customers.find((c: any) => c.id === id) || null)}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Seleccionar cliente..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <span className="flex items-center gap-2">
+                              <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                              {c.fullName} {c.ruc ? `(${c.ruc})` : ''}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-200 dark:border-amber-500/20 text-sm text-amber-700 dark:text-amber-400">
+                      No tienes clientes registrados.{' '}
+                      <button onClick={() => navigate('/vendedor/clientes')} className="underline font-bold">
+                        Registrar cliente
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <Tabs defaultValue="cash" onValueChange={(v) => setPaymentMethod(v as any)} className="w-full">
               <TabsList className="grid w-full grid-cols-3 h-11">
                 <TabsTrigger value="cash" className="gap-1.5 text-xs">
@@ -786,7 +880,7 @@ export default function SellerPOS() {
 
           <DialogFooter className="gap-2 sm:gap-0 border-t pt-4">
             <Button variant="ghost" onClick={() => setIsCheckoutOpen(false)} className="font-bold text-muted-foreground">CANCELAR</Button>
-            <Button onClick={handleCheckout} disabled={processing} className="bg-green-600 hover:bg-green-700 font-bold px-6">
+            <Button onClick={handleCheckout} disabled={processing || (saleType === 'credito' && !selectedCustomer)} className="bg-green-600 hover:bg-green-700 font-bold px-6">
               {processing ? 'PROCESANDO...' : 'CONFIRMAR PAGO'}
             </Button>
           </DialogFooter>
@@ -820,9 +914,19 @@ export default function SellerPOS() {
                   <span className="font-bold">{lastSale?.id}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-slate-400">TIPO:</span>
+                  <span className="font-bold uppercase">{lastSale?.saleType === 'credito' ? 'CRÉDITO' : 'CONTADO'}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-slate-400">CLIENTE:</span>
                   <span className="font-bold uppercase">{lastSale?.customerName || customerName}</span>
                 </div>
+                {lastSale?.customer?.ruc && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">RUC CLIENTE:</span>
+                    <span className="font-bold">{lastSale.customer.ruc}</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 mb-6">

@@ -19,6 +19,7 @@ import {
   Bell,
   Truck,
   FileText,
+  Users,
   Sun,
   Moon
 } from 'lucide-react';
@@ -43,6 +44,7 @@ const sidebarItems = [
   { icon: Store, label: 'Mi Tienda', href: '/vendedor/tienda' },
   { icon: Package, label: 'Productos', href: '/vendedor/productos' },
   { icon: Truck, label: 'Proveedores', href: '/vendedor/proveedores' },
+  { icon: Users, label: 'Clientes', href: '/vendedor/clientes' },
   { icon: FileText, label: 'Compras', href: '/vendedor/compras' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/vendedor/pedidos' },
   { icon: TrendingUp, label: 'Ventas', href: '/vendedor/ventas' },
