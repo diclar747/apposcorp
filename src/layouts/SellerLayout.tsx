@@ -168,7 +168,7 @@ export default function SellerLayout() {
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-slate-800">
                 <Link to="/vendedor" className="flex items-center gap-3">
-                  <img src="/oscorp-logo.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
+                  <img src="/icons/icon-192x192.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
                   <div>
                     <span className="font-semibold text-gray-900 dark:text-white block">Oscorp</span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">Panel Vendedor</span>
