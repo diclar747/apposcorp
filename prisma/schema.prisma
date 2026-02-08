@@ -81,9 +81,11 @@ model SellerProfile {
   products       Product[]
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   store          Store?
-  suppliers      Supplier[]
-  purchases      Purchase[]
-  customers      Customer[]
+  suppliers        Supplier[]
+  purchases        Purchase[]
+  customers        Customer[]
+  sellerCategories SellerCategory[]
+  sellerMovements  SellerMovement[]
 
   @@map("seller_profiles")
 }
@@ -148,6 +150,39 @@ model Customer {
   seller    SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@map("customers")
+}
+
+model SellerCategory {
+  id        String           @id @default(uuid())
+  sellerId  String
+  name      String
+  type      String           // "income" | "expense"
+  color     String           @default("#3B82F6")
+  icon      String           @default("wallet")
+  isSystem  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  seller    SellerProfile    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  movements SellerMovement[]
+
+  @@map("seller_categories")
+}
+
+model SellerMovement {
+  id            String         @id @default(uuid())
+  sellerId      String
+  categoryId    String
+  type          String         // "income" | "expense"
+  amount        Float
+  description   String
+  voucherNumber String?
+  date          DateTime       @default(now())
+  reference     String?        // e.g., POS sale ID
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  seller        SellerProfile  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  category      SellerCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("seller_movements")
 }
 
 model Purchase {

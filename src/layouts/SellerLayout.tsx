@@ -48,6 +48,7 @@ const sidebarItems = [
   { icon: FileText, label: 'Compras', href: '/vendedor/compras' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/vendedor/pedidos' },
   { icon: TrendingUp, label: 'Ventas', href: '/vendedor/ventas' },
+  { icon: DollarSign, label: 'Gestión', href: '/vendedor/gestion' },
   { icon: BarChart3, label: 'Reportes', href: '/vendedor/reportes' },
   { icon: Settings, label: 'Configuración', href: '/vendedor/configuracion' },
 ];

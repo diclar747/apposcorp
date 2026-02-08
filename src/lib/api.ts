@@ -309,6 +309,43 @@ export const customersApi = {
     }),
 };
 
+// Seller Management API
+export const managementApi = {
+  getSummary: () => fetchWithAuth('/seller-management/summary'),
+  getCategories: () => fetchWithAuth('/seller-management/categories'),
+  createCategory: (data: any) =>
+    fetchWithAuth('/seller-management/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCategory: (id: string, data: any) =>
+    fetchWithAuth(`/seller-management/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteCategory: (id: string) =>
+    fetchWithAuth(`/seller-management/categories/${id}`, {
+      method: 'DELETE',
+    }),
+  getMovements: (params?: { type?: string; categoryId?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    return fetchWithAuth(`/seller-management/movements${query ? `?${query}` : ''}`);
+  },
+  createMovement: (data: any) =>
+    fetchWithAuth('/seller-management/movements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteMovement: (id: string) =>
+    fetchWithAuth(`/seller-management/movements/${id}`, {
+      method: 'DELETE',
+    }),
+  seedCategories: () =>
+    fetchWithAuth('/seller-management/seed-categories', {
+      method: 'POST',
+    }),
+};
+
 // Purchases API
 export const purchasesApi = {
   getAll: () => fetchWithAuth('/purchases'),
@@ -468,4 +505,5 @@ export default {
   courses: coursesApi,
   settings: settingsApi,
   finances: financesApi,
+  management: managementApi,
 };

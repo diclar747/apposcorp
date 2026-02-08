@@ -4,11 +4,11 @@ import {
   Search, ShoppingCart, Trash2, Plus, Minus, CreditCard,
   Banknote, Wallet, Receipt, X, Package, Barcode,
   Printer, History, Keyboard, User as UserIcon, Copy,
-  ChevronUp, ChevronDown as ChevronDownIcon, Users
+  ChevronUp, ChevronDown as ChevronDownIcon, Users, Download
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
-import { productsApi, walletApi, customersApi } from '@/lib/api';
+import { productsApi, walletApi, customersApi, managementApi } from '@/lib/api';
 import { generateQRValue } from '@/lib/qr';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -78,6 +78,7 @@ export default function SellerPOS() {
   const [saleType, setSaleType] = useState<'contado' | 'credito'>('contado');
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [posCategoryId, setPosCategoryId] = useState<string | null>(null);
 
   // Mobile cart drawer
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
@@ -104,9 +105,14 @@ export default function SellerPOS() {
     fetchProducts();
   }, [sellerProfile?.id]);
 
-  // Fetch customers for crédito sales
+  // Fetch customers for crédito sales + POS category for Gestión integration
   useEffect(() => {
     customersApi.getAll().then(setCustomers).catch(() => {});
+    managementApi.seedCategories().catch(() => {});
+    managementApi.getCategories().then((cats: any[]) => {
+      const posCat = cats.find((c: any) => c.name === 'Ventas POS' && c.type === 'income');
+      if (posCat) setPosCategoryId(posCat.id);
+    }).catch(() => {});
   }, []);
 
   // Trial Logic
@@ -213,6 +219,18 @@ export default function SellerPOS() {
               setSelectedCustomer(null);
               setWalletPaymentDetected(false);
               toast.success('¡Pago con Wallet recibido!');
+
+              // Register in Gestión as income movement
+              if (posCategoryId) {
+                managementApi.createMovement({
+                  categoryId: posCategoryId,
+                  type: 'income',
+                  amount: total,
+                  description: `Venta POS (Wallet) ${saleData.id} - ${saleData.customerName}`,
+                  voucherNumber: saleData.id,
+                  reference: saleData.id,
+                }).catch(() => {});
+              }
             }, 1500);
           }
         } catch { /* silent */ }
@@ -291,6 +309,18 @@ export default function SellerPOS() {
       setSaleType('contado');
       setSelectedCustomer(null);
       toast.success('Venta realizada con éxito');
+
+      // Register in Gestión as income movement
+      if (posCategoryId) {
+        managementApi.createMovement({
+          categoryId: posCategoryId,
+          type: 'income',
+          amount: total,
+          description: `Venta POS ${saleData.id} - ${saleData.customerName}`,
+          voucherNumber: saleData.id,
+          reference: saleData.id,
+        }).catch(() => {});
+      }
     }, 1000);
   };
 
@@ -852,11 +882,14 @@ export default function SellerPOS() {
                   </div>
                 ) : (
                   <div className="p-4 border-2 border-dashed rounded-2xl bg-blue-50/50 dark:bg-blue-500/5 text-center space-y-3">
-                    <div className="bg-background p-3 rounded-xl shadow-sm inline-block">
+                    <div className="bg-white p-4 rounded-xl shadow-sm inline-block">
                       <QRCodeSVG
                         value={generateQRValue(user?.id || '', storeName, total)}
                         size={160}
                         level="L"
+                        bgColor="#FFFFFF"
+                        fgColor="#000000"
+                        marginSize={2}
                       />
                     </div>
                     <div className="space-y-2">
@@ -971,15 +1004,74 @@ export default function SellerPOS() {
               </div>
             </div>
           </div>
-          <div className="p-4 bg-slate-50 dark:bg-slate-800 flex gap-3 border-t">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 flex gap-2 border-t print:hidden">
             <Button variant="outline" className="flex-1 font-bold" onClick={() => setIsReceiptOpen(false)}>
-              CERRAR
+              <X className="w-4 h-4 mr-1" />
+              SALIR
             </Button>
-            <Button className="flex-1 bg-slate-900 dark:bg-blue-600 font-bold group" onClick={() => {
-              toast.info("Simulando impresión...");
-              setTimeout(() => setIsReceiptOpen(false), 1000);
+            <Button variant="outline" className="flex-1 font-bold" onClick={() => {
+              const el = document.getElementById('receipt-content');
+              if (!el) return;
+              const printWindow = window.open('', '_blank', 'width=400,height=700');
+              if (!printWindow) { toast.error('Permite ventanas emergentes para descargar'); return; }
+              printWindow.document.write(`<!DOCTYPE html><html><head><title>Comprobante ${lastSale?.id || ''}</title><style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: 'Courier New', monospace; font-size: 12px; color: #1e293b; padding: 24px; max-width: 380px; margin: 0 auto; }
+                .text-center { text-align: center; } .font-bold { font-weight: bold; } .font-black { font-weight: 900; }
+                .text-xl { font-size: 18px; } .text-xs { font-size: 11px; } .text-\\[10px\\] { font-size: 10px; } .text-\\[9px\\] { font-size: 9px; }
+                .uppercase { text-transform: uppercase; } .mb-1 { margin-bottom: 4px; } .mb-4 { margin-bottom: 16px; } .mb-5 { margin-bottom: 20px; } .mb-6 { margin-bottom: 24px; }
+                .mt-8 { margin-top: 32px; } .pt-2 { padding-top: 8px; } .pt-5 { padding-top: 20px; } .pb-4 { padding-bottom: 16px; }
+                .border-dashed { border-style: dashed; } .border-b { border-bottom: 1px dashed #cbd5e1; }
+                .border-t { border-top: 1px dashed #cbd5e1; } .my-5 { margin-top: 20px; margin-bottom: 20px; }
+                .flex { display: flex; } .justify-between { justify-content: space-between; }
+                .space-y-1 > * + * { margin-top: 4px; } .space-y-2 > * + * { margin-top: 8px; } .space-y-3 > * + * { margin-top: 12px; }
+                .text-slate-400 { color: #94a3b8; } .tracking-tighter { letter-spacing: -0.05em; } .tracking-widest { letter-spacing: 0.1em; }
+                .w-1\\/2 { width: 50%; } .w-1\\/4 { width: 25%; } .text-right { text-align: right; }
+                .icon-placeholder { width: 48px; height: 48px; background: #1e293b; border-radius: 12px; margin: 0 auto 16px; display:flex; align-items:center; justify-content:center; }
+                .icon-placeholder svg { width:24px; height:24px; color:white; }
+                .barcode { width: 144px; height: 32px; margin: 0 auto; opacity: 0.4; background: repeating-linear-gradient(90deg, #1e293b 0px, #1e293b 2px, transparent 2px, transparent 5px); }
+              </style></head><body>`);
+              printWindow.document.write(el.innerHTML);
+              printWindow.document.write('</body></html>');
+              printWindow.document.close();
+              // Replace icons with placeholders
+              const svgs = printWindow.document.querySelectorAll('svg');
+              svgs.forEach(svg => { const span = printWindow!.document.createElement('span'); span.textContent = ''; svg.replaceWith(span); });
+              setTimeout(() => { printWindow.document.title = `Comprobante_${lastSale?.id || 'receipt'}`; printWindow.print(); }, 300);
+              toast.success('Descarga iniciada');
             }}>
-              <Printer className="w-4 h-4 mr-2 group-hover:animate-bounce" />
+              <Download className="w-4 h-4 mr-1" />
+              DESCARGAR
+            </Button>
+            <Button className="flex-1 bg-slate-900 dark:bg-blue-600 font-bold" onClick={() => {
+              const el = document.getElementById('receipt-content');
+              if (!el) return;
+              const printWindow = window.open('', '_blank', 'width=400,height=700');
+              if (!printWindow) { toast.error('Permite ventanas emergentes para imprimir'); return; }
+              printWindow.document.write(`<!DOCTYPE html><html><head><title>Comprobante</title><style>
+                @media print { @page { margin: 10mm; size: 80mm auto; } }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; padding: 8px; max-width: 300px; margin: 0 auto; }
+                .text-center { text-align: center; } .font-bold { font-weight: bold; } .font-black { font-weight: 900; }
+                .text-xl { font-size: 16px; } .text-xs { font-size: 10px; } .text-\\[10px\\] { font-size: 9px; } .text-\\[9px\\] { font-size: 8px; } .text-\\[11px\\] { font-size: 10px; }
+                .uppercase { text-transform: uppercase; } .mb-1 { margin-bottom: 3px; } .mb-4 { margin-bottom: 10px; } .mb-5 { margin-bottom: 14px; } .mb-6 { margin-bottom: 16px; }
+                .mt-8 { margin-top: 20px; } .pt-2 { padding-top: 6px; } .pt-5 { padding-top: 14px; } .pb-4 { padding-bottom: 10px; }
+                .border-dashed { border-style: dashed; } .border-b { border-bottom: 1px dashed #999; }
+                .border-t { border-top: 1px dashed #999; } .my-5 { margin-top: 14px; margin-bottom: 14px; }
+                .flex { display: flex; } .justify-between { justify-content: space-between; }
+                .space-y-1 > * + * { margin-top: 3px; } .space-y-2 > * + * { margin-top: 6px; } .space-y-3 > * + * { margin-top: 8px; }
+                .text-slate-400 { color: #666; } .tracking-tighter { letter-spacing: -0.04em; } .tracking-widest { letter-spacing: 0.08em; }
+                .w-1\\/2 { width: 50%; } .w-1\\/4 { width: 25%; } .text-right { text-align: right; }
+                .icon-placeholder { display:none; }
+                .barcode { width: 120px; height: 24px; margin: 0 auto; opacity: 0.5; background: repeating-linear-gradient(90deg, #000 0px, #000 1.5px, transparent 1.5px, transparent 4px); }
+                svg { display: none; }
+              </style></head><body>`);
+              printWindow.document.write(el.innerHTML);
+              printWindow.document.write('</body></html>');
+              printWindow.document.close();
+              setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+            }}>
+              <Printer className="w-4 h-4 mr-1" />
               IMPRIMIR
             </Button>
           </div>
