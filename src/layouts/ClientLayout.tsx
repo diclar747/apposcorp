@@ -101,9 +101,10 @@ export default function ClientLayout() {
   const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-    }
+    if (!user) return;
+    fetchNotifications();
+    const interval = setInterval(() => fetchNotifications(), 30000);
+    return () => clearInterval(interval);
   }, [user, fetchNotifications]);
 
   const handleLogout = () => {

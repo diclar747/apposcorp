@@ -203,9 +203,23 @@ export const creditsApi = {
     fetchWithAuth(`/credits/${id}/approve`, {
       method: 'PATCH',
     }),
-  reject: (id: string) =>
+  reject: (id: string, reason?: string) =>
     fetchWithAuth(`/credits/${id}/reject`, {
       method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+  cancel: (id: string) =>
+    fetchWithAuth(`/credits/${id}/cancel`, {
+      method: 'PATCH',
+    }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/credits/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  remove: (id: string) =>
+    fetchWithAuth(`/credits/${id}`, {
+      method: 'DELETE',
     }),
   payInstallment: (id: string, installmentId: string, paymentMethod: string) =>
     fetchWithAuth(`/credits/${id}/pay`, {

@@ -53,346 +53,13 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    
     res.json(credits);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
-// Get credit by ID
-router.get('/:id', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    
-    const credit = await prisma.credit.findUnique({
-      where: { id },
-      include: {
-        documents: true,
-        paymentSchedule: {
-          orderBy: { installmentNumber: 'asc' },
-        },
-        payments: true,
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
-    
-    if (!credit) {
-      return res.status(404).json({ error: 'Crédito não encontrado' });
-    }
-    
-    // Only owner or admin can view
-    if (req.user!.role !== 'superadmin' && credit.userId !== req.user!.userId) {
-      return res.status(403).json({ error: 'Acesso negado' });
-    }
-    
-    res.json(credit);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Create credit request
-router.post('/', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const { amount, concept, installments, interestRate = 0 } = req.body;
-    
-    if (amount <= 0 || installments <= 0) {
-      return res.status(400).json({ error: 'Valores inválidos' });
-    }
-    
-    // Calculate installment amount
-    const totalInterest = (amount * interestRate * installments) / 100;
-    const totalToPay = amount + totalInterest;
-    const installmentAmount = totalToPay / installments;
-    
-    // Create payment schedule
-    const paymentSchedule = [];
-    const today = new Date();
-    
-    for (let i = 1; i <= installments; i++) {
-      const dueDate = new Date(today);
-      dueDate.setMonth(dueDate.getMonth() + i);
-      
-      const principal = amount / installments;
-      const interest = totalInterest / installments;
-      
-      paymentSchedule.push({
-        installmentNumber: i,
-        dueDate,
-        amount: installmentAmount,
-        principal,
-        interest,
-      });
-    }
-    
-    const credit = await prisma.credit.create({
-      data: {
-        userId: req.user!.userId,
-        amount,
-        concept,
-        installments,
-        installmentAmount,
-        totalToPay,
-        interestRate,
-        status: 'pending',
-        paymentSchedule: {
-          create: paymentSchedule,
-        },
-      },
-      include: {
-        paymentSchedule: true,
-      },
-    });
-    
-    res.status(201).json(credit);
-  } catch (error) {
-    console.error('Create credit error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Approve credit (admin only)
-router.patch('/:id/approve', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    
-    const result = await prisma.$transaction(async (tx) => {
-      const credit = await tx.credit.update({
-        where: { id },
-        data: {
-          status: 'active',
-          approvedBy: req.user!.userId,
-          approvedAt: new Date(),
-        },
-        include: {
-          user: true,
-        },
-      });
-      
-      // Add money to user's wallet
-      const wallet = await tx.wallet.findUnique({
-        where: { userId: credit.userId },
-      });
-      
-      if (wallet) {
-        await tx.wallet.update({
-          where: { id: wallet.id },
-          data: {
-            balance: { increment: credit.amount },
-            totalIn: { increment: credit.amount },
-          },
-        });
-        
-        await tx.transaction.create({
-          data: {
-            walletId: wallet.id,
-            userId: credit.userId,
-            type: 'credit',
-            amount: credit.amount,
-            description: `Crédito aprovado: ${credit.concept}`,
-            status: 'completed',
-            relatedCreditId: credit.id,
-          },
-        });
-      }
-      
-      return credit;
-    });
-
-    // Push notification: credit approved
-    sendPushToUser(result.userId, {
-      title: 'Credito aprobado',
-      body: `Tu credito de ₲${result.amount.toLocaleString()} por "${result.concept}" fue aprobado`,
-      url: '/app/creditos',
-      tag: 'credit-approved',
-    }).catch(() => {});
-
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Reject credit (admin only)
-router.patch('/:id/reject', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    
-    const credit = await prisma.credit.update({
-      where: { id },
-      data: {
-        status: 'rejected',
-        approvedBy: req.user!.userId,
-        approvedAt: new Date(),
-      },
-    });
-
-    // Push notification: credit rejected
-    sendPushToUser(credit.userId, {
-      title: 'Credito rechazado',
-      body: `Tu solicitud de credito por "${credit.concept}" fue rechazada`,
-      url: '/app/creditos',
-      tag: 'credit-rejected',
-    }).catch(() => {});
-
-    res.json(credit);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Pay installment
-router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    const { installmentId, paymentMethod } = req.body;
-    
-    const credit = await prisma.credit.findUnique({
-      where: { id },
-      include: {
-        paymentSchedule: true,
-      },
-    });
-    
-    if (!credit) {
-      return res.status(404).json({ error: 'Crédito não encontrado' });
-    }
-    
-    if (credit.userId !== req.user!.userId) {
-      return res.status(403).json({ error: 'Acesso negado' });
-    }
-    
-    const installment = credit.paymentSchedule.find(p => p.id === installmentId);
-    
-    if (!installment) {
-      return res.status(404).json({ error: 'Parcela não encontrada' });
-    }
-    
-    if (installment.status === 'paid') {
-      return res.status(400).json({ error: 'Parcela já paga' });
-    }
-    
-    const wallet = await prisma.wallet.findUnique({
-      where: { userId: req.user!.userId },
-    });
-    
-    if (!wallet || wallet.balance < installment.amount) {
-      return res.status(400).json({ error: 'Saldo insuficiente' });
-    }
-    
-    const result = await prisma.$transaction(async (tx) => {
-      // Deduct from wallet
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: {
-          balance: { decrement: installment.amount },
-          totalOut: { increment: installment.amount },
-        },
-      });
-      
-      // Create payment record
-      await tx.creditPayment.create({
-        data: {
-          creditId: id,
-          installmentId,
-          amount: installment.amount,
-          paymentMethod,
-        },
-      });
-      
-      // Update installment status
-      await tx.paymentScheduleItem.update({
-        where: { id: installmentId },
-        data: {
-          status: 'paid',
-          paidAt: new Date(),
-        },
-      });
-      
-      // Check if all installments are paid
-      const allInstallments = await tx.paymentScheduleItem.findMany({
-        where: { creditId: id },
-      });
-      
-      const allPaid = allInstallments.every((i: { status: string }) => i.status === 'paid');
-      
-      if (allPaid) {
-        await tx.credit.update({
-          where: { id },
-          data: { status: 'completed' },
-        });
-      }
-      
-      // Create transaction record
-      await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          userId: req.user!.userId,
-          type: 'expense',
-          amount: -installment.amount,
-          description: `Pagamento de parcela ${installment.installmentNumber} - ${credit.concept}`,
-          status: 'completed',
-          relatedCreditId: id,
-        },
-      });
-      
-      return { message: 'Pagamento realizado com sucesso' };
-    });
-    
-    res.json(result);
-  } catch (error) {
-    console.error('Pay installment error:', error);
-    res.status(500).json({ error: 'Erro no servidor' });
-  }
-});
-
-// Upload documents for a credit
-router.post('/:id/documents', authenticate, upload.array('documents', 4), async (req: AuthRequest, res) => {
-  try {
-    const creditId = req.params.id as string;
-    const types = req.body.types ? (Array.isArray(req.body.types) ? req.body.types : [req.body.types]) : [];
-    const files = req.files as Express.Multer.File[];
-
-    if (!files || files.length === 0) {
-      return res.status(400).json({ error: 'No se enviaron archivos' });
-    }
-
-    // Verify the credit belongs to the user
-    const credit = await prisma.credit.findUnique({ where: { id: creditId } });
-    if (!credit) {
-      return res.status(404).json({ error: 'Crédito no encontrado' });
-    }
-    if (credit.userId !== req.user!.userId) {
-      return res.status(403).json({ error: 'Acceso denegado' });
-    }
-
-    const documents = await Promise.all(
-      files.map((file, i) =>
-        prisma.creditDocument.create({
-          data: {
-            creditId,
-            type: types[i] || 'other',
-            url: `/api/uploads/documents/${file.filename}`,
-          },
-        })
-      )
-    );
-
-    res.status(201).json(documents);
-  } catch (error) {
-    console.error('Upload documents error:', error);
-    res.status(500).json({ error: 'Error al subir documentos' });
-  }
-});
-
-// Get all credits (admin only)
+// Get all credits - admin only (MUST be before /:id to avoid route conflict)
 router.get('/admin/all', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const credits = await prisma.credit.findMany({
@@ -413,10 +80,424 @@ router.get('/admin/all', authenticate, authorize('superadmin'), async (req: Auth
       },
       orderBy: { createdAt: 'desc' },
     });
-
     res.json(credits);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Get credit by ID
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const credit = await prisma.credit.findUnique({
+      where: { id },
+      include: {
+        documents: true,
+        paymentSchedule: { orderBy: { installmentNumber: 'asc' } },
+        payments: true,
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
+    });
+
+    if (!credit) {
+      return res.status(404).json({ error: 'Crédito no encontrado' });
+    }
+    if (req.user!.role !== 'superadmin' && credit.userId !== req.user!.userId) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    res.json(credit);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Create credit request
+router.post('/', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { amount, concept, installments, interestRate = 0 } = req.body;
+
+    if (amount <= 0 || installments <= 0) {
+      return res.status(400).json({ error: 'Valores inválidos' });
+    }
+
+    const totalInterest = (amount * interestRate * installments) / 100;
+    const totalToPay = amount + totalInterest;
+    const installmentAmount = totalToPay / installments;
+
+    const paymentSchedule = [];
+    const today = new Date();
+    for (let i = 1; i <= installments; i++) {
+      const dueDate = new Date(today);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      paymentSchedule.push({
+        installmentNumber: i,
+        dueDate,
+        amount: installmentAmount,
+        principal: amount / installments,
+        interest: totalInterest / installments,
+      });
+    }
+
+    const credit = await prisma.credit.create({
+      data: {
+        userId: req.user!.userId,
+        amount,
+        concept,
+        installments,
+        installmentAmount,
+        totalToPay,
+        interestRate,
+        status: 'pending',
+        paymentSchedule: { create: paymentSchedule },
+      },
+      include: { paymentSchedule: true },
+    });
+
+    res.status(201).json(credit);
+  } catch (error) {
+    console.error('Create credit error:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Approve credit (admin only)
+router.patch('/:id/approve', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const credit = await tx.credit.update({
+        where: { id },
+        data: {
+          status: 'active',
+          approvedBy: req.user!.userId,
+          approvedAt: new Date(),
+        },
+        include: { user: true },
+      });
+
+      // Add money to user's wallet
+      const wallet = await tx.wallet.findUnique({
+        where: { userId: credit.userId },
+      });
+
+      if (wallet) {
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: {
+            balance: { increment: credit.amount },
+            totalIn: { increment: credit.amount },
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            walletId: wallet.id,
+            userId: credit.userId,
+            type: 'credit',
+            amount: credit.amount,
+            description: `Crédito aprobado: ${credit.concept}`,
+            status: 'completed',
+            relatedCreditId: credit.id,
+          },
+        });
+      }
+
+      // DB notification
+      await tx.notification.create({
+        data: {
+          userId: credit.userId,
+          title: 'Crédito aprobado',
+          message: `Tu crédito de ₲ ${credit.amount.toLocaleString()} por "${credit.concept}" fue aprobado. El monto fue acreditado a tu billetera.`,
+          type: 'success',
+          actionUrl: '/app/creditos',
+        },
+      });
+
+      return credit;
+    });
+
+    // Web Push notification
+    sendPushToUser(result.userId, {
+      title: 'Crédito aprobado',
+      body: `Tu crédito de ₲ ${result.amount.toLocaleString()} por "${result.concept}" fue aprobado. El monto fue acreditado a tu billetera.`,
+      url: '/app/creditos',
+      tag: 'credit-approved',
+    }).catch(() => {});
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Reject credit (admin only)
+router.patch('/:id/reject', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const { reason } = req.body || {};
+
+    const credit = await prisma.credit.update({
+      where: { id },
+      data: {
+        status: 'rejected',
+        approvedBy: req.user!.userId,
+        approvedAt: new Date(),
+      },
+    });
+
+    const rejectMsg = reason
+      ? `Tu solicitud de crédito por "${credit.concept}" fue rechazada. Motivo: ${reason}`
+      : `Tu solicitud de crédito por "${credit.concept}" fue rechazada.`;
+
+    // DB notification
+    prisma.notification.create({
+      data: {
+        userId: credit.userId,
+        title: 'Crédito rechazado',
+        message: rejectMsg,
+        type: 'warning',
+        actionUrl: '/app/creditos',
+      },
+    }).catch(() => {});
+
+    // Web Push notification
+    sendPushToUser(credit.userId, {
+      title: 'Crédito rechazado',
+      body: rejectMsg,
+      url: '/app/creditos',
+      tag: 'credit-rejected',
+    }).catch(() => {});
+
+    res.json(credit);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Cancel credit (user cancels own pending credit)
+router.patch('/:id/cancel', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+
+    const credit = await prisma.credit.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
+
+    if (!credit) return res.status(404).json({ error: 'Crédito no encontrado' });
+    if (credit.userId !== req.user!.userId) return res.status(403).json({ error: 'Acceso denegado' });
+    if (credit.status !== 'pending') return res.status(400).json({ error: 'Solo se pueden cancelar créditos pendientes' });
+
+    // Clean up uploaded document files
+    for (const doc of credit.documents) {
+      const filePath = path.join(uploadsDir, path.basename(doc.url));
+      fs.unlink(filePath, () => {});
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.creditDocument.deleteMany({ where: { creditId: id } });
+      await tx.paymentScheduleItem.deleteMany({ where: { creditId: id } });
+      return tx.credit.update({
+        where: { id },
+        data: { status: 'cancelled' },
+      });
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Cancel credit error:', error);
+    res.status(500).json({ error: 'Error al cancelar crédito' });
+  }
+});
+
+// Edit credit (user edits own pending credit)
+router.put('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const { amount, concept, installments, interestRate = 0 } = req.body;
+
+    const credit = await prisma.credit.findUnique({ where: { id } });
+    if (!credit) return res.status(404).json({ error: 'Crédito no encontrado' });
+    if (credit.userId !== req.user!.userId) return res.status(403).json({ error: 'Acceso denegado' });
+    if (credit.status !== 'pending') return res.status(400).json({ error: 'Solo se pueden editar créditos pendientes' });
+
+    if (amount <= 0 || installments <= 0) {
+      return res.status(400).json({ error: 'Valores inválidos' });
+    }
+
+    const totalInterest = (amount * interestRate * installments) / 100;
+    const totalToPay = amount + totalInterest;
+    const installmentAmount = totalToPay / installments;
+
+    const paymentSchedule: { installmentNumber: number; dueDate: Date; amount: number; principal: number; interest: number }[] = [];
+    const today = new Date();
+    for (let i = 1; i <= installments; i++) {
+      const dueDate = new Date(today);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      paymentSchedule.push({
+        installmentNumber: i,
+        dueDate,
+        amount: installmentAmount,
+        principal: amount / installments,
+        interest: totalInterest / installments,
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.paymentScheduleItem.deleteMany({ where: { creditId: id } });
+      return tx.credit.update({
+        where: { id },
+        data: {
+          amount,
+          concept,
+          installments,
+          installmentAmount,
+          totalToPay,
+          interestRate,
+          paymentSchedule: { create: paymentSchedule },
+        },
+        include: { paymentSchedule: true, documents: true },
+      });
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Edit credit error:', error);
+    res.status(500).json({ error: 'Error al editar crédito' });
+  }
+});
+
+// Delete credit (user deletes own pending credit)
+router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+
+    const credit = await prisma.credit.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
+    if (!credit) return res.status(404).json({ error: 'Crédito no encontrado' });
+    if (credit.userId !== req.user!.userId) return res.status(403).json({ error: 'Acceso denegado' });
+    if (credit.status !== 'pending') return res.status(400).json({ error: 'Solo se pueden eliminar créditos pendientes' });
+
+    // Clean up document files
+    for (const doc of credit.documents) {
+      const filePath = path.join(uploadsDir, path.basename(doc.url));
+      fs.unlink(filePath, () => {});
+    }
+
+    await prisma.credit.delete({ where: { id } });
+    res.json({ message: 'Crédito eliminado' });
+  } catch (error) {
+    console.error('Delete credit error:', error);
+    res.status(500).json({ error: 'Error al eliminar crédito' });
+  }
+});
+
+// Pay installment
+router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const { installmentId, paymentMethod } = req.body;
+
+    const credit = await prisma.credit.findUnique({
+      where: { id },
+      include: { paymentSchedule: true },
+    });
+
+    if (!credit) return res.status(404).json({ error: 'Crédito no encontrado' });
+    if (credit.userId !== req.user!.userId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const installment = credit.paymentSchedule.find(p => p.id === installmentId);
+    if (!installment) return res.status(404).json({ error: 'Cuota no encontrada' });
+    if (installment.status === 'paid') return res.status(400).json({ error: 'Cuota ya pagada' });
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user!.userId },
+    });
+    if (!wallet || wallet.balance < installment.amount) {
+      return res.status(400).json({ error: 'Saldo insuficiente' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          balance: { decrement: installment.amount },
+          totalOut: { increment: installment.amount },
+        },
+      });
+
+      await tx.creditPayment.create({
+        data: { creditId: id, installmentId, amount: installment.amount, paymentMethod },
+      });
+
+      await tx.paymentScheduleItem.update({
+        where: { id: installmentId },
+        data: { status: 'paid', paidAt: new Date() },
+      });
+
+      const allInstallments = await tx.paymentScheduleItem.findMany({ where: { creditId: id } });
+      const allPaid = allInstallments.every((i: { status: string }) => i.status === 'paid');
+      if (allPaid) {
+        await tx.credit.update({ where: { id }, data: { status: 'completed' } });
+      }
+
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: req.user!.userId,
+          type: 'expense',
+          amount: -installment.amount,
+          description: `Pago de cuota ${installment.installmentNumber} - ${credit.concept}`,
+          status: 'completed',
+          relatedCreditId: id,
+        },
+      });
+
+      return { message: 'Pago realizado exitosamente' };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Pay installment error:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Upload documents for a credit
+router.post('/:id/documents', authenticate, upload.array('documents', 4), async (req: AuthRequest, res) => {
+  try {
+    const creditId = req.params.id as string;
+    const types = req.body.types ? (Array.isArray(req.body.types) ? req.body.types : [req.body.types]) : [];
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No se enviaron archivos' });
+    }
+
+    const credit = await prisma.credit.findUnique({ where: { id: creditId } });
+    if (!credit) return res.status(404).json({ error: 'Crédito no encontrado' });
+    if (credit.userId !== req.user!.userId) return res.status(403).json({ error: 'Acceso denegado' });
+
+    const documents = await Promise.all(
+      files.map((file, i) =>
+        prisma.creditDocument.create({
+          data: {
+            creditId,
+            type: types[i] || 'other',
+            url: `/api/uploads/documents/${file.filename}`,
+          },
+        })
+      )
+    );
+
+    res.status(201).json(documents);
+  } catch (error) {
+    console.error('Upload documents error:', error);
+    res.status(500).json({ error: 'Error al subir documentos' });
   }
 });
 

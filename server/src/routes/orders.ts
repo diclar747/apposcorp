@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
 
@@ -266,37 +267,62 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 
     res.status(201).json(result);
 
-    // Create notifications (after response, non-blocking)
+    // Create notifications + Web Push (after response, non-blocking)
     const itemSummary = orderItems.length === 1
       ? orderItems[0].productName
       : `${orderItems[0].productName} y ${orderItems.length - 1} más`;
 
-    // Notify buyer
-    prisma.notification.create({
-      data: {
-        userId: req.user!.userId,
-        title: 'Compra realizada',
-        message: `Tu pedido ${orderNumber} de ${itemSummary} por ₲ ${total.toLocaleString()} fue procesado exitosamente.`,
-        type: 'success',
-        actionUrl: `/app/pedidos`,
-      },
-    }).catch(() => {});
-
-    // Notify seller
-    prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { firstName: true, lastName: true },
-    }).then((buyer) => {
+    // Fetch store name and buyer info for rich notifications
+    Promise.all([
+      prisma.user.findUnique({
+        where: { id: req.user!.userId },
+        select: { firstName: true, lastName: true },
+      }),
+      prisma.sellerProfile.findFirst({
+        where: { userId: sellerId },
+        select: { storeName: true },
+      }),
+    ]).then(async ([buyer, sellerProfile]) => {
       const buyerName = buyer ? `${buyer.firstName} ${buyer.lastName}` : 'Un cliente';
-      return prisma.notification.create({
+      const storeName = sellerProfile?.storeName || 'una tienda';
+
+      // Notify buyer (DB + Push)
+      const buyerMsg = `Tu compra en ${storeName} por ₲ ${total.toLocaleString()} fue procesada exitosamente. Pedido ${orderNumber}.`;
+      prisma.notification.create({
+        data: {
+          userId: req.user!.userId,
+          title: `Compra en ${storeName}`,
+          message: buyerMsg,
+          type: 'success',
+          actionUrl: `/app/pedidos`,
+        },
+      }).catch(() => {});
+
+      sendPushToUser(req.user!.userId, {
+        title: `Compra en ${storeName}`,
+        body: buyerMsg,
+        url: '/app/pedidos',
+        tag: `order-${orderNumber}`,
+      }).catch(() => {});
+
+      // Notify seller (DB + Push)
+      const sellerMsg = `${buyerName} compró ${itemSummary} por ₲ ${total.toLocaleString()} en ${storeName}. Pedido ${orderNumber}.`;
+      prisma.notification.create({
         data: {
           userId: sellerId,
           title: 'Nueva venta',
-          message: `${buyerName} compró ${itemSummary} por ₲ ${subtotal.toLocaleString()}. Pedido ${orderNumber}.`,
+          message: sellerMsg,
           type: 'success',
-          actionUrl: `/seller/pedidos`,
+          actionUrl: `/vendedor/pedidos`,
         },
-      });
+      }).catch(() => {});
+
+      sendPushToUser(sellerId, {
+        title: `Nueva venta - ${storeName}`,
+        body: sellerMsg,
+        url: '/vendedor/pedidos',
+        tag: `sale-${orderNumber}`,
+      }).catch(() => {});
     }).catch(() => {});
   } catch (error) {
     console.error('Create order error:', error);
@@ -354,16 +380,24 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
       return updatedOrder;
     });
 
-    // Notify buyer about status change
+    // Notify buyer about status change (DB + Push)
     if (order.buyerId) {
-      await prisma.notification.create({
+      const statusMsg = `Tu pedido ${order.orderNumber} fue actualizado a: ${statusLabels[status] || status}.`;
+      prisma.notification.create({
         data: {
           userId: order.buyerId,
           title: `Pedido ${statusLabels[status] || status}`,
-          message: `Tu pedido ${order.orderNumber} fue actualizado a: ${statusLabels[status] || status}.`,
+          message: statusMsg,
           type: status === 'cancelled' ? 'warning' : 'info',
           actionUrl: `/app/pedidos`,
         },
+      }).catch(() => {});
+
+      sendPushToUser(order.buyerId, {
+        title: `Pedido ${statusLabels[status] || status}`,
+        body: statusMsg,
+        url: '/app/pedidos',
+        tag: `order-status-${order.orderNumber}`,
       }).catch(() => {});
     }
 

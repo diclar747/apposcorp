@@ -153,6 +153,7 @@ function App() {
           <Route path="gestion" element={<SellerGestion />} />
           <Route path="perfil" element={<SellerProfile />} />
           <Route path="configuracion" element={<SellerSettings />} />
+          <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 
         {/* Client Routes */}

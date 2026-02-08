@@ -738,6 +738,7 @@ enum CreditStatus {
   active
   completed
   defaulted
+  cancelled
 }
 
 enum TransactionType {

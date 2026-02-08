@@ -78,3 +78,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     });
   },
 }));
+
+// Listen for push messages from service worker to instantly refresh
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'NEW_NOTIFICATION') {
+      useNotificationStore.getState().fetchNotifications();
+    }
+  });
+}

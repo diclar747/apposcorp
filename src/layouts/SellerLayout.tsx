@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,7 +23,7 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,19 @@ export default function SellerLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
+
+  // Fetch notifications on mount + poll every 30s
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      pollingRef.current = setInterval(() => fetchNotifications(), 30000);
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [user, fetchNotifications]);
 
   const handleLogout = () => {
     logout();
@@ -255,9 +268,16 @@ export default function SellerLayout() {
               </button>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+              <button
+                onClick={() => navigate('/vendedor/notificaciones')}
+                className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
                 <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {/* User Menu */}

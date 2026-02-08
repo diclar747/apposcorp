@@ -31,7 +31,14 @@ self.addEventListener('push', (event) => {
     vibrate: [200, 100, 200],
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options).then(() => {
+      // Notify all open tabs to refresh notifications
+      return clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        windowClients.forEach((client) => client.postMessage({ type: 'NEW_NOTIFICATION' }));
+      });
+    })
+  );
 });
 
 // Handle notification click

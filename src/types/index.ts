@@ -9,7 +9,7 @@ export type PaymentMethod = 'wallet' | 'cash' | 'card' | 'transfer';
 export type ProductType = 'physical' | 'service' | 'digital';
 export type ProductVisibility = 'online' | 'local' | 'both';
 export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';
-export type CreditStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'completed' | 'defaulted';
+export type CreditStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'completed' | 'defaulted' | 'cancelled';
 export type TransactionType = 'income' | 'expense' | 'transfer_in' | 'transfer_out' | 'purchase' | 'sale' | 'withdrawal' | 'deposit' | 'commission' | 'credit' | 'fee';
 export type FinancialType = 'income' | 'expense' | 'asset' | 'liability';
 
