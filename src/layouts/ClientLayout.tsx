@@ -233,8 +233,8 @@ export default function ClientLayout() {
           </Sheet>
 
           {/* Center - Logo */}
-          <Link to="/app" className="font-black text-lg tracking-tight uppercase text-slate-900 dark:text-white">
-            OSCORP
+          <Link to="/app" className="flex items-center">
+            <img src="/oscorp-logo.png" alt="Oscorp" className="h-8 w-auto object-contain" />
           </Link>
 
           {/* Right - Actions */}
