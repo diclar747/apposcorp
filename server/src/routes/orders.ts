@@ -111,6 +111,19 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       paymentMethod,
     } = req.body;
 
+    // Resolve actual seller userId from sellerProfile id
+    // Products store sellerId as SellerProfile.id, but Order.sellerId references User.id
+    let resolvedSellerId = sellerId;
+    if (sellerId) {
+      const sellerProfile = await prisma.sellerProfile.findUnique({
+        where: { id: sellerId },
+        select: { userId: true },
+      });
+      if (sellerProfile) {
+        resolvedSellerId = sellerProfile.userId;
+      }
+    }
+
     // Calculate totals
     let subtotal = 0;
     const orderItems: { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; total: number; variant: string | null; }[] = [];
@@ -163,7 +176,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         data: {
           orderNumber,
           buyerId: req.user!.userId,
-          sellerId,
+          sellerId: resolvedSellerId,
           subtotal,
           tax,
           shippingCost,
