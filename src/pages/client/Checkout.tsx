@@ -30,7 +30,8 @@ export default function ClientCheckout() {
   const [deliveryMethod, setDeliveryMethod] = useState('delivery');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const finalTotal = total + (deliveryMethod === 'delivery' ? 15000 : 0);
+  const selectedDelivery = deliveryMethods.find(d => d.id === deliveryMethod);
+  const finalTotal = total + (selectedDelivery?.price || 0);
 
   const handleCheckout = async () => {
     if (paymentMethod === 'wallet' && (wallet?.balance || 0) < finalTotal) {
