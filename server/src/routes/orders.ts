@@ -138,8 +138,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       });
     }
 
-    const tax = subtotal * 0.1; // 10% tax
-    const shippingCost = deliveryType === 'delivery' ? 15000 : 0;
+    const tax = 0; // Tax included in product price
+    const shippingCost = 0; // Free shipping for now
     const total = subtotal + tax + shippingCost;
     const commissionAmount = subtotal * 0.05; // 5% commission
     const sellerEarnings = subtotal - commissionAmount;
