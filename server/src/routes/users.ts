@@ -162,6 +162,8 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
         logo: logo || '',
         banner: banner || '',
         socialLinks: socialLinks || {},
+        planActive: true,
+        planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       }
     });
 

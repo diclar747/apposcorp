@@ -7,7 +7,9 @@ const router = Router();
 router.get('/', async (_req, res) => {
   try {
     const stores = await prisma.sellerProfile.findMany({
-      where: { planActive: true },
+      where: {
+        storeName: { not: '' },
+      },
       include: {
         products: {
           where: { status: 'active' },

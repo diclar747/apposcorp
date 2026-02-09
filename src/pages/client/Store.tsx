@@ -30,8 +30,7 @@ export default function ClientStore() {
         if (storeSlug) {
           const store = await storesApi.getBySlug(storeSlug);
           setStoreName(store.name);
-          const data = await productsApi.getAll({ sellerId: store.sellerId });
-          setProducts(data);
+          setProducts(store.products || []);
         } else {
           const data = await productsApi.getAll();
           setProducts(data);
