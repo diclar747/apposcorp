@@ -1,17 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Download, TrendingUp, TrendingDown, DollarSign, Wallet,
-  Search, Filter, Loader2, ChevronLeft, ChevronRight,
-  ShoppingCart, ArrowDownCircle, BarChart3, PieChart as PieChartIcon,
-  LineChart as LineChartIcon, TableProperties, FileSpreadsheet,
+  TrendingUp, DollarSign, Wallet,
+  Search, Loader2, ChevronLeft, ChevronRight,
+  ShoppingCart, Users, Package, CreditCard,
+  FileText, FileSpreadsheet, BarChart3,
 } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line,
 } from 'recharts';
-import { reportsApi } from '@/lib/api';
-import { formatCurrency, formatShortDate } from '@/lib/utils';
+import { ordersApi, productsApi, usersApi, walletApi, creditsApi } from '@/lib/api';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,102 +23,328 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const TYPE_LABELS: Record<string, string> = {
-  deposit: 'Depósito',
-  withdrawal: 'Retiro',
-  purchase: 'Compra',
-  sale: 'Venta',
-  transfer_in: 'Transfer. Recibida',
-  transfer_out: 'Transfer. Enviada',
-  commission: 'Comisión',
-  income: 'Ingreso',
-  expense: 'Egreso',
-  credit: 'Crédito',
-  fee: 'Tarifa',
+// ─── Labels / Maps ───────────────────────────────────────────────────
+const ORDER_STATUS: Record<string, string> = {
+  pending: 'Pendiente', confirmed: 'Confirmado', preparing: 'En preparación',
+  ready: 'Listo', in_transit: 'En camino', delivered: 'Entregado',
+  cancelled: 'Cancelado', refunded: 'Reembolsado',
 };
-
-const STATUS_LABELS: Record<string, string> = {
-  completed: 'Completado',
-  pending: 'Pendiente',
-  rejected: 'Rechazado',
-  failed: 'Fallido',
+const TX_TYPE: Record<string, string> = {
+  deposit: 'Depósito', withdrawal: 'Retiro', purchase: 'Compra', sale: 'Venta',
+  transfer_in: 'Transfer. Recibida', transfer_out: 'Transfer. Enviada',
+  commission: 'Comisión', income: 'Ingreso', expense: 'Egreso',
+  credit: 'Crédito', fee: 'Tarifa',
 };
-
-const PIE_COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6', '#e11d48'];
-
-const ORDER_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente',
-  confirmed: 'Confirmado',
-  preparing: 'En preparación',
-  ready: 'Listo',
-  in_transit: 'En camino',
-  delivered: 'Entregado',
-  cancelled: 'Cancelado',
-  refunded: 'Reembolsado',
+const CREDIT_STATUS: Record<string, string> = {
+  pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado',
+  active: 'Activo', completed: 'Completado', defaulted: 'En Mora', cancelled: 'Cancelado',
 };
+const PIE_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6'];
 
+// ─── Helpers ─────────────────────────────────────────────────────────
+function downloadCSV(data: Record<string, any>[], filename: string) {
+  if (!data.length) return;
+  const headers = Object.keys(data[0]);
+  const rows = [
+    headers.join(','),
+    ...data.map(row =>
+      headers.map(h => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
+    ),
+  ];
+  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function generatePDF(title: string, statsHtml: string, tableHtml: string) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${title}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#333;font-size:12px}
+      h1{font-size:20px;margin-bottom:4px}
+      .date{color:#666;font-size:11px;margin-bottom:16px}
+      .stats{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+      .stat{background:#f5f5f5;padding:10px 14px;border-radius:8px;min-width:120px}
+      .stat-label{font-size:10px;color:#666}
+      .stat-value{font-size:16px;font-weight:bold}
+      table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
+      th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #ddd}
+      td{padding:5px 8px;border-bottom:1px solid #eee}
+      tr:nth-child(even){background:#fafafa}
+      .text-right{text-align:right}
+      .text-green{color:#16a34a}
+      .text-red{color:#dc2626}
+      @media print{body{padding:0}.no-print{display:none}}
+    </style></head><body>
+    <h1>${title} - Oscorp</h1>
+    <p class="date">Generado: ${new Date().toLocaleDateString('es-PY')} ${new Date().toLocaleTimeString('es-PY')}</p>
+    ${statsHtml}
+    ${tableHtml}
+    <script>window.onload=function(){window.print()}<\/script>
+  </body></html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+function matchesDateRange(dateStr: string, start: string, end: string): boolean {
+  if (!start && !end) return true;
+  const d = new Date(dateStr).getTime();
+  if (start && d < new Date(start).getTime()) return false;
+  if (end && d > new Date(end + 'T23:59:59').getTime()) return false;
+  return true;
+}
+
+// ─── Component ───────────────────────────────────────────────────────
 export default function AdminReports() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [reportData, setReportData] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [credits, setCredits] = useState<any[]>([]);
 
   // Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [category, setCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
 
-  const fetchReport = useCallback(async (page = 1) => {
-    try {
-      setIsLoading(true);
-      const params: any = { page, limit: pageSize };
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (filterType !== 'all') params.type = filterType;
-      if (filterStatus !== 'all') params.status = filterStatus;
-      if (searchQuery.trim()) params.search = searchQuery.trim();
-
-      const data = await reportsApi.getFinancial(params);
-      setReportData(data);
-      setCurrentPage(page);
-    } catch (error) {
-      toast.error('Error al cargar el reporte financiero');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [startDate, endDate, filterType, filterStatus, searchQuery]);
+  // Pagination per tab
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [txPage, setTxPage] = useState(1);
+  const PAGE_SIZE = 12;
 
   useEffect(() => {
-    fetchReport(1);
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const [ord, prod, usr, tx, cred] = await Promise.all([
+          ordersApi.getAll('admin').catch(() => []),
+          productsApi.getAll().catch(() => []),
+          usersApi.getAll().catch(() => []),
+          walletApi.getAllTransactions().catch(() => []),
+          creditsApi.getAllAdmin().catch(() => []),
+        ]);
+        setOrders(Array.isArray(ord) ? ord : []);
+        setProducts(Array.isArray(prod) ? prod : []);
+        setUsers(Array.isArray(usr) ? usr : []);
+        setTransactions(Array.isArray(tx) ? tx : []);
+        setCredits(Array.isArray(cred) ? cred : []);
+      } catch (err) {
+        toast.error('Error al cargar datos');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const handleApplyFilters = () => {
-    fetchReport(1);
+  // ─── Filtered data ────────────────────────────────────────────────
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      if (!matchesDateRange(o.createdAt, startDate, endDate)) return false;
+      if (category !== 'all' && o.status !== category) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const buyerName = `${o.buyer?.firstName || ''} ${o.buyer?.lastName || ''}`.toLowerCase();
+        const sellerName = `${o.seller?.firstName || ''} ${o.seller?.lastName || ''}`.toLowerCase();
+        if (!buyerName.includes(q) && !sellerName.includes(q) && !(o.orderNumber || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [orders, startDate, endDate, category, searchQuery]);
+
+  const filteredTx = useMemo(() => {
+    return transactions.filter(t => {
+      if (!matchesDateRange(t.createdAt, startDate, endDate)) return false;
+      if (category !== 'all' && t.type !== category) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const name = `${t.user?.firstName || ''} ${t.user?.lastName || ''}`.toLowerCase();
+        if (!name.includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [transactions, startDate, endDate, category, searchQuery]);
+
+  const filteredCredits = useMemo(() => {
+    return credits.filter(c => {
+      if (!matchesDateRange(c.createdAt, startDate, endDate)) return false;
+      if (category !== 'all' && c.status !== category) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const name = `${c.user?.firstName || ''} ${c.user?.lastName || ''}`.toLowerCase();
+        if (!name.includes(q) && !(c.concept || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [credits, startDate, endDate, category, searchQuery]);
+
+  // ─── KPI calculations ─────────────────────────────────────────────
+  const totalSales = filteredOrders.reduce((s: number, o: any) => s + (o.total || 0), 0);
+  const totalCommissions = filteredOrders.reduce((s: number, o: any) => s + (o.commissionAmount || 0), 0);
+  const totalSellerEarnings = filteredOrders.reduce((s: number, o: any) => s + (o.sellerEarnings || 0), 0);
+  const totalCreditAmount = filteredCredits.filter((c: any) => ['active', 'approved', 'completed'].includes(c.status)).reduce((s: number, c: any) => s + (c.amount || 0), 0);
+
+  // ─── Chart data ───────────────────────────────────────────────────
+  const ordersByStatus = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredOrders.forEach((o: any) => { map[o.status] = (map[o.status] || 0) + 1; });
+    return Object.entries(map).map(([k, v]) => ({ name: ORDER_STATUS[k] || k, value: v }));
+  }, [filteredOrders]);
+
+  const dailySales = useMemo(() => {
+    const map: Record<string, { date: string; ventas: number; comisiones: number }> = {};
+    filteredOrders.forEach((o: any) => {
+      const day = new Date(o.createdAt).toISOString().split('T')[0];
+      if (!map[day]) map[day] = { date: day, ventas: 0, comisiones: 0 };
+      map[day].ventas += o.total || 0;
+      map[day].comisiones += o.commissionAmount || 0;
+    });
+    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredOrders]);
+
+  const txByType = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredTx.forEach((t: any) => { map[t.type] = (map[t.type] || 0) + Math.abs(t.amount); });
+    return Object.entries(map).map(([k, v]) => ({ name: TX_TYPE[k] || k, value: v }));
+  }, [filteredTx]);
+
+  // ─── Paginated data ───────────────────────────────────────────────
+  const ordersPageData = filteredOrders.slice((ordersPage - 1) * PAGE_SIZE, ordersPage * PAGE_SIZE);
+  const ordersTotalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+  const txPageData = filteredTx.slice((txPage - 1) * PAGE_SIZE, txPage * PAGE_SIZE);
+  const txTotalPages = Math.ceil(filteredTx.length / PAGE_SIZE);
+
+  // ─── Export functions ─────────────────────────────────────────────
+  const exportOrdersCSV = () => {
+    const data = filteredOrders.map((o: any) => ({
+      'Nro. Orden': o.orderNumber,
+      'Fecha': formatDate(o.createdAt),
+      'Comprador': `${o.buyer?.firstName || ''} ${o.buyer?.lastName || ''}`,
+      'Vendedor': `${o.seller?.firstName || ''} ${o.seller?.lastName || ''}`,
+      'Productos': o.items?.length || 0,
+      'Subtotal': o.subtotal,
+      'Comisión': o.commissionAmount,
+      'Ganancia Vendedor': o.sellerEarnings,
+      'Total': o.total,
+      'Estado': ORDER_STATUS[o.status] || o.status,
+      'Método Pago': o.paymentMethod,
+      'Tipo Entrega': o.deliveryType === 'delivery' ? 'Delivery' : 'Retiro',
+    }));
+    downloadCSV(data, `reporte-ventas-${new Date().toISOString().split('T')[0]}.csv`);
+    toast.success('Reporte de ventas exportado');
   };
 
-  const handleExportCSV = async () => {
-    try {
-      setIsExporting(true);
-      const params: any = {};
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (filterType !== 'all') params.type = filterType;
-      if (filterStatus !== 'all') params.status = filterStatus;
-      if (searchQuery.trim()) params.search = searchQuery.trim();
-      await reportsApi.exportCSV(params);
-      toast.success('CSV exportado exitosamente');
-    } catch (error) {
-      toast.error('Error al exportar CSV');
-    } finally {
-      setIsExporting(false);
-    }
+  const exportTransactionsCSV = () => {
+    const data = filteredTx.map((t: any) => ({
+      'Fecha': formatDate(t.createdAt),
+      'Tipo': TX_TYPE[t.type] || t.type,
+      'Usuario': `${t.user?.firstName || ''} ${t.user?.lastName || ''}`,
+      'Email': t.user?.email || '',
+      'Descripción': t.description,
+      'Monto': t.amount,
+      'Estado': t.status,
+    }));
+    downloadCSV(data, `reporte-transacciones-${new Date().toISOString().split('T')[0]}.csv`);
+    toast.success('Reporte de transacciones exportado');
   };
 
-  if (isLoading && !reportData) {
+  const exportProductsCSV = () => {
+    const data = products.map((p: any) => ({
+      'SKU': p.sku,
+      'Nombre': p.name,
+      'Categoría': p.category,
+      'Precio': p.price,
+      'Costo': p.cost || 0,
+      'Ganancia %': p.profitPercentage || 0,
+      'Stock': p.stock,
+      'Estado': p.status,
+      'Tipo': p.type,
+      'Visibilidad': p.visibility,
+    }));
+    downloadCSV(data, `reporte-productos-${new Date().toISOString().split('T')[0]}.csv`);
+    toast.success('Reporte de productos exportado');
+  };
+
+  const exportCreditsCSV = () => {
+    const data = filteredCredits.map((c: any) => ({
+      'Fecha': formatDate(c.createdAt),
+      'Usuario': `${c.user?.firstName || ''} ${c.user?.lastName || ''}`,
+      'Concepto': c.concept,
+      'Monto': c.amount,
+      'Cuotas': c.installments,
+      'Cuota Mensual': c.installmentAmount,
+      'Total a Pagar': c.totalToPay,
+      'Tasa Interés': `${c.interestRate}%`,
+      'Estado': CREDIT_STATUS[c.status] || c.status,
+    }));
+    downloadCSV(data, `reporte-creditos-${new Date().toISOString().split('T')[0]}.csv`);
+    toast.success('Reporte de créditos exportado');
+  };
+
+  // PDF generators
+  const exportOrdersPDF = () => {
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Ventas</div><div class="stat-value">${formatCurrency(totalSales)}</div></div>
+      <div class="stat"><div class="stat-label">Comisiones</div><div class="stat-value">${formatCurrency(totalCommissions)}</div></div>
+      <div class="stat"><div class="stat-label">Ganancias Vendedores</div><div class="stat-value">${formatCurrency(totalSellerEarnings)}</div></div>
+      <div class="stat"><div class="stat-label">Órdenes</div><div class="stat-value">${filteredOrders.length}</div></div>
+    </div>`;
+    const rows = filteredOrders.map((o: any) => `<tr>
+      <td>${o.orderNumber || ''}</td>
+      <td>${formatDate(o.createdAt)}</td>
+      <td>${(o.buyer?.firstName || '') + ' ' + (o.buyer?.lastName || '')}</td>
+      <td>${(o.seller?.firstName || '') + ' ' + (o.seller?.lastName || '')}</td>
+      <td class="text-right">${formatCurrency(o.total)}</td>
+      <td class="text-right">${formatCurrency(o.commissionAmount)}</td>
+      <td>${ORDER_STATUS[o.status] || o.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Orden</th><th>Fecha</th><th>Comprador</th><th>Vendedor</th><th>Total</th><th>Comisión</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generatePDF('Reporte de Ventas', statsHtml, tableHtml);
+    toast.success('PDF de ventas generado');
+  };
+
+  const exportTransactionsPDF = () => {
+    const incomeTotal = filteredTx.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0);
+    const expenseTotal = filteredTx.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Ingresos</div><div class="stat-value text-green">${formatCurrency(incomeTotal)}</div></div>
+      <div class="stat"><div class="stat-label">Total Egresos</div><div class="stat-value text-red">${formatCurrency(expenseTotal)}</div></div>
+      <div class="stat"><div class="stat-label">Transacciones</div><div class="stat-value">${filteredTx.length}</div></div>
+    </div>`;
+    const rows = filteredTx.map((t: any) => `<tr>
+      <td>${formatDate(t.createdAt)}</td>
+      <td>${TX_TYPE[t.type] || t.type}</td>
+      <td>${(t.user?.firstName || '') + ' ' + (t.user?.lastName || '')}</td>
+      <td>${t.description || ''}</td>
+      <td class="text-right ${t.amount >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(t.amount)}</td>
+      <td>${t.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Descripción</th><th>Monto</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generatePDF('Reporte de Transacciones', statsHtml, tableHtml);
+    toast.success('PDF de transacciones generado');
+  };
+
+  // ─── Dynamic filter options based on active tab ────────────────────
+  const [activeTab, setActiveTab] = useState('ventas');
+  const categoryOptions = useMemo(() => {
+    if (activeTab === 'ventas') return Object.entries(ORDER_STATUS);
+    if (activeTab === 'transacciones') return Object.entries(TX_TYPE);
+    if (activeTab === 'creditos') return Object.entries(CREDIT_STATUS);
+    return [];
+  }, [activeTab]);
+
+  // Reset pagination when filters change
+  useEffect(() => { setOrdersPage(1); setTxPage(1); }, [startDate, endDate, category, searchQuery]);
+  useEffect(() => { setCategory('all'); setSearchQuery(''); }, [activeTab]);
+
+  // ─── Loading ──────────────────────────────────────────────────────
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -125,101 +352,64 @@ export default function AdminReports() {
     );
   }
 
-  const {
-    balanceGeneral = {},
-    typeBreakdown = {},
-    dailyTrend = [],
-    orderSummary = {},
-    withdrawalSummary = {},
-    transactions = { data: [], pagination: { page: 1, totalPages: 1, total: 0 } },
-  } = reportData || {};
-
-  // Prepare chart data
-  const pieData = Object.entries(typeBreakdown).map(([key, val]: any) => ({
-    name: TYPE_LABELS[key] || key,
-    value: val.total,
-  }));
-
-  const barData = Object.entries(typeBreakdown).map(([key, val]: any) => ({
-    name: TYPE_LABELS[key] || key,
-    cantidad: val.count,
-    monto: val.total,
-  }));
-
-  // Balance detail table
-  const statusBreakdown: Record<string, number> = {};
-  if (transactions.data) {
-    for (const tx of transactions.data) {
-      statusBreakdown[tx.status] = (statusBreakdown[tx.status] || 0) + Math.abs(tx.amount);
-    }
-  }
-
+  // ─── Render ───────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reportes Financieros</h1>
-          <p className="text-gray-500 dark:text-gray-400">Análisis financiero consolidado de la plataforma</p>
-        </div>
-        <Button onClick={handleExportCSV} disabled={isExporting}>
-          {isExporting ? (
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : (
-            <Download className="w-4 h-4 mr-2" />
-          )}
-          Exportar CSV
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reportes</h1>
+        <p className="text-gray-500 dark:text-gray-400">Análisis detallado de la plataforma Oscorp</p>
       </div>
 
-      {/* Filters Panel */}
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'Total Ventas', value: formatCurrency(totalSales), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30' },
+          { label: 'Comisiones', value: formatCurrency(totalCommissions), icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+          { label: 'Órdenes', value: String(filteredOrders.length), icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+          { label: 'Usuarios', value: String(users.length), icon: Users, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+          { label: 'Créditos Activos', value: formatCurrency(totalCreditAmount), icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-100 dark:bg-cyan-900/30' },
+        ].map((kpi, i) => (
+          <motion.div key={kpi.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 ${kpi.bg} rounded-lg flex items-center justify-center`}>
+                    <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{kpi.label}</p>
+                    <p className={`text-lg font-bold ${kpi.color}`}>{kpi.value}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtros</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Fecha Inicio</label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Fecha Fin</label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Tipo</label>
-              <Select value={filterType} onValueChange={setFilterType}>
+              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Categoría / Estado</label>
+              <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {Object.entries(TYPE_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Estado</label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  {categoryOptions.map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -228,548 +418,427 @@ export default function AdminReports() {
               <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Buscar</label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Nombre, email..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
-                />
+                <Input placeholder="Nombre, orden..." className="pl-8" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
               </div>
             </div>
-          </div>
-          <div className="mt-3 flex justify-end">
-            <Button size="sm" onClick={handleApplyFilters} disabled={isLoading}>
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Filter className="w-4 h-4 mr-2" />}
-              Aplicar Filtros
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* 4 KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Ingresos</p>
-                  <p className="text-lg font-bold text-green-600">{formatCurrency(balanceGeneral.totalIncome || 0)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                  <TrendingDown className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Egresos</p>
-                  <p className="text-lg font-bold text-red-600">{formatCurrency(balanceGeneral.totalExpenses || 0)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Balance Neto</p>
-                  <p className={`text-lg font-bold ${(balanceGeneral.netBalance || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {formatCurrency(balanceGeneral.netBalance || 0)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Comisiones</p>
-                  <p className="text-lg font-bold text-orange-600">{formatCurrency(balanceGeneral.totalCommissions || 0)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Secondary Cards: Orders & Withdrawals */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4" />
-              Resumen de Órdenes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Órdenes</p>
-                <p className="text-xl font-bold">{orderSummary.totalOrders || 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Ventas</p>
-                <p className="text-xl font-bold text-green-600">{formatCurrency(orderSummary.totalSales || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Comisiones</p>
-                <p className="text-lg font-semibold text-orange-600">{formatCurrency(orderSummary.totalCommissions || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Ganancias Vendedores</p>
-                <p className="text-lg font-semibold">{formatCurrency(orderSummary.totalSellerEarnings || 0)}</p>
-              </div>
-            </div>
-            {orderSummary.byStatus && Object.keys(orderSummary.byStatus).length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {Object.entries(orderSummary.byStatus).map(([status, count]: any) => (
-                  <Badge key={status} variant="secondary" className="text-xs">
-                    {ORDER_STATUS_LABELS[status] || status}: {count}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <ArrowDownCircle className="w-4 h-4" />
-              Resumen de Retiros
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Solicitudes</p>
-                <p className="text-xl font-bold">{withdrawalSummary.totalRequests || 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Monto Total</p>
-                <p className="text-xl font-bold">{formatCurrency(withdrawalSummary.totalAmount || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Aprobados</p>
-                <p className="text-lg font-semibold text-green-600">
-                  {withdrawalSummary.approved || 0} ({formatCurrency(withdrawalSummary.approvedAmount || 0)})
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
-                <p className="text-lg font-semibold text-yellow-600">
-                  {withdrawalSummary.pending || 0} ({formatCurrency(withdrawalSummary.pendingAmount || 0)})
-                </p>
-              </div>
-            </div>
-            {(withdrawalSummary.rejected || 0) > 0 && (
-              <div className="mt-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Rechazados: <span className="text-red-600 font-medium">{withdrawalSummary.rejected} ({formatCurrency(withdrawalSummary.rejectedAmount || 0)})</span>
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs: Charts, Transactions, Balance Detail */}
-      <Tabs defaultValue="charts">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="charts" className="gap-1.5">
-            <BarChart3 className="w-4 h-4" />
-            Gráficos
-          </TabsTrigger>
-          <TabsTrigger value="transactions" className="gap-1.5">
-            <TableProperties className="w-4 h-4" />
-            Transacciones
-          </TabsTrigger>
-          <TabsTrigger value="balance" className="gap-1.5">
-            <FileSpreadsheet className="w-4 h-4" />
-            Balance Detallado
-          </TabsTrigger>
+          <TabsTrigger value="ventas" className="gap-1.5"><ShoppingCart className="w-4 h-4" /> Ventas</TabsTrigger>
+          <TabsTrigger value="transacciones" className="gap-1.5"><Wallet className="w-4 h-4" /> Transacciones</TabsTrigger>
+          <TabsTrigger value="productos" className="gap-1.5"><Package className="w-4 h-4" /> Productos</TabsTrigger>
+          <TabsTrigger value="creditos" className="gap-1.5"><CreditCard className="w-4 h-4" /> Créditos</TabsTrigger>
+          <TabsTrigger value="graficos" className="gap-1.5"><BarChart3 className="w-4 h-4" /> Gráficos</TabsTrigger>
         </TabsList>
 
-        {/* Charts Tab */}
-        <TabsContent value="charts">
+        {/* ───── Ventas Tab ───── */}
+        <TabsContent value="ventas">
+          <div className="space-y-4">
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={exportOrdersCSV}>
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportOrdersPDF}>
+                <FileText className="w-4 h-4 mr-1" /> PDF
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Total Ventas</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(totalSales)}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Comisiones</p>
+                <p className="text-lg font-bold text-orange-600">{formatCurrency(totalCommissions)}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Ganancias Vendedores</p>
+                <p className="text-lg font-bold">{formatCurrency(totalSellerEarnings)}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Ticket Promedio</p>
+                <p className="text-lg font-bold">{filteredOrders.length > 0 ? formatCurrency(totalSales / filteredOrders.length) : formatCurrency(0)}</p>
+              </CardContent></Card>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {ordersByStatus.map(s => (
+                <Badge key={s.name} variant="secondary" className="text-xs">{s.name}: {s.value}</Badge>
+              ))}
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Orden</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Fecha</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Comprador</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Vendedor</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Total</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Comisión</th>
+                        <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Estado</th>
+                        <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Pago</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ordersPageData.length > 0 ? ordersPageData.map((o: any) => (
+                        <tr key={o.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                          <td className="p-3 font-mono text-xs">{o.orderNumber}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">{formatDate(o.createdAt)}</td>
+                          <td className="p-3">{o.buyer?.firstName} {o.buyer?.lastName}</td>
+                          <td className="p-3">{o.seller?.firstName} {o.seller?.lastName}</td>
+                          <td className="p-3 text-right font-medium">{formatCurrency(o.total)}</td>
+                          <td className="p-3 text-right text-orange-600">{formatCurrency(o.commissionAmount)}</td>
+                          <td className="p-3 text-center">
+                            <Badge variant="secondary" className={`text-xs ${
+                              o.status === 'delivered' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              o.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            }`}>{ORDER_STATUS[o.status] || o.status}</Badge>
+                          </td>
+                          <td className="p-3 text-center text-xs">{o.paymentMethod}</td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={8} className="p-8 text-center text-gray-400">No se encontraron órdenes</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination current={ordersPage} total={ordersTotalPages} count={filteredOrders.length} pageSize={PAGE_SIZE} onPage={setOrdersPage} />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ───── Transacciones Tab ───── */}
+        <TabsContent value="transacciones">
+          <div className="space-y-4">
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={exportTransactionsCSV}>
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportTransactionsPDF}>
+                <FileText className="w-4 h-4 mr-1" /> PDF
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Total Transacciones</p>
+                <p className="text-lg font-bold">{filteredTx.length}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Ingresos</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(filteredTx.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0))}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Egresos</p>
+                <p className="text-lg font-bold text-red-600">{formatCurrency(filteredTx.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0))}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Balance</p>
+                <p className="text-lg font-bold text-blue-600">{formatCurrency(filteredTx.reduce((s: number, t: any) => s + t.amount, 0))}</p>
+              </CardContent></Card>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Fecha</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Tipo</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Usuario</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Descripción</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Monto</th>
+                        <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {txPageData.length > 0 ? txPageData.map((t: any) => (
+                        <tr key={t.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                          <td className="p-3 whitespace-nowrap text-gray-600 dark:text-gray-300">{formatDate(t.createdAt)}</td>
+                          <td className="p-3"><Badge variant="secondary" className="text-xs">{TX_TYPE[t.type] || t.type}</Badge></td>
+                          <td className="p-3">{t.user?.firstName} {t.user?.lastName}</td>
+                          <td className="p-3 max-w-[200px] truncate text-gray-600 dark:text-gray-300">{t.description}</td>
+                          <td className={`p-3 text-right font-medium whitespace-nowrap ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {t.amount >= 0 ? '+' : ''}{formatCurrency(t.amount)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <Badge variant="secondary" className={`text-xs ${
+                              t.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              t.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>{t.status}</Badge>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={6} className="p-8 text-center text-gray-400">No se encontraron transacciones</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination current={txPage} total={txTotalPages} count={filteredTx.length} pageSize={PAGE_SIZE} onPage={setTxPage} />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ───── Productos Tab ───── */}
+        <TabsContent value="productos">
+          <div className="space-y-4">
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={exportProductsCSV}>
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Total Productos</p>
+                <p className="text-lg font-bold">{products.length}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Activos</p>
+                <p className="text-lg font-bold text-green-600">{products.filter((p: any) => p.status === 'active').length}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Stock Bajo (&lt;5)</p>
+                <p className="text-lg font-bold text-red-600">{products.filter((p: any) => p.stock < 5).length}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Valor Inventario</p>
+                <p className="text-lg font-bold">{formatCurrency(products.reduce((s: number, p: any) => s + ((p.cost || p.price) * p.stock), 0))}</p>
+              </CardContent></Card>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">SKU</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Producto</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Categoría</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Precio</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Costo</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Margen %</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Stock</th>
+                        <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.length > 0 ? products.map((p: any) => (
+                        <tr key={p.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                          <td className="p-3 font-mono text-xs">{p.sku}</td>
+                          <td className="p-3 max-w-[180px] truncate">{p.name}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">{p.category}</td>
+                          <td className="p-3 text-right">{formatCurrency(p.price)}</td>
+                          <td className="p-3 text-right text-gray-500">{formatCurrency(p.cost || 0)}</td>
+                          <td className="p-3 text-right">{p.profitPercentage || 0}%</td>
+                          <td className={`p-3 text-right font-medium ${p.stock < 5 ? 'text-red-600' : ''}`}>{p.stock}</td>
+                          <td className="p-3 text-center">
+                            <Badge variant="secondary" className={`text-xs ${p.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600'}`}>
+                              {p.status === 'active' ? 'Activo' : p.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={8} className="p-8 text-center text-gray-400">No se encontraron productos</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ───── Créditos Tab ───── */}
+        <TabsContent value="creditos">
+          <div className="space-y-4">
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={exportCreditsCSV}>
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Total Créditos</p>
+                <p className="text-lg font-bold">{filteredCredits.length}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Monto Activo</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(totalCreditAmount)}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">Pendientes</p>
+                <p className="text-lg font-bold text-yellow-600">{filteredCredits.filter((c: any) => c.status === 'pending').length}</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3">
+                <p className="text-xs text-gray-500">En Mora</p>
+                <p className="text-lg font-bold text-red-600">{filteredCredits.filter((c: any) => c.status === 'defaulted').length}</p>
+              </CardContent></Card>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Fecha</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Usuario</th>
+                        <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Concepto</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Monto</th>
+                        <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Cuotas</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Cuota</th>
+                        <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Total a Pagar</th>
+                        <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCredits.length > 0 ? filteredCredits.map((c: any) => (
+                        <tr key={c.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                          <td className="p-3 whitespace-nowrap text-gray-600 dark:text-gray-300">{formatDate(c.createdAt)}</td>
+                          <td className="p-3">{c.user?.firstName} {c.user?.lastName}</td>
+                          <td className="p-3 max-w-[160px] truncate">{c.concept}</td>
+                          <td className="p-3 text-right font-medium">{formatCurrency(c.amount)}</td>
+                          <td className="p-3 text-center">{c.installments}</td>
+                          <td className="p-3 text-right">{formatCurrency(c.installmentAmount)}</td>
+                          <td className="p-3 text-right font-medium">{formatCurrency(c.totalToPay)}</td>
+                          <td className="p-3 text-center">
+                            <Badge variant="secondary" className={`text-xs ${
+                              c.status === 'active' || c.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              c.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              c.status === 'defaulted' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>{CREDIT_STATUS[c.status] || c.status}</Badge>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={8} className="p-8 text-center text-gray-400">No se encontraron créditos</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ───── Gráficos Tab ───── */}
+        <TabsContent value="graficos">
           <div className="space-y-6">
-            {/* Daily Trend Line Chart */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <LineChartIcon className="w-4 h-4" />
-                  Tendencia Diaria - Ingresos vs Egresos
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Tendencia Diaria de Ventas</CardTitle>
               </CardHeader>
               <CardContent>
-                {dailyTrend.length > 0 ? (
+                {dailySales.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={dailyTrend}>
+                    <LineChart data={dailySales}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        labelFormatter={(label) => `Fecha: ${label}`}
-                      />
+                      <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={l => `Fecha: ${l}`} />
                       <Legend />
-                      <Line type="monotone" dataKey="income" stroke="#22c55e" name="Ingresos" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="expenses" stroke="#ef4444" name="Egresos" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="ventas" stroke="#22c55e" name="Ventas" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="comisiones" stroke="#f59e0b" name="Comisiones" strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
-                ) : (
-                  <p className="text-gray-400 text-center py-12">Sin datos para el período seleccionado</p>
-                )}
+                ) : <p className="text-gray-400 text-center py-12">Sin datos para el período</p>}
               </CardContent>
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Bar Chart by Type */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Transacciones por Tipo
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium">Órdenes por Estado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {barData.length > 0 ? (
+                  {ordersByStatus.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={barData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" tick={{ fontSize: 11 }} />
-                        <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={120} />
-                        <Tooltip formatter={(value: number, name: string) =>
-                          name === 'monto' ? formatCurrency(value) : value
-                        } />
-                        <Legend />
-                        <Bar dataKey="cantidad" fill="#3b82f6" name="Cantidad" radius={[0, 4, 4, 0]} />
-                      </BarChart>
+                      <PieChart>
+                        <Pie data={ordersByStatus} cx="50%" cy="50%" labelLine={false}
+                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                          outerRadius={100} dataKey="value">
+                          {ordersByStatus.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <p className="text-gray-400 text-center py-12">Sin datos</p>
-                  )}
+                  ) : <p className="text-gray-400 text-center py-12">Sin datos</p>}
                 </CardContent>
               </Card>
 
-              {/* Pie Chart Distribution */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <PieChartIcon className="w-4 h-4" />
-                    Distribución por Tipo
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium">Transacciones por Tipo</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {pieData.length > 0 ? (
+                  {txByType.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {pieData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      </PieChart>
+                      <BarChart data={txByType} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" tick={{ fontSize: 11 }} />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={120} />
+                        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                        <Bar dataKey="value" fill="#3b82f6" name="Monto" radius={[0, 4, 4, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <p className="text-gray-400 text-center py-12">Sin datos</p>
-                  )}
+                  ) : <p className="text-gray-400 text-center py-12">Sin datos</p>}
                 </CardContent>
               </Card>
             </div>
           </div>
         </TabsContent>
-
-        {/* Transactions Tab */}
-        <TabsContent value="transactions">
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Fecha</th>
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Tipo</th>
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Usuario</th>
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Descripción</th>
-                      <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Monto</th>
-                      <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-300">Estado</th>
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Referencia</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.data?.length > 0 ? (
-                      transactions.data.map((tx: any) => {
-                        const isPositive = tx.amount >= 0;
-                        return (
-                          <tr key={tx.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                            <td className="p-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                              {formatShortDate(tx.createdAt)}
-                            </td>
-                            <td className="p-3">
-                              <Badge variant="secondary" className="text-xs">
-                                {TYPE_LABELS[tx.type] || tx.type}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-gray-700 dark:text-gray-200">
-                              {tx.user ? `${tx.user.firstName} ${tx.user.lastName}` : '-'}
-                            </td>
-                            <td className="p-3 text-gray-600 dark:text-gray-300 max-w-[200px] truncate">
-                              {tx.description}
-                            </td>
-                            <td className={`p-3 text-right font-medium whitespace-nowrap ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {isPositive ? '+' : ''}{formatCurrency(tx.amount)}
-                            </td>
-                            <td className="p-3 text-center">
-                              <Badge
-                                variant={tx.status === 'completed' ? 'default' : 'secondary'}
-                                className={`text-xs ${
-                                  tx.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                                  tx.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                  'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                                }`}
-                              >
-                                {STATUS_LABELS[tx.status] || tx.status}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-gray-500 dark:text-gray-400 text-xs">
-                              {tx.relatedOrderId ? `Orden` : tx.relatedCreditId ? `Crédito` : '-'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="p-8 text-center text-gray-400">
-                          No se encontraron transacciones
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {transactions.pagination && transactions.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, transactions.pagination.total)} de {transactions.pagination.total}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage <= 1}
-                      onClick={() => fetchReport(currentPage - 1)}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    {Array.from({ length: Math.min(5, transactions.pagination.totalPages) }, (_, i) => {
-                      let pageNum: number;
-                      const tp = transactions.pagination.totalPages;
-                      if (tp <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= tp - 2) {
-                        pageNum = tp - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? 'default' : 'outline'}
-                          size="sm"
-                          className="w-8 h-8 p-0"
-                          onClick={() => fetchReport(pageNum)}
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage >= transactions.pagination.totalPages}
-                      onClick={() => fetchReport(currentPage + 1)}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Balance Detail Tab */}
-        <TabsContent value="balance">
-          <div className="space-y-6">
-            {/* Balance General Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Balance General</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Concepto</th>
-                      <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="p-3 text-gray-700 dark:text-gray-200">Total Ingresos</td>
-                      <td className="p-3 text-right font-medium text-green-600">{formatCurrency(balanceGeneral.totalIncome || 0)}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-3 text-gray-700 dark:text-gray-200">Total Egresos</td>
-                      <td className="p-3 text-right font-medium text-red-600">{formatCurrency(balanceGeneral.totalExpenses || 0)}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-3 text-gray-700 dark:text-gray-200">Total Comisiones</td>
-                      <td className="p-3 text-right font-medium text-orange-600">{formatCurrency(balanceGeneral.totalCommissions || 0)}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-3 text-gray-700 dark:text-gray-200">Montos Pendientes</td>
-                      <td className="p-3 text-right font-medium text-yellow-600">{formatCurrency(balanceGeneral.pendingAmounts || 0)}</td>
-                    </tr>
-                    <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
-                      <td className="p-3 font-bold text-gray-900 dark:text-gray-100">Balance Neto</td>
-                      <td className={`p-3 text-right font-bold text-lg ${(balanceGeneral.netBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(balanceGeneral.netBalance || 0)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-
-            {/* Breakdown by Type */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Desglose por Tipo de Transacción</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Tipo</th>
-                      <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Cantidad</th>
-                      <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Monto Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(typeBreakdown).length > 0 ? (
-                      Object.entries(typeBreakdown).map(([key, val]: any) => (
-                        <tr key={key} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                          <td className="p-3">
-                            <Badge variant="secondary" className="text-xs">{TYPE_LABELS[key] || key}</Badge>
-                          </td>
-                          <td className="p-3 text-right text-gray-700 dark:text-gray-200">{val.count}</td>
-                          <td className="p-3 text-right font-medium text-gray-900 dark:text-gray-100">{formatCurrency(val.total)}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="p-8 text-center text-gray-400">Sin datos</td>
-                      </tr>
-                    )}
-                    {Object.entries(typeBreakdown).length > 0 && (
-                      <tr className="bg-gray-50 dark:bg-gray-800/50">
-                        <td className="p-3 font-bold">Total</td>
-                        <td className="p-3 text-right font-bold">
-                          {Object.values(typeBreakdown).reduce((sum: number, val: any) => sum + val.count, 0)}
-                        </td>
-                        <td className="p-3 text-right font-bold">
-                          {formatCurrency(Object.values(typeBreakdown).reduce((sum: number, val: any) => sum + val.total, 0))}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-
-            {/* Breakdown by Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Desglose por Estado</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
-                      <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-300">Estado</th>
-                      <th className="text-right p-3 font-medium text-gray-600 dark:text-gray-300">Monto Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(statusBreakdown).length > 0 ? (
-                      Object.entries(statusBreakdown).map(([status, total]) => (
-                        <tr key={status} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                          <td className="p-3">
-                            <Badge
-                              variant="secondary"
-                              className={`text-xs ${
-                                status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                                status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                              }`}
-                            >
-                              {STATUS_LABELS[status] || status}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-right font-medium text-gray-900 dark:text-gray-100">
-                            {formatCurrency(total)}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={2} className="p-8 text-center text-gray-400">Sin datos</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Pagination Component ────────────────────────────────────────────
+function Pagination({ current, total, count, pageSize, onPage }: {
+  current: number; total: number; count: number; pageSize: number; onPage: (p: number) => void;
+}) {
+  if (total <= 1) return null;
+  return (
+    <div className="flex items-center justify-between p-4 border-t">
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {((current - 1) * pageSize) + 1} - {Math.min(current * pageSize, count)} de {count}
+      </p>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="sm" disabled={current <= 1} onClick={() => onPage(current - 1)}>
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        {Array.from({ length: Math.min(5, total) }, (_, i) => {
+          let p: number;
+          if (total <= 5) p = i + 1;
+          else if (current <= 3) p = i + 1;
+          else if (current >= total - 2) p = total - 4 + i;
+          else p = current - 2 + i;
+          return (
+            <Button key={p} variant={current === p ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => onPage(p)}>
+              {p}
+            </Button>
+          );
+        })}
+        <Button variant="outline" size="sm" disabled={current >= total} onClick={() => onPage(current + 1)}>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }

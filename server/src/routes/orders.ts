@@ -5,14 +5,19 @@ import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
 
-// Get all orders for current user
+// Get all orders for current user (superadmin sees all)
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const { as = 'buyer' } = req.query;
 
-    const where = as === 'seller'
-      ? { sellerId: req.user!.userId }
-      : { buyerId: req.user!.userId };
+    let where: any;
+    if (req.user!.role === 'superadmin' && as === 'admin') {
+      where = {}; // superadmin sees all orders
+    } else if (as === 'seller') {
+      where = { sellerId: req.user!.userId };
+    } else {
+      where = { buyerId: req.user!.userId };
+    }
 
     const orders = await prisma.order.findMany({
       where,

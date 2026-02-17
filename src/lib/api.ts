@@ -132,7 +132,7 @@ export const productsApi = {
 
 // Orders API
 export const ordersApi = {
-  getAll: (as: 'buyer' | 'seller' = 'buyer') =>
+  getAll: (as: 'buyer' | 'seller' | 'admin' = 'buyer') =>
     fetchWithAuth(`/orders?as=${as}`),
   getById: (id: string) => fetchWithAuth(`/orders/${id}`),
   create: (data: any) =>
