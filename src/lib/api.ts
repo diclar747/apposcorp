@@ -511,6 +511,58 @@ export const financesApi = {
     }),
 };
 
+// Reports API (superadmin)
+export const reportsApi = {
+  getFinancial: (params?: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.startDate) query.set('startDate', params.startDate);
+    if (params?.endDate) query.set('endDate', params.endDate);
+    if (params?.type) query.set('type', params.type);
+    if (params?.status) query.set('status', params.status);
+    if (params?.search) query.set('search', params.search);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return fetchWithAuth(`/reports/financial${qs ? `?${qs}` : ''}`);
+  },
+  exportCSV: (params?: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    status?: string;
+    search?: string;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.startDate) query.set('startDate', params.startDate);
+    if (params?.endDate) query.set('endDate', params.endDate);
+    if (params?.type) query.set('type', params.type);
+    if (params?.status) query.set('status', params.status);
+    if (params?.search) query.set('search', params.search);
+    const qs = query.toString();
+    const token = getToken();
+    return fetch(`${API_URL}/reports/financial/export${qs ? `?${qs}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(async (res) => {
+      if (!res.ok) throw new Error('Error al exportar');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte-financiero-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  },
+};
+
 // Stores API (public marketplace)
 export const storesApi = {
   getAll: () => fetchWithAuth('/stores'),
@@ -532,4 +584,5 @@ export default {
   settings: settingsApi,
   finances: financesApi,
   management: managementApi,
+  reports: reportsApi,
 };

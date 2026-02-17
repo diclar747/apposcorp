@@ -22,6 +22,7 @@ import courseRoutes from './routes/courses.js';
 import pushRoutes from './routes/push.js';
 import storeRoutes from './routes/stores.js';
 import sellerManagementRoutes from './routes/seller-management.js';
+import reportRoutes from './routes/reports.js';
 import { prisma } from './utils/prisma.js';
 
 const app = express();
@@ -88,6 +89,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/seller-management', sellerManagementRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Setup endpoint - cria todos os usuários de teste
 app.get('/api/setup', async (req, res) => {
