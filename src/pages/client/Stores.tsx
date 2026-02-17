@@ -38,7 +38,8 @@ export default function ClientStores() {
         return stores.filter(store => {
             const matchesSearch = (store.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (store.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = selectedCategory === 'Todas';
+            const matchesCategory = selectedCategory === 'Todas' ||
+                (store.category || 'General').toLowerCase() === selectedCategory.toLowerCase();
             return matchesSearch && matchesCategory;
         });
     }, [stores, searchTerm, selectedCategory]);
@@ -157,6 +158,11 @@ export default function ClientStores() {
                 </div>
 
                 {/* Stores Grid */}
+                {loading ? (
+                    <div className="flex items-center justify-center py-32">
+                        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+                    </div>
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                     <AnimatePresence mode="popLayout">
                         {filteredStores.map((store, index) => (
@@ -164,8 +170,9 @@ export default function ClientStores() {
                         ))}
                     </AnimatePresence>
                 </div>
+                )}
 
-                {filteredStores.length === 0 && (
+                {!loading && filteredStores.length === 0 && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -220,7 +227,7 @@ function StoreCard({ store, index }: { store: any, index: number }) {
 
                         <div className="absolute top-5 left-5">
                             <Badge className="bg-white/95 backdrop-blur-md text-gray-900 border-0 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest">
-                                {store.category}
+                                {store.category || 'General'}
                             </Badge>
                         </div>
 

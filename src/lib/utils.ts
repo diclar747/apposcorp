@@ -121,20 +121,26 @@ export function getInitials(firstName: string, lastName: string): string {
 
 // Verificar si una tienda está abierta
 export function isStoreOpen(businessHours: any): boolean {
-  const now = new Date();
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayName = days[now.getDay()];
-  const dayHours = businessHours[dayName];
-  
-  if (!dayHours?.isOpen) return false;
-  
-  const currentTime = now.getHours() * 60 + now.getMinutes();
-  const [openHour, openMin] = dayHours.open.split(':').map(Number);
-  const [closeHour, closeMin] = dayHours.close.split(':').map(Number);
-  const openTime = openHour * 60 + openMin;
-  const closeTime = closeHour * 60 + closeMin;
-  
-  return currentTime >= openTime && currentTime <= closeTime;
+  if (!businessHours) return true; // Default to "open" when no hours configured
+
+  try {
+    const now = new Date();
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[now.getDay()];
+    const dayHours = businessHours[dayName];
+
+    if (!dayHours?.isOpen) return false;
+
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const [openHour, openMin] = dayHours.open.split(':').map(Number);
+    const [closeHour, closeMin] = dayHours.close.split(':').map(Number);
+    const openTime = openHour * 60 + openMin;
+    const closeTime = closeHour * 60 + closeMin;
+
+    return currentTime >= openTime && currentTime <= closeTime;
+  } catch {
+    return true; // Default to "open" on any error
+  }
 }
 
 // Obtener estado de pedido con color

@@ -59,7 +59,7 @@ router.get('/search', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-// Update seller profile (seller only)
+// Update seller profile (seller only) - creates profile if it doesn't exist
 router.put('/seller-profile', authenticate, authorize('seller'), async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.userId;
@@ -81,11 +81,21 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
       where: { userId }
     });
 
-    if (!existingProfile) {
-      return res.status(404).json({ error: 'Perfil de vendedor no encontrado' });
+    // Validate storeSlug if provided
+    if (storeSlug && (!existingProfile || storeSlug !== existingProfile.storeSlug)) {
+      const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+      if (!slugRegex.test(storeSlug)) {
+        return res.status(400).json({ error: 'El slug solo puede contener letras minúsculas, números y guiones' });
+      }
+      const existing = await prisma.sellerProfile.findUnique({ where: { storeSlug } });
+      if (existing && existing.userId !== userId) {
+        return res.status(400).json({ error: 'Este slug ya está en uso por otra tienda' });
+      }
     }
 
-    // Validate storeSlug if provided
+    // Use upsert to create profile if it doesn't exist
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true } });
+
     const updateData: any = {
       storeName,
       description,
@@ -95,32 +105,37 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
       email,
       logo,
       banner,
-      socialLinks: socialLinks || existingProfile.socialLinks,
+      socialLinks: socialLinks || existingProfile?.socialLinks || {},
     };
 
-    if (storeSlug && storeSlug !== existingProfile.storeSlug) {
-      // Validate slug format
-      const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-      if (!slugRegex.test(storeSlug)) {
-        return res.status(400).json({ error: 'El slug solo puede contener letras minúsculas, números y guiones' });
-      }
-      // Check uniqueness
-      const existing = await prisma.sellerProfile.findUnique({ where: { storeSlug } });
-      if (existing && existing.userId !== userId) {
-        return res.status(400).json({ error: 'Este slug ya está en uso por otra tienda' });
-      }
+    if (storeSlug && (!existingProfile || storeSlug !== existingProfile.storeSlug)) {
       updateData.storeSlug = storeSlug;
     }
 
-    const updatedProfile = await prisma.sellerProfile.update({
+    const updatedProfile = await prisma.sellerProfile.upsert({
       where: { userId },
-      data: updateData
+      update: updateData,
+      create: {
+        userId,
+        storeName: storeName || `${user?.firstName || 'Mi'} Store`,
+        storeSlug: storeSlug || `store-${Date.now()}`,
+        description: description || '',
+        address: address || '',
+        phone: phone || '',
+        email: email || user?.email || '',
+        whatsappNumber: whatsappNumber || '',
+        logo: logo || '',
+        banner: banner || '',
+        socialLinks: socialLinks || {},
+        planActive: true,
+        planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      }
     });
 
     res.json(updatedProfile);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Erro no servidor ao atualizar perfil' });
+    res.status(500).json({ error: 'Error al actualizar perfil de vendedor' });
   }
 });
 

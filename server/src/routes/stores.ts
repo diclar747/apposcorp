@@ -9,6 +9,7 @@ router.get('/', async (_req, res) => {
     const stores = await prisma.sellerProfile.findMany({
       where: {
         storeName: { not: '' },
+        user: { isActive: true },
       },
       include: {
         products: {
@@ -18,42 +19,53 @@ router.get('/', async (_req, res) => {
         },
         user: {
           select: { firstName: true, lastName: true, avatar: true, isActive: true }
+        },
+        store: {
+          select: { category: true, isActive: true, isOnline: true }
         }
       },
       orderBy: { totalSales: 'desc' },
     });
 
+    // Derive category from most common product category if no Store record
+    const deriveCategory = (s: any): string => {
+      if (s.store?.category && s.store.category !== 'General') return s.store.category;
+      if (s.products && s.products.length > 0) {
+        return s.products[0].category || 'General';
+      }
+      return 'General';
+    };
+
     // Map to a clean store format
-    const storeList = stores
-      .filter(s => s.user.isActive)
-      .map(s => ({
-        id: s.id,
-        userId: s.userId,
-        name: s.storeName,
-        slug: s.storeSlug,
-        description: s.description,
-        logo: s.logo,
-        banner: s.banner,
-        address: s.address,
-        phone: s.phone,
-        email: s.email,
-        whatsappNumber: s.whatsappNumber,
-        isActive: true,
-        isOnline: true,
-        isVerified: s.isVerified,
-        rating: s.rating,
-        reviewCount: s.reviewCount,
-        totalSales: s.totalSales,
-        productCount: s.products.length,
-        products: s.products,
-        socialLinks: s.socialLinks,
-        businessHours: s.businessHours,
-        owner: {
-          firstName: s.user.firstName,
-          lastName: s.user.lastName,
-          avatar: s.user.avatar,
-        },
-      }));
+    const storeList = stores.map(s => ({
+      id: s.id,
+      userId: s.userId,
+      name: s.storeName,
+      slug: s.storeSlug,
+      description: s.description,
+      logo: s.logo,
+      banner: s.banner,
+      address: s.address,
+      phone: s.phone,
+      email: s.email,
+      whatsappNumber: s.whatsappNumber,
+      isActive: s.store?.isActive ?? true,
+      isOnline: s.store?.isOnline ?? true,
+      isVerified: s.isVerified,
+      rating: s.rating,
+      reviewCount: s.reviewCount,
+      totalSales: s.totalSales,
+      productCount: s.products.length,
+      products: s.products,
+      category: deriveCategory(s),
+      socialLinks: s.socialLinks,
+      businessHours: s.businessHours,
+      owner: {
+        firstName: s.user.firstName,
+        lastName: s.user.lastName,
+        avatar: s.user.avatar,
+      },
+    }));
 
     res.json(storeList);
   } catch (error) {
@@ -76,6 +88,9 @@ router.get('/:slug', async (req, res) => {
         },
         user: {
           select: { firstName: true, lastName: true, avatar: true, isActive: true }
+        },
+        store: {
+          select: { category: true, isActive: true, isOnline: true }
         }
       },
     });
@@ -96,12 +111,13 @@ router.get('/:slug', async (req, res) => {
       phone: store.phone,
       email: store.email,
       whatsappNumber: store.whatsappNumber,
-      isActive: store.planActive,
-      isOnline: true,
+      isActive: store.store?.isActive ?? true,
+      isOnline: store.store?.isOnline ?? true,
       isVerified: store.isVerified,
       rating: store.rating,
       reviewCount: store.reviewCount,
       totalSales: store.totalSales,
+      category: store.store?.category || 'General',
       businessHours: store.businessHours,
       socialLinks: store.socialLinks,
       products: store.products,
