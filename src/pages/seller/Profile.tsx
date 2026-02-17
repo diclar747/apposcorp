@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, Phone, MapPin, Store, Lock, Eye, EyeOff, Save, Loader2, MessageCircle } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, MapPin, Store, Lock, Eye, EyeOff, Save, Loader2, MessageCircle, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { getInitials } from '@/lib/utils';
 import { authApi, usersApi } from '@/lib/api';
@@ -30,6 +30,7 @@ export default function SellerProfile() {
   // Store/seller profile form
   const [storeData, setStoreData] = useState({
     storeName: '',
+    storeSlug: '',
     description: '',
     phone: '',
     email: '',
@@ -71,6 +72,7 @@ export default function SellerProfile() {
         const sl = (sp.socialLinks || {}) as Record<string, string>;
         setStoreData({
           storeName: sp.storeName || '',
+          storeSlug: sp.storeSlug || '',
           description: sp.description || '',
           phone: sp.phone || '',
           email: sp.email || '',
@@ -116,6 +118,7 @@ export default function SellerProfile() {
     try {
       await usersApi.updateSellerProfile({
         storeName: storeData.storeName,
+        storeSlug: storeData.storeSlug,
         description: storeData.description,
         phone: storeData.phone,
         email: storeData.email,
@@ -186,6 +189,7 @@ export default function SellerProfile() {
       const sl = (sp.socialLinks || {}) as Record<string, string>;
       setStoreData({
         storeName: sp.storeName || '',
+        storeSlug: sp.storeSlug || '',
         description: sp.description || '',
         phone: sp.phone || '',
         email: sp.email || '',
@@ -407,6 +411,19 @@ export default function SellerProfile() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label>URL de la tienda (slug)</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">/tienda/</span>
+                    <Input
+                      value={storeData.storeSlug}
+                      onChange={(e) => setStoreData({ ...storeData, storeSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                      placeholder="mi-tienda"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Solo letras minusculas, numeros y guiones. Este es el enlace publico de tu tienda.</p>
+                </div>
+
+                <div className="space-y-1.5">
                   <Label>Descripción</Label>
                   <Textarea
                     value={storeData.description}
@@ -498,6 +515,17 @@ export default function SellerProfile() {
             ) : (
               <div className="space-y-3">
                 <InfoRow icon={<Store className="w-4 h-4" />} label="Nombre de la tienda" value={user.sellerProfile.storeName} />
+                <div className="flex items-center gap-3 py-1.5">
+                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center text-muted-foreground shrink-0">
+                    <LinkIcon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">URL de la tienda</p>
+                    <a href={`/tienda/${user.sellerProfile.storeSlug}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1">
+                      /tienda/{user.sellerProfile.storeSlug} <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
                 <InfoRow icon={<Mail className="w-4 h-4" />} label="Email de la tienda" value={user.sellerProfile.email} />
                 <InfoRow icon={<Phone className="w-4 h-4" />} label="Teléfono de la tienda" value={user.sellerProfile.phone} />
                 <InfoRow icon={<MessageCircle className="w-4 h-4" />} label="WhatsApp" value={user.sellerProfile.whatsappNumber} />

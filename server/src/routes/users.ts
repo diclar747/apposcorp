@@ -65,6 +65,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
     const userId = req.user!.userId;
     const {
       storeName,
+      storeSlug,
       description,
       address,
       phone,
@@ -81,22 +82,39 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
     });
 
     if (!existingProfile) {
-      return res.status(404).json({ error: 'Perfil de vendedor não encontrado' });
+      return res.status(404).json({ error: 'Perfil de vendedor no encontrado' });
+    }
+
+    // Validate storeSlug if provided
+    const updateData: any = {
+      storeName,
+      description,
+      address,
+      phone,
+      whatsappNumber,
+      email,
+      logo,
+      banner,
+      socialLinks: socialLinks || existingProfile.socialLinks,
+    };
+
+    if (storeSlug && storeSlug !== existingProfile.storeSlug) {
+      // Validate slug format
+      const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+      if (!slugRegex.test(storeSlug)) {
+        return res.status(400).json({ error: 'El slug solo puede contener letras minúsculas, números y guiones' });
+      }
+      // Check uniqueness
+      const existing = await prisma.sellerProfile.findUnique({ where: { storeSlug } });
+      if (existing && existing.userId !== userId) {
+        return res.status(400).json({ error: 'Este slug ya está en uso por otra tienda' });
+      }
+      updateData.storeSlug = storeSlug;
     }
 
     const updatedProfile = await prisma.sellerProfile.update({
       where: { userId },
-      data: {
-        storeName,
-        description,
-        address,
-        phone,
-        whatsappNumber,
-        email,
-        logo,
-        banner,
-        socialLinks: socialLinks || existingProfile.socialLinks, // Merge or replace
-      }
+      data: updateData
     });
 
     res.json(updatedProfile);
