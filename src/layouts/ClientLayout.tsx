@@ -119,7 +119,11 @@ export default function ClientLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
+      {/* Premium Background Mesh & Shapes */}
+      <div className="bg-mesh" />
+      <div className="fixed top-0 left-0 right-0 h-[40vh] bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none z-0" />
+
       {/* Header */}
       <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">

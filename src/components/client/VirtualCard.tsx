@@ -6,6 +6,7 @@ import {
   QrCode,
   Copy,
   Wifi,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -203,45 +204,60 @@ export function VirtualCardCompact({
   return (
     <motion.div
       whileTap={{ scale: 0.98 }}
-      className={cn('relative overflow-hidden rounded-2xl p-5 cursor-pointer', className)}
+      className={cn('relative overflow-hidden rounded-[2.5rem] p-6 cursor-pointer group', className)}
       style={{
-        background: 'linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 50%, #111111 100%)',
-        boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+        background: 'linear-gradient(165deg, #1e293b 0%, #0f172a 40%, #020617 100%)',
+        boxShadow: `
+          0 20px 50px -12px rgba(0, 0, 0, 0.5), 
+          inset 0 1px 1px rgba(255, 255, 255, 0.1),
+          inset 0 -1px 1px rgba(0, 0, 0, 0.4)
+        `
       }}
     >
-      {/* Subtle glow */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Decorative Blur Spheres */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-[60px] pointer-events-none group-hover:bg-blue-500/20 transition-colors duration-700" />
+      <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none" />
 
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <CardChip />
-            <Wifi className="w-4 h-4 text-white/30 rotate-90" />
+      {/* Glossy Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.02] to-transparent pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-200/80 via-yellow-400/80 to-yellow-600/80 p-0.5 shadow-inner opacity-80">
+              <div className="w-full h-full border border-black/10 rounded-[3px]" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white text-[13px] font-black tracking-tight leading-none italic">OSCORP</span>
+              <span className="text-white/40 text-[8px] font-bold tracking-[0.2em] leading-none uppercase">Premium</span>
+            </div>
           </div>
-          <OscorpBrand size="sm" />
+          <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10">
+            <Plus className="w-4 h-4 text-white" />
+          </div>
         </div>
 
-        <div className="mb-4">
-          <p className="text-white/40 text-[10px] uppercase tracking-widest mb-1">Saldo Disponible</p>
-          <p className="text-white text-2xl sm:text-3xl font-bold tracking-tight">
-            &#8370; {balance.toLocaleString()}
-          </p>
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-[0.15em]">Balance Disponible</p>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-white/40 text-lg font-bold">₲</span>
+            <p className="text-white text-3xl sm:text-4xl font-black tracking-tighter">
+              {balance.toLocaleString()}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-white/30 text-xs font-mono tracking-wider">&#8226;&#8226;&#8226;&#8226; &#8226;&#8226;&#8226;&#8226; &#8226;&#8226;&#8226;&#8226; &#8226;&#8226;&#8226;&#8226;</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white/50 hover:text-white hover:bg-white/10 h-7 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              onShowQR?.();
-            }}
-          >
-            <QrCode className="w-3.5 h-3.5 mr-1" />
-            QR
-          </Button>
+        <div className="mt-auto flex items-center justify-between">
+          <div className="flex gap-4">
+            <span className="text-white/20 text-xs font-mono tracking-[0.2em]">**** 6457</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-red-500/80 translate-x-2" />
+            <div className="w-6 h-6 rounded-full bg-orange-500/80" />
+          </div>
         </div>
       </div>
     </motion.div>

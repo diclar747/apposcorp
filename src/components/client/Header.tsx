@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Bell, 
-  Moon, 
-  Sun, 
+import {
+  Bell,
+  Moon,
+  Sun,
   Menu,
   ChevronLeft,
   Search
@@ -21,12 +21,12 @@ interface HeaderProps {
   className?: string;
 }
 
-export function Header({ 
-  title, 
-  showBack = false, 
+export function Header({
+  title,
+  showBack = false,
   showSearch = false,
   onBack,
-  className 
+  className
 }: HeaderProps) {
   const { resolvedTheme, toggleTheme } = useThemeStore();
   const { unreadCount } = useNotificationStore();
@@ -46,7 +46,7 @@ export function Header({
             <Button
               variant="ghost"
               size="icon"
-              className="w-9 h-9 rounded-full"
+              className="w-9 h-9 rounded-full bg-muted/30"
               onClick={onBack}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -58,16 +58,18 @@ export function Header({
                 whileTap={{ scale: 0.95 }}
                 className="flex items-center gap-2"
               >
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">O</span>
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20 relative">
+                  <div className="absolute inset-0 rounded-xl bg-white/20 blur-[1px]" />
+                  <span className="text-white font-black text-sm relative z-10">O</span>
                 </div>
               </motion.div>
             </Link>
           )}
-          
-          {title && (
-            <h1 className="font-semibold text-lg">{title}</h1>
-          )}
+
+          <div className="flex flex-col -gap-1">
+            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest leading-none">Welcome Back</span>
+            <h1 className="font-bold text-base tracking-tight leading-tight">Oscorp Platform</h1>
+          </div>
         </div>
 
         {/* Right Section */}
@@ -81,7 +83,7 @@ export function Header({
               <Search className="w-5 h-5" />
             </Button>
           )}
-          
+
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -91,9 +93,9 @@ export function Header({
           >
             <motion.div
               initial={false}
-              animate={{ 
+              animate={{
                 rotate: isDark ? 180 : 0,
-                scale: isDark ? 0 : 1 
+                scale: isDark ? 0 : 1
               }}
               transition={{ duration: 0.3 }}
               className="absolute"
@@ -102,9 +104,9 @@ export function Header({
             </motion.div>
             <motion.div
               initial={false}
-              animate={{ 
+              animate={{
                 rotate: isDark ? 0 : -180,
-                scale: isDark ? 1 : 0 
+                scale: isDark ? 1 : 0
               }}
               transition={{ duration: 0.3 }}
               className="absolute"
@@ -139,11 +141,11 @@ export function Header({
 }
 
 // Compact header for sub-pages
-export function CompactHeader({ 
-  title, 
+export function CompactHeader({
+  title,
   rightAction,
-  className 
-}: { 
+  className
+}: {
   title: string;
   rightAction?: React.ReactNode;
   className?: string;
