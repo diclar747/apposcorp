@@ -18,6 +18,7 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { storesApi } from '@/lib/api';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+import { FloatingSocialButtons } from '@/components/client/FloatingSocialButtons';
 
 // ─── Logo ───────────────────────────────────────────────────────────
 const OscorpLogo = ({ className = '', size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' }) => {
@@ -231,11 +232,11 @@ const HeroSection = () => {
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link to="/app/tiendas">
+              <a href="#marketplace">
                 <Button size="lg" variant="outline" className="h-16 px-10 rounded-2xl border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 backdrop-blur-md text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 text-lg font-bold">
                   Ver Marketplace
                 </Button>
-              </Link>
+              </a>
             </div>
 
             <div className="mt-12 flex items-center gap-8 grayscale opacity-70 dark:opacity-50 contrast-125">
@@ -911,8 +912,8 @@ export default function LandingPage() {
       <TestimonialsSection />
       <ContactSection />
       <Footer />
-      <WhatsAppButton />
       <InstallPrompt />
+      <FloatingSocialButtons />
     </div>
   );
 }
