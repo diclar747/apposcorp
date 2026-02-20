@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useCartStore } from '@/stores';
 import { productsApi } from '@/lib/api';
+import { generateQRValue } from '@/lib/qr';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { VirtualCardCompact } from '@/components/client/VirtualCard';
+import { VirtualCard } from '@/components/client/VirtualCard';
 import { QuickActions } from '@/components/client/QuickActions';
 import { FinanceChart } from '@/components/client/FinanceChart';
 import { QRPayment } from '@/components/client/QRPayment';
@@ -106,12 +107,17 @@ export default function ClientHome() {
 
       {/* Virtual Card */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
       >
-        <VirtualCardCompact
+        <VirtualCard
           balance={wallet?.balance || 0}
-          onShowQR={() => setShowQR(true)}
+          cardNumber={user?.virtualCard?.cardNumber || 'OSC-0000-0000'}
+          cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
+          expiryDate="12/28"
+          cvv="***"
+          qrValue={generateQRValue(user?.id || '', user?.firstName || 'Usuario')}
         />
       </motion.div>
 

@@ -125,7 +125,7 @@ export default function ClientLayout() {
       <div className="fixed top-0 left-0 right-0 h-[40vh] bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none z-0" />
 
       {/* Header */}
-      <header className="sticky top-0 z-[50] w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
+      <header className="fixed top-0 left-0 right-0 z-[50] w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
@@ -291,7 +291,7 @@ export default function ClientLayout() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 pt-16">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -314,6 +314,7 @@ export default function ClientLayout() {
         onClose={() => setShowQR(false)}
         userId={user?.id || 'guest'}
         userName={`${user?.firstName || 'Usuario'} ${user?.lastName || ''}`}
+        balance={wallet?.balance}
       />
 
       {/* Push Notification Permission Prompt */}
