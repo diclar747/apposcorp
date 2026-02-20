@@ -41,6 +41,7 @@ import { BottomNav } from '@/components/client/BottomNav';
 import { QRPayment } from '@/components/client/QRPayment';
 import { PushPermissionPrompt } from '@/components/push/PushPermissionPrompt';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { FloatingSocialButtons } from '@/components/client/FloatingSocialButtons';
 
 interface MenuItem {
   icon: typeof Home;
@@ -316,6 +317,9 @@ export default function ClientLayout() {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* Floating Social Buttons */}
+      <FloatingSocialButtons />
     </div>
   );
 }

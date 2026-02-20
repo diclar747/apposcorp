@@ -27,7 +27,6 @@ import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,20 +97,36 @@ export default function SellerLayout() {
         )}
       >
         {/* Logo */}
-        <div className="h-20 flex items-center px-6 border-b border-gray-100 dark:border-slate-800">
-          <Link to="/vendedor">
-            <BrandLogo
-              variant="light"
-              size="lg"
-              showText={sidebarOpen}
-              subtitle="Panel Vendedor"
-              className="py-1"
-            />
+        <div className="h-28 flex flex-col items-center justify-center border-b border-gray-100 dark:border-slate-800 px-4">
+          <Link to="/vendedor" className="flex flex-col items-center gap-2 group">
+            <motion.div
+              layout
+              className="relative flex items-center justify-center"
+            >
+              <img
+                src={sidebarOpen ? "/oscorp-logo.png" : "/images/oscorp-round.png"}
+                alt="Oscorp"
+                className={cn(
+                  "transition-all duration-300 object-contain",
+                  sidebarOpen ? "h-14 w-auto" : "h-10 w-10"
+                )}
+              />
+            </motion.div>
+            {sidebarOpen && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.25em] text-center"
+              >
+                Panel Vendedor
+              </motion.span>
+            )}
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
           {sidebarItems.map((item) => {
             const isActive = location.pathname === item.href ||
               (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
@@ -182,12 +197,12 @@ export default function SellerLayout() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed left-0 top-0 h-full w-72 bg-white dark:bg-slate-900 z-50 lg:hidden"
             >
-              <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-slate-800">
+              <div className="h-20 flex items-center justify-between px-4 border-b border-gray-200 dark:border-slate-800">
                 <Link to="/vendedor" className="flex items-center gap-3">
-                  <img src="/icons/icon-192x192.png" alt="Oscorp" className="w-10 h-10 object-contain rounded-xl" />
-                  <div>
-                    <span className="font-semibold text-gray-900 dark:text-white block">Oscorp</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Panel Vendedor</span>
+                  <img src="/oscorp-logo.png" alt="Oscorp" className="h-10 w-auto object-contain" />
+                  <div className="flex flex-col">
+                    <span className="font-black text-slate-900 dark:text-white text-lg tracking-tighter uppercase leading-none">Oscorp</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold mt-1">Panel Vendedor</span>
                   </div>
                 </Link>
                 <button onClick={() => setMobileMenuOpen(false)}>

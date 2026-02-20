@@ -9,14 +9,18 @@ router.get('/', async (req, res) => {
   try {
     const { category, search, sellerId } = req.query;
 
-    const where: any = { status: 'active' };
+    const where: any = {};
+
+    // When a specific seller requests their products, show all statuses
+    // For public/general listing, only show active products
+    if (sellerId && sellerId !== 'undefined' && sellerId !== 'null') {
+      where.sellerId = sellerId as string;
+    } else {
+      where.status = 'active';
+    }
 
     if (category) {
       where.category = category as string;
-    }
-
-    if (sellerId && sellerId !== 'undefined' && sellerId !== 'null') {
-      where.sellerId = sellerId as string;
     }
 
     if (search) {

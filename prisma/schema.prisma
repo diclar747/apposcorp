@@ -79,6 +79,7 @@ model SellerProfile {
   reviewCount    Int        @default(0)
   businessHours  Json?
   socialLinks    Json?
+  category       String     @default("General")
   products       Product[]
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   store          Store?

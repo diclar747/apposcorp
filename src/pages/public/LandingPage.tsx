@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import {
-  ArrowRight, TrendingUp, ShoppingBag, GraduationCap, Wallet, QrCode,
-  Users, Store, Star, CheckCircle, Menu, X, Sparkles, Phone, Mail,
-  MapPin, ChevronRight, Shield, Zap, Globe, CreditCard, BarChart3,
-  BookOpen, Facebook, Instagram, Twitter, Linkedin, Moon, Sun, Package
+  ArrowRight, TrendingUp, ShoppingBag,
+  Users, Store, Star, Menu, X, Sparkles, Phone, Mail,
+  MapPin, ChevronRight, Zap, Globe,
+  BookOpen, Facebook, Instagram, Twitter,
+  Moon, Sun, Package, Briefcase, CheckCircle2,
+  QrCode, CreditCard, LayoutDashboard, LineChart, GraduationCap,
+  ArrowUpRight, BarChart3, ShieldCheck, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useThemeStore } from '@/stores/themeStore';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { storesApi } from '@/lib/api';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 // ─── Logo ───────────────────────────────────────────────────────────
 const OscorpLogo = ({ className = '', size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' }) => {
@@ -186,187 +192,152 @@ const Navbar = () => {
 };
 
 // ─── Hero ────────────────────────────────────────────────────────────
-const HeroSection = () => (
-  <section id="inicio" className="relative min-h-[100dvh] sm:min-h-screen flex items-center overflow-hidden">
-    {/* Background */}
-    <div className="absolute inset-0 bg-slate-50 dark:bg-slate-950 transition-colors duration-700">
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072')] bg-cover bg-center opacity-[0.03] dark:opacity-[0.15] mix-blend-overlay" />
-      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-500/10 dark:bg-purple-600/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
-    </div>
+const HeroSection = () => {
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 500], [0, 100]);
+  const y2 = useTransform(scrollY, [0, 500], [0, -100]);
 
-    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-12 sm:pb-20">
-      <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Badge className="mb-4 sm:mb-6 py-1 sm:py-1.5 px-3 sm:px-4 bg-white/50 dark:bg-white/5 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-400/20 backdrop-blur-xl shadow-sm text-[10px] sm:text-xs">
-            <Sparkles className="w-3 h-3 mr-1.5 animate-pulse" />
-            <span className="tracking-wide font-medium">ECONOMÍA COLABORATIVA V2.0</span>
-          </Badge>
+  return (
+    <section id="inicio" className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500">
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 dark:bg-blue-600/20 rounded-full blur-[120px] animate-pulse-slow" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 dark:bg-purple-600/20 rounded-full blur-[120px] animate-pulse-slow" />
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072')] bg-cover bg-center mix-blend-overlay opacity-10 dark:opacity-20" />
+      </div>
 
-          <h1 className="text-[2rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white mb-4 sm:mb-8">
-            Somos una Empresa{' '}
-            <span className="sm:block">Paraguaya </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-600 to-indigo-600 dark:from-blue-400 dark:via-violet-400 dark:to-indigo-400">
-              Economía Colaborativa
-            </span>
-          </h1>
-
-          <p className="text-base sm:text-xl text-slate-600 dark:text-slate-400 mb-6 sm:mb-10 max-w-lg leading-relaxed font-light">
-            Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <Link to="/register" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-10 bg-slate-900 dark:bg-white text-white dark:text-slate-950 hover:opacity-90 rounded-full text-base font-semibold shadow-2xl shadow-blue-500/20">
-                Comenzar Ahora
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-            <Link to="/app/tiendas" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-10 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-base font-medium backdrop-blur-md">
-                Explorar Marketplace
-              </Button>
-            </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="flex gap-6 sm:gap-10 mt-8 sm:mt-12">
-            {[
-              { value: '50K+', label: 'Usuarios' },
-              { value: '500+', label: 'Tiendas' },
-              { value: '₲2B+', label: 'Transacciones' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="hidden lg:block"
-        >
-          <div className="relative">
-            <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-violet-500 rounded-3xl blur-2xl opacity-30" />
-            <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20">
-              <img src="/images/fiat-fintech.png" alt="Oscorp Platform" className="rounded-2xl w-full" />
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <Badge className="mb-6 bg-blue-500/10 text-blue-400 border-blue-500/20 px-4 py-1.5 rounded-full backdrop-blur-md uppercase tracking-[0.2em] font-bold text-[10px]">
+              <Sparkles className="w-3 h-3 mr-2" />
+              Empresa Paraguaya de Economía Colaborativa
+            </Badge>
+            <h1 className="text-5xl lg:text-7xl xl:text-8xl font-black text-slate-900 dark:text-white leading-tight mb-8">
+              Te conectamos <br />
+              con tu <span className="gradient-text italic">Éxito Financiero</span>
+            </h1>
+            <p className="text-xl text-slate-600 dark:text-slate-400 mb-10 leading-relaxed max-w-xl font-light">
+              Entregamos beneficios y soluciones en Educación Financiera, Empresarial e Inversiones. Ayudamos a las personas a generar riqueza con una actitud diferente.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link to="/register">
+                <Button size="lg" className="h-16 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-2xl shadow-blue-500/20 group">
+                  Saber Más
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <Link to="/app/tiendas">
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-2xl border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 backdrop-blur-md text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 text-lg font-bold">
+                  Ver Marketplace
+                </Button>
+              </Link>
             </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
 
-    <motion.div
-      animate={{ y: [0, 10, 0] }}
-      transition={{ duration: 2, repeat: Infinity }}
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:block"
-    >
-      <div className="w-6 h-10 border-2 border-slate-300/50 dark:border-white/30 rounded-full flex justify-center pt-2">
-        <div className="w-1.5 h-3 bg-slate-400/50 dark:bg-white/50 rounded-full" />
+            <div className="mt-12 flex items-center gap-8 grayscale opacity-70 dark:opacity-50 contrast-125">
+              <div className="flex flex-col">
+                <span className="text-slate-900 dark:text-white font-black text-2xl leading-none tracking-tighter">OSCORP</span>
+                <span className="text-[8px] text-blue-600 dark:text-blue-400 tracking-[0.3em] font-bold">INGENIO EMPRESARIAL</span>
+              </div>
+              <div className="h-8 w-[1px] bg-slate-200 dark:bg-white/10" />
+              <div className="flex flex-col">
+                <span className="text-slate-900 dark:text-white font-black text-xl leading-none tracking-tighter uppercase">IM</span>
+                <span className="text-[8px] text-blue-600 dark:text-blue-400 tracking-[0.3em] font-bold uppercase">Ingenio Millonario</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Unified Ecosystem Mockup */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="relative"
+          >
+            <div className="relative z-20 group">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-[2.5rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <img
+                src="/images/brand/ecosystem-full.png"
+                alt="Oscorp Ecosystem"
+                className="relative z-10 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 glow-box w-full h-auto transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+              {/* Subtle glass overlay logic can be added here if needed */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 rounded-[2.6rem] blur opacity-20 dark:opacity-25 group-hover:opacity-40 transition-opacity" />
+            </div>
+          </motion.div>
+        </div>
       </div>
-    </motion.div>
-  </section>
-);
+    </section>
+  );
+};
 
 // ─── Services ───────────────────────────────────────────────────────
-const ServicesSection = () => {
-  const services = [
+const PillarSection = () => {
+  const pillars = [
     {
+      title: "Fintech Crowdfunding",
+      subtitle: "Billetera & Inversiones",
+      desc: "Solución integral para pagar con QR, transferir dinero de forma instantánea y participar en proyectos de inversión inteligente.",
       icon: TrendingUp,
-      title: 'Ingenio Millonario',
-      description: 'Curso especializado en Educación Financiera (Aula Invertida). Creamos la app IM/Matriz Financiera. Convenios con Universidades, Municipios y el MEC.',
-      color: 'from-blue-500 to-blue-600',
-      features: ['Matriz Financiera', 'Gestión de Activos', 'Proyecciones', 'Certificación'],
-      link: '/ingenio'
+      color: "blue",
+      items: ["Carga y Pago QR Dinámico", "Transferencias Inmediatas", "Inversiones BVPASA & Crowdfunding"]
     },
     {
-      icon: Wallet,
-      title: 'Fintech OSCORP-i',
-      description: 'Plataforma de Crowdfunding para inversiones. Conectamos personas que necesitan capital con inversores. Aliados: CADIEM, INVESTOR, BVPASA.',
-      color: 'from-violet-500 to-violet-600',
-      features: ['Crowdfunding', 'Inversiones', 'Wallet Digital', 'Pagos QR'],
-      link: '/wallet'
-    },
-    {
+      title: "Ecommerce Oscorp-e",
+      subtitle: "Centro de Comercio",
+      desc: "Plataforma multivendedor para escalar tu negocio. Vende productos y servicios las 24hs a nivel nacional con respaldo corporativo.",
       icon: ShoppingBag,
-      title: 'E-Commerce OSCORP-e',
-      description: 'Plataforma de Comercio Electrónico para venta de productos y servicios las 24hs a nivel nacional. Asesoramiento integral a microempresas.',
-      color: 'from-emerald-500 to-emerald-600',
-      features: ['Tienda Propia', 'Pagos Integrados', 'Gestión de Stock', 'Analytics'],
-      link: '/app/tiendas'
+      color: "violet",
+      items: ["Punto de Venta POS", "Tiendas Premium 24/7", "Red Nacional de Vendedores"]
+    },
+    {
+      title: "Educación IM",
+      subtitle: "Ingenio Millonario",
+      desc: "Desarrolla tu mentalidad de éxito mediante educación financiera premium y herramientas de control de patrimonio personal.",
+      icon: GraduationCap,
+      color: "cyan",
+      items: ["Matriz Financiero", "Metodología 5S", "Mentoría Empresarial"]
     }
   ];
 
   return (
-    <section id="servicios" className="py-16 sm:py-24 lg:py-32 bg-white dark:bg-slate-950 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-10 sm:mb-16 lg:mb-20"
-        >
-          <Badge className="mb-3 sm:mb-4 py-1 px-3 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-none font-semibold text-xs">
-            SERVICIOS EXCLUSIVOS
-          </Badge>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-slate-900 dark:text-white mb-3 sm:mb-6">
-            Ecosistema de{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
-              Alto Impacto
-            </span>
-          </h2>
-          <p className="text-sm sm:text-lg lg:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-light">
-            Tres pilares fundamentales diseñados para la nueva era de la economía digital en Paraguay.
-          </p>
-        </motion.div>
+    <section id="servicios" className="py-24 sm:py-32 bg-slate-50 dark:bg-slate-900 transition-colors duration-500 overflow-hidden">
+      <div className="container mx-auto px-6">
+        <div className="text-center max-w-3xl mx-auto mb-16 sm:mb-20">
+          <Badge variant="outline" className="mb-4 border-blue-500/20 text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black text-[10px]">¿QUÉ HACEMOS?</Badge>
+          <h2 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white mb-6">Nuestros Pilares</h2>
+          <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 italic">"Ayudamos a las personas para que descubran, desarrollen y aprovechen su ACTITUD para generar RIQUEZA."</p>
+        </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {services.map((service, index) => (
+        <div className="grid md:grid-cols-3 gap-8">
+          {pillars.map((pillar, i) => (
             <motion.div
-              key={service.title}
+              key={i}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="group"
+              transition={{ delay: i * 0.1 }}
+              className="p-8 sm:p-10 rounded-[2.5rem] bg-white dark:bg-slate-950 border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-blue-500/30 transition-all duration-500 relative group overflow-hidden"
             >
-              <div className="h-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 transition-all duration-500 border border-slate-100 dark:border-white/5 hover:border-blue-500/30 dark:hover:border-blue-400/20 hover:shadow-xl group-hover:-translate-y-1">
-                <div className={cn(
-                  'w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mb-5 sm:mb-8 shadow-lg transition-transform duration-500 group-hover:scale-110',
-                  'bg-gradient-to-br', service.color
-                )}>
-                  <service.icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-                </div>
-
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-4">{service.title}</h3>
-                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-5 sm:mb-8 leading-relaxed">{service.description}</p>
-
-                <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
-                  {service.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
-                      <div className="p-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shrink-0">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      </div>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <Link to={service.link}>
-                  <Button variant="ghost" className="w-full h-11 sm:h-12 rounded-xl group-hover:bg-slate-900 dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-slate-900 transition-all duration-300 border border-slate-200 dark:border-white/10 dark:text-white text-sm">
-                    Saber Más
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
+              <div className={cn("w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mb-8 bg-blue-50 dark:bg-white/5 group-hover:bg-blue-600 transition-all duration-300")}>
+                <pillar.icon className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-500 group-hover:text-white" />
               </div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{pillar.title}</h3>
+              <p className="text-blue-600 dark:text-blue-400 font-bold mb-6 text-[10px] uppercase tracking-widest">{pillar.subtitle}</p>
+              <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed text-sm sm:text-base font-light">{pillar.desc}</p>
+              <ul className="space-y-3">
+                {pillar.items.map((item, j) => (
+                  <li key={j} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-xs font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-blue-600/5 rounded-full blur-[60px]" />
             </motion.div>
           ))}
         </div>
@@ -375,8 +346,151 @@ const ServicesSection = () => {
   );
 };
 
+// ─── Ecosistema Detallado ───────────────────────────────────────────
+const EcosistemaSection = () => {
+  const sections = [
+    {
+      id: "fintech",
+      title: "Billetera Digital",
+      icon: QrCode,
+      color: "from-blue-600 to-indigo-600",
+      features: [
+        { title: "Pagos QR Instantáneos", desc: "Escanea y paga en segundos en cualquier comercio adherido.", icon: Zap },
+        { title: "Cargas y Retiros", desc: "Gestiona tu efectivo de forma digital con total seguridad.", icon: ArrowUpRight },
+        { title: "Transferencias", desc: "Envía dinero a otros usuarios de la red Oscorp sin comisiones.", icon: Globe },
+        { title: "Préstamos", desc: "Accede a líneas de crédito adaptadas a tu perfil financiero.", icon: ShieldCheck }
+      ],
+      image: "/images/brand/ecosystem-tablet-phone.png"
+    },
+    {
+      id: "seller",
+      title: "Plataforma de Vendedores",
+      icon: LayoutDashboard,
+      color: "from-violet-600 to-purple-600",
+      features: [
+        { title: "POS Profesional", desc: "Terminal punto de venta con soporte para códigos de barras.", icon: ShoppingBag },
+        { title: "Gestión de Stock", desc: "Control de inventario en tiempo real para productos y servicios.", icon: Package },
+        { title: "Ventas a Crédito", desc: "Administra las cuentas corrientes de tus clientes fieles.", icon: CreditCard },
+        { title: "Multi-Red", desc: "Tus productos visibles en todo el ecosistema Oscorp-e.", icon: Globe }
+      ],
+      image: "/images/brand/hero-mockup.png"
+    },
+    {
+      id: "management",
+      title: "Inteligencia de Negocios",
+      icon: LineChart,
+      color: "from-emerald-600 to-teal-600",
+      features: [
+        { title: "Reportes en Tiempo Real", desc: "Visualiza tus KPIs de ventas, ganancias y comisiones.", icon: BarChart3 },
+        { title: "Exportación Profesional", desc: "Genera reportes en PDF, Excel y CSV para tu contabilidad.", icon: FileText },
+        { title: "Control Financiero", desc: "Seguimiento automático de ingresos y egresos del negocio.", icon: TrendingUp },
+        { title: "Gestión de Proveedores", desc: "Mantén ordenado tu historial de compras y suministros.", icon: Users }
+      ],
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2026"
+    }
+  ];
+
+  return (
+    <section className="py-24 sm:py-32 bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="container mx-auto px-6">
+        <div className="text-center mb-20">
+          <Badge className="mb-4 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none font-black text-[10px] tracking-widest uppercase">Ecosistema Oscorp</Badge>
+          <h2 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">Soluciones 360° para tu <span className="gradient-text italic">Crecimiento</span></h2>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-3xl mx-auto font-light">
+            No solo somos una plataforma, somos una red integrada de servicios diseñados para potenciar cada aspecto de tu vida financiera y empresarial.
+          </p>
+        </div>
+
+        <div className="space-y-32">
+          {sections.map((section, idx) => (
+            <div key={section.id} className={cn(
+              "flex flex-col lg:flex-row items-center gap-16 lg:gap-24",
+              idx % 2 !== 0 && "lg:flex-row-reverse"
+            )}>
+              {/* Content */}
+              <motion.div
+                initial={{ opacity: 0, x: idx % 2 === 0 ? -50 : 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="flex-1 space-y-10"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br shadow-xl", section.color)}>
+                    <section.icon className="w-7 h-7 text-white" />
+                  </div>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">{section.title}</h3>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-8">
+                  {section.features.map((feat, fidx) => (
+                    <div key={fidx} className="space-y-2 group">
+                      <div className="flex items-center gap-3">
+                        <feat.icon className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                        <h4 className="font-bold text-slate-900 dark:text-white text-lg">{feat.title}</h4>
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed font-light">{feat.desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <Link to="/register">
+                  <Button className="h-14 px-8 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-bold group mt-4">
+                    Comenzar Ahora
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              </motion.div>
+
+              {/* Visual */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, rotate: idx % 2 === 0 ? 5 : -5 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                viewport={{ once: true }}
+                className="flex-1 relative"
+              >
+                <div className={cn("absolute inset-0 bg-gradient-to-br opacity-20 blur-[100px] rounded-full", section.color)} />
+                <div className="relative rounded-[2rem] overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl glow-box">
+                  <img src={section.image} alt={section.title} className="w-full h-auto object-cover max-h-[400px]" />
+                </div>
+              </motion.div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // ─── Marketplace ────────────────────────────────────────────────────
+interface StoreData {
+  id: string;
+  name: string;
+  slug: string;
+  banner?: string;
+  logo?: string;
+  category?: string;
+  productCount?: number;
+  rating?: number | string;
+}
+
 const MarketplaceSection = () => {
+  const [stores, setStores] = useState<StoreData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const data = await storesApi.getAll();
+        setStores(data.slice(0, 4)); // Show first 4 stores
+      } catch (error) {
+        console.error('Error fetching stores:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStores();
+  }, []);
+
   const categories = [
     { name: 'Tecnología', icon: Zap, count: '1.2K' },
     { name: 'Moda', icon: ShoppingBag, count: '3.5K' },
@@ -384,13 +498,6 @@ const MarketplaceSection = () => {
     { name: 'Deportes', icon: TrendingUp, count: '650' },
     { name: 'Educación', icon: BookOpen, count: '420' },
     { name: 'Servicios', icon: Globe, count: '280' },
-  ];
-
-  const featuredStores = [
-    { name: 'TechPlus', category: 'Tecnología', products: 234, rating: 4.8, gradient: 'from-blue-600 to-cyan-500' },
-    { name: 'Moda Express', category: 'Ropa y Moda', products: 567, rating: 4.6, gradient: 'from-pink-500 to-rose-500' },
-    { name: 'Hogar Perfecto', category: 'Hogar', products: 189, rating: 4.9, gradient: 'from-emerald-500 to-teal-500' },
-    { name: 'Deportes Pro', category: 'Deportes', products: 345, rating: 4.7, gradient: 'from-orange-500 to-amber-500' },
   ];
 
   return (
@@ -453,43 +560,59 @@ const MarketplaceSection = () => {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
-            {featuredStores.map((store, index) => (
-              <motion.div
-                key={store.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white dark:bg-slate-800/80 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 dark:border-white/5 group"
-              >
-                <div className={cn('h-24 sm:h-36 lg:h-44 relative bg-gradient-to-br', store.gradient)}>
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors" />
-                  <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
-                    <Badge className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white border-none font-bold backdrop-blur-md text-[10px] sm:text-xs px-1.5 sm:px-2.5">
-                      {store.category}
-                    </Badge>
-                  </div>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
-                    <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg border-2 border-white">
-                      <Package className="w-5 h-5 sm:w-7 sm:h-7 text-slate-400" />
+            {loading ? (
+              [1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white dark:bg-slate-800/80 rounded-2xl sm:rounded-3xl h-64 animate-pulse" />
+              ))
+            ) : (
+              stores.map((store, index) => (
+                <motion.div
+                  key={store.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white dark:bg-slate-800/80 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 dark:border-white/5 group"
+                >
+                  <Link to={`/tienda/${store.slug}`}>
+                    <div className={cn('h-24 sm:h-36 lg:h-44 relative bg-gradient-to-br from-blue-600 to-indigo-600')}>
+                      {store.banner ? (
+                        <img src={store.banner} className="w-full h-full object-cover" alt={store.name} />
+                      ) : (
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors" />
+                      )}
+                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+                        <Badge className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white border-none font-bold backdrop-blur-md text-[10px] sm:text-xs px-1.5 sm:px-2.5">
+                          {store.category || 'General'}
+                        </Badge>
+                      </div>
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+                        <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg border-2 border-white">
+                          {store.logo ? (
+                            <img src={store.logo} className="w-full h-full rounded-lg object-cover" alt={store.name} />
+                          ) : (
+                            <Package className="w-5 h-5 sm:w-7 sm:h-7 text-slate-400" />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="p-3 sm:p-5">
-                  <h4 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors text-center">{store.name}</h4>
-                  <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-slate-100 dark:border-white/5 mt-2">
-                    <div className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-bold">
-                      <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" />
-                      {store.products}
+                    <div className="p-3 sm:p-5">
+                      <h4 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors text-center truncate">{store.name}</h4>
+                      <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-slate-100 dark:border-white/5 mt-2">
+                        <div className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-bold">
+                          <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" />
+                          {store.productCount || 0}
+                        </div>
+                        <div className="flex items-center gap-0.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                          <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
+                          {store.rating || '5.0'}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-0.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                      <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
-                      {store.rating}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                  </Link>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
 
@@ -535,42 +658,21 @@ const MarketplaceSection = () => {
 
 // ─── About ──────────────────────────────────────────────────────────
 const AboutSection = () => (
-  <section id="nosotros" className="py-16 sm:py-24 lg:py-32 bg-white dark:bg-slate-950 transition-colors">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+  <section id="nosotros" className="py-32 bg-white dark:bg-slate-950 transition-colors duration-500 overflow-hidden relative">
+    <div className="container mx-auto px-6">
+      <div className="grid lg:grid-cols-2 gap-20 items-center">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
+          className="relative"
         >
-          <Badge className="mb-4 sm:mb-6 py-1 px-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none font-bold text-xs">
-            <Users className="w-3.5 h-3.5 mr-1.5" />
-            NUESTRA ESENCIA
-          </Badge>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-slate-900 dark:text-white mb-4 sm:mb-8">
-            Ingenio{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
-              Empresarial
-            </span>
-          </h2>
-
-          <div className="space-y-4 sm:space-y-6 text-sm sm:text-lg text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-6 sm:mb-10">
-            <p>
-              Somos una empresa de <span className="font-medium text-slate-900 dark:text-white">economía colaborativa</span>.
-              Ayudamos a las personas para que descubran, desarrollen y aprovechen su ACTITUD para generar RIQUEZA.
-            </p>
-            <blockquote className="border-l-4 border-blue-600 pl-4 sm:pl-6 italic text-slate-900 dark:text-white bg-slate-50 dark:bg-white/5 py-4 sm:py-5 pr-4 rounded-r-xl sm:rounded-r-2xl text-sm sm:text-lg">
-              "Desafiamos el cambio, la zona de confort, la crisis y los problemas al CREER, CREAR y CRECER de una forma diferente."
-            </blockquote>
-            <p>
-              Apoyamos los sueños de las personas que quieran dar significado a sus vidas para que se conviertan en su YO más grande.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {['Ingenio', 'Integridad', 'Liderazgo', 'Innovación', 'Creatividad', 'Conocimiento', 'Emprendimiento'].map((value) => (
-              <Badge key={value} variant="secondary" className="text-xs py-1 px-2.5">{value}</Badge>
-            ))}
+          <div className="relative rounded-[3rem] overflow-hidden border border-slate-200 dark:border-white/10 glow-box">
+            <img src="/images/brand/education-concept.png" className="w-full h-[500px] object-cover opacity-80 dark:opacity-60" alt="Team" />
+            <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-950 to-transparent" />
+            <div className="absolute bottom-10 left-10 right-10">
+              <p className="text-3xl font-black text-slate-900 dark:text-white italic leading-tight">"Apoyamos los sueños de las personas."</p>
+            </div>
           </div>
         </motion.div>
 
@@ -578,28 +680,20 @@ const AboutSection = () => (
           initial={{ opacity: 0, x: 30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          className="relative"
         >
-          <div className="absolute -inset-10 bg-gradient-to-r from-blue-500/10 to-violet-500/10 rounded-full blur-[100px] animate-pulse" />
-          <div className="relative grid grid-cols-2 gap-3 sm:gap-5">
-            <img
-              src="https://images.unsplash.com/photo-1522071823991-b9671f9d7f1f?w=800"
-              alt="Oscorp Education"
-              className="rounded-2xl sm:rounded-3xl shadow-2xl w-full h-44 sm:h-72 lg:h-[28rem] object-cover"
-            />
-            <div className="pt-6 sm:pt-10">
-              <img
-                src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=800"
-                alt="Oscorp Business"
-                className="rounded-2xl sm:rounded-3xl shadow-2xl w-full h-44 sm:h-72 lg:h-[28rem] object-cover"
-              />
-            </div>
+          <Badge className="mb-6 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/20">NUESTRO PROPÓSITO</Badge>
+          <h2 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white mb-8">Te motivamos a <br /><span className="gradient-text">soñar en grande</span></h2>
+          <div className="space-y-6 text-xl text-slate-600 dark:text-slate-400 font-light leading-relaxed">
+            <p>Apoyamos los sueños de las personas que quieran dar significado a sus vidas para que se conviertan en su YO más grande. Te motivamos a que sueñes en grande, a que lo hagas de una manera diferente y a que superes los obstáculos de TU propia vida.</p>
+            <p>Nosotros sabemos que puedes y el proceso para hacerlo te dará gran felicidad.</p>
           </div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-2xl border border-slate-100 dark:border-white/10">
-            <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">100%</p>
-              <p className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">Nacional</p>
-            </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-12">
+            {['Ingenio', 'Integridad', 'Liderazgo', 'Innovación'].map((v) => (
+              <div key={v} className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-center shadow-sm">
+                <span className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest">{v}</span>
+              </div>
+            ))}
           </div>
         </motion.div>
       </div>
@@ -673,9 +767,9 @@ const TestimonialsSection = () => {
 
 // ─── Contact ────────────────────────────────────────────────────────
 const ContactSection = () => (
-  <section id="contacto" className="py-16 sm:py-24 lg:py-32 bg-slate-900 overflow-hidden relative">
-    <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px]" />
-    <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-violet-600/10 rounded-full blur-[120px]" />
+  <section id="contacto" className="py-16 sm:py-24 lg:py-32 bg-white dark:bg-slate-900 transition-colors duration-500 overflow-hidden relative">
+    <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-600/5 dark:bg-blue-600/10 rounded-full blur-[120px]" />
+    <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-purple-600/5 dark:bg-purple-600/10 rounded-full blur-[120px]" />
 
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
@@ -684,29 +778,29 @@ const ContactSection = () => (
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
         >
-          <Badge className="mb-4 sm:mb-6 py-1 px-3 bg-white/5 text-white border-white/10 font-bold text-xs">
+          <Badge className="mb-4 sm:mb-6 py-1 px-3 bg-blue-100 dark:bg-white/5 text-blue-600 dark:text-white border-blue-200 dark:border-white/10 font-bold text-xs uppercase tracking-widest">
             CONEXIÓN GLOBAL
           </Badge>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-6">
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white mb-4 sm:mb-6 leading-tight">
             Liderazgo en <span className="italic">Acción</span>
           </h2>
-          <p className="text-sm sm:text-lg text-slate-400 mb-8 sm:mb-10 font-light leading-relaxed">
+          <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-400 mb-8 sm:mb-10 font-light leading-relaxed">
             Estamos listos para potenciar tu visión corporativa. Contacta con nuestro equipo de expertos.
           </p>
 
           <div className="space-y-5 sm:space-y-6">
             {[
               { icon: Phone, label: 'Línea Directa', value: '0972 540 579 / 0975 675 844', hoverColor: 'group-hover:bg-blue-600' },
-              { icon: Mail, label: 'Consultas', value: 'info@oscorp.com.py', hoverColor: 'group-hover:bg-violet-600' },
-              { icon: MapPin, label: 'Sede Central', value: 'Coronel Bogado, Itapúa', hoverColor: 'group-hover:bg-emerald-600' },
+              { icon: Mail, label: 'Consultas', value: 'info@oscorp.com.py', hoverColor: 'group-hover:bg-blue-700' },
+              { icon: MapPin, label: 'Sede Central', value: 'Coronel Bogado, Itapúa', hoverColor: 'group-hover:bg-blue-800' },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-4 group">
-                <div className={cn('w-11 h-11 sm:w-12 sm:h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 transition-colors duration-300 shrink-0', item.hoverColor)}>
-                  <item.icon className="w-5 h-5 text-blue-400 group-hover:text-white transition-colors" />
+                <div className={cn('w-11 h-11 sm:w-12 sm:h-12 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center border border-slate-200 dark:border-white/10 transition-colors duration-300 shrink-0', item.hoverColor)}>
+                  <item.icon className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:text-white transition-colors" />
                 </div>
                 <div>
                   <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">{item.label}</p>
-                  <p className="text-sm sm:text-base font-bold text-white">{item.value}</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">{item.value}</p>
                 </div>
               </div>
             ))}
@@ -717,30 +811,30 @@ const ContactSection = () => (
           initial={{ opacity: 0, x: 30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          className="bg-white/5 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 border border-white/10 shadow-2xl"
+          className="bg-white dark:bg-white/5 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 border border-slate-200 dark:border-white/10 shadow-2xl"
         >
-          <h3 className="text-lg sm:text-xl font-black text-white mb-5 sm:mb-6">Contacto</h3>
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mb-5 sm:mb-6">Envíanos un mensaje</h3>
           <form className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">NOMBRE</label>
-                <input type="text" placeholder="Tu nombre" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">NOMBRE</label>
+                <input type="text" placeholder="Tu nombre" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">EMAIL</label>
-                <input type="email" placeholder="tu@email.com" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">EMAIL</label>
+                <input type="email" placeholder="tu@email.com" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">ASUNTO</label>
-              <input type="text" placeholder="Propósito de tu mensaje" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">ASUNTO</label>
+              <input type="text" placeholder="Propósito de tu mensaje" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">MENSAJE</label>
-              <textarea placeholder="Describe tu consulta..." rows={3} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors resize-none text-sm" />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">MENSAJE</label>
+              <textarea placeholder="Describe tu consulta..." rows={3} className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors resize-none text-sm" />
             </div>
-            <Button className="w-full h-12 bg-white text-slate-950 hover:bg-slate-200 rounded-full font-black text-sm sm:text-base shadow-xl">
-              ENVIAR
+            <Button className="w-full h-12 bg-blue-600 dark:bg-white text-white dark:text-slate-950 hover:bg-blue-700 dark:hover:bg-slate-200 rounded-full font-black text-sm sm:text-base shadow-xl">
+              ENVIAR MENSAJE
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>
@@ -752,47 +846,49 @@ const ContactSection = () => (
 
 // ─── Footer ─────────────────────────────────────────────────────────
 const Footer = () => (
-  <footer className="bg-slate-950 text-white py-10 sm:py-14">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10 mb-8 sm:mb-10">
-        <div className="col-span-2 md:col-span-1">
-          <OscorpLogo className="mb-3" size="sm" />
-          <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
-            Plataforma integral de economía colaborativa en Paraguay.
+  <footer className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white py-20 border-t border-slate-200 dark:border-white/5 transition-colors duration-500">
+    <div className="max-w-7xl mx-auto px-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="space-y-6">
+          <BrandLogo size="lg" variant="auto" />
+          <p className="text-slate-600 dark:text-slate-500 leading-relaxed font-light">
+            Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones en Paraguay.
           </p>
         </div>
         <div>
-          <h4 className="font-semibold mb-3 text-sm">Plataforma</h4>
-          <ul className="space-y-2 text-xs sm:text-sm text-gray-400">
-            <li><Link to="/app/tiendas" className="hover:text-white transition-colors">Tienda</Link></li>
-            <li><Link to="/app/cursos" className="hover:text-white transition-colors">Cursos</Link></li>
-            <li><Link to="/app/wallet" className="hover:text-white transition-colors">Wallet</Link></li>
-            <li><Link to="/app/ingenio" className="hover:text-white transition-colors">Ingenio Millonario</Link></li>
+          <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Plataforma</h4>
+          <ul className="space-y-4 text-slate-600 dark:text-slate-400">
+            <li><Link to="/app/tiendas" className="hover:text-blue-600 transition-colors">Ecommerce OSCORP-e</Link></li>
+            <li><Link to="/ingenio" className="hover:text-blue-600 transition-colors">Ingenio Millonario</Link></li>
+            <li><Link to="/wallet" className="hover:text-blue-600 transition-colors">Fintech Crowdfunding</Link></li>
+            <li><Link to="/app/productos" className="hover:text-blue-600 transition-colors">Marketplace</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold mb-3 text-sm">Empresa</h4>
-          <ul className="space-y-2 text-xs sm:text-sm text-gray-400">
-            <li><a href="#nosotros" className="hover:text-white transition-colors">Nosotros</a></li>
-            <li><a href="#servicios" className="hover:text-white transition-colors">Servicios</a></li>
-            <li><a href="#marketplace" className="hover:text-white transition-colors">Marketplace</a></li>
-            <li><a href="#contacto" className="hover:text-white transition-colors">Contacto</a></li>
+          <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Compañía</h4>
+          <ul className="space-y-4 text-slate-600 dark:text-slate-400">
+            <li><a href="#nosotros" className="hover:text-blue-600 transition-colors">Propósito</a></li>
+            <li><a href="#servicios" className="hover:text-blue-600 transition-colors">Nuestros Pilares</a></li>
+            <li><a href="#marketplace" className="hover:text-blue-600 transition-colors">Tiendas Premium</a></li>
+            <li><a href="#contacto" className="hover:text-blue-600 transition-colors">Contacto</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Contacto</h4>
+          <ul className="space-y-4 text-slate-600 dark:text-slate-400">
+            <li className="flex items-center gap-3"><MapPin className="w-4 h-4 text-blue-600" /> Coronel Bogado, Itapúa</li>
+            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> +595 ...</li>
+            <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-blue-600" /> info@oscorp.com.py</li>
           </ul>
         </div>
       </div>
-
-      <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-gray-500 text-xs sm:text-sm">
-          © {new Date().getFullYear()} Oscorp - Ingenio Empresarial
+      <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <p className="text-slate-500 dark:text-slate-600 text-xs font-bold uppercase tracking-widest">
+          © {new Date().getFullYear()} Oscorp - Ingenio Empresarial. Todos los derechos reservados.
         </p>
-        <div className="flex gap-3">
-          {[
-            { icon: Facebook, color: 'hover:bg-blue-600' },
-            { icon: Instagram, color: 'hover:bg-pink-600' },
-            { icon: Twitter, color: 'hover:bg-sky-500' },
-            { icon: Linkedin, color: 'hover:bg-blue-700' },
-          ].map(({ icon: Icon, color }, i) => (
-            <a key={i} href="#" className={cn('w-9 h-9 bg-white/10 rounded-full flex items-center justify-center transition-colors', color)}>
+        <div className="flex gap-4">
+          {[Facebook, Instagram, Twitter].map((Icon, i) => (
+            <a key={i} href="#" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-600 dark:text-white">
               <Icon className="w-4 h-4" />
             </a>
           ))}
@@ -808,12 +904,14 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white dark:bg-slate-950 overflow-x-hidden">
       <Navbar />
       <HeroSection />
-      <ServicesSection />
+      <PillarSection />
+      <EcosistemaSection />
       <MarketplaceSection />
       <AboutSection />
       <TestimonialsSection />
       <ContactSection />
       <Footer />
+      <WhatsAppButton />
       <InstallPrompt />
     </div>
   );

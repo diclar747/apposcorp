@@ -117,7 +117,14 @@ export default function StorePage() {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600" />
+          <div className="w-full h-full relative">
+            <img
+              src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80"
+              alt="Agroferia Banner"
+              className="w-full h-full object-cover opacity-60"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/40 via-indigo-600/40 to-violet-600/40 mix-blend-multiply" />
+          </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 

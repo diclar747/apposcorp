@@ -163,13 +163,13 @@ export default function ClientStores() {
                         <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
                     </div>
                 ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                    <AnimatePresence mode="popLayout">
-                        {filteredStores.map((store, index) => (
-                            <StoreCard key={store.id} store={store} index={index} />
-                        ))}
-                    </AnimatePresence>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                        <AnimatePresence mode="popLayout">
+                            {filteredStores.map((store, index) => (
+                                <StoreCard key={store.id} store={store} index={index} />
+                            ))}
+                        </AnimatePresence>
+                    </div>
                 )}
 
                 {!loading && filteredStores.length === 0 && (
@@ -211,7 +211,7 @@ function StoreCard({ store, index }: { store: any, index: number }) {
             whileHover={{ y: -10 }}
             className="group relative"
         >
-            <Link to={`/app/tienda?store=${store.slug}`} className="block">
+            <Link to={`/tienda/${store.slug}`} className="block">
                 <div className="bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden border border-gray-100 dark:border-slate-800 shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.12)] transition-all duration-700 h-full flex flex-col">
                     {/* Cover Image */}
                     <div className="h-44 relative overflow-hidden bg-gray-100">

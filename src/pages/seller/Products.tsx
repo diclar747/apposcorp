@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Upload, X, ImagePlus, Link2 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { productsApi, suppliersApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -41,7 +41,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { compressImage } from '@/lib/imageUtils';
 import type { Product, ProductType, ProductVisibility } from '@/types';
+
+const MAX_PRODUCT_IMAGES = 5;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const PRODUCT_CATEGORIES = [
   'Tecnología',
@@ -118,6 +122,59 @@ export default function SellerProducts() {
     supplierId: null
   });
 
+  // Image management state
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten archivos de imagen');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('La imagen no puede superar 5MB');
+      return;
+    }
+    const currentImages = formData.images || [];
+    if (currentImages.length >= MAX_PRODUCT_IMAGES) {
+      toast.error(`Máximo ${MAX_PRODUCT_IMAGES} imágenes por producto`);
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const compressed = await compressImage(file, 800, 800, 0.8);
+      setFormData(prev => ({ ...prev, images: [...(prev.images || []), compressed] }));
+    } catch {
+      toast.error('Error al procesar la imagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleAddImageUrl = () => {
+    const url = imageUrl.trim();
+    if (!url) return;
+    if (!/^https?:\/\/.+/.test(url)) {
+      toast.error('Ingresa una URL válida (https://...)');
+      return;
+    }
+    const currentImages = formData.images || [];
+    if (currentImages.length >= MAX_PRODUCT_IMAGES) {
+      toast.error(`Máximo ${MAX_PRODUCT_IMAGES} imágenes por producto`);
+      return;
+    }
+    setFormData(prev => ({ ...prev, images: [...(prev.images || []), url] }));
+    setImageUrl('');
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index)
+    }));
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchTerm.toLowerCase());
@@ -126,6 +183,7 @@ export default function SellerProducts() {
   });
 
   const handleOpenModal = (product?: Product) => {
+    setImageUrl('');
     if (product) {
       setEditingProduct(product);
       setFormData(product);
@@ -143,7 +201,7 @@ export default function SellerProducts() {
         type: 'physical',
         visibility: 'both',
         status: 'active',
-        images: ['https://images.unsplash.com/photo-1586769852836-bc069f19e1b6?w=600&h=600&fit=crop'],
+        images: [],
         supplierId: null
       });
     }
@@ -382,6 +440,94 @@ export default function SellerProducts() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe las características principales..."
               />
+            </div>
+
+            {/* Image Management Section */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <ImagePlus className="w-4 h-4" />
+                Imágenes del Producto ({(formData.images || []).length}/{MAX_PRODUCT_IMAGES})
+              </Label>
+
+              {/* Image previews */}
+              {(formData.images || []).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {(formData.images || []).map((img, idx) => (
+                    <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={img} alt={`Imagen ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        <X className="w-5 h-5 text-white" />
+                      </button>
+                      {idx === 0 && (
+                        <span className="absolute bottom-0 left-0 right-0 bg-green-600 text-white text-[9px] text-center py-0.5">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload area */}
+              {(formData.images || []).length < MAX_PRODUCT_IMAGES && (
+                <div className="space-y-2">
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      files.forEach(f => handleImageFile(f));
+                      e.target.value = '';
+                    }}
+                  />
+                  <div
+                    onClick={() => imageInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const files = Array.from(e.dataTransfer.files);
+                      files.forEach(f => handleImageFile(f));
+                    }}
+                    className="border-2 border-dashed border-gray-300 hover:border-green-400 rounded-lg p-4 text-center cursor-pointer transition-colors"
+                  >
+                    {uploadingImage ? (
+                      <div className="flex items-center justify-center gap-2 text-gray-500">
+                        <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                        Procesando imagen...
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-gray-500">
+                        <Upload className="w-5 h-5" />
+                        <span className="text-xs">Arrastra imágenes aquí o haz clic para seleccionar</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* URL input */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <Input
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImageUrl())}
+                        placeholder="Pegar URL de imagen (https://...)"
+                        className="pl-8 text-sm h-9"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="h-9" onClick={handleAddImageUrl}>
+                      Agregar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

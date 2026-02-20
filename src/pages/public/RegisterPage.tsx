@@ -16,8 +16,8 @@ const steps = [
 ];
 
 const accountTypes = [
-  { id: 'client', label: 'Cliente', description: 'Compra productos y accede a cursos', icon: UserCircle },
-  { id: 'seller', label: 'Vendedor', description: 'Vende tus productos y servicios', icon: Store },
+  { id: 'client', label: 'Usuario', description: 'Accede a tu billetera digital, compra productos y realiza pagos', icon: UserCircle },
+  { id: 'seller', label: 'Comerciante', description: 'Gestiona tu tienda, vende productos y accede al sistema comercial completo', icon: Store },
 ];
 
 export default function RegisterPage() {
@@ -268,7 +268,7 @@ export default function RegisterPage() {
                 <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
                 <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
                 <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
-                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Cliente' : 'Vendedor'}</p>
+                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : 'Comerciante'}</p>
               </div>
             </div>
           )}
