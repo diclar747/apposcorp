@@ -850,7 +850,7 @@ const Footer = () => (
     <div className="max-w-7xl mx-auto px-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
         <div className="space-y-6">
-          <BrandLogo size="lg" variant="auto" />
+          <BrandLogo size="lg" variant="auto" className="-ml-1" />
           <p className="text-slate-600 dark:text-slate-500 leading-relaxed font-light">
             Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones en Paraguay.
           </p>
@@ -877,7 +877,7 @@ const Footer = () => (
           <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Contacto</h4>
           <ul className="space-y-4 text-slate-600 dark:text-slate-400">
             <li className="flex items-center gap-3"><MapPin className="w-4 h-4 text-blue-600" /> Coronel Bogado, Itapúa</li>
-            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> +595 ...</li>
+            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> +595 972 540 579</li>
             <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-blue-600" /> info@oscorp.com.py</li>
           </ul>
         </div>
