@@ -13,22 +13,22 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'system',
-      resolvedTheme: 'light',
-      
+      theme: 'dark',
+      resolvedTheme: 'dark',
+
       setTheme: (theme) => {
-        const resolved = theme === 'system' 
+        const resolved = theme === 'system'
           ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
           : theme;
-        
+
         set({ theme, resolvedTheme: resolved });
-        
+
         // Apply to document
         const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
         root.classList.add(resolved);
       },
-      
+
       toggleTheme: () => {
         const current = get().resolvedTheme;
         const newTheme = current === 'light' ? 'dark' : 'light';
@@ -42,7 +42,7 @@ export const useThemeStore = create<ThemeState>()(
           const resolved = state.theme === 'system'
             ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
             : state.theme;
-          
+
           const root = window.document.documentElement;
           root.classList.remove('light', 'dark');
           root.classList.add(resolved);
