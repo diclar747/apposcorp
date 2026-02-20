@@ -167,6 +167,7 @@ function App() {
         >
           <Route index element={<ClientHome />} />
           <Route path="tiendas" element={<ClientStores />} />
+          <Route path="tienda/:slug" element={<StorePage />} />
           <Route path="tienda" element={<ClientStore />} />
           <Route path="producto/:id" element={<ClientProduct />} />
           <Route path="carrito" element={<ClientCart />} />

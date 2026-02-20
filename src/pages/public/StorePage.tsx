@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store, MapPin, Phone, Clock, Star, ShoppingBag,
@@ -19,6 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const isInApp = location.pathname.startsWith('/app');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -129,28 +131,32 @@ export default function StorePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
         {/* Navigation Overlays */}
-        <div className="absolute top-6 left-6 md:left-12 flex gap-4">
-          <Link to="/app/tiendas">
-            <Button variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-          </Link>
-        </div>
+        {!isInApp && (
+          <>
+            <div className="absolute top-6 left-6 md:left-12 flex gap-4">
+              <Link to="/app/tiendas">
+                <Button variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Volver
+                </Button>
+              </Link>
+            </div>
 
-        <div className="absolute top-6 right-6 md:right-12 flex gap-3">
-          <Button size="icon" variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
-            <Share2 className="w-4 h-4" />
-          </Button>
-        </div>
+            <div className="absolute top-6 right-6 md:right-12 flex gap-3">
+              <Button size="icon" variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
+                <Share2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </>
+        )}
 
         {/* Floating Store Header Info */}
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-end gap-6">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
             <motion.div
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] bg-white dark:bg-slate-900 p-1.5 shadow-2xl relative z-10 overflow-hidden"
+              className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-white dark:bg-slate-900 p-1.5 shadow-2xl relative z-10 overflow-hidden shrink-0"
             >
               {store.logo ? (
                 <img src={store.logo} alt={store.name} className="w-full h-full rounded-[2.2rem] object-cover" />
@@ -160,9 +166,9 @@ export default function StorePage() {
                 </div>
               )}
             </motion.div>
-            <div className="flex-1 pb-2">
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg tracking-tight">
+            <div className="flex-1 pb-2 flex flex-col items-center md:items-start">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg tracking-tight">
                   {store.name}
                 </h1>
                 {store.isVerified && (
@@ -178,19 +184,19 @@ export default function StorePage() {
               <p className="text-gray-300 text-lg max-w-2xl font-light mb-4 line-clamp-1">
                 {store.description}
               </p>
-              <div className="flex flex-wrap items-center gap-6 text-sm text-gray-200 font-medium">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 text-sm text-gray-200 font-medium">
                 <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-white text-base font-bold">{avgRating}</span>
-                  <span className="opacity-70">({reviews.length} reseñas)</span>
+                  <span className="opacity-70">({reviews.length})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-blue-400" />
-                  <span>{store.address}</span>
+                  <span className="line-clamp-1">{store.address}</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full">
                   <ShoppingBag className="w-4 h-4 text-white" />
-                  <span>{store.products?.length || 0} productos</span>
+                  <span className="whitespace-nowrap">{store.products?.length || 0} productos</span>
                 </div>
               </div>
             </div>
@@ -481,8 +487,14 @@ export default function StorePage() {
         </Tabs>
       </div>
 
-      {/* Modern Cart Drawer with Vaul */}
-      <CartDrawer items={items} total={total} removeItem={removeItem} updateQuantity={updateQuantity} />
+      {/* Modern Cart Drawer with Vaul - Moved higher when in-app to avoid BottomNav overlap */}
+      <CartDrawer
+        items={items}
+        total={total}
+        removeItem={removeItem}
+        updateQuantity={updateQuantity}
+        bottomOffset={isInApp ? "bottom-24" : "bottom-10"}
+      />
     </div>
   );
 }
@@ -611,7 +623,7 @@ function ProductCard({ product, onAddToCart, viewMode }: { product: any, onAddTo
   );
 }
 
-function CartDrawer({ items, total, removeItem, updateQuantity }: { items: any[], total: number, removeItem: (id: string) => void, updateQuantity: (id: string, q: number) => void }) {
+function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "bottom-10" }: { items: any[], total: number, removeItem: (id: string) => void, updateQuantity: (id: string, q: number) => void, bottomOffset?: string }) {
   const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
@@ -620,7 +632,10 @@ function CartDrawer({ items, total, removeItem, updateQuantity }: { items: any[]
         <motion.button
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-10 right-10 w-20 h-20 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center shadow-[0_20px_50px_-10px_rgba(37,99,235,0.4)] z-50 group active:scale-95 transition-all"
+          className={cn(
+            "fixed right-6 md:right-10 w-16 h-16 md:w-20 md:h-20 bg-blue-600 text-white rounded-2xl md:rounded-[2rem] flex items-center justify-center shadow-[0_20px_50px_-10px_rgba(37,99,235,0.4)] z-50 group active:scale-95 transition-all",
+            bottomOffset
+          )}
         >
           <div className="relative">
             <ShoppingBag className="w-8 h-8 group-hover:animate-bounce" />
