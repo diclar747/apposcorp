@@ -74,67 +74,68 @@ export function VirtualCard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="relative aspect-[1.586/1] p-5 sm:p-6 flex flex-col justify-between overflow-hidden rounded-2xl"
+            className="relative aspect-[1.586/1] p-6 flex flex-col justify-between overflow-hidden rounded-[2.5rem] group"
             style={{
-              background: 'linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 50%, #111111 100%)',
-              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05)'
+              background: 'linear-gradient(165deg, #1e293b 0%, #0f172a 40%, #020617 100%)',
+              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
             }}
           >
-            {/* Subtle pattern overlay */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-              style={{
-                backgroundImage: `radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 20%, rgba(16,185,129,0.2) 0%, transparent 40%)`
-              }}
-            />
+            {/* Decorative Blur Spheres */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-[60px] pointer-events-none group-hover:bg-blue-500/20 transition-colors duration-700" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none" />
 
-            {/* Top row: Chip + Contactless + Brand */}
+            {/* Top row: Chip + Brand */}
             <div className="flex items-start justify-between relative z-10">
               <div className="flex items-center gap-3">
-                <CardChip />
-                <Wifi className="w-6 h-6 text-white/40 rotate-90" />
+                <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-200/80 via-yellow-400/80 to-yellow-600/80 p-0.5 shadow-inner opacity-80">
+                  <div className="w-full h-full border border-black/10 rounded-[3px]" />
+                </div>
+                <Wifi className="w-6 h-6 text-white/30 rotate-90" />
               </div>
-              <OscorpBrand />
+              <div className="flex flex-col items-end">
+                <span className="text-white text-[13px] font-black tracking-tight leading-none italic">OSCORP</span>
+                <span className="text-white/40 text-[8px] font-bold tracking-[0.2em] leading-none uppercase">Premium</span>
+              </div>
             </div>
 
-            {/* Middle: Card number + mini QR */}
+            {/* Middle: Card number */}
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2">
                 <span
-                  className="text-white text-lg sm:text-xl tracking-[0.18em] font-mono"
-                  style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                  className="text-white text-xl sm:text-2xl tracking-[0.18em] font-mono leading-none"
+                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}
                 >
                   {cardNumber}
                 </span>
                 <button
                   onClick={() => copyToClipboard(cardNumber.replace(/\s/g, ''))}
-                  className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
                 >
                   {copied ? (
                     <span className="text-emerald-400 text-[10px]">&#10003;</span>
                   ) : (
-                    <Copy className="w-3 h-3 text-white/30" />
+                    <Copy className="w-3.5 h-3.5 text-white/30" />
                   )}
                 </button>
               </div>
-              <div className="bg-white p-[3px] rounded-md shadow-md">
+              <div className="bg-white p-[3px] rounded-md shadow-md opacity-80 group-hover:opacity-100 transition-opacity">
                 <QRCodeSVG value={qrValue} size={40} level="M" includeMargin={false} />
               </div>
             </div>
 
-            {/* Bottom: Holder + Expiry + DEBIT label */}
+            {/* Bottom: Holder + Expiry */}
             <div className="flex items-end justify-between relative z-10">
-              <div className="flex items-end gap-6">
+              <div className="flex items-end gap-8">
                 <div>
-                  <p className="text-white/35 text-[8px] uppercase tracking-[0.2em] mb-0.5">Titular</p>
-                  <p className="text-white font-medium uppercase tracking-wider text-xs sm:text-sm">{cardHolder}</p>
+                  <p className="text-white/30 text-[8px] uppercase tracking-[0.2em] mb-1 font-bold">Titular</p>
+                  <p className="text-white font-bold uppercase tracking-wider text-xs sm:text-sm">{cardHolder}</p>
                 </div>
                 <div>
-                  <p className="text-white/35 text-[8px] uppercase tracking-[0.2em] mb-0.5">Vence</p>
-                  <p className="text-white font-medium text-xs sm:text-sm tracking-wider">{expiryDate}</p>
+                  <p className="text-white/30 text-[8px] uppercase tracking-[0.2em] mb-1 font-bold">Vence</p>
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wider">{expiryDate}</p>
                 </div>
               </div>
-              <span className="text-white/50 text-[10px] font-bold uppercase tracking-[0.3em]">Debit</span>
+              <span className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em] italic">DEBIT</span>
             </div>
           </motion.div>
         ) : (
@@ -144,44 +145,46 @@ export function VirtualCard({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.3 }}
-            className="aspect-[1.586/1] relative flex flex-col items-center justify-center rounded-2xl p-6"
+            className="aspect-[1.586/1] relative flex flex-col items-center justify-center rounded-[2.5rem] p-6"
             style={{
-              background: 'linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 50%, #111111 100%)',
-              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05)'
+              background: 'linear-gradient(165deg, #1e293b 0%, #0f172a 40%, #020617 100%)',
+              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
             }}
           >
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-3 right-3 w-8 h-8 rounded-full text-white/50 hover:text-white hover:bg-white/10"
+              className="absolute top-4 right-4 w-9 h-9 rounded-full text-white/30 hover:text-white hover:bg-white/10"
               onClick={() => setShowQR(false)}
             >
               <CreditCard className="w-4 h-4" />
             </Button>
 
-            <div className="bg-white p-3 rounded-xl shadow-lg">
+            <div className="bg-white p-3 rounded-2xl shadow-2xl relative group">
+              <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-2xl group-hover:bg-blue-500/20 transition-all" />
               <QRCodeSVG
                 value={qrValue}
                 size={140}
                 level="H"
                 includeMargin={false}
                 fgColor="#0d0d0d"
+                className="relative z-10"
               />
             </div>
 
-            <div className="mt-3 text-center">
-              <p className="font-semibold text-white text-sm">{cardHolder}</p>
-              <p className="text-[11px] text-white/40">Escanear para pagar</p>
+            <div className="mt-4 text-center">
+              <p className="font-bold text-white text-sm tracking-tight">{cardHolder}</p>
+              <p className="text-[11px] text-white/30 font-medium uppercase tracking-widest mt-0.5">Escanear para pagar</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Toggle button below card */}
-      <div className="flex justify-center mt-3">
+      <div className="flex justify-center mt-4">
         <button
           onClick={() => setShowQR(!showQR)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 px-6 py-2 rounded-full glass-premium text-[11px] font-bold text-muted-foreground hover:text-foreground transition-all uppercase tracking-widest"
         >
           {showQR ? <CreditCard className="w-3.5 h-3.5" /> : <QrCode className="w-3.5 h-3.5" />}
           {showQR ? 'Ver tarjeta' : 'Ver QR'}

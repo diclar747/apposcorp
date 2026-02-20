@@ -16,7 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
-import { getInitials } from '@/lib/utils';
+import { getInitials, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -158,298 +158,238 @@ export default function ClientProfile() {
   };
 
   return (
-    <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="px-4 pt-2">
-        <h1 className="text-xl font-bold text-gray-900">Mi Perfil</h1>
-        <p className="text-sm text-gray-500">Gestiona tu cuenta</p>
+    <div className="pt-6 pb-20 space-y-8 max-w-lg mx-auto px-4">
+      {/* Page Title */}
+      <div className="flex flex-col">
+        <h1 className="text-2xl font-black tracking-tight">Mi Perfil</h1>
+        <p className="text-sm text-muted-foreground/60 font-medium">Gestiona tu cuenta y seguridad</p>
       </div>
 
       {/* Profile Card */}
-      <div className="px-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center">
-              {isEditing ? (
-                <div className="w-full space-y-4">
-                  <div className="flex justify-center mb-4">
-                    <ImageUpload
-                      value={formData.avatar || null}
-                      onChange={(val) => setFormData({ ...formData, avatar: val || '' })}
-                      shape="circle"
-                      maxWidth={300}
-                      maxHeight={300}
-                      label="Foto de perfil"
-                    />
-                  </div>
+      <div className="glass-premium overflow-hidden rounded-[2.5rem] border border-white/10 shadow-2xl">
+        <div className="p-6">
+          <div className="flex flex-col items-center">
+            {isEditing ? (
+              <div className="w-full space-y-4">
+                <div className="flex justify-center mb-4">
+                  <ImageUpload
+                    value={formData.avatar || null}
+                    onChange={(val) => setFormData({ ...formData, avatar: val || '' })}
+                    shape="circle"
+                    maxWidth={300}
+                    maxHeight={300}
+                    label="Foto de perfil"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Nombre</Label>
-                      <Input
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Apellido</Label>
-                      <Input
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Teléfono</Label>
+                    <Label>Nombre</Label>
                     <Input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      className="bg-white/5 border-white/10 rounded-xl"
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label>Dirección</Label>
+                    <Label>Apellido</Label>
                     <Input
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      className="bg-white/5 border-white/10 rounded-xl"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Ciudad</Label>
-                    <Input
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" className="flex-1" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                    <Button className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600" onClick={handleSaveProfile}>Guardar Cambios</Button>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1">
-                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                        {user?.avatar ? (
-                          <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-2xl font-bold text-gray-700">
-                            {user ? getInitials(user.firstName, user.lastName) : 'U'}
-                          </span>
-                        )}
-                      </div>
+
+                <div className="space-y-2">
+                  <Label>Teléfono</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="bg-white/5 border-white/10 rounded-xl"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                  <Button className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700" onClick={handleSaveProfile}>Guardar</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 p-1 shadow-lg group-hover:scale-105 transition-transform duration-500">
+                    <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden border-2 border-slate-900">
+                      {user?.avatar ? (
+                        <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl font-black text-white/80">
+                          {user ? getInitials(user.firstName, user.lastName) : 'U'}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  <button onClick={initEdit} className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 border-2 border-slate-900 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all">
+                    <Edit className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-                  <h2 className="text-xl font-bold text-gray-900 mt-4">
-                    {user?.firstName} {user?.lastName}
-                  </h2>
-                  <p className="text-gray-500">{user?.email}</p>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={initEdit}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editar perfil
-                  </Button>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Info Cards */}
-      <div className="px-4 space-y-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Mail className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-500">Correo electrónico</p>
-                <p className="font-medium">{user?.email}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <Phone className="w-5 h-5 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-500">Teléfono</p>
-                <p className="font-medium">{user?.phone || 'No especificado'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-500">Dirección</p>
-                <p className="font-medium">{user?.address || 'No especificada'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Virtual Card */}
-      <div className="px-4">
-        <h3 className="text-sm font-medium text-gray-500 mb-3 px-1">Mis Productos</h3>
-        <div className="transform scale-[0.98] origin-center">
-          <VirtualCard
-            balance={wallet?.balance || 0}
-            cardNumber={user?.virtualCard?.cardNumber || 'OSC000000'}
-            cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
-            expiryDate="12/28"
-            cvv="***"
-            qrValue={generateQRValue(user?.id || '', user?.firstName || 'Usuario')}
-          />
+                <h2 className="text-xl font-black mt-4 tracking-tight leading-none text-center">
+                  {user?.firstName} {user?.lastName}
+                </h2>
+                <p className="text-muted-foreground/60 text-xs mt-1 font-medium">{user?.email}</p>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Menu */}
-      <div className="px-4">
-        <Card>
-          <CardContent className="p-0">
-            {menuItems.map((item, index) => {
-              if (item.label === 'Métodos de pago') {
-                return (
-                  <Dialog key={item.label} open={isBankOpen} onOpenChange={setIsBankOpen}>
-                    <DialogTrigger asChild>
-                      <button
-                        onClick={initBankData}
-                        className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <item.icon className="w-5 h-5 text-gray-500" />
-                          <span className="text-gray-700">Datos Bancarios (Retiros)</span>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Datos Bancarios</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-2">
-                        <div className="space-y-2">
-                          <Label>Banco</Label>
-                          <Input
-                            value={bankFormData.bankName}
-                            onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
-                            placeholder="Ej: Banco Familiar"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Nro. de Cuenta</Label>
-                          <Input
-                            value={bankFormData.accountNumber}
-                            onChange={(e) => setBankFormData({ ...bankFormData, accountNumber: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Tipo de Cuenta</Label>
-                          <Select
-                            value={bankFormData.accountType}
-                            onValueChange={(val) => setBankFormData({ ...bankFormData, accountType: val })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="savings">Caja de Ahorro</SelectItem>
-                              <SelectItem value="checking">Cuenta Corriente</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Titular de la Cuenta</Label>
-                          <Input
-                            value={bankFormData.holderName}
-                            onChange={(e) => setBankFormData({ ...bankFormData, holderName: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Documento de Identidad (CI)</Label>
-                          <Input
-                            value={bankFormData.documentId}
-                            onChange={(e) => setBankFormData({ ...bankFormData, documentId: e.target.value })}
-                          />
-                        </div>
-                        <Button className="w-full bg-purple-600" onClick={handleSaveBankData}>
-                          Guardar Datos
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                );
-              }
-              if (item.label === 'Notificaciones' && pushSupported) {
-                return (
-                  <div
-                    key={item.label}
-                    className={`w-full flex items-center justify-between p-4 ${index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Bell className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <span className="text-gray-700">Notificaciones Push</span>
-                        <p className="text-xs text-gray-400">Recibir alertas en tu dispositivo</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={pushEnabled}
-                      onCheckedChange={handlePushToggle}
-                      disabled={pushLoading}
-                    />
-                  </div>
-                );
-              }
+      {/* Info Cards */}
+      <div className="space-y-3">
+        {[
+          { icon: Mail, label: 'Correo electrónico', value: user?.email, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { icon: Phone, label: 'Teléfono', value: user?.phone || 'No especificado', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { icon: MapPin, label: 'Dirección', value: user?.address || 'No especificada', color: 'text-purple-500', bg: 'bg-purple-500/10' },
+        ].map((item) => (
+          <div key={item.label} className="glass-premium p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", item.bg)}>
+              <item.icon className={cn("w-5 h-5", item.color)} />
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-bold">{item.label}</p>
+              <p className="font-semibold text-sm">{item.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Virtual Card Section */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-1">Mi Tarjeta Oscorp</h3>
+        <VirtualCard
+          balance={wallet?.balance || 0}
+          cardNumber={user?.virtualCard?.cardNumber || 'OSC-0000-0000'}
+          cardHolder={`${user?.firstName || 'USUARIO'} ${user?.lastName || 'OSCORP'}`}
+          expiryDate="12/28"
+          cvv="***"
+          qrValue={generateQRValue(user?.id || '', user?.firstName || 'Usuario')}
+        />
+      </div>
+
+      {/* Menu Options */}
+      <div className="glass-premium overflow-hidden rounded-[2.5rem] border border-white/10 shadow-xl">
+        <div className="divide-y divide-white/5">
+          {menuItems.map((item, index) => {
+            if (item.label === 'Métodos de pago') {
               return (
-                <button
-                  key={item.label}
-                  className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="w-5 h-5 text-gray-500" />
-                    <span className="text-gray-700">{item.label}</span>
+                <Dialog key={item.label} open={isBankOpen} onOpenChange={setIsBankOpen}>
+                  <DialogTrigger asChild>
+                    <button
+                      onClick={initBankData}
+                      className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-blue-600/20 group-hover:text-blue-500 transition-all">
+                          <item.icon className="w-5 h-5 opacity-60 group-hover:opacity-100" />
+                        </div>
+                        <span className="font-bold text-sm">Datos Bancarios</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground/30" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="glass-premium border-white/10">
+                    <DialogHeader>
+                      <DialogTitle className="font-black tracking-tight">Datos Bancarios</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Banco</Label>
+                        <Input
+                          value={bankFormData.bankName}
+                          onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
+                          className="bg-white/5 border-white/10"
+                          placeholder="Ej: Banco Familiar"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Nro. de Cuenta</Label>
+                        <Input
+                          value={bankFormData.accountNumber}
+                          onChange={(e) => setBankFormData({ ...bankFormData, accountNumber: e.target.value })}
+                          className="bg-white/5 border-white/10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Tipo de Cuenta</Label>
+                        <Select
+                          value={bankFormData.accountType}
+                          onValueChange={(val) => setBankFormData({ ...bankFormData, accountType: val })}
+                        >
+                          <SelectTrigger className="bg-white/5 border-white/10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="savings">Caja de Ahorro</SelectItem>
+                            <SelectItem value="checking">Cuenta Corriente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 h-12 rounded-xl font-black mt-4" onClick={handleSaveBankData}>
+                        Guardar Información
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              );
+            }
+            if (item.label === 'Notificaciones' && pushSupported) {
+              return (
+                <div key={item.label} className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-blue-600/20 group-hover:text-blue-500 transition-all">
+                      <Bell className="w-5 h-5 opacity-60 group-hover:opacity-100" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm leading-none">Notificaciones Push</p>
+                      <p className="text-[10px] text-muted-foreground/60 font-medium mt-1">Alertas en tiempo real</p>
+                    </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </button>
-              )
-            })}
-          </CardContent>
-        </Card>
+                  <Switch
+                    checked={pushEnabled}
+                    onCheckedChange={handlePushToggle}
+                    disabled={pushLoading}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+              );
+            }
+            return (
+              <button
+                key={item.label}
+                className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors group text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-blue-600/20 group-hover:text-blue-500 transition-all">
+                    <item.icon className="w-5 h-5 opacity-60 group-hover:opacity-100" />
+                  </div>
+                  <span className="font-bold text-sm">{item.label}</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground/30" />
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Logout */}
-      <div className="px-4">
-        <Button variant="destructive" className="w-full" onClick={handleLogout}>
-          <LogOut className="w-5 h-5 mr-2" />
-          Cerrar sesión
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        className="w-full h-16 rounded-[2rem] bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-black border border-rose-500/20 shadow-lg active:scale-95 transition-all"
+        onClick={handleLogout}
+      >
+        <LogOut className="w-5 h-5 mr-3" />
+        CERRAR SESIÓN
+      </Button>
     </div>
   );
 }
