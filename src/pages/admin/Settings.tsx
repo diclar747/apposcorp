@@ -8,6 +8,13 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
 import { settingsApi } from '@/lib/api';
@@ -158,6 +165,28 @@ export default function AdminSettings() {
                                     placeholder="700000"
                                 />
                                 <p className="text-xs text-muted-foreground">Define el costo total que verán los usuarios al solicitar acceso.</p>
+                            </div>
+                            <div className="grid gap-2 pt-4">
+                                <Label htmlFor="ingenio_max_installments">Máximo de Cuotas Permitidas</Label>
+                                <Select
+                                    value={getSettingValue('ingenio_max_installments', '3')}
+                                    onValueChange={(value) => updateLocalSetting('ingenio_max_installments', value, 'general', true)}
+                                >
+                                    <SelectTrigger id="ingenio_max_installments">
+                                        <SelectValue placeholder="Seleccionar cuotas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">Pago Único</SelectItem>
+                                        <SelectItem value="2">Hasta 2 Cuotas</SelectItem>
+                                        <SelectItem value="3">Hasta 3 Cuotas</SelectItem>
+                                        <SelectItem value="4">Hasta 4 Cuotas</SelectItem>
+                                        <SelectItem value="5">Hasta 5 Cuotas</SelectItem>
+                                        <SelectItem value="6">Hasta 6 Cuotas</SelectItem>
+                                        <SelectItem value="10">Hasta 10 Cuotas</SelectItem>
+                                        <SelectItem value="12">Hasta 12 Cuotas</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">Define el plan de financiamiento máximo disponible para los clientes.</p>
                             </div>
                         </CardContent>
                     </Card>

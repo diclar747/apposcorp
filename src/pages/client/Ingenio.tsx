@@ -55,6 +55,7 @@ export default function ClientIngenio() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ingenioPrice, setIngenioPrice] = useState(700000);
+  const [maxInstallments, setMaxInstallments] = useState(3);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [installments, setInstallments] = useState('1');
   const [paying, setPaying] = useState(false);
@@ -82,8 +83,11 @@ export default function ClientIngenio() {
   const fetchSettings = async () => {
     try {
       const settings = await settingsApi.get();
-      const price = settings.find((s: any) => s.key === 'ingenio_price')?.value;
-      if (price) setIngenioPrice(Number(price));
+      const priceSetting = settings.find((s: any) => s.key === 'ingenio_price')?.value;
+      const maxInstSetting = settings.find((s: any) => s.key === 'ingenio_max_installments')?.value;
+
+      if (priceSetting) setIngenioPrice(Number(priceSetting));
+      if (maxInstSetting) setMaxInstallments(Number(maxInstSetting));
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
@@ -234,46 +238,32 @@ export default function ClientIngenio() {
 
               <div className="space-y-3">
                 <Label>Selecciona el plan de pagos</Label>
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={() => setInstallments('1')}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-all",
-                      installments === '1' ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="text-left">
-                      <p className="font-bold text-sm">Pago Único</p>
-                      <p className="text-xs text-slate-500">Activación inmediata</p>
-                    </div>
-                    <p className="font-bold text-purple-700">{formatCurrency(ingenioPrice)}</p>
-                  </button>
-                  <button
-                    onClick={() => setInstallments('2')}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-all",
-                      installments === '2' ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="text-left">
-                      <p className="font-bold text-sm">2 Cuotas</p>
-                      <p className="text-xs text-slate-500">Paga hoy la mitad</p>
-                    </div>
-                    <p className="font-bold text-purple-700">{formatCurrency(ingenioPrice / 2)} <span className="text-[10px] text-slate-400">c/u</span></p>
-                  </button>
-                  <button
-                    onClick={() => setInstallments('3')}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-all",
-                      installments === '3' ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="text-left">
-                      <p className="font-bold text-sm">3 Cuotas</p>
-                      <p className="text-xs text-slate-500">Máxima financiación</p>
-                    </div>
-                    <p className="font-bold text-purple-700">{formatCurrency(Math.round(ingenioPrice / 3))} <span className="text-[10px] text-slate-400">c/u</span></p>
-                  </button>
+                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1">
+                  {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => setInstallments(num.toString())}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-xl border transition-all",
+                        installments === num.toString() ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
+                      )}
+                    >
+                      <div className="text-left">
+                        <p className="font-bold text-sm">
+                          {num === 1 ? 'Pago Único' : `${num} Cuotas`}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {num === 1 ? 'Activación inmediata' : `Financiación en ${num} meses`}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-purple-700">
+                          {formatCurrency(Math.round(ingenioPrice / num))}
+                          {num > 1 && <span className="text-[10px] text-slate-400 ml-1">c/u</span>}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
 

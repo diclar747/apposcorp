@@ -258,6 +258,7 @@ export default function AdminUsers() {
                   <TableHead>Estado</TableHead>
                   <TableHead>Ingenio</TableHead>
                   <TableHead>Registro</TableHead>
+                  <TableHead>Ingenio</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -326,6 +327,15 @@ export default function AdminUsers() {
                         <span className="text-sm text-gray-600 dark:text-gray-400">
                           {formatDate(user.createdAt)}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {user.ingenioAccess ? (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-100 font-mono text-[10px]">
+                            {user.ingenioInstallmentsPaid || 0}/{user.ingenioTotalInstallments || 0}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-300 text-[10px]">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -474,17 +484,93 @@ export default function AdminUsers() {
                   <Label className="text-gray-500 text-xs uppercase tracking-wider">ID Usuario</Label>
                   <p className="font-mono text-xs text-gray-700 mt-1">{viewingUser.id}</p>
                 </div>
-                <div>
-                  <Label className="text-gray-500 text-xs uppercase tracking-wider">Acceso Ingenio</Label>
-                  <p className="font-medium mt-1">
-                    {viewingUser.ingenioAccess ? (
-                      <span className="text-purple-600 font-bold">
-                        Autorizado ({viewingUser.ingenioInstallmentsPaid || 1}/{viewingUser.ingenioTotalInstallments || 1} cuotas)
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">Sin acceso</span>
-                    )}
-                  </p>
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <Label className="text-gray-500 text-xs uppercase tracking-wider font-bold">Gestión Ingenio Millonario</Label>
+                    <Badge variant={viewingUser.ingenioAccess ? "default" : "secondary"} className={viewingUser.ingenioAccess ? "bg-purple-100 text-purple-700" : ""}>
+                      {viewingUser.ingenioAccess ? "Acceso Activo" : "Sin Acceso"}
+                    </Badge>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-slate-500 text-[10px] uppercase">Cuotas Pagadas</Label>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={async () => {
+                              const newVal = Math.max(0, (viewingUser.ingenioInstallmentsPaid || 0) - 1);
+                              await usersApi.updateIngenio(viewingUser.id, viewingUser.ingenioAccess, newVal, viewingUser.ingenioTotalInstallments);
+                              setViewingUser({ ...viewingUser, ingenioInstallmentsPaid: newVal });
+                              fetchUsers();
+                            }}
+                          >
+                            -
+                          </Button>
+                          <span className="font-bold text-sm w-8 text-center">{viewingUser.ingenioInstallmentsPaid || 0}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={async () => {
+                              const newVal = (viewingUser.ingenioInstallmentsPaid || 0) + 1;
+                              await usersApi.updateIngenio(viewingUser.id, viewingUser.ingenioAccess, newVal, viewingUser.ingenioTotalInstallments);
+                              setViewingUser({ ...viewingUser, ingenioInstallmentsPaid: newVal });
+                              fetchUsers();
+                            }}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-slate-500 text-[10px] uppercase">Total Cuotas</Label>
+                        <Select
+                          value={String(viewingUser.ingenioTotalInstallments || 0)}
+                          onValueChange={async (value) => {
+                            const newVal = Number(value);
+                            await usersApi.updateIngenio(viewingUser.id, viewingUser.ingenioAccess, viewingUser.ingenioInstallmentsPaid, newVal);
+                            setViewingUser({ ...viewingUser, ingenioTotalInstallments: newVal });
+                            fetchUsers();
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="Total" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 (Único)</SelectItem>
+                            <SelectItem value="2">2 Cuotas</SelectItem>
+                            <SelectItem value="3">3 Cuotas</SelectItem>
+                            <SelectItem value="4">4 Cuotas</SelectItem>
+                            <SelectItem value="5">5 Cuotas</SelectItem>
+                            <SelectItem value="6">6 Cuotas</SelectItem>
+                            <SelectItem value="10">10 Cuotas</SelectItem>
+                            <SelectItem value="12">12 Cuotas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className={`flex-1 ${viewingUser.ingenioAccess ? "bg-red-50 text-red-600 hover:bg-red-100 border-red-100" : "bg-purple-600 text-white hover:bg-purple-700"}`}
+                        variant={viewingUser.ingenioAccess ? "outline" : "default"}
+                        onClick={async () => {
+                          const newStatus = !viewingUser.ingenioAccess;
+                          await usersApi.updateIngenio(viewingUser.id, newStatus, viewingUser.ingenioInstallmentsPaid, viewingUser.ingenioTotalInstallments);
+                          setViewingUser({ ...viewingUser, ingenioAccess: newStatus });
+                          fetchUsers();
+                          toast.success(newStatus ? "Acceso concedido" : "Acceso revocado");
+                        }}
+                      >
+                        {viewingUser.ingenioAccess ? "Revocar Acceso" : "Conceder Acceso"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -516,13 +602,15 @@ export default function AdminUsers() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {filteredUsers.length === 0 && (
-        <div className="text-center py-12">
-          <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No se encontraron usuarios</h3>
-          <p className="text-gray-500">Intenta con otros filtros de búsqueda</p>
-        </div>
-      )}
-    </div>
+      {
+        filteredUsers.length === 0 && (
+          <div className="text-center py-12">
+            <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No se encontraron usuarios</h3>
+            <p className="text-gray-500">Intenta con otros filtros de búsqueda</p>
+          </div>
+        )
+      }
+    </div >
   );
 }
