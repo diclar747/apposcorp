@@ -36,6 +36,8 @@ export interface User {
   bankData?: BankData;
   sellerProfile?: SellerProfile;
   ingenioAccess: boolean;
+  ingenioInstallmentsPaid?: number;
+  ingenioTotalInstallments?: number;
   reviews?: Review[];
 }
 

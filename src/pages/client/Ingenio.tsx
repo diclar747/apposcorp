@@ -16,7 +16,7 @@ import {
   Play
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
-import { financesApi, coursesApi } from '@/lib/api';
+import { financesApi, coursesApi, settingsApi, walletApi, usersApi } from '@/lib/api';
+import { useWalletStore } from '@/stores/walletStore';
 
 // 5S Methodology Cards
 const ssCards = [
@@ -41,7 +42,8 @@ const ssCards = [
 
 export default function ClientIngenio() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, fetchCurrentUser } = useAuthStore();
+  const { wallet, fetchWallet } = useWalletStore();
   const [summary, setSummary] = useState({
     income: 0,
     expenses: 0,
@@ -52,6 +54,10 @@ export default function ClientIngenio() {
   });
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ingenioPrice, setIngenioPrice] = useState(700000);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [installments, setInstallments] = useState('1');
+  const [paying, setPaying] = useState(false);
 
   // Form State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -63,11 +69,25 @@ export default function ClientIngenio() {
   });
 
   useEffect(() => {
-    if (user?.ingenioAccess) {
-      fetchData();
-      fetchCourses();
+    fetchSettings();
+    if (user) {
+      fetchWallet(user.id);
+      if (user.ingenioAccess) {
+        fetchData();
+        fetchCourses();
+      }
     }
   }, [user]);
+
+  const fetchSettings = async () => {
+    try {
+      const settings = await settingsApi.get();
+      const price = settings.find((s: any) => s.key === 'ingenio_price')?.value;
+      if (price) setIngenioPrice(Number(price));
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -117,20 +137,156 @@ export default function ClientIngenio() {
     }
   };
 
+  const handlePayment = async () => {
+    const isActivation = !user?.ingenioAccess;
+    const currentPaid = user?.ingenioInstallmentsPaid || 0;
+    const totalNeeded = isActivation ? Number(installments) : (user?.ingenioTotalInstallments || 1);
+
+    const amountToPay = Math.round(ingenioPrice / totalNeeded);
+
+    if (!wallet || wallet.balance < amountToPay) {
+      toast.error('Saldo insuficiente en tu billetera');
+      return;
+    }
+
+    try {
+      setPaying(true);
+
+      const nextInstallment = currentPaid + 1;
+      await walletApi.transfer('admin', amountToPay, `Pago Ingenio Millonario - Cuota ${nextInstallment}/${totalNeeded}`);
+
+      // Update access/installments
+      await usersApi.updateIngenio(user!.id, true, nextInstallment, totalNeeded);
+      await fetchCurrentUser();
+
+      toast.success(isActivation ? '¡Activación exitosa! Bienvenido a Ingenio Millonario' : 'Pago de cuota procesado correctamente');
+      setShowPaymentModal(false);
+    } catch (error) {
+      toast.error('Error al procesar el pago');
+    } finally {
+      setPaying(false);
+    }
+  };
+
   if (!user?.ingenioAccess) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-        <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-6"
+        >
           <Target className="w-12 h-12 text-purple-600" />
-        </div>
+        </motion.div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Ingenio Millonario</h2>
         <p className="text-gray-500 max-w-md mx-auto mb-8">
-          Este módulo exclusivo te permite gestionar tus finanzas y acceder a educación premium. Contacta al administrador para activar tu acceso.
+          Gestiona tus finanzas personales con la metodología 5S, registra activos, pasivos y accede a educación financiera premium.
         </p>
-        <Button variant="outline" className="gap-2">
-          <Wallet className="w-4 h-4" />
-          Solicitar Acceso
-        </Button>
+
+        <Card className="max-w-md w-full mb-8 bg-gradient-to-br from-purple-50 to-white border-purple-100">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-purple-600 uppercase tracking-wider mb-2">Acceso Premium</p>
+            <p className="text-3xl font-black text-gray-900 mb-4">{formatCurrency(ingenioPrice)}</p>
+            <div className="space-y-3 text-left">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                Control de Ingresos y Egresos
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                Gestión de Activos y Pasivos
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                Presupuesto Inteligente
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                Cursos de Educación Financiera
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+          <DialogTrigger asChild>
+            <Button className="bg-purple-600 hover:bg-purple-700 h-12 px-8 rounded-full shadow-lg shadow-purple-200">
+              Activar Ahora con mi Billetera
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Activar Ingenio Millonario</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-slate-500">Monto Total</span>
+                  <span className="font-bold">{formatCurrency(ingenioPrice)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-500">Saldo en Billetera</span>
+                  <span className={`font-semibold ${wallet && wallet.balance >= (ingenioPrice / Number(installments)) ? 'text-green-600' : 'text-red-500'}`}>
+                    {formatCurrency(wallet?.balance || 0)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Selecciona el plan de pagos</Label>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    onClick={() => setInstallments('1')}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-all",
+                      installments === '1' ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="text-left">
+                      <p className="font-bold text-sm">Pago Único</p>
+                      <p className="text-xs text-slate-500">Activación inmediata</p>
+                    </div>
+                    <p className="font-bold text-purple-700">{formatCurrency(ingenioPrice)}</p>
+                  </button>
+                  <button
+                    onClick={() => setInstallments('2')}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-all",
+                      installments === '2' ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="text-left">
+                      <p className="font-bold text-sm">2 Cuotas</p>
+                      <p className="text-xs text-slate-500">Paga hoy la mitad</p>
+                    </div>
+                    <p className="font-bold text-purple-700">{formatCurrency(ingenioPrice / 2)} <span className="text-[10px] text-slate-400">c/u</span></p>
+                  </button>
+                  <button
+                    onClick={() => setInstallments('3')}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-all",
+                      installments === '3' ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="text-left">
+                      <p className="font-bold text-sm">3 Cuotas</p>
+                      <p className="text-xs text-slate-500">Máxima financiación</p>
+                    </div>
+                    <p className="font-bold text-purple-700">{formatCurrency(Math.round(ingenioPrice / 3))} <span className="text-[10px] text-slate-400">c/u</span></p>
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                onClick={handlePayment}
+                className="w-full bg-purple-600 h-10"
+                disabled={paying || !wallet || wallet.balance < (ingenioPrice / Number(installments))}
+              >
+                {paying ? 'Procesando...' : `Confirmar y Pagar ${formatCurrency(Math.round(ingenioPrice / Number(installments)))}`}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -148,6 +304,42 @@ export default function ClientIngenio() {
           </div>
           <p className="text-sm text-gray-500">Tu centro de control financiero</p>
         </div>
+
+        <AnimatePresence>
+          {user?.ingenioInstallmentsPaid !== undefined &&
+            user?.ingenioTotalInstallments !== undefined &&
+            user.ingenioInstallmentsPaid < user.ingenioTotalInstallments && (
+              <motion.div
+                initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+                animate={{ height: 'auto', opacity: 1, marginBottom: 12 }}
+                exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                className="overflow-hidden mt-4"
+              >
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-bold uppercase tracking-wider">Pendiente</div>
+                        <h3 className="font-bold">Plan de pagos activo</h3>
+                      </div>
+                      <p className="text-purple-100 text-xs">
+                        Has completado {user.ingenioInstallmentsPaid} de {user.ingenioTotalInstallments} cuotas.
+                        Próximo pago: {formatCurrency(Math.round(ingenioPrice / user.ingenioTotalInstallments))}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowPaymentModal(true)}
+                      size="sm"
+                      className="bg-white text-purple-600 hover:bg-purple-50 font-bold"
+                    >
+                      Pagar Cuota {user.ingenioInstallmentsPaid + 1}
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+        </AnimatePresence>
 
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>

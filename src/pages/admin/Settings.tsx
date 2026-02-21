@@ -148,6 +148,17 @@ export default function AdminSettings() {
                                     placeholder="Breve descrição do sistema..."
                                 />
                             </div>
+                            <div className="grid gap-2 pt-4 border-t">
+                                <Label htmlFor="ingenio_price">Costo Acceso Ingenio Millonario (Gs)</Label>
+                                <Input
+                                    id="ingenio_price"
+                                    type="number"
+                                    value={getSettingValue('ingenio_price', '700000')}
+                                    onChange={(e) => updateLocalSetting('ingenio_price', e.target.value, 'general', true)}
+                                    placeholder="700000"
+                                />
+                                <p className="text-xs text-muted-foreground">Define el costo total que verán los usuarios al solicitar acceso.</p>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>

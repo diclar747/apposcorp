@@ -62,6 +62,7 @@ interface UserData {
   role: 'client' | 'seller' | 'superadmin';
   isActive: boolean;
   ingenioAccess: boolean;
+  ingenioInstallmentsPaid?: number;
   avatar: string;
   createdAt: string;
   permissions?: any;
@@ -475,7 +476,13 @@ export default function AdminUsers() {
                 <div>
                   <Label className="text-gray-500 text-xs uppercase tracking-wider">Acceso Ingenio</Label>
                   <p className="font-medium mt-1">
-                    {viewingUser.ingenioAccess ? <span className="text-purple-600 font-bold">Autorizado</span> : <span className="text-gray-400">Sin acceso</span>}
+                    {viewingUser.ingenioAccess ? (
+                      <span className="text-purple-600 font-bold">
+                        Autorizado ({viewingUser.ingenioInstallmentsPaid || 1}/{viewingUser.ingenioTotalInstallments || 1} cuotas)
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Sin acceso</span>
+                    )}
                   </p>
                 </div>
               </div>

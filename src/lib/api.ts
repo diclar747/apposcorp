@@ -93,10 +93,10 @@ export const usersApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  updateIngenio: (id: string, hasAccess: boolean) =>
+  updateIngenio: (id: string, hasAccess: boolean, installmentsPaid?: number, totalInstallments?: number) =>
     fetchWithAuth(`/users/${id}/ingenio`, {
       method: 'PATCH',
-      body: JSON.stringify({ hasAccess }),
+      body: JSON.stringify({ hasAccess, installmentsPaid, totalInstallments }),
     }),
   getPreferences: () => fetchWithAuth('/users/me/preferences'),
   updatePreferences: (data: any) =>
