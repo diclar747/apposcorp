@@ -63,6 +63,7 @@ interface UserData {
   isActive: boolean;
   ingenioAccess: boolean;
   ingenioInstallmentsPaid?: number;
+  ingenioTotalInstallments?: number;
   avatar: string;
   createdAt: string;
   permissions?: any;
