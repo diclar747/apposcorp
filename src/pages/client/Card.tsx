@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -15,7 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useWalletStore } from '@/stores';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency } from '@/lib/utils';
 import { VirtualCard } from '@/components/client/VirtualCard';
@@ -23,6 +23,13 @@ import { generateQRValue } from '@/lib/qr';
 
 export default function ClientCard() {
   const { user } = useAuthStore();
+  const { wallet, fetchWallet } = useWalletStore();
+
+  useEffect(() => {
+    if (user) {
+      fetchWallet(user.id);
+    }
+  }, [user, fetchWallet]);
   const [copied, setCopied] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -70,7 +77,7 @@ export default function ClientCard() {
 
       {/* Unified Virtual Card Component */}
       <VirtualCard
-        balance={0}
+        balance={wallet?.balance || 0}
         cardNumber={cardNumber}
         cardHolder={cardHolder}
         expiryDate={expiryDate}
