@@ -25,7 +25,7 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
-import { useAuthStore, useCartStore, useNotificationStore } from '@/stores';
+import { useAuthStore, useCartStore, useNotificationStore, useWalletStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,7 @@ export default function ClientLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { wallet, fetchWallet } = useWalletStore();
   const { itemCount } = useCartStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
   const { resolvedTheme, toggleTheme } = useThemeStore();
@@ -103,10 +104,11 @@ export default function ClientLayout() {
 
   useEffect(() => {
     if (!user) return;
+    fetchWallet(user.id);
     fetchNotifications();
     const interval = setInterval(() => fetchNotifications(), 30000);
     return () => clearInterval(interval);
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, fetchWallet]);
 
   const handleLogout = () => {
     logout();
