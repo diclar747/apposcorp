@@ -1,3 +1,4 @@
+import type { BillingCycle } from '@/types';
 // API Client for Oscorp Platform
 const API_URL = '/api';
 
@@ -104,6 +105,32 @@ export const usersApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  assignPlan: (userId: string, data: { planId?: string; billingCycle?: BillingCycle; customCommission?: number }) =>
+    fetchWithAuth(`/users/${userId}/plan`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+};
+
+// Plans API
+export const plansApi = {
+  getAll: () => fetchWithAuth('/plans'),
+  getById: (id: string) => fetchWithAuth(`/plans/${id}`),
+  create: (data: any) =>
+    fetchWithAuth('/plans', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/plans/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/plans/${id}`, {
+      method: 'DELETE',
+    }),
+  getPublic: () => fetchWithAuth('/plans/public'),
 };
 
 // Products API
@@ -585,4 +612,5 @@ export default {
   finances: financesApi,
   management: managementApi,
   reports: reportsApi,
+  plans: plansApi,
 };

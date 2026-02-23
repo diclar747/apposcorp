@@ -50,7 +50,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
-import { usersApi } from '@/lib/api';
+import { usersApi, plansApi } from '@/lib/api';
+import type { SubscriptionPlan, BillingCycle } from '@/types';
 
 // Types
 interface UserData {
@@ -74,6 +75,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'client' | 'seller' | 'superadmin'>('all');
+  const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const { isAuthenticated } = useAuthStore();
 
   // Edit User State
@@ -85,9 +87,35 @@ export default function AdminUsers() {
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
   const [viewingUser, setViewingUser] = useState<UserData | null>(null);
 
+  // Plan Assignment State
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [selectedUserForPlan, setSelectedUserForPlan] = useState<UserData | null>(null);
+  const [planFormData, setPlanFormData] = useState({
+    planId: '',
+    billingCycle: 'monthly' as BillingCycle,
+    customCommission: 0,
+    isCommissionBased: false
+  });
+
   useEffect(() => {
     fetchUsers();
+    fetchPlans();
   }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const data = await plansApi.getAll();
+      setAvailablePlans(data);
+    } catch (error) {
+      // Use mock data if API fails (similar to Plans.tsx)
+      console.error('Error fetching plans', error);
+      setAvailablePlans([
+        { id: '1', name: 'Plan Básico', tier: 'basic', isCommissionBased: false } as any,
+        { id: '2', name: 'Plan Estándar', tier: 'standard', isCommissionBased: false } as any,
+        { id: '3', name: 'Plan Comercial', tier: 'commercial', isCommissionBased: false } as any,
+      ]);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -161,6 +189,30 @@ export default function AdminUsers() {
       toast.error('Error al actualizar usuario');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleOpenPlanModal = (user: UserData) => {
+    setSelectedUserForPlan(user);
+    // Initialize form with defaults or current plan if available
+    setPlanFormData({
+      planId: '',
+      billingCycle: 'monthly',
+      customCommission: 0,
+      isCommissionBased: false
+    });
+    setIsPlanModalOpen(true);
+  };
+
+  const handleSavePlanAssignment = async () => {
+    if (!selectedUserForPlan) return;
+    try {
+      await usersApi.assignPlan(selectedUserForPlan.id, planFormData);
+      toast.success(`Plan asignado a ${selectedUserForPlan.firstName}`);
+      setIsPlanModalOpen(false);
+      fetchUsers();
+    } catch (error) {
+      toast.error('Error al asignar el plan');
     }
   };
 
@@ -351,6 +403,12 @@ export default function AdminUsers() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setViewingUser(user)}>Ver perfil</DropdownMenuItem>
                             <DropdownMenuItem>Ver transacciones</DropdownMenuItem>
+                            {user.role === 'seller' && (
+                              <DropdownMenuItem onClick={() => handleOpenPlanModal(user)}>
+                                <Shield className="w-4 h-4 mr-2" />
+                                Gestionar Plan
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleToggleIngenio(user.id, user.ingenioAccess)}>
                               {user.ingenioAccess ? 'Desactivar Ingenio' : 'Activar Ingenio'}
@@ -601,6 +659,98 @@ export default function AdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Plan Assignment Dialog */}
+      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Gestionar Plan de Suscripción</DialogTitle>
+            <DialogDescription>
+              Asigna un plan de beneficios a <strong>{selectedUserForPlan?.firstName} {selectedUserForPlan?.lastName}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-6 py-4">
+            <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Modelo de Cobro</Label>
+                  <p className="text-[10px] text-gray-500">¿Deseas usar un modelo basado en comisiones?</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="userIsCommission" className="text-xs">Por Comisión</Label>
+                  <input
+                    type="checkbox"
+                    id="userIsCommission"
+                    checked={planFormData.isCommissionBased}
+                    onChange={(e) => setPlanFormData({ ...planFormData, isCommissionBased: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                </div>
+              </div>
+
+              {!planFormData.isCommissionBased ? (
+                <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div className="space-y-2">
+                    <Label htmlFor="planSelect">Seleccionar Plan</Label>
+                    <Select value={planFormData.planId} onValueChange={(val) => setPlanFormData({ ...planFormData, planId: val })}>
+                      <SelectTrigger id="planSelect">
+                        <SelectValue placeholder="Elegir un plan..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePlans.map(plan => (
+                          <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cycleSelect">Ciclo de Facturación</Label>
+                    <Select value={planFormData.billingCycle} onValueChange={(val: any) => setPlanFormData({ ...planFormData, billingCycle: val })}>
+                      <SelectTrigger id="cycleSelect">
+                        <SelectValue placeholder="Elegir ciclo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Mensual</SelectItem>
+                        <SelectItem value="quarterly">Trimestral (3 meses)</SelectItem>
+                        <SelectItem value="semi_annual">Semestral (6 meses)</SelectItem>
+                        <SelectItem value="annual">Anual (12 meses)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div className="space-y-2">
+                    <Label htmlFor="customComm">Porcentaje de Comisión</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="customComm"
+                        type="number"
+                        value={planFormData.customCommission}
+                        onChange={(e) => setPlanFormData({ ...planFormData, customCommission: Number(e.target.value) })}
+                        placeholder="Ej: 5"
+                        className="w-24"
+                      />
+                      <span className="text-sm text-gray-500">% sobre cada venta final.</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-orange-600 bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-100 dark:border-orange-800/30">
+                    Al usar comisiones no se cobrará cargo fijo. Perfecto para nuevos comercios.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPlanModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSavePlanAssignment} className="bg-blue-600 hover:bg-blue-700">
+              Confirmar Asignación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {
         filteredUsers.length === 0 && (

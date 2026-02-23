@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  ShieldCheck,
   LayoutDashboard,
   Store,
   Users,
@@ -53,6 +54,7 @@ const sidebarItems = [
   { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
   { icon: BookOpen, label: 'Cursos', href: '/admin/cursos' },
   { icon: Send, label: 'Campañas', href: '/admin/campanas' },
+  { icon: ShieldCheck, label: 'Planes', href: '/admin/planes' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
 ];
 

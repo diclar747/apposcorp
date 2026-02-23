@@ -12,6 +12,8 @@ export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';
 export type CreditStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'completed' | 'defaulted' | 'cancelled';
 export type TransactionType = 'income' | 'expense' | 'transfer_in' | 'transfer_out' | 'purchase' | 'sale' | 'withdrawal' | 'deposit' | 'commission' | 'credit' | 'fee';
 export type FinancialType = 'income' | 'expense' | 'asset' | 'liability';
+export type PlanTier = 'basic' | 'standard' | 'commercial' | 'custom';
+export type BillingCycle = 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'none';
 
 // ============================================
 // USUARIO
@@ -86,13 +88,36 @@ export interface SellerProfile {
   socialLinks: SocialLinks;
   whatsappNumber: string;
   isVerified: boolean;
+  planId?: string;
+  currentPlan?: SubscriptionPlan;
   planActive: boolean;
   planExpiryDate?: Date;
-  commissionRate: number;
+  planBillingCycle?: BillingCycle;
+  commissionRate: number; // For commission-based model
   totalSales: number;
   totalRevenue: number;
   rating: number;
   reviewCount: number;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  tier: PlanTier;
+  description: string;
+  price: number; // Base price for monthly
+  prices: {
+    monthly: number;
+    quarterly: number;
+    semi_annual: number;
+    annual: number;
+  };
+  features: string[];
+  isCommissionBased: boolean;
+  commissionPercentage?: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Store {

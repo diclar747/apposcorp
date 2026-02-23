@@ -13,6 +13,7 @@ import LoginPage from '@/pages/public/LoginPage';
 import RegisterPage from '@/pages/public/RegisterPage';
 import StorePage from '@/pages/public/StorePage';
 import ProductDetailPage from '@/pages/public/ProductDetailPage';
+import PricingPage from '@/pages/public/PricingPage';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/Dashboard';
@@ -26,6 +27,7 @@ import AdminWithdrawals from '@/pages/admin/Withdrawals';
 import AdminCredits from '@/pages/admin/Credits';
 import AdminReports from '@/pages/admin/Reports';
 import AdminCourses from '@/pages/admin/Courses';
+import AdminPlans from '@/pages/admin/Plans';
 import AdminPushNotifications from '@/pages/admin/PushNotifications';
 import AdminSettings from '@/pages/admin/Settings';
 import AdminProfile from '@/pages/admin/Profile';
@@ -104,6 +106,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/tienda/:slug" element={<StorePage />} />
         <Route path="/producto/:slug" element={<ProductDetailPage />} />
+        <Route path="/precios" element={<PricingPage />} />
 
         {/* Admin Routes */}
         <Route
@@ -126,6 +129,7 @@ function App() {
           <Route path="reportes" element={<AdminReports />} />
           <Route path="cursos" element={<AdminCourses />} />
           <Route path="campanas" element={<AdminPushNotifications />} />
+          <Route path="planes" element={<AdminPlans />} />
           <Route path="configuracion" element={<AdminSettings />} />
           <Route path="perfil" element={<AdminProfile />} />
         </Route>
