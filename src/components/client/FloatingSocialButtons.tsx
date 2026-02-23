@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 export function FloatingSocialButtons() {
     const [isOpen, setIsOpen] = useState(false);
 
-    const whatsappNumber = "595972540579";
+    const whatsappNumber = "595975855585";
     const whatsappLink = `https://wa.me/${whatsappNumber}`;
-    const facebookLink = "https://facebook.com/oscorp";
-    const instagramLink = "https://instagram.com/oscorp";
+    const facebookLink = "https://www.facebook.com/share/1BfdPwqaZN/";
+    const instagramLink = "https://www.instagram.com/oscorp_py?igsh=OGpxZnI4cTcxZWtw&utm_source=ig_contact_invite";
 
     const socialButtons = [
         {

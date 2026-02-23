@@ -791,7 +791,7 @@ const ContactSection = () => (
 
           <div className="space-y-5 sm:space-y-6">
             {[
-              { icon: Phone, label: 'Línea Directa', value: '+595 972 540 579', hoverColor: 'group-hover:bg-blue-600' },
+              { icon: Phone, label: 'Línea Directa', value: '+595 975 855 585', hoverColor: 'group-hover:bg-blue-600' },
               { icon: Mail, label: 'Consultas', value: 'info@oscorp.com.py', hoverColor: 'group-hover:bg-blue-700' },
               { icon: MapPin, label: 'Sede Central', value: 'Coronel Bogado, Itapúa', hoverColor: 'group-hover:bg-blue-800' },
             ].map((item) => (
@@ -878,7 +878,7 @@ const Footer = () => (
           <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Contacto</h4>
           <ul className="space-y-4 text-slate-600 dark:text-slate-400">
             <li className="flex items-center gap-3"><MapPin className="w-4 h-4 text-blue-600" /> Coronel Bogado, Itapúa</li>
-            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> <a href="tel:+595972540579" className="hover:text-blue-600 transition-colors">+595 972 540 579</a></li>
+            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> <a href="tel:+595975855585" className="hover:text-blue-600 transition-colors">+595 975 855 585</a></li>
             <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-blue-600" /> info@oscorp.com.py</li>
           </ul>
         </div>
@@ -888,8 +888,12 @@ const Footer = () => (
           © {new Date().getFullYear()} Oscorp - Ingenio Empresarial. Todos los derechos reservados.
         </p>
         <div className="flex gap-4">
-          {[Facebook, Instagram, Twitter].map((Icon, i) => (
-            <a key={i} href="#" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-600 dark:text-white">
+          {[
+            { Icon: Facebook, href: "https://www.facebook.com/share/1BfdPwqaZN/" },
+            { Icon: Instagram, href: "https://www.instagram.com/oscorp_py?igsh=OGpxZnI4cTcxZWtw&utm_source=ig_contact_invite" },
+            { Icon: Twitter, href: "#" }
+          ].map(({ Icon, href }, i) => (
+            <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-600 dark:text-white">
               <Icon className="w-4 h-4" />
             </a>
           ))}
