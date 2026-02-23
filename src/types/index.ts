@@ -113,6 +113,7 @@ export interface SubscriptionPlan {
     annual: number;
   };
   features: string[];
+  productLimit: number;
   isCommissionBased: boolean;
   commissionPercentage?: number;
   isActive: boolean;

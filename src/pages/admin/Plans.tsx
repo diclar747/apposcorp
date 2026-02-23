@@ -58,6 +58,7 @@ export default function AdminPlans() {
             annual: 0,
         },
         features: [] as string[],
+        productLimit: 0,
         isCommissionBased: false,
         commissionPercentage: 0,
         isActive: true,
@@ -82,9 +83,10 @@ export default function AdminPlans() {
                     name: 'Plan Básico',
                     tier: 'basic',
                     description: 'Ideal para pequeños comerciantes empezando.',
-                    price: 50000,
-                    prices: { monthly: 50000, quarterly: 135000, semi_annual: 250000, annual: 450000 },
-                    features: ['Punto de Venta', 'Tienda Online', 'Gestión de Stock (Hasta 50 productos)'],
+                    price: 80000,
+                    prices: { monthly: 80000, quarterly: 220000, semi_annual: 420000, annual: 800000 },
+                    features: ['POS', 'Tienda Online', 'Gestión de Productos', 'Ventas', 'QR OKPOS'],
+                    productLimit: 100,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -95,9 +97,10 @@ export default function AdminPlans() {
                     name: 'Plan Estándar',
                     tier: 'standard',
                     description: 'Para negocios en crecimiento que necesitan más control.',
-                    price: 150000,
-                    prices: { monthly: 150000, quarterly: 400000, semi_annual: 750000, annual: 1350000 },
-                    features: ['Todo lo del Básico', 'Reportes de Ventas', 'Gestión de Proveedores', 'Stock ilimitado'],
+                    price: 120000,
+                    prices: { monthly: 120000, quarterly: 330000, semi_annual: 620000, annual: 1200000 },
+                    features: ['Todo lo del Básico', 'Proveedores', 'Clientes', 'Compras', 'Pedidos', 'QR OKPOS'],
+                    productLimit: 250,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -108,9 +111,10 @@ export default function AdminPlans() {
                     name: 'Plan Comercial',
                     tier: 'commercial',
                     description: 'Solución completa para empresas establecidas.',
-                    price: 350000,
-                    prices: { monthly: 350000, quarterly: 950000, semi_annual: 1800000, annual: 3200000 },
-                    features: ['Todo lo del Estándar', 'Gestión Multi-usuario', 'Reportes Avanzados', 'Soporte Prioritario'],
+                    price: 160000,
+                    prices: { monthly: 160000, quarterly: 440000, semi_annual: 830000, annual: 1600000 },
+                    features: ['Todo lo del Estándar', 'Reportes Avanzados', 'Gestión de Caja', 'Soporte 24/7', 'QR OKPOS'],
+                    productLimit: 500,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -133,6 +137,7 @@ export default function AdminPlans() {
                 price: plan.price,
                 prices: plan.prices,
                 features: plan.features,
+                productLimit: plan.productLimit,
                 isCommissionBased: plan.isCommissionBased,
                 commissionPercentage: plan.commissionPercentage || 0,
                 isActive: plan.isActive,
@@ -146,6 +151,7 @@ export default function AdminPlans() {
                 price: 0,
                 prices: { monthly: 0, quarterly: 0, semi_annual: 0, annual: 0 },
                 features: [],
+                productLimit: 0,
                 isCommissionBased: false,
                 commissionPercentage: 0,
                 isActive: true,
@@ -232,7 +238,7 @@ export default function AdminPlans() {
                                             <span className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(plan.price)}</span>
                                             <span className="text-sm text-gray-500 dark:text-gray-400">/mes</span>
                                         </div>
-                                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Billing Cycles Available</p>
+                                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Límite: {plan.productLimit} productos</p>
                                     </div>
                                 )}
                             </div>
@@ -298,6 +304,17 @@ export default function AdminPlans() {
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 placeholder="Breve resumen de quién debería usar este plan"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="limit">Límite de Productos</Label>
+                            <Input
+                                id="limit"
+                                type="number"
+                                value={formData.productLimit}
+                                onChange={(e) => setFormData({ ...formData, productLimit: Number(e.target.value) })}
+                                placeholder="Ej: 100"
                             />
                         </div>
 

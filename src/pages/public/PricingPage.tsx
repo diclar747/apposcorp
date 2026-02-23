@@ -9,7 +9,8 @@ import {
     BarChart3,
     Zap,
     Globe,
-    Plus
+    Plus,
+    QrCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,10 +47,11 @@ export default function PricingPage() {
                     id: '1',
                     name: 'Plan Básico',
                     tier: 'basic',
-                    description: 'Perfecto para empezar tu negocio online.',
-                    price: 50000,
-                    prices: { monthly: 50000, quarterly: 135000, semi_annual: 250000, annual: 450000 },
-                    features: ['Punto de Venta (Web)', 'Tienda Online Personalizada', 'Gestión de hasta 50 productos', 'Soporte vía Email'],
+                    description: 'Ideal para pequeños comerciantes empezando.',
+                    price: 80000,
+                    prices: { monthly: 80000, quarterly: 220000, semi_annual: 420000, annual: 800000 },
+                    features: ['Punto de Venta (POS)', 'Tienda Online', 'Gestión de Productos', 'Ventas y Pedidos', 'Pagos con QR OKPOS'],
+                    productLimit: 100,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -59,10 +61,11 @@ export default function PricingPage() {
                     id: '2',
                     name: 'Plan Estándar',
                     tier: 'standard',
-                    description: 'Crecimiento y herramientas avanzadas.',
-                    price: 150000,
-                    prices: { monthly: 150000, quarterly: 400000, semi_annual: 750000, annual: 1350000 },
-                    features: ['Todo lo del Plan Básico', 'Gestión de Stock Ilimitada', 'Reportes de Ventas y Finanzas', 'Gestión de Clientes', 'Gestión de Proveedores', 'Soporte Prioritario'],
+                    description: 'Para negocios en crecimiento que necesitan más control.',
+                    price: 120000,
+                    prices: { monthly: 120000, quarterly: 330000, semi_annual: 620000, annual: 1200000 },
+                    features: ['Todo lo del Básico', 'Gestión de Proveedores', 'Gestión de Clientes', 'Gestión de Compras', 'Reportes de Ventas'],
+                    productLimit: 250,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -72,10 +75,11 @@ export default function PricingPage() {
                     id: '3',
                     name: 'Plan Comercial',
                     tier: 'commercial',
-                    description: 'Potencia total para empresas establecidas.',
-                    price: 350000,
-                    prices: { monthly: 350000, quarterly: 950000, semi_annual: 1800000, annual: 3200000 },
-                    features: ['Todo lo del Plan Estándar', 'Multi-usuarios Admin', 'Integraciones Avanzadas', 'App Móvil para Gestión', 'Soporte 24/7 Personalizado', 'Capacitaciones Exclusivas'],
+                    description: 'Solución completa para empresas establecidas.',
+                    price: 160000,
+                    prices: { monthly: 160000, quarterly: 440000, semi_annual: 830000, annual: 1600000 },
+                    features: ['Todo lo del Estándar', 'Gestión de Caja', 'Reportes Avanzados', 'Soporte 24/7 Personalizado', 'Capacitaciones Exclusivas'],
+                    productLimit: 500,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -117,7 +121,7 @@ export default function PricingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-none px-4 py-1 text-sm">
+                        <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-none px-4 py-1 text-sm font-bold uppercase tracking-wider">
                             Potencia tu negocio ahora
                         </Badge>
                         <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6">
@@ -179,13 +183,18 @@ export default function PricingPage() {
                                                 <span className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white">{formatCurrency(cyclePrice)}</span>
                                                 <span className="text-slate-400 font-medium">/{currentCycleLabel(billingCycle)}</span>
                                             </div>
+                                            <div className="mt-2 h-6">
+                                                <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-100 font-bold uppercase tracking-widest">
+                                                    Hasta {plan.productLimit} productos
+                                                </Badge>
+                                            </div>
                                             {billingCycle === 'annual' && plan.prices.monthly && (
-                                                <p className="text-xs text-green-600 font-medium mt-1">Equivalente a {formatCurrency(Math.round(cyclePrice / 12))}/mes</p>
+                                                <p className="text-xs text-green-600 font-medium mt-2">Equivalente a {formatCurrency(Math.round(cyclePrice / 12))}/mes</p>
                                             )}
                                         </div>
 
                                         <div className="space-y-4">
-                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center">¿Qué incluye?</p>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Herramientas clave</p>
                                             <ul className="space-y-4">
                                                 {plan.features.map((feature, i) => (
                                                     <li key={i} className="flex gap-3 text-sm text-slate-600 dark:text-gray-300">
@@ -221,23 +230,25 @@ export default function PricingPage() {
             <section className="py-24 bg-slate-50 dark:bg-slate-900/50">
                 <div className="container mx-auto px-4">
                     <div className="max-w-3xl mx-auto text-center mb-16">
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Múltiples herramientas, un solo lugar</h2>
-                        <p className="text-slate-600 dark:text-gray-400">Todo lo que implementamos está diseñado para facilitar la gestión diaria de tu negocio.</p>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Todo lo que necesitas para tu negocio</h2>
+                        <p className="text-slate-600 dark:text-gray-400 text-lg">Habilitamos herramientas profesionales para el comercio de hoy.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         {[
-                            { icon: Store, title: "Punto de Venta", desc: "Realiza cobros rápidos y lleva un registro detallado de tus ventas locales." },
-                            { icon: ShoppingBag, title: "Tienda Online", desc: "Tu catálogo siempre disponible para todo el país en segundos." },
-                            { icon: BarChart3, title: "Reportes Inteligentes", desc: "Entiende tus ganancias y comportamientos de compra con gráficos claros." },
-                            { icon: Zap, title: "Gestión Veloz", desc: "Administra stock, precios y promociones de forma instantánea." }
+                            { icon: Store, title: "Punto de Venta (POS)", desc: "Gestiona ventas locales, cobros y stock en tiempo real desde tu navegador." },
+                            { icon: ShoppingBag, title: "Tienda Online", desc: "Sincronización total entre tu inventario físico y tu tienda digital 24/7." },
+                            { icon: QrCode, title: "Pagos con QR OKPOS", desc: "Acepta pagos de cualquier billetera o banco a través del sistema unificado OKPOS." },
+                            { icon: BarChart3, title: "Reportes Detallados", desc: "Análisis de ventas, compras y margen de rentabilidad automatizado." },
+                            { icon: Zap, title: "Gestión Veloz", desc: "Carga productos, proveedores y clientes en segundos con una interfaz intuitiva." },
+                            { icon: Globe, title: "Visibilidad Nacional", desc: "Tus productos aparecen en el marketplace de Oscorp para todo el país." }
                         ].map((item, i) => (
-                            <div key={i} className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-                                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-6">
-                                    <item.icon className="w-6 h-6" />
+                            <div key={i} className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-200 dark:shadow-none">
+                                    <item.icon className="w-7 h-7" />
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{item.title}</h3>
-                                <p className="text-sm text-slate-600 dark:text-gray-400 line-height-relaxed">{item.desc}</p>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3">{item.title}</h3>
+                                <p className="text-slate-600 dark:text-gray-400 leading-relaxed">{item.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -246,27 +257,33 @@ export default function PricingPage() {
 
             {/* Commission Option Section */}
             <section className="py-24 container mx-auto px-4 text-center">
-                <div className="max-w-4xl mx-auto p-12 rounded-[40px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-2xl overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <Plus className="w-64 h-64 -mr-32 -mt-32" />
+                <div className="max-w-5xl mx-auto p-12 md:p-16 rounded-[48px] bg-gradient-to-br from-blue-600 to-indigo-800 text-white shadow-2xl overflow-hidden relative">
+                    <div className="absolute -top-24 -right-24 opacity-10">
+                        <Plus className="w-96 h-96" />
                     </div>
+                    <div className="relative z-10">
+                        <Badge className="bg-white/20 text-white border-none py-1 px-4 mb-6 uppercase tracking-widest text-xs font-bold">Sin cuota mensual</Badge>
+                        <h2 className="text-4xl md:text-6xl font-black mb-8">¿Prefieres pagar por venta?</h2>
+                        <p className="text-xl text-blue-50 mb-12 opacity-90 max-w-3xl mx-auto leading-relaxed">
+                            Ofrecemos el <strong>Plan Flex</strong> basado 100% en comisiones. Paga solo el <strong>5.0%</strong> sobre cada transacción procesada. Ideal para micro-emprendedores que buscan crecer sin riesgos fijos.
+                        </p>
 
-                    <h2 className="text-3xl md:text-5xl font-black mb-6">¿Recién empiezas y no quieres costos fijos?</h2>
-                    <p className="text-xl text-blue-50 mb-10 opacity-90 max-w-2xl mx-auto">
-                        Ofrecemos un modelo flexible <strong>100% basado en comisiones</strong>. Paga solo cuando vendes. Sin cuotas mensuales, sin riesgos.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <div className="bg-white/10 backdrop-blur-md px-8 py-4 rounded-2xl border border-white/20">
-                            <span className="text-sm uppercase font-bold tracking-widest opacity-80 block mb-1">Comisión desde</span>
-                            <span className="text-3xl font-black">2.0%</span>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                            <div className="bg-white/10 backdrop-blur-xl px-10 py-5 rounded-3xl border border-white/20">
+                                <span className="text-sm uppercase font-bold tracking-widest opacity-70 block mb-1">Comisión Única</span>
+                                <span className="text-4xl md:text-5xl font-black">5.0%</span>
+                            </div>
+                            <Button asChild variant="secondary" className="bg-white text-blue-700 hover:bg-blue-50 py-8 px-12 text-xl font-black rounded-3xl shadow-xl transition-all hover:scale-105 active:scale-95">
+                                <Link to="/contacto">Activar Plan Flex</Link>
+                            </Button>
                         </div>
-                        <Button asChild variant="secondary" className="bg-white text-blue-600 hover:bg-blue-50 py-7 px-10 text-lg font-bold rounded-2xl">
-                            <Link to="/contacto">Consultar por este Plan</Link>
-                        </Button>
-                    </div>
 
-                    <p className="mt-8 text-sm text-blue-200">Ideal para micro-emprendedores y feriantes.</p>
+                        <div className="mt-12 flex items-center justify-center gap-8 grayscale opacity-50 overflow-hidden">
+                            <span className="font-black text-2xl tracking-tighter italic">Carga de Productos</span>
+                            <span className="font-black text-2xl tracking-tighter italic">Tienda Web</span>
+                            <span className="font-black text-2xl tracking-tighter italic">Ventas POS</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
