@@ -149,7 +149,7 @@ export default function Customers() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                         placeholder="Buscar por nombre, RUC o teléfono..."
-                        className="pl-10 h-10"
+                        className="pl-10 h-10 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-200"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -159,12 +159,12 @@ export default function Customers() {
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>RUC</TableHead>
-                            <TableHead>Teléfono</TableHead>
-                            <TableHead>Dirección</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                        <TableRow className="dark:border-slate-800">
+                            <TableHead className="dark:text-gray-400">Cliente</TableHead>
+                            <TableHead className="dark:text-gray-400">RUC</TableHead>
+                            <TableHead className="dark:text-gray-400">Teléfono</TableHead>
+                            <TableHead className="dark:text-gray-400">Dirección</TableHead>
+                            <TableHead className="text-right dark:text-gray-400">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -182,7 +182,7 @@ export default function Customers() {
                             </TableRow>
                         ) : (
                             filteredCustomers.map((customer) => (
-                                <TableRow key={customer.id}>
+                                <TableRow key={customer.id} className="dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center">
@@ -191,20 +191,20 @@ export default function Customers() {
                                             <div>
                                                 <p className="font-medium text-gray-900 dark:text-white">{customer.fullName}</p>
                                                 {customer.city && (
-                                                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                        <MapPin className="w-3 h-3" /> {customer.city}
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                        <MapPin className="w-3 h-3 text-gray-400" /> {customer.city}
                                                     </p>
                                                 )}
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
+                                        <span className="text-sm font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
                                             {customer.ruc || '-'}
                                         </span>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1.5 text-sm">
+                                        <div className="flex items-center gap-1.5 text-sm dark:text-gray-300">
                                             {customer.phone ? (
                                                 <>
                                                     <Phone className="w-3 h-3 text-gray-400" />
@@ -221,17 +221,17 @@ export default function Customers() {
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" className="dark:text-gray-400 dark:hover:bg-slate-800">
                                                     <MoreVertical className="w-4 h-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleEdit(customer)}>
+                                            <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-slate-800">
+                                                <DropdownMenuItem onClick={() => handleEdit(customer)} className="dark:text-gray-300 dark:hover:bg-slate-800">
                                                     <Edit2 className="w-4 h-4 mr-2" />
                                                     Editar
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="text-red-600"
+                                                    className="text-red-600 dark:text-red-400 dark:hover:bg-slate-800"
                                                     onClick={() => handleDelete(customer.id)}
                                                 >
                                                     <Trash2 className="w-4 h-4 mr-2" />
@@ -248,10 +248,10 @@ export default function Customers() {
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl dark:bg-slate-900 dark:border-slate-800">
                     <DialogHeader>
-                        <DialogTitle>{editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="dark:text-white">{editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}</DialogTitle>
+                        <DialogDescription className="dark:text-gray-400">
                             Completa la información del cliente para el registro de ventas.
                         </DialogDescription>
                     </DialogHeader>

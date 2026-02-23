@@ -276,8 +276,8 @@ export default function SellerProducts() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mis Productos</h1>
-          <p className="text-gray-500">Gestiona tus productos y servicios</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mis Productos</h1>
+          <p className="text-gray-500 dark:text-gray-400">Gestiona tus productos y servicios</p>
         </div>
         <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
@@ -286,7 +286,7 @@ export default function SellerProducts() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -308,19 +308,19 @@ export default function SellerProducts() {
       </Card>
 
       {/* Products Table */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Proveedor</TableHead>
-                  <TableHead>Visibilidad</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="dark:text-gray-400">Producto</TableHead>
+                  <TableHead className="dark:text-gray-400">Precio</TableHead>
+                  <TableHead className="dark:text-gray-400">Stock</TableHead>
+                  <TableHead className="dark:text-gray-400">Proveedor</TableHead>
+                  <TableHead className="dark:text-gray-400">Visibilidad</TableHead>
+                  <TableHead className="dark:text-gray-400">Estado</TableHead>
+                  <TableHead className="text-right dark:text-gray-400">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -330,7 +330,7 @@ export default function SellerProducts() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="border-b border-gray-100 hover:bg-gray-50"
+                    className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50"
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -342,26 +342,26 @@ export default function SellerProducts() {
                           </div>
                         )}
                         <div>
-                          <p className="font-medium text-gray-900">{product.name}</p>
-                          <p className="text-sm text-gray-500">{product.sku}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{product.sku}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{formatCurrency(product.price)}</p>
+                        <p className="font-medium dark:text-white">{formatCurrency(product.price)}</p>
                         {product.comparePrice && (
-                          <p className="text-sm text-gray-400 line-through">{formatCurrency(product.comparePrice)}</p>
+                          <p className="text-sm text-gray-400 line-through dark:text-gray-500">{formatCurrency(product.comparePrice)}</p>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={`font-medium ${product.stock < 5 ? 'text-red-600' : 'text-gray-900'}`}>
+                      <span className={`font-medium ${product.stock < 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-300'}`}>
                         {product.stock} unidades
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
                         {product.supplier?.name || '-'}
                       </span>
                     </TableCell>
@@ -376,7 +376,7 @@ export default function SellerProducts() {
                           checked={product.status === 'active'}
                           onCheckedChange={() => handleToggleStatus(product.id)}
                         />
-                        <span className="text-sm">{product.status === 'active' ? 'Activo' : 'Inactivo'}</span>
+                        <span className="text-sm dark:text-gray-400">{product.status === 'active' ? 'Activo' : 'Inactivo'}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -386,9 +386,9 @@ export default function SellerProducts() {
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenModal(product)}><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="w-4 h-4 mr-2" /> Eliminar</DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-slate-800">
+                          <DropdownMenuItem onClick={() => handleOpenModal(product)} className="dark:text-gray-300 dark:hover:bg-slate-800"><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600 dark:text-red-400 dark:hover:bg-slate-800" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="w-4 h-4 mr-2" /> Eliminar</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -402,10 +402,10 @@ export default function SellerProducts() {
 
       {/* Product Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="dark:text-white">{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
               Completa los datos del producto. Los cálculos financieros se realizan automáticamente.
             </DialogDescription>
           </DialogHeader>
@@ -444,7 +444,7 @@ export default function SellerProducts() {
 
             {/* Image Management Section */}
             <div className="space-y-3">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 dark:text-gray-300">
                 <ImagePlus className="w-4 h-4" />
                 Imágenes del Producto ({(formData.images || []).length}/{MAX_PRODUCT_IMAGES})
               </Label>
@@ -453,7 +453,7 @@ export default function SellerProducts() {
               {(formData.images || []).length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {(formData.images || []).map((img, idx) => (
-                    <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                    <div key={idx} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-slate-700">
                       <img src={img} alt={`Imagen ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -495,7 +495,7 @@ export default function SellerProducts() {
                       const files = Array.from(e.dataTransfer.files);
                       files.forEach(f => handleImageFile(f));
                     }}
-                    className="border-2 border-dashed border-gray-300 hover:border-green-400 rounded-lg p-4 text-center cursor-pointer transition-colors"
+                    className="border-2 border-dashed border-gray-300 dark:border-slate-700 hover:border-green-400 dark:hover:border-green-600 rounded-lg p-4 text-center cursor-pointer transition-colors"
                   >
                     {uploadingImage ? (
                       <div className="flex items-center justify-center gap-2 text-gray-500">
@@ -503,7 +503,7 @@ export default function SellerProducts() {
                         Procesando imagen...
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-1 text-gray-500">
+                      <div className="flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400">
                         <Upload className="w-5 h-5" />
                         <span className="text-xs">Arrastra imágenes aquí o haz clic para seleccionar</span>
                       </div>
@@ -579,7 +579,7 @@ export default function SellerProducts() {
             </div>
 
             <div className="border-t pt-4 mt-2">
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 dark:text-white">
                 <Package className="w-4 h-4" /> Gestión Financiera
               </h3>
               <div className="grid grid-cols-3 gap-4">
@@ -608,7 +608,7 @@ export default function SellerProducts() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="price" className="text-green-600 font-bold">Precio Total (Venta)</Label>
+                  <Label htmlFor="price" className="text-green-600 dark:text-green-400 font-bold">Precio Total (Venta)</Label>
                   <Input
                     id="price"
                     type="number"
@@ -621,7 +621,7 @@ export default function SellerProducts() {
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400 mt-2">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
                 * Ingresa Costo y % para obtener Precio, o Costo y Precio para obtener %.
               </p>
             </div>

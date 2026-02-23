@@ -87,8 +87,8 @@ export default function SellerOrders() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
-        <p className="text-gray-500">Gestiona los pedidos de tu tienda</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pedidos</h1>
+        <p className="text-gray-500 dark:text-gray-400">Gestiona los pedidos de tu tienda</p>
       </div>
 
       {/* Stats */}
@@ -96,10 +96,10 @@ export default function SellerOrders() {
         {statusOptions.slice(0, 4).map((status) => {
           const count = orders.filter((o: any) => o.status === status.value).length;
           return (
-            <Card key={status.value}>
+            <Card key={status.value} className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="p-4">
-                <p className="text-sm text-gray-500">{status.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{count}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{status.label}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{count}</p>
               </CardContent>
             </Card>
           );
@@ -107,7 +107,7 @@ export default function SellerOrders() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -137,19 +137,19 @@ export default function SellerOrders() {
       </Card>
 
       {/* Orders Table */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Pedido</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Productos</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="dark:text-gray-400">Pedido</TableHead>
+                  <TableHead className="dark:text-gray-400">Cliente</TableHead>
+                  <TableHead className="dark:text-gray-400">Productos</TableHead>
+                  <TableHead className="dark:text-gray-400">Total</TableHead>
+                  <TableHead className="dark:text-gray-400">Estado</TableHead>
+                  <TableHead className="dark:text-gray-400">Fecha</TableHead>
+                  <TableHead className="text-right dark:text-gray-400">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -172,30 +172,30 @@ export default function SellerOrders() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
-                      className="border-b border-gray-100 hover:bg-gray-50"
+                      className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50"
                     >
                       <TableCell>
-                        <p className="font-medium text-gray-900">{order.orderNumber}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {buyer?.avatar && <img src={buyer.avatar} alt="" className="w-8 h-8 rounded-full" />}
-                          <span className="text-sm">{buyer?.firstName} {buyer?.lastName}</span>
+                          <span className="text-sm dark:text-gray-300">{buyer?.firstName} {buyer?.lastName}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-600">{order.items?.length || 0} items</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{order.items?.length || 0} items</span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-gray-900">{formatCurrency(order.total)}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(order.total)}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border-0`}>
+                        <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border-0 dark:bg-opacity-20`}>
                           {statusInfo.label}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-600">{formatDateTime(order.createdAt)}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{formatDateTime(order.createdAt)}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
@@ -222,21 +222,21 @@ export default function SellerOrders() {
                                 Ver
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
+                            <DialogContent className="max-w-2xl dark:bg-slate-900 dark:border-slate-800">
                               <DialogHeader>
-                                <DialogTitle>Pedido {order.orderNumber}</DialogTitle>
+                                <DialogTitle className="dark:text-white">Pedido {order.orderNumber}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
-                                    <p className="text-sm text-gray-500">Cliente</p>
-                                    <p className="font-medium">{buyer?.firstName} {buyer?.lastName}</p>
-                                    <p className="text-sm text-gray-600">{buyer?.phone}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Cliente</p>
+                                    <p className="font-medium dark:text-white">{buyer?.firstName} {buyer?.lastName}</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300">{buyer?.phone}</p>
                                   </div>
                                   <div>
-                                    <p className="text-sm text-gray-500">Dirección</p>
-                                    <p className="font-medium">{order.deliveryAddress?.street} {order.deliveryAddress?.number}</p>
-                                    <p className="text-sm text-gray-600">{order.deliveryAddress?.city}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Dirección</p>
+                                    <p className="font-medium dark:text-white">{order.deliveryAddress?.street} {order.deliveryAddress?.number}</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300">{order.deliveryAddress?.city}</p>
                                   </div>
                                 </div>
 
@@ -244,34 +244,34 @@ export default function SellerOrders() {
                                   <p className="text-sm text-gray-500 mb-2">Productos</p>
                                   <div className="space-y-2">
                                     {order.items?.map((item: any) => (
-                                      <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                      <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                                         {item.productImage && (
                                           <img src={item.productImage} alt="" className="w-12 h-12 rounded-lg object-cover" />
                                         )}
                                         <div className="flex-1">
-                                          <p className="font-medium text-sm">{item.productName}</p>
-                                          <p className="text-sm text-gray-500">{item.quantity} x {formatCurrency(item.unitPrice)}</p>
+                                          <p className="font-medium text-sm dark:text-white">{item.productName}</p>
+                                          <p className="text-sm text-gray-500 dark:text-gray-400">{item.quantity} x {formatCurrency(item.unitPrice)}</p>
                                         </div>
-                                        <p className="font-medium">{formatCurrency(item.total)}</p>
+                                        <p className="font-medium dark:text-white">{formatCurrency(item.total)}</p>
                                       </div>
                                     ))}
                                   </div>
                                 </div>
 
-                                <div className="border-t pt-4">
+                                <div className="border-t dark:border-slate-800 pt-4">
                                   <div className="flex justify-between">
-                                    <span className="text-gray-500">Subtotal</span>
-                                    <span>{formatCurrency(order.subtotal)}</span>
+                                    <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
+                                    <span className="dark:text-white">{formatCurrency(order.subtotal)}</span>
                                   </div>
                                   {order.commissionAmount > 0 && (
-                                    <div className="flex justify-between text-sm text-gray-500">
+                                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                                       <span>Comisión plataforma</span>
                                       <span>-{formatCurrency(order.commissionAmount)}</span>
                                     </div>
                                   )}
                                   <div className="flex justify-between text-lg font-bold mt-2">
-                                    <span>Tu ganancia</span>
-                                    <span className="text-green-600">{formatCurrency(order.sellerEarnings)}</span>
+                                    <span className="dark:text-white">Tu ganancia</span>
+                                    <span className="text-green-600 dark:text-green-400">{formatCurrency(order.sellerEarnings)}</span>
                                   </div>
                                 </div>
                               </div>

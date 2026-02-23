@@ -73,60 +73,60 @@ export default function SellerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Bienvenido de vuelta, {user?.firstName}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-gray-500 dark:text-gray-400">Bienvenido de vuelta, {user?.firstName}</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Ventas Totales</p>
-                <p className="text-xl font-bold">{formatCurrency(totalSales)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales</p>
+                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalSales)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Ganancias</p>
-                <p className="text-xl font-bold">{formatCurrency(totalEarnings)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ganancias</p>
+                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalEarnings)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ShoppingCart className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <ShoppingCart className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Pedidos</p>
-                <p className="text-xl font-bold">{orders.length}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Pedidos</p>
+                <p className="text-xl font-bold dark:text-white">{orders.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Package className="w-5 h-5 text-orange-600" />
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                <Package className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Productos</p>
-                <p className="text-xl font-bold">{products.length}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Productos</p>
+                <p className="text-xl font-bold dark:text-white">{products.length}</p>
               </div>
             </div>
           </CardContent>
@@ -134,18 +134,21 @@ export default function SellerDashboard() {
       </div>
 
       {/* Chart */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardHeader>
-          <CardTitle>Ventas de la Semana</CardTitle>
+          <CardTitle className="dark:text-white">Ventas de la Semana</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="name" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
+                />
                 <Bar dataKey="ventas" fill="#22c55e" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -154,10 +157,10 @@ export default function SellerDashboard() {
       </Card>
 
       {/* Recent Orders */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Pedidos Recientes</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/vendedor/pedidos')}>Ver todos</Button>
+          <CardTitle className="dark:text-white">Pedidos Recientes</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/vendedor/pedidos')} className="dark:text-gray-300 dark:hover:bg-slate-800">Ver todos</Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -165,23 +168,30 @@ export default function SellerDashboard() {
               <p className="text-center text-gray-500 py-4">No hay pedidos aún</p>
             )}
             {orders.slice(0, 5).map((order: any) => (
-              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                 <div>
-                  <p className="font-medium">{order.orderNumber}</p>
-                  <p className="text-sm text-gray-500">{order.items?.length || 0} productos</p>
+                  <p className="font-medium dark:text-white">{order.orderNumber}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{order.items?.length || 0} productos</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold">{formatCurrency(order.total)}</p>
-                  <Badge variant={
-                    order.status === 'delivered' ? 'default' :
-                    order.status === 'pending' ? 'secondary' : 'outline'
-                  }>
+                  <p className="font-bold dark:text-white">{formatCurrency(order.total)}</p>
+                  <Badge
+                    variant={
+                      order.status === 'delivered' ? 'default' :
+                        order.status === 'pending' ? 'secondary' : 'outline'
+                    }
+                    className={
+                      order.status === 'delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-none' :
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-none' :
+                          'dark:border-slate-700 dark:text-gray-400'
+                    }
+                  >
                     {order.status === 'delivered' ? 'Entregado' :
-                     order.status === 'pending' ? 'Pendiente' :
-                     order.status === 'confirmed' ? 'Confirmado' :
-                     order.status === 'preparing' ? 'Preparando' :
-                     order.status === 'ready' ? 'Listo' :
-                     order.status === 'in_transit' ? 'En camino' : order.status}
+                      order.status === 'pending' ? 'Pendiente' :
+                        order.status === 'confirmed' ? 'Confirmado' :
+                          order.status === 'preparing' ? 'Preparando' :
+                            order.status === 'ready' ? 'Listo' :
+                              order.status === 'in_transit' ? 'En camino' : order.status}
                   </Badge>
                 </div>
               </div>
