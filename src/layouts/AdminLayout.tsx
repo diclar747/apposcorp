@@ -29,7 +29,6 @@ import { useAuthStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { BrandLogo } from '@/components/brand/BrandLogo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,14 +83,31 @@ export default function AdminLayout() {
         )}
       >
         {/* Logo */}
-        <div className="h-20 flex items-center px-6 border-b border-slate-800">
-          <Link to="/admin">
-            <BrandLogo
-              variant="dark"
-              showText={sidebarOpen}
-              subtitle="Panel Admin"
-              className="py-1"
-            />
+        <div className="h-28 flex flex-col items-center justify-center border-b border-slate-800 px-4">
+          <Link to="/admin" className="flex flex-col items-center gap-2 group">
+            <motion.div
+              layout
+              className="relative flex items-center justify-center"
+            >
+              <img
+                src={sidebarOpen ? "/oscorp-logo.png" : "/images/oscorp-round.png"}
+                alt="Oscorp"
+                className={cn(
+                  "transition-all duration-300 object-contain",
+                  sidebarOpen ? "h-14 w-auto" : "h-10 w-10"
+                )}
+              />
+            </motion.div>
+            {sidebarOpen && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] text-center"
+              >
+                Panel Admin
+              </motion.span>
+            )}
           </Link>
         </div>
 
@@ -171,9 +187,13 @@ export default function AdminLayout() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed left-0 top-0 h-full w-72 bg-slate-900 text-white z-50 lg:hidden"
             >
-              <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
-                <Link to="/admin">
-                  <BrandLogo variant="dark" subtitle="Panel Admin" size="sm" />
+              <div className="h-20 flex items-center justify-between px-4 border-b border-slate-800">
+                <Link to="/admin" className="flex items-center gap-3">
+                  <img src="/oscorp-logo.png" alt="Oscorp" className="h-10 w-auto object-contain" />
+                  <div className="flex flex-col text-left">
+                    <span className="font-black text-white text-lg tracking-tighter uppercase leading-none">Oscorp</span>
+                    <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold mt-1">Panel Admin</span>
+                  </div>
                 </Link>
                 <button onClick={() => setMobileMenuOpen(false)}>
                   <X className="w-6 h-6 text-slate-400" />
