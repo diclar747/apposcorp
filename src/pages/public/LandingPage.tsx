@@ -634,30 +634,30 @@ const MarketplaceSection = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="relative bg-slate-900 dark:bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 lg:p-16 text-center overflow-hidden shadow-2xl"
+          className="relative bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-8 sm:p-12 lg:p-16 text-center overflow-hidden shadow-2xl border border-white/10"
         >
           <div className="absolute top-[-20%] left-[-10%] w-64 h-64 bg-blue-500/20 rounded-full blur-[100px]" />
           <div className="absolute bottom-[-20%] right-[-10%] w-64 h-64 bg-violet-500/20 rounded-full blur-[100px]" />
 
           <div className="relative z-10">
-            <h3 className="text-2xl sm:text-3xl lg:text-5xl font-black mb-4 sm:mb-6 text-white dark:text-slate-950">
+            <h3 className="text-2xl sm:text-3xl lg:text-5xl font-black mb-4 sm:mb-6 text-white">
               ¿Listo para el{' '}
-              <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 dark:from-blue-600 dark:to-violet-600">
+              <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 dark:from-blue-400 dark:to-violet-400">
                 Siguiente Nivel?
               </span>
             </h3>
-            <p className="text-sm sm:text-lg text-slate-300 dark:text-slate-600 mb-6 sm:mb-10 max-w-2xl mx-auto font-light leading-relaxed">
+            <p className="text-sm sm:text-lg text-slate-300 mb-6 sm:mb-10 max-w-2xl mx-auto font-light leading-relaxed">
               Únete a la plataforma que está redefiniendo el comercio paraguayo.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <Link to="/register" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 bg-white dark:bg-slate-950 text-slate-950 dark:text-white hover:opacity-90 rounded-full text-base font-bold">
+                <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 bg-white text-slate-950 hover:bg-slate-100 rounded-full text-base font-bold">
                   Crear Mi Tienda
                   <Store className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
               <Link to="/login" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 border-white/20 dark:border-slate-900/20 text-white dark:text-slate-950 hover:bg-white/10 dark:hover:bg-slate-900/5 rounded-full text-base font-bold">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 border-white/20 text-white hover:bg-white/10 rounded-full text-base font-bold">
                   Panel de Vendedor
                 </Button>
               </Link>
