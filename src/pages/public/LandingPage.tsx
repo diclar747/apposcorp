@@ -322,16 +322,16 @@ const PillarSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="group bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col h-full border border-slate-100 hover:shadow-2xl transition-all duration-500"
+              className="group bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden flex flex-col h-full border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all duration-500"
             >
               {/* Header con Logo */}
-              <div className="p-6 flex flex-col items-center justify-center min-h-[100px] border-b border-slate-50">
+              <div className="p-6 flex flex-col items-center justify-center min-h-[100px] border-b border-slate-50 dark:border-slate-800 dark:bg-slate-950/20">
                 <img src={pillar.logo} alt="Logo" className="h-10 w-auto object-contain mb-2" />
                 {pillar.logoText && (
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{pillar.logoText}</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{pillar.logoText}</span>
                 )}
                 {pillar.logoSubtext && (
-                  <span className="text-[8px] font-bold text-blue-500 uppercase tracking-[0.1em] text-center">{pillar.logoSubtext}</span>
+                  <span className="text-[8px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-[0.1em] text-center">{pillar.logoSubtext}</span>
                 )}
               </div>
 
@@ -340,14 +340,14 @@ const PillarSection = () => {
                 <img
                   src={pillar.image}
                   alt={pillar.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 dark:opacity-80"
                 />
               </div>
 
               {/* Contenido */}
               <div className="p-8 flex-1 flex flex-col">
-                <h3 className="text-xl font-black text-slate-900 mb-4">{pillar.title}</h3>
-                <p className="text-slate-600 leading-relaxed text-sm font-medium">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4">{pillar.title}</h3>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm font-medium">
                   {pillar.desc}
                 </p>
               </div>
