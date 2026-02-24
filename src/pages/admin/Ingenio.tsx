@@ -4,7 +4,8 @@ import {
     Search, Plus, BookOpen, MoreHorizontal, Users, Trash2, Edit,
     ArrowLeft, FolderPlus, FileText, ImageIcon, Video, Link2,
     ChevronDown, ChevronUp, Eye, EyeOff, UserPlus, X, Sparkles,
-    TrendingUp, TrendingDown, Landmark, Receipt, Calendar, Filter
+    TrendingUp, TrendingDown, Landmark, Receipt, Calendar, Filter,
+    Wallet, Banknote, LineChart, Coins, GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,126 @@ import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
 import { coursesApi, usersApi, financesApi } from '@/lib/api';
 
+// ============ DASHBOARD SECTION ============
+
+function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
+    const [summary, setSummary] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSummary = async () => {
+            try {
+                setLoading(true);
+                const data = await financesApi.getSummary();
+                setSummary(data);
+            } catch (error) {
+                toast.error('Error al cargar resumen');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSummary();
+    }, []);
+
+    const cards = [
+        {
+            title: 'Total Ingreso',
+            date: 'Febrero 2026',
+            amount: summary?.totalIncome || 0,
+            color: 'text-blue-500',
+            icon: Wallet,
+            borderColor: 'border-blue-100',
+            bottom: `Total HOY: ${formatCurrency(summary?.todayIncome || 0)}`
+        },
+        {
+            title: 'Total Egreso',
+            date: 'Febrero 2026',
+            amount: summary?.totalExpenses || 0,
+            color: 'text-[#f6c23e]',
+            icon: Banknote,
+            borderColor: 'border-yellow-100',
+            bottom: `Total HOY: ${formatCurrency(summary?.todayExpenses || 0)}`
+        },
+        {
+            title: 'Total Activo',
+            date: 'Febrero 2026',
+            amount: summary?.totalAssets || 0,
+            color: 'text-[#1cc88a]',
+            icon: TrendingUp,
+            borderColor: 'border-emerald-100',
+            bottom: '0%'
+        },
+        {
+            title: 'Total Pasivo',
+            date: 'Febrero 2026',
+            amount: summary?.totalLiabilities || 0,
+            color: 'text-[#e74a3b]',
+            icon: Coins,
+            borderColor: 'border-rose-100',
+            bottom: '0%'
+        },
+    ];
+
+    const navButtons = [
+        { id: 'budget', title: 'Presupuesto', icon: Coins, color: 'text-yellow-500', iconColor: 'text-yellow-500' },
+        { id: 'academy', title: 'Academia Online', icon: GraduationCap, color: 'text-blue-500', iconColor: 'text-blue-500' },
+        { id: 'e1', title: 'Presentación IM E1', icon: GraduationCap, color: 'text-emerald-500', iconColor: 'text-emerald-500' },
+        { id: 'e2', title: 'Presentación IM E2', icon: GraduationCap, color: 'text-rose-500', iconColor: 'text-rose-500' },
+    ];
+
+    return (
+        <div className="space-y-12 py-4">
+            <div className="flex flex-col items-center justify-center space-y-4">
+                <h1 className="text-4xl font-light text-slate-400 dark:text-slate-500 tracking-tighter">
+                    Saldo Caja: <span className="font-bold text-slate-600 dark:text-slate-300">GS. {formatCurrency(summary?.balance || 0).replace('Gs. ', '')}</span>
+                </h1>
+                <div className="w-full flex justify-end px-4">
+                    <Select defaultValue="feb26">
+                        <SelectTrigger className="w-[180px] rounded-xl border-none shadow-none bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase">
+                            <SelectValue placeholder="Mes" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="feb26">Febrero 2026</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {cards.map((card, i) => (
+                    <Card key={i} className={cn("rounded-3xl border-2 transition-all hover:shadow-lg", card.borderColor)}>
+                        <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+                            <div className={cn("p-3 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-50 dark:border-slate-800 -mt-12 mb-2")}>
+                                <card.icon className={cn("w-8 h-8", card.color)} />
+                            </div>
+                            <h3 className={cn("text-xs font-black uppercase tracking-widest", card.color)}>{card.title} - {card.date}</h3>
+                            <p className="text-2xl font-black text-slate-700 dark:text-slate-200">GS. {formatCurrency(card.amount).replace('Gs. ', '')}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{card.bottom}</p>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
+                {navButtons.map((btn, i) => (
+                    <Card
+                        key={i}
+                        className="rounded-3xl border border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group"
+                        onClick={() => onNavigate(btn.id)}
+                    >
+                        <CardContent className="p-8 flex flex-col items-center text-center space-y-4">
+                            <div className="p-4 rounded-full bg-slate-50 dark:bg-slate-800 group-hover:scale-110 transition-transform">
+                                <btn.icon className={cn("w-10 h-10", btn.iconColor)} />
+                            </div>
+                            <h3 className={cn("font-black uppercase tracking-tighter text-lg leading-none", btn.color)}>{btn.title}</h3>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 // ============ ACADEMY SECTIONS ============
 
 function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: any) => void; filter?: string }) {
@@ -49,6 +170,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [newCourseForm, setNewCourseForm] = useState({ title: '', description: '' });
 
     useEffect(() => {
         fetchCourses();
@@ -66,67 +188,127 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         }
     };
 
+    const handleCreateCourse = async () => {
+        if (!newCourseForm.title) return toast.error('El título es obligatorio');
+        try {
+            const titleWithFilter = filter ? `${filter}: ${newCourseForm.title}` : newCourseForm.title;
+            await coursesApi.create({ ...newCourseForm, title: titleWithFilter });
+            toast.success('Curso creado exitosamente');
+            setIsCreateOpen(false);
+            setNewCourseForm({ title: '', description: '' });
+            fetchCourses();
+        } catch (error) {
+            toast.error('Error al crear el curso');
+        }
+    };
+
     const filteredCourses = courses.filter((course: any) => {
         const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
         if (filter) {
-            return matchesSearch && course.title.toUpperCase().includes(filter);
+            return matchesSearch && course.title.toUpperCase().includes(filter.toUpperCase());
         }
         return matchesSearch;
     });
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold dark:text-white uppercase tracking-tighter">Etapas de Formación</h2>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                        placeholder="Buscar etapa..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-9 h-10 rounded-full w-64 border-slate-200 dark:bg-slate-800"
-                    />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-2">
+                <h2 className="text-xl font-bold dark:text-white uppercase tracking-tighter">
+                    {filter ? `Etapas ${filter}` : 'Etapas de Formación'}
+                </h2>
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            placeholder="Buscar etapa..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="pl-9 h-10 rounded-full w-64 border-slate-200 dark:bg-slate-800"
+                        />
+                    </div>
+                    <Button onClick={() => setIsCreateOpen(true)} className="rounded-full bg-blue-600 hover:bg-blue-700 h-10 px-6">
+                        <Plus className="w-4 h-4 mr-2" /> Nuevo
+                    </Button>
                 </div>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {filteredCourses.map((course: any, i) => (
-                    <motion.div
-                        key={course.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="relative group bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer text-center"
-                        onClick={() => onSelectCourse(course)}
-                    >
-                        {/* Graduation Icon with circular background */}
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-white dark:bg-slate-900 rounded-full shadow-md border border-slate-50 dark:border-slate-800 flex items-center justify-center z-10">
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-inner">
-                                <BookOpen className="w-5 h-5 text-white" />
+                {loading ? (
+                    <div className="col-span-full py-20 text-center text-slate-400">Cargando academia...</div>
+                ) : filteredCourses.length === 0 ? (
+                    <div className="col-span-full py-20 text-center text-slate-400 italic">No se encontraron etapas</div>
+                ) : (
+                    filteredCourses.map((course: any, i) => (
+                        <motion.div
+                            key={course.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="relative group bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer text-center"
+                            onClick={() => onSelectCourse(course)}
+                        >
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-white dark:bg-slate-900 rounded-full shadow-md border border-slate-50 dark:border-slate-800 flex items-center justify-center z-10">
+                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-inner">
+                                    <BookOpen className="w-5 h-5 text-white" />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="mt-4 space-y-4">
-                            <h3 className="font-black text-blue-600 dark:text-blue-400 text-lg uppercase tracking-tight leading-none">
-                                {course.title.toUpperCase()}
-                            </h3>
-                            <div className="h-0.5 w-12 bg-slate-100 dark:bg-slate-800 mx-auto" />
-                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-tight h-10 line-clamp-2">
-                                {course.description || "Contenido educativo especializado"}
-                            </p>
-                        </div>
+                            <div className="mt-4 space-y-4">
+                                <h3 className="font-black text-blue-600 dark:text-blue-400 text-lg uppercase tracking-tight leading-none">
+                                    {course.title.toUpperCase()}
+                                </h3>
+                                <div className="h-0.5 w-12 bg-slate-100 dark:bg-slate-800 mx-auto" />
+                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-tight h-10 line-clamp-2">
+                                    {course.description || "Contenido educativo especializado"}
+                                </p>
+                            </div>
 
-                        <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-center gap-2">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                {course.modules?.length || 0} SECCIONES
-                            </span>
-                            <div className="w-1 h-1 rounded-full bg-slate-200" />
-                            <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none text-[9px] font-bold">
-                                {course.isPublished ? "PÚBLICO" : "BORRADOR"}
-                            </Badge>
-                        </div>
-                    </motion.div>
-                ))}
+                            <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-center gap-2">
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                    {course.modules?.length || 0} SECCIONES
+                                </span>
+                                <div className="w-1 h-1 rounded-full bg-slate-200" />
+                                <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none text-[9px] font-bold">
+                                    {course.isPublished ? "PÚBLICO" : "BORRADOR"}
+                                </Badge>
+                            </div>
+                        </motion.div>
+                    ))
+                )}
             </div>
+
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent className="rounded-[2rem] sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Nueva Etapa {filter}</DialogTitle>
+                        <DialogHeader>Crea un nuevo curso para la academia online.</DialogHeader>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label className="font-bold text-slate-500">Título</Label>
+                            <Input
+                                placeholder="Nombre del curso..."
+                                value={newCourseForm.title}
+                                onChange={e => setNewCourseForm({ ...newCourseForm, title: e.target.value })}
+                                className="rounded-xl border-slate-200"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="font-bold text-slate-500">Descripción</Label>
+                            <Textarea
+                                placeholder="Breve descripción..."
+                                value={newCourseForm.description}
+                                onChange={e => setNewCourseForm({ ...newCourseForm, description: e.target.value })}
+                                className="rounded-xl border-slate-200 min-h-[100px]"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl">Cancelar</Button>
+                        <Button onClick={handleCreateCourse} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-8">Crear Etapa</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -193,6 +375,15 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
         } catch (error) { toast.error('Error al agregar'); }
     };
 
+    const handleDeleteLesson = async (lessonId: string) => {
+        if (!confirm('¿Eliminar este material?')) return;
+        try {
+            await coursesApi.deleteLesson(lessonId);
+            toast.success('Material eliminado');
+            fetchCourse();
+        } catch (error) { toast.error('Error al eliminar'); }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -238,7 +429,14 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                                     <Video className="w-4 h-4 text-slate-400" />
                                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{lsn.title}</span>
                                                 </div>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-rose-500"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lsn.id); }}
+                                                    className="h-7 w-7 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
                                         ))}
                                         {mod.lessons?.length === 0 && <p className="text-center py-4 text-xs text-slate-400 italic">No hay materiales en este módulo</p>}
@@ -306,10 +504,20 @@ type RecordType = 'ingreso' | 'egreso' | 'activo' | 'pasivo';
 function BudgetView() {
     const [activeType, setActiveType] = useState<RecordType>('ingreso');
     const [records, setRecords] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+    // Form state
+    const [form, setForm] = useState({
+        date: new Date().toISOString().split('T')[0],
+        title: '',
+        description: '',
+        amount: '',
+        categoryId: ''
+    });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const themeColors = {
         ingreso: {
@@ -345,7 +553,6 @@ function BudgetView() {
     const fetchRecords = async () => {
         try {
             setLoading(true);
-            // For now using mock or current finance API
             const data = await financesApi.getAll();
             setRecords(data.filter((r: any) => r.type === activeType));
         } catch (error) {
@@ -355,9 +562,83 @@ function BudgetView() {
         }
     };
 
+    const fetchCategories = async () => {
+        try {
+            const data = await financesApi.getCategories();
+            setCategories(data);
+        } catch (error) {
+            console.error('Error categories', error);
+        }
+    };
+
     useEffect(() => {
         fetchRecords();
+        fetchCategories();
     }, [activeType]);
+
+    const handleSave = async () => {
+        if (!form.title || !form.amount) {
+            toast.error('Nombre y monto son obligatorios');
+            return;
+        }
+
+        try {
+            const payload = {
+                ...form,
+                amount: parseFloat(form.amount),
+                type: activeType
+            };
+
+            if (isEditing && editingId) {
+                await financesApi.update(editingId, payload);
+                toast.success('Registro actualizado');
+            } else {
+                await financesApi.create(payload);
+                toast.success('Registro creado');
+            }
+
+            resetForm();
+            fetchRecords();
+        } catch (error) {
+            toast.error('Error al guardar');
+        }
+    };
+
+    const handleEdit = (record: any) => {
+        setForm({
+            date: new Date(record.date || record.createdAt).toISOString().split('T')[0],
+            title: record.title,
+            description: record.description || '',
+            amount: record.amount.toString(),
+            categoryId: record.categoryId || ''
+        });
+        setIsEditing(true);
+        setEditingId(record.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('¿Está seguro de eliminar este registro?')) return;
+        try {
+            await financesApi.delete(id);
+            toast.success('Registro eliminado');
+            fetchRecords();
+        } catch (error) {
+            toast.error('Error al eliminar');
+        }
+    };
+
+    const resetForm = () => {
+        setForm({
+            date: new Date().toISOString().split('T')[0],
+            title: '',
+            description: '',
+            amount: '',
+            categoryId: ''
+        });
+        setIsEditing(false);
+        setEditingId(null);
+    };
 
     const filteredRecords = records.filter(r =>
         r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -371,7 +652,10 @@ function BudgetView() {
                 {(['ingreso', 'egreso', 'activo', 'pasivo'] as RecordType[]).map(type => (
                     <button
                         key={type}
-                        onClick={() => setActiveType(type)}
+                        onClick={() => {
+                            setActiveType(type);
+                            resetForm();
+                        }}
                         className={cn(
                             "px-6 py-2.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all shadow-sm",
                             activeType === type
@@ -389,7 +673,7 @@ function BudgetView() {
                 {/* Dynamic Theme Header */}
                 <div className={cn("h-16 flex items-center justify-center", themeColors[activeType].header)}>
                     <h2 className="text-white text-xl font-bold tracking-tight uppercase">
-                        Gestión de {activeType}
+                        {isEditing ? `Editando ${activeType}` : `Gestión de ${activeType}`}
                     </h2>
                 </div>
 
@@ -398,48 +682,76 @@ function BudgetView() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                         <div className="space-y-2">
                             <Label className="text-slate-500 font-bold">Fecha</Label>
-                            <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="rounded-xl border-slate-200" />
+                            <Input
+                                type="date"
+                                value={form.date}
+                                onChange={e => setForm({ ...form, date: e.target.value })}
+                                className="rounded-xl border-slate-200"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-slate-500 font-bold">Nomb. {activeType.charAt(0).toUpperCase() + activeType.slice(1)}</Label>
-                            <Input placeholder={`Nombre del ${activeType}...`} className="rounded-xl border-slate-200" />
+                            <Input
+                                placeholder={`Nombre del ${activeType}...`}
+                                value={form.title}
+                                onChange={e => setForm({ ...form, title: e.target.value })}
+                                className="rounded-xl border-slate-200"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-slate-500 font-bold">Descripción</Label>
-                            <Input placeholder="Notas adicionales..." className="rounded-xl border-slate-200" />
+                            <Input
+                                placeholder="Notas adicionales..."
+                                value={form.description}
+                                onChange={e => setForm({ ...form, description: e.target.value })}
+                                className="rounded-xl border-slate-200"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-slate-500 font-bold">Monto</Label>
-                            <Input type="number" placeholder="0" className="rounded-xl border-slate-200" />
+                            <Input
+                                type="number"
+                                placeholder="0"
+                                value={form.amount}
+                                onChange={e => setForm({ ...form, amount: e.target.value })}
+                                className="rounded-xl border-slate-200"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-slate-500 font-bold">Categoría</Label>
                             <div className="flex gap-2">
-                                <Select>
+                                <Select
+                                    value={form.categoryId}
+                                    onValueChange={val => setForm({ ...form, categoryId: val })}
+                                >
                                     <SelectTrigger className="rounded-xl border-slate-200">
                                         <SelectValue placeholder="<-- Seleccione -->" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="general">General</SelectItem>
-                                        <SelectItem value="sueldo">Sueldo</SelectItem>
-                                        <SelectItem value="premios">Premios</SelectItem>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                        ))}
+                                        {categories.length === 0 && <SelectItem value="none" disabled>No hay categorías</SelectItem>}
                                     </SelectContent>
                                 </Select>
                                 <Button variant="outline" size="icon" className="shrink-0 rounded-xl text-slate-400">+</Button>
-                                <Button variant="outline" size="icon" className="shrink-0 rounded-xl text-rose-400 border-rose-200">-</Button>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex justify-center md:justify-end gap-3 pt-4 border-t border-slate-50 dark:border-slate-800">
-                        <Button className={cn("rounded-xl px-10 h-10 text-white font-bold", themeColors[activeType].button)}>
-                            Guardar
+                        <Button
+                            onClick={handleSave}
+                            className={cn("rounded-xl px-10 h-10 text-white font-bold", themeColors[activeType].button)}
+                        >
+                            {isEditing ? 'Actualizar' : 'Guardar'}
                         </Button>
-                        <Button variant="secondary" className="rounded-xl px-10 h-10 bg-slate-400 hover:bg-slate-500 text-white font-bold">
+                        <Button
+                            variant="secondary"
+                            onClick={resetForm}
+                            className="rounded-xl px-10 h-10 bg-slate-400 hover:bg-slate-500 text-white font-bold"
+                        >
                             Cancelar
-                        </Button>
-                        <Button variant="secondary" className="rounded-xl px-10 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold">
-                            Volver
                         </Button>
                     </div>
 
@@ -448,18 +760,7 @@ function BudgetView() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <h3 className="font-black text-slate-800 dark:text-white text-lg">Listado de {activeType}s</h3>
                             <div className="flex items-center gap-3">
-                                <span className="text-xs text-slate-400 font-bold">Mostrar</span>
-                                <Select defaultValue="10">
-                                    <SelectTrigger className="w-16 h-8 text-xs font-bold"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <span className="text-xs text-slate-400 font-bold">filas</span>
-
-                                <div className="relative ml-4">
+                                <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                     <Input
                                         placeholder="Buscar..."
@@ -484,16 +785,22 @@ function BudgetView() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredRecords.length === 0 ? (
+                                    {loading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-12 text-slate-400">Cargando...</TableCell>
+                                        </TableRow>
+                                    ) : filteredRecords.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-12 text-slate-400 italic">
-                                                No se encontraron registros en este periodo
+                                                No se encontraron registros
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         filteredRecords.map((r) => (
                                             <TableRow key={r.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                                                <TableCell className="text-slate-600 dark:text-slate-300 font-medium">{new Date(r.date || r.createdAt).toLocaleDateString()}</TableCell>
+                                                <TableCell className="text-slate-600 dark:text-slate-300 font-medium">
+                                                    {new Date(r.date || r.createdAt).toLocaleDateString()}
+                                                </TableCell>
                                                 <TableCell className="text-slate-900 dark:text-white font-bold">{r.title}</TableCell>
                                                 <TableCell className="text-slate-500 dark:text-slate-400">{r.description}</TableCell>
                                                 <TableCell className="font-bold text-slate-900 dark:text-white">{formatCurrency(r.amount)}</TableCell>
@@ -504,8 +811,22 @@ function BudgetView() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"><Edit className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /></Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEdit(r)}
+                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDelete(r.id)}
+                                                            className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -524,7 +845,7 @@ function BudgetView() {
 // ============ MAIN ADMIN COMPONENT ============
 
 export default function AdminIngenio() {
-    const [activeTab, setActiveTab] = useState('budget');
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
     // If a course is selected, show detail view (Academy edit mode)
@@ -553,7 +874,10 @@ export default function AdminIngenio() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-2xl h-14 shadow-sm w-full sm:w-auto">
+                <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-2xl h-14 shadow-sm w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                    <TabsTrigger value="dashboard" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
+                        <Landmark className="w-4 h-4 mr-2" /> Dashboard
+                    </TabsTrigger>
                     <TabsTrigger value="budget" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
                         <Landmark className="w-4 h-4 mr-2" /> Presupuesto
                     </TabsTrigger>
@@ -576,6 +900,10 @@ export default function AdminIngenio() {
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ duration: 0.3 }}
                     >
+                        <TabsContent value="dashboard">
+                            <DashboardView onNavigate={setActiveTab} />
+                        </TabsContent>
+
                         <TabsContent value="budget">
                             <BudgetView />
                         </TabsContent>

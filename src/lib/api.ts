@@ -536,6 +536,15 @@ export const financesApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/finances/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/finances/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Reports API (superadmin)
