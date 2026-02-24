@@ -78,61 +78,61 @@ export default function SellerSales() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
-          <p className="text-gray-500">Análisis de tus ventas y ganancias</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ventas</h1>
+          <p className="text-gray-500 dark:text-gray-400">Análisis de tus ventas y ganancias</p>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Ventas Totales</p>
-                <p className="text-xl font-bold">{formatCurrency(totalSales)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales</p>
+                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalSales)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Tus Ganancias</p>
-                <p className="text-xl font-bold">{formatCurrency(totalEarnings)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Tus Ganancias</p>
+                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalEarnings)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ShoppingCart className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <ShoppingCart className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Pedidos</p>
-                <p className="text-xl font-bold">{orders.length}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Pedidos</p>
+                <p className="text-xl font-bold dark:text-white">{orders.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-orange-600" />
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Comisiones</p>
-                <p className="text-xl font-bold">{formatCurrency(totalCommission)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Comisiones</p>
+                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalCommission)}</p>
               </div>
             </div>
           </CardContent>
@@ -141,18 +141,21 @@ export default function SellerSales() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Ventas de la Semana</CardTitle>
+            <CardTitle className="dark:text-white">Ventas de la Semana</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="day" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
+                  />
                   <Bar dataKey="ventas" fill="#22c55e" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -160,18 +163,21 @@ export default function SellerSales() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle>Ventas Mensuales</CardTitle>
+            <CardTitle className="dark:text-white">Ventas Mensuales</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="month" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
+                  />
                   <Line type="monotone" dataKey="ventas" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6' }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -181,9 +187,9 @@ export default function SellerSales() {
       </div>
 
       {/* Recent Sales */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardHeader>
-          <CardTitle>Ventas Recientes</CardTitle>
+          <CardTitle className="dark:text-white">Ventas Recientes</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -191,14 +197,14 @@ export default function SellerSales() {
               <p className="text-center text-gray-500 py-4">No hay ventas registradas aún</p>
             )}
             {orders.slice(0, 10).map((order: any) => (
-              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                 <div>
-                  <p className="font-medium">{order.orderNumber}</p>
-                  <p className="text-sm text-gray-500">{order.items?.length || 0} productos</p>
+                  <p className="font-medium dark:text-white">{order.orderNumber}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{order.items?.length || 0} productos</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-green-600">+{formatCurrency(order.sellerEarnings || 0)}</p>
-                  <p className="text-xs text-gray-500">Comisión: {formatCurrency(order.commissionAmount || 0)}</p>
+                  <p className="font-bold text-green-600 dark:text-green-400">+{formatCurrency(order.sellerEarnings || 0)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Comisión: {formatCurrency(order.commissionAmount || 0)}</p>
                 </div>
               </div>
             ))}

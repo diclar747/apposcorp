@@ -337,7 +337,7 @@ export default function SellerProducts() {
                         {product.images[0] ? (
                           <img src={product.images[0]} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
                         ) : (
-                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
                             <Package className="w-6 h-6 text-gray-400" />
                           </div>
                         )}

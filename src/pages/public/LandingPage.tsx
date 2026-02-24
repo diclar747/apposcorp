@@ -280,33 +280,33 @@ const HeroSection = () => {
 const PillarSection = () => {
   const pillars = [
     {
-      title: "Fintech Crowdfunding",
-      subtitle: "Billetera & Inversiones",
-      desc: "Solución integral para pagar con QR, transferir dinero de forma instantánea y participar en proyectos de inversión inteligente.",
-      icon: TrendingUp,
-      color: "blue",
-      items: ["Carga y Pago QR Dinámico", "Transferencias Inmediatas", "Inversiones BVPASA & Crowdfunding"]
+      title: "Educación Financiera:",
+      desc: "Creamos y ofrecemos el curso especializado en Educación Financiera “Ingenio Millonario”, en la modalidad Aula Invertida. Creamos la app IM/Matriz Financiero/OSCORP y el producto educativo IM. Firma de convenios con Universidades, Municipios y el MEC.",
+      image: "/images/brand/education-concept.png",
+      logo: "/favicon.png", // Using the round gear logo for Ingenio
+      logoText: "ingenio millonario",
+      color: "blue"
     },
     {
-      title: "Ecommerce Oscorp-e",
-      subtitle: "Centro de Comercio",
-      desc: "Plataforma multivendedor para escalar tu negocio. Vende productos y servicios las 24hs a nivel nacional con respaldo corporativo.",
-      icon: ShoppingBag,
-      color: "violet",
-      items: ["Punto de Venta POS", "Tiendas Premium 24/7", "Red Nacional de Vendedores"]
+      title: "Empresarial:",
+      desc: "Ofrecemos la Plataforma de Comercio Electrónico OSCORP-e, para la venta de productos y servicios las 24 horas a nivel nacional. Asesoramos y ofrecemos software a las microempresas para su crecimiento, mediante servicios integrales. Creamos el curso empresarial SOY EMPRESARI@ . Firmas de CONVENIOS.",
+      image: "/images/brand/ecosystem-full.png", // Placeholder until generated
+      logo: "/oscorp-logo.png",
+      logoSubtext: "REESCRIBIMOS LAS REGLAS DEL COMERCIO",
+      color: "orange"
     },
     {
-      title: "Educación IM",
-      subtitle: "Ingenio Millonario",
-      desc: "Desarrolla tu mentalidad de éxito mediante educación financiera premium y herramientas de control de patrimonio personal.",
-      icon: GraduationCap,
-      color: "cyan",
-      items: ["Matriz Financiero", "Metodología 5S", "Mentoría Empresarial"]
+      title: "Inversiones:",
+      desc: "Ofrecemos la Plataforma de Crowdfunding OSCORP-i (FINTECH) para inversiones; juntando personas que necesitan con aquellos que puedan otorgarlos. Firma de CONVENIOS con CADIEM Inversiones para todos; con INVESTOR Inversiones Inteligentes y Bolsa de Valores y Productos de Asunción S.A (BVPASA).",
+      image: "/images/brand/ecosystem-tablet-phone.png", // Placeholder until generated
+      logo: "/oscorp-logo.png",
+      logoSubtext: "REESCRIBIMOS LAS REGLAS DE INVERSIÓN",
+      color: "teal"
     }
   ];
 
   return (
-    <section id="servicios" className="py-24 sm:py-32 bg-slate-50 dark:bg-slate-900 transition-colors duration-500 overflow-hidden">
+    <section id="servicios" className="py-24 sm:py-32 bg-slate-50 dark:bg-slate-900/50 transition-colors duration-500 overflow-hidden">
       <div className="container mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto mb-16 sm:mb-20">
           <Badge variant="outline" className="mb-4 border-blue-500/20 text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black text-[10px]">¿QUÉ HACEMOS?</Badge>
@@ -322,23 +322,35 @@ const PillarSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="p-8 sm:p-10 rounded-[2.5rem] bg-white dark:bg-slate-950 border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-blue-500/30 transition-all duration-500 relative group overflow-hidden"
+              className="group bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col h-full border border-slate-100 hover:shadow-2xl transition-all duration-500"
             >
-              <div className={cn("w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mb-8 bg-blue-50 dark:bg-white/5 group-hover:bg-blue-600 transition-all duration-300")}>
-                <pillar.icon className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-500 group-hover:text-white" />
+              {/* Header con Logo */}
+              <div className="p-6 flex flex-col items-center justify-center min-h-[100px] border-b border-slate-50">
+                <img src={pillar.logo} alt="Logo" className="h-10 w-auto object-contain mb-2" />
+                {pillar.logoText && (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{pillar.logoText}</span>
+                )}
+                {pillar.logoSubtext && (
+                  <span className="text-[8px] font-bold text-blue-500 uppercase tracking-[0.1em] text-center">{pillar.logoSubtext}</span>
+                )}
               </div>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{pillar.title}</h3>
-              <p className="text-blue-600 dark:text-blue-400 font-bold mb-6 text-[10px] uppercase tracking-widest">{pillar.subtitle}</p>
-              <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed text-sm sm:text-base font-light">{pillar.desc}</p>
-              <ul className="space-y-3">
-                {pillar.items.map((item, j) => (
-                  <li key={j} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-xs font-bold">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-blue-600/5 rounded-full blur-[60px]" />
+
+              {/* Imagen/Ilustración */}
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  src={pillar.image}
+                  alt={pillar.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+              </div>
+
+              {/* Contenido */}
+              <div className="p-8 flex-1 flex flex-col">
+                <h3 className="text-xl font-black text-slate-900 mb-4">{pillar.title}</h3>
+                <p className="text-slate-600 leading-relaxed text-sm font-medium">
+                  {pillar.desc}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>
