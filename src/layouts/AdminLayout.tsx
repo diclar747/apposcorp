@@ -23,7 +23,8 @@ import {
   DollarSign,
   Send,
   Sun,
-  Moon
+  Moon,
+  Sparkles
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
@@ -51,7 +52,7 @@ const sidebarItems = [
   { icon: DollarSign, label: 'Retiros', href: '/admin/retiros' },
   { icon: CreditCard, label: 'Créditos', href: '/admin/creditos' },
   { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
-  { icon: BookOpen, label: 'Cursos', href: '/admin/cursos' },
+  { icon: Sparkles, label: 'Ingenio Millonario', href: '/admin/ingenio' },
   { icon: Send, label: 'Campañas', href: '/admin/campanas' },
   { icon: ShieldCheck, label: 'Planes', href: '/admin/planes' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
