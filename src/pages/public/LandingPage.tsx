@@ -299,7 +299,7 @@ const PillarSection = () => {
       title: "Inversiones:",
       desc: "Ofrecemos la Plataforma de Crowdfunding OSCORP-i (FINTECH) para inversiones; juntando personas que necesitan con aquellos que puedan otorgarlos. Firma de CONVENIOS con CADIEM Inversiones para todos; con INVESTOR Inversiones Inteligentes y Bolsa de Valores y Productos de Asunción S.A (BVPASA).",
       image: "/images/brand/ecosystem-tablet-phone.png", // Placeholder until generated
-      logo: "/oscorp-logo.png",
+      logo: "https://oscorp.com.py/assets/images/logos/logoFinanciero2.png",
       logoSubtext: "REESCRIBIMOS LAS REGLAS DE INVERSIÓN",
       color: "teal"
     }
