@@ -324,27 +324,25 @@ const PillarSection = () => {
               transition={{ delay: i * 0.1 }}
               className="group bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden flex flex-col h-full border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all duration-500"
             >
-              {/* Header con Logo */}
-              <div className="p-6 flex flex-col items-center justify-center min-h-[100px] border-b border-slate-50 dark:border-slate-800 dark:bg-slate-950/20">
-                <img src={pillar.logo} alt="Logo" className="h-10 w-auto object-contain mb-2" />
-                {pillar.logoSubtext && (
-                  <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest text-center">{pillar.logoSubtext}</span>
-                )}
+              {/* Header con Logo - Mas Grande y Limpio */}
+              <div className="p-10 flex flex-col items-center justify-center min-h-[160px] bg-white dark:bg-slate-950/20">
+                <img src={pillar.logo} alt="Logo" className="h-20 w-auto object-contain transition-transform group-hover:scale-105 duration-500" />
               </div>
 
-              {/* Imagen/Ilustración */}
-              <div className="relative aspect-video overflow-hidden">
+              {/* Imagen/Ilustración - Mas Impactante */}
+              <div className="relative aspect-[4/5] overflow-hidden">
                 <img
                   src={pillar.image}
                   alt={pillar.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 dark:opacity-80"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 opacity-95"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
               </div>
 
-              {/* Contenido */}
-              <div className="p-8 flex-1 flex flex-col">
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4">{pillar.title}</h3>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm font-medium">
+              {/* Contenido - Premium */}
+              <div className="p-10 flex-1 flex flex-col">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">{pillar.title}</h3>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-base font-light">
                   {pillar.desc}
                 </p>
               </div>
