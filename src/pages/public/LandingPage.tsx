@@ -283,7 +283,7 @@ const PillarSection = () => {
       title: "Educación Financiera:",
       desc: "Creamos y ofrecemos el curso especializado en Educación Financiera “Ingenio Millonario”, en la modalidad Aula Invertida. Creamos la app IM/Matriz Financiero/OSCORP y el producto educativo IM. Firma de convenios con Universidades, Municipios y el MEC.",
       image: "/images/brand/education-concept.png",
-      logo: "/favicon.png", // Using the round gear logo for Ingenio
+      logo: "https://oscorp.com.py/assets/images/logos/logo_ingenio_millonario.png",
       logoText: "ingenio millonario",
       color: "blue"
     },
