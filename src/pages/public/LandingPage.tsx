@@ -284,7 +284,7 @@ const PillarSection = () => {
       desc: "Creamos y ofrecemos el curso especializado en Educación Financiera “Ingenio Millonario”, en la modalidad Aula Invertida. Creamos la app IM/Matriz Financiero/OSCORP y el producto educativo IM. Firma de convenios con Universidades, Municipios y el MEC.",
       image: "/images/brand/education-concept.png",
       logo: "https://oscorp.com.py/assets/images/logos/logo_ingenio_millonario.png",
-      logoText: "ingenio millonario",
+      logoSubtext: "INGENIO MILLONARIO",
       color: "blue"
     },
     {
@@ -327,11 +327,8 @@ const PillarSection = () => {
               {/* Header con Logo */}
               <div className="p-6 flex flex-col items-center justify-center min-h-[100px] border-b border-slate-50 dark:border-slate-800 dark:bg-slate-950/20">
                 <img src={pillar.logo} alt="Logo" className="h-10 w-auto object-contain mb-2" />
-                {pillar.logoText && (
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{pillar.logoText}</span>
-                )}
                 {pillar.logoSubtext && (
-                  <span className="text-[8px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-[0.1em] text-center">{pillar.logoSubtext}</span>
+                  <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest text-center">{pillar.logoSubtext}</span>
                 )}
               </div>
 
