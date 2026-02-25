@@ -291,7 +291,7 @@ const PillarSection = () => {
       title: "Empresarial:",
       desc: "Ofrecemos la Plataforma de Comercio Electrónico OSCORP-e, para la venta de productos y servicios las 24 horas a nivel nacional. Asesoramos y ofrecemos software a las microempresas para su crecimiento, mediante servicios integrales. Creamos el curso empresarial SOY EMPRESARI@ . Firmas de CONVENIOS.",
       image: "/images/brand/ecosystem-full.png", // Placeholder until generated
-      logo: "/oscorp-logo.png",
+      logo: "https://oscorp.com.py/assets/images/logos/logo_empresarial.png",
       logoSubtext: "REESCRIBIMOS LAS REGLAS DEL COMERCIO",
       color: "orange"
     },
