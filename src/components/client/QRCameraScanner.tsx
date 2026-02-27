@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, CameraOff, RefreshCw, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Camera, CameraOff, RefreshCw, Loader2, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -65,7 +66,6 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
       scannerRef.current = scanner;
 
       // Let html5-qrcode handle camera permission request internally
-      // (no separate getUserMedia call — avoids double permission prompt)
       await scanner.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
@@ -123,31 +123,43 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
   return (
     <div className="space-y-3">
       {/* Video container — always visible, always has dimensions */}
-      <div className="relative rounded-2xl overflow-hidden bg-black min-h-[300px]">
+      <div className="relative rounded-[2rem] overflow-hidden bg-black min-h-[300px]">
         <div id={containerId.current} className="w-full" />
 
         {/* Overlay corners (visible when camera active) */}
         {cameraState === 'active' && (
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-4 left-4 w-10 h-10 border-l-4 border-t-4 border-blue-500 rounded-tl-xl" />
-            <div className="absolute top-4 right-4 w-10 h-10 border-r-4 border-t-4 border-blue-500 rounded-tr-xl" />
-            <div className="absolute bottom-4 left-4 w-10 h-10 border-l-4 border-b-4 border-blue-500 rounded-bl-xl" />
-            <div className="absolute bottom-4 right-4 w-10 h-10 border-r-4 border-b-4 border-blue-500 rounded-br-xl" />
+            {/* Scanning animation line */}
+            <motion.div
+              initial={{ top: '10%' }}
+              animate={{ top: '90%' }}
+              transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+              className="absolute left-[10%] right-[10%] h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+            />
+            {/* Corner markers */}
+            <div className="absolute top-4 left-4 w-12 h-12 border-l-[3px] border-t-[3px] border-blue-500 rounded-tl-2xl" />
+            <div className="absolute top-4 right-4 w-12 h-12 border-r-[3px] border-t-[3px] border-blue-500 rounded-tr-2xl" />
+            <div className="absolute bottom-4 left-4 w-12 h-12 border-l-[3px] border-b-[3px] border-blue-500 rounded-bl-2xl" />
+            <div className="absolute bottom-4 right-4 w-12 h-12 border-r-[3px] border-b-[3px] border-blue-500 rounded-br-2xl" />
           </div>
         )}
 
         {/* Requesting permission — overlay on top of the black container */}
         {cameraState === 'requesting' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 space-y-4 z-10">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center animate-pulse">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center border border-blue-500/20"
+            >
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            </motion.div>
+            <div className="text-center">
+              <p className="text-sm text-white/80 font-bold">Solicitando cámara...</p>
+              <p className="text-[10px] text-white/30 font-medium mt-1 uppercase tracking-widest">
+                Acepta el permiso del navegador
+              </p>
             </div>
-            <p className="text-sm text-gray-300 text-center">
-              Solicitando acceso a la cámara...
-            </p>
-            <p className="text-xs text-gray-500 text-center">
-              Acepta el permiso cuando el navegador lo solicite
-            </p>
           </div>
         )}
 
@@ -155,38 +167,44 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
         {(cameraState === 'denied' || cameraState === 'error') && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-10 p-4">
             <div className="space-y-4 w-full max-w-sm">
-              <div className="bg-amber-50 dark:bg-amber-950/30 p-5 rounded-2xl border border-amber-200 dark:border-amber-800 space-y-3">
+              {/* Error card */}
+              <div className="glass-premium p-5 rounded-[1.5rem] border border-amber-500/20 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center shrink-0">
-                    <CameraOff className="w-5 h-5 text-amber-600" />
+                  <div className="w-11 h-11 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0 border border-amber-500/20">
+                    <CameraOff className="w-5 h-5 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-                      {cameraState === 'denied' ? 'Permiso de cámara denegado' : 'Error de cámara'}
+                    <p className="text-sm font-black text-amber-500 tracking-tight">
+                      {cameraState === 'denied' ? 'Permiso denegado' : 'Error de cámara'}
                     </p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                    <p className="text-[10px] text-white/40 font-medium mt-0.5">
                       {cameraState === 'denied'
-                        ? 'Permite el acceso en la configuración del navegador'
-                        : 'No se pudo iniciar la cámara. Verifica permisos o HTTPS.'}
+                        ? 'Permite el acceso en configuración'
+                        : 'Verifica permisos o HTTPS'}
                     </p>
                   </div>
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRetry}
-                  className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Reintentar
-                </Button>
+                <motion.div whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="w-full border-amber-500/20 text-amber-500 hover:bg-amber-500/10 rounded-xl h-10 font-bold text-xs"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reintentar
+                  </Button>
+                </motion.div>
               </div>
 
               {/* Manual input fallback */}
-              <div className="bg-card p-4 rounded-2xl border space-y-3">
-                <p className="text-sm font-semibold">Ingresar código manualmente</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="glass-premium p-5 rounded-[1.5rem] border border-white/10 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="w-4 h-4 text-muted-foreground/40" />
+                  <p className="text-xs font-black tracking-tight">Ingreso manual</p>
+                </div>
+                <p className="text-[10px] text-muted-foreground/40 font-medium">
                   Pide al vendedor el código QR y pégalo aquí:
                 </p>
                 <div className="flex gap-2">
@@ -194,10 +212,15 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
                     placeholder="oscorp://pay?user=..."
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
-                    className="text-xs"
+                    className="text-xs bg-white/5 border-white/10 rounded-xl h-10"
                     onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                   />
-                  <Button size="sm" onClick={handleManualSubmit} disabled={!manualInput.trim()}>
+                  <Button
+                    size="sm"
+                    onClick={handleManualSubmit}
+                    disabled={!manualInput.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 rounded-xl h-10 font-bold text-xs px-4"
+                  >
                     Verificar
                   </Button>
                 </div>
@@ -209,10 +232,14 @@ export function QRCameraScanner({ onScan, active = true }: QRCameraScannerProps)
 
       {/* Active camera — show helper text below */}
       {cameraState === 'active' && (
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Camera className="w-4 h-4" />
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground/40 font-bold uppercase tracking-[0.15em]"
+        >
+          <Camera className="w-3.5 h-3.5" />
           <span>Apunta al código QR del vendedor</span>
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -2,14 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CreditCard, Plus, Clock, CheckCircle, AlertCircle, ChevronRight, Loader2,
-  Camera, X, Pencil, Trash2, Ban, FileText
+  Camera, X, Pencil, Trash2, Ban, FileText, TrendingUp, Sparkles
 } from 'lucide-react';
 import { creditsApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -22,13 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400', icon: Clock },
-  approved: { label: 'Aprobado', color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400', icon: CheckCircle },
-  active: { label: 'Activo', color: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400', icon: CheckCircle },
-  completed: { label: 'Completado', color: 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400', icon: CheckCircle },
-  rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400', icon: AlertCircle },
-  cancelled: { label: 'Cancelado', color: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400', icon: Ban },
+const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock; badgeBg: string }> = {
+  pending: { label: 'Pendiente', color: 'text-amber-500', icon: Clock, badgeBg: 'bg-amber-500/10 border-amber-500/20' },
+  approved: { label: 'Aprobado', color: 'text-blue-500', icon: CheckCircle, badgeBg: 'bg-blue-500/10 border-blue-500/20' },
+  active: { label: 'Activo', color: 'text-emerald-500', icon: CheckCircle, badgeBg: 'bg-emerald-500/10 border-emerald-500/20' },
+  completed: { label: 'Completado', color: 'text-muted-foreground', icon: CheckCircle, badgeBg: 'bg-white/5 border-white/10' },
+  rejected: { label: 'Rechazado', color: 'text-rose-500', icon: AlertCircle, badgeBg: 'bg-rose-500/10 border-rose-500/20' },
+  cancelled: { label: 'Cancelado', color: 'text-orange-500', icon: Ban, badgeBg: 'bg-orange-500/10 border-orange-500/20' },
 };
 
 export default function ClientCredits() {
@@ -218,68 +215,101 @@ export default function ClientCredits() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">Cargando...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="pt-6 pb-24 space-y-6 max-w-lg mx-auto px-4">
       {/* Header */}
-      <div className="px-4 pt-2">
-        <h1 className="text-xl font-bold text-foreground">Mis Créditos</h1>
-        <p className="text-sm text-muted-foreground">Gestiona tus préstamos y solicitudes</p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-black tracking-tight">Mis Créditos</h1>
+          <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-[0.15em]">Préstamos y solicitudes</p>
+        </div>
+        <div className="w-10 h-10 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+          <TrendingUp className="w-5 h-5 text-purple-500" />
+        </div>
       </div>
 
-      {/* Quick Action */}
-      <div className="px-4">
-        <button onClick={() => { resetForm(); setShowRequestModal(true); }} className="w-full text-left">
-          <Card className="bg-gradient-to-br from-blue-500 to-purple-600 text-white hover:shadow-lg transition-shadow border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Plus className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Solicitar nuevo crédito</p>
-                    <p className="text-sm text-white/80">Obtén financiamiento rápido</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5" />
+      {/* Quick Action - Request */}
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        onClick={() => { resetForm(); setShowRequestModal(true); }}
+        className="w-full text-left"
+      >
+        <div
+          className="rounded-[2rem] p-5 relative overflow-hidden group"
+          style={{
+            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #6366f1 100%)',
+            boxShadow: '0 15px 40px -10px rgba(99, 102, 241, 0.5)'
+          }}
+        >
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-white/20 transition-colors" />
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                <Plus className="w-6 h-6 text-white" />
               </div>
-            </CardContent>
-          </Card>
-        </button>
-      </div>
+              <div>
+                <p className="font-black text-white text-sm tracking-tight">Solicitar nuevo crédito</p>
+                <p className="text-[10px] text-white/60 font-bold uppercase tracking-[0.15em]">Financiamiento rápido</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-all">
+              <ChevronRight className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </div>
+      </motion.button>
 
       {/* Stats */}
-      <div className="px-4 grid grid-cols-3 gap-3">
-        <Card><CardContent className="p-3 text-center">
-          <p className="text-2xl font-bold text-foreground">{activeCredits.length}</p>
-          <p className="text-xs text-muted-foreground">Activos</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-3 text-center">
-          <p className="text-2xl font-bold text-foreground">{pendingCredits.length}</p>
-          <p className="text-xs text-muted-foreground">Pendientes</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-3 text-center">
-          <p className="text-2xl font-bold text-foreground">{completedCredits.length}</p>
-          <p className="text-xs text-muted-foreground">Completados</p>
-        </CardContent></Card>
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { count: activeCredits.length, label: 'Activos', color: 'text-emerald-500', border: 'border-emerald-500/10' },
+          { count: pendingCredits.length, label: 'Pendientes', color: 'text-amber-500', border: 'border-amber-500/10' },
+          { count: completedCredits.length, label: 'Completados', color: 'text-blue-500', border: 'border-blue-500/10' },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={cn("glass-premium rounded-2xl p-4 text-center border shadow-lg", stat.border)}
+          >
+            <p className={cn("text-2xl font-black tracking-tighter", stat.color)}>{stat.count}</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/40 mt-1">{stat.label}</p>
+          </motion.div>
+        ))}
       </div>
 
       {/* Credits List */}
-      <div className="px-4 space-y-3">
-        <h2 className="font-semibold text-foreground">Historial de créditos</h2>
+      <div className="space-y-4">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 px-1">Historial de créditos</h2>
 
         {credits.length === 0 && (
-          <div className="text-center py-12">
-            <CreditCard className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground">No tienes créditos</h3>
-            <p className="text-muted-foreground mb-4">Solicita tu primer crédito</p>
-            <Button onClick={() => { resetForm(); setShowRequestModal(true); }}>Solicitar crédito</Button>
+          <div className="text-center py-16 space-y-4">
+            <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center mx-auto border border-white/10">
+              <CreditCard className="w-10 h-10 text-muted-foreground/20" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black tracking-tight">No tienes créditos</h3>
+              <p className="text-xs text-muted-foreground/60 font-medium mt-1">Solicita tu primer crédito</p>
+            </div>
+            <motion.div whileTap={{ scale: 0.98 }}>
+              <Button
+                onClick={() => { resetForm(); setShowRequestModal(true); }}
+                className="bg-blue-600 hover:bg-blue-700 rounded-2xl h-12 font-black text-xs uppercase tracking-[0.15em] shadow-lg shadow-blue-500/20 px-8"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Solicitar crédito
+              </Button>
+            </motion.div>
           </div>
         )}
 
@@ -299,101 +329,117 @@ export default function ClientCredits() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
+                className="glass-premium rounded-[2rem] p-5 border border-white/5 shadow-xl space-y-4 hover:border-white/10 transition-all"
               >
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold text-foreground">{credit.concept}</p>
-                        <p className="text-sm text-muted-foreground">Solicitado el {formatDate(credit.createdAt)}</p>
-                      </div>
-                      <Badge className={status.color}>
-                        <StatusIcon className="w-3 h-3 mr-1" />
-                        {status.label}
-                      </Badge>
+                {/* Header Row */}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm tracking-tight truncate">{credit.concept}</p>
+                    <p className="text-[9px] text-muted-foreground/40 font-bold uppercase tracking-[0.15em] mt-0.5">
+                      Solicitado el {formatDate(credit.createdAt)}
+                    </p>
+                  </div>
+                  <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-[0.15em]", status.badgeBg)}>
+                    <StatusIcon className={cn("w-3 h-3", status.color)} />
+                    <span className={status.color}>{status.label}</span>
+                  </div>
+                </div>
+
+                {/* Amount Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white/[0.02] rounded-xl p-3 border border-white/5">
+                    <p className="text-[9px] text-muted-foreground/40 font-black uppercase tracking-[0.15em]">Monto</p>
+                    <p className="font-black text-sm tracking-tight mt-0.5">{formatCurrency(credit.amount)}</p>
+                  </div>
+                  <div className="bg-white/[0.02] rounded-xl p-3 border border-white/5">
+                    <p className="text-[9px] text-muted-foreground/40 font-black uppercase tracking-[0.15em]">Total a pagar</p>
+                    <p className="font-black text-sm tracking-tight mt-0.5">{formatCurrency(credit.totalToPay)}</p>
+                  </div>
+                </div>
+
+                {/* Installments info */}
+                <p className="text-[10px] text-muted-foreground/50 font-bold">
+                  {credit.installments} cuotas de <span className="font-black text-foreground/80">{formatCurrency(credit.installmentAmount)}</span>
+                </p>
+
+                {/* Documents indicator */}
+                {credit.documents?.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                    <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-[10px] text-emerald-500 font-bold">{credit.documents.length} documento(s) adjunto(s)</span>
+                  </div>
+                )}
+
+                {/* Active credit: payment progress */}
+                {isActive && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground/50 font-bold uppercase tracking-[0.15em]">Progreso de pago</span>
+                      <span className="font-black">{paidInstallments}/{credit.installments} cuotas</span>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Monto</p>
-                        <p className="font-bold text-foreground">{formatCurrency(credit.amount)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total a pagar</p>
-                        <p className="font-bold text-foreground">{formatCurrency(credit.totalToPay)}</p>
-                      </div>
+                    <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500"
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                      />
                     </div>
-
-                    <div className="text-sm text-muted-foreground mb-2">
-                      {credit.installments} cuotas de {formatCurrency(credit.installmentAmount)}
-                    </div>
-
-                    {/* Documents indicator */}
-                    {credit.documents?.length > 0 && (
-                      <div className="flex items-center gap-1 mb-2">
-                        <FileText className="w-3.5 h-3.5 text-green-500" />
-                        <span className="text-xs text-green-600 dark:text-green-400">{credit.documents.length} documento(s) adjunto(s)</span>
-                      </div>
-                    )}
-
-                    {/* Active credit: payment progress */}
-                    {isActive && (
-                      <div className="mt-2">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-muted-foreground">Progreso de pago</span>
-                          <span className="font-medium text-foreground">{paidInstallments}/{credit.installments} cuotas</span>
-                        </div>
-                        <Progress value={progress} className="h-2" />
-                        {nextInstallment && (
-                          <Button
-                            className="w-full mt-3"
-                            variant="outline"
-                            onClick={() => handlePayInstallment(credit.id, nextInstallment.id)}
-                            disabled={payingCreditId === credit.id}
-                          >
-                            {payingCreditId === credit.id && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                            Pagar cuota - {formatCurrency(credit.installmentAmount)}
-                          </Button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Pending credit: action buttons */}
-                    {isPending && (
-                      <div className="flex gap-2 mt-3">
+                    {nextInstallment && (
+                      <motion.div whileTap={{ scale: 0.98 }}>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => openEditModal(credit)}
-                          disabled={actionLoading === credit.id}
+                          className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black text-xs uppercase tracking-[0.15em] shadow-lg shadow-blue-500/20"
+                          onClick={() => handlePayInstallment(credit.id, nextInstallment.id)}
+                          disabled={payingCreditId === credit.id}
                         >
-                          <Pencil className="w-3.5 h-3.5 mr-1" />
-                          Editar
+                          {payingCreditId === credit.id && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                          Pagar cuota - {formatCurrency(credit.installmentAmount)}
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-orange-600 border-orange-200 hover:bg-orange-50 dark:border-orange-500/30 dark:hover:bg-orange-500/10"
-                          onClick={() => handleCancelCredit(credit.id)}
-                          disabled={actionLoading === credit.id}
-                        >
-                          {actionLoading === credit.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Ban className="w-3.5 h-3.5 mr-1" />}
-                          Cancelar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-500/30 dark:hover:bg-red-500/10"
-                          onClick={() => setDeleteConfirmId(credit.id)}
-                          disabled={actionLoading === credit.id}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      </motion.div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                )}
+
+                {/* Pending credit: action buttons */}
+                {isPending && (
+                  <div className="flex gap-2">
+                    <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full rounded-xl h-10 border-white/10 font-bold text-xs"
+                        onClick={() => openEditModal(credit)}
+                        disabled={actionLoading === credit.id}
+                      >
+                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                        Editar
+                      </Button>
+                    </motion.div>
+                    <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full rounded-xl h-10 text-orange-500 border-orange-500/20 hover:bg-orange-500/10 font-bold text-xs"
+                        onClick={() => handleCancelCredit(credit.id)}
+                        disabled={actionLoading === credit.id}
+                      >
+                        {actionLoading === credit.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Ban className="w-3.5 h-3.5 mr-1.5" />}
+                        Cancelar
+                      </Button>
+                    </motion.div>
+                    <motion.div whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl h-10 text-rose-500 border-rose-500/20 hover:bg-rose-500/10"
+                        onClick={() => setDeleteConfirmId(credit.id)}
+                        disabled={actionLoading === credit.id}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </motion.div>
+                  </div>
+                )}
               </motion.div>
             );
           })}
@@ -402,17 +448,17 @@ export default function ClientCredits() {
 
       {/* ─── Request / Edit Credit Modal ─────────────────────────── */}
       <Dialog open={showRequestModal} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md glass-premium border-white/10 rounded-[2rem]">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="font-black tracking-tight text-lg">
               {editingCredit ? 'Editar Solicitud' : formStep === 1 ? 'Solicitar Crédito' : 'Documentos de Identidad'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs text-muted-foreground/60">
               {editingCredit
                 ? 'Modifica los datos de tu solicitud de crédito.'
                 : formStep === 1
                   ? 'Completa los datos para solicitar un nuevo crédito.'
-                  : 'Sube fotos de tu cédula de identidad (frente y dorso) para agilizar la aprobación.'
+                  : 'Sube fotos de tu cédula de identidad (frente y dorso).'
               }
             </DialogDescription>
           </DialogHeader>
@@ -421,29 +467,31 @@ export default function ClientCredits() {
           {formStep === 1 && (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="credit-amount">Monto solicitado (₲)</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50" htmlFor="credit-amount">Monto solicitado (₲)</Label>
                 <Input
                   id="credit-amount"
                   type="number"
                   placeholder="Ej: 500000"
                   value={requestForm.amount}
                   onChange={(e) => setRequestForm({ ...requestForm, amount: e.target.value })}
+                  className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="credit-concept">Concepto</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50" htmlFor="credit-concept">Concepto</Label>
                 <Textarea
                   id="credit-concept"
                   placeholder="Describe para qué necesitas el crédito..."
                   value={requestForm.concept}
                   onChange={(e) => setRequestForm({ ...requestForm, concept: e.target.value })}
+                  className="bg-white/5 border-white/10 rounded-xl min-h-[80px] font-medium"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="credit-installments">Cantidad de cuotas</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50" htmlFor="credit-installments">Cantidad de cuotas</Label>
                 <select
                   id="credit-installments"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium"
                   value={requestForm.installments}
                   onChange={(e) => setRequestForm({ ...requestForm, installments: e.target.value })}
                 >
@@ -455,14 +503,14 @@ export default function ClientCredits() {
                 </select>
               </div>
               {requestForm.amount && parseFloat(requestForm.amount) > 0 && (
-                <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                <div className="bg-white/[0.02] rounded-2xl p-4 text-sm space-y-2 border border-white/5">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monto:</span>
-                    <span className="font-medium">{formatCurrency(parseFloat(requestForm.amount))}</span>
+                    <span className="text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.15em]">Monto:</span>
+                    <span className="font-black text-sm">{formatCurrency(parseFloat(requestForm.amount))}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cuotas:</span>
-                    <span className="font-medium">{requestForm.installments}x de {formatCurrency(parseFloat(requestForm.amount) / parseInt(requestForm.installments))}</span>
+                    <span className="text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.15em]">Cuotas:</span>
+                    <span className="font-bold text-sm">{requestForm.installments}x de {formatCurrency(parseFloat(requestForm.amount) / parseInt(requestForm.installments))}</span>
                   </div>
                 </div>
               )}
@@ -474,7 +522,7 @@ export default function ClientCredits() {
             <div className="space-y-4 py-2">
               {/* ID Front */}
               <div className="space-y-2">
-                <Label>Cédula de Identidad - Frente</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50">Cédula - Frente</Label>
                 <input
                   ref={idFrontRef}
                   type="file"
@@ -489,23 +537,25 @@ export default function ClientCredits() {
                 />
                 <div
                   onClick={() => idFrontRef.current?.click()}
-                  className="border-2 border-dashed border-muted-foreground/30 hover:border-blue-400 rounded-xl p-4 text-center cursor-pointer transition-colors"
+                  className="border-2 border-dashed border-white/10 hover:border-blue-500/30 rounded-2xl p-4 text-center cursor-pointer transition-all"
                 >
                   {idFrontPreview ? (
                     <div className="relative">
-                      <img src={idFrontPreview} alt="Cédula frente" className="w-full h-36 object-cover rounded-lg" />
+                      <img src={idFrontPreview} alt="Cédula frente" className="w-full h-36 object-cover rounded-xl" />
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setIdFrontFile(null); URL.revokeObjectURL(idFrontPreview); setIdFrontPreview(null); }}
-                        className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                        className="absolute top-2 right-2 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-rose-600 transition-colors"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground py-4">
-                      <Camera className="w-8 h-8" />
-                      <span className="text-sm">Tomar foto o seleccionar archivo</span>
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground/40 py-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-bold">Tomar foto o seleccionar</span>
                     </div>
                   )}
                 </div>
@@ -513,7 +563,7 @@ export default function ClientCredits() {
 
               {/* ID Back */}
               <div className="space-y-2">
-                <Label>Cédula de Identidad - Dorso</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50">Cédula - Dorso</Label>
                 <input
                   ref={idBackRef}
                   type="file"
@@ -528,23 +578,25 @@ export default function ClientCredits() {
                 />
                 <div
                   onClick={() => idBackRef.current?.click()}
-                  className="border-2 border-dashed border-muted-foreground/30 hover:border-blue-400 rounded-xl p-4 text-center cursor-pointer transition-colors"
+                  className="border-2 border-dashed border-white/10 hover:border-blue-500/30 rounded-2xl p-4 text-center cursor-pointer transition-all"
                 >
                   {idBackPreview ? (
                     <div className="relative">
-                      <img src={idBackPreview} alt="Cédula dorso" className="w-full h-36 object-cover rounded-lg" />
+                      <img src={idBackPreview} alt="Cédula dorso" className="w-full h-36 object-cover rounded-xl" />
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setIdBackFile(null); URL.revokeObjectURL(idBackPreview); setIdBackPreview(null); }}
-                        className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                        className="absolute top-2 right-2 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-rose-600 transition-colors"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground py-4">
-                      <Camera className="w-8 h-8" />
-                      <span className="text-sm">Tomar foto o seleccionar archivo</span>
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground/40 py-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-bold">Tomar foto o seleccionar</span>
                     </div>
                   )}
                 </div>
@@ -555,18 +607,18 @@ export default function ClientCredits() {
           <DialogFooter className="gap-2 sm:gap-0">
             {formStep === 1 ? (
               <>
-                <Button variant="outline" onClick={resetForm}>Cancelar</Button>
-                <Button onClick={handleRequestCredit} disabled={isSubmitting}>
+                <Button variant="outline" onClick={resetForm} className="rounded-xl border-white/10 font-bold">Cancelar</Button>
+                <Button onClick={handleRequestCredit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 rounded-xl font-black shadow-lg shadow-blue-500/20">
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   {editingCredit ? 'Guardar cambios' : 'Siguiente'}
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" onClick={handleSkipDocuments} className="text-muted-foreground">
+                <Button variant="ghost" onClick={handleSkipDocuments} className="text-muted-foreground/40 font-bold text-xs">
                   Omitir por ahora
                 </Button>
-                <Button onClick={handleUploadDocuments} disabled={isUploading || !idFrontFile || !idBackFile}>
+                <Button onClick={handleUploadDocuments} disabled={isUploading || !idFrontFile || !idBackFile} className="bg-blue-600 hover:bg-blue-700 rounded-xl font-black shadow-lg shadow-blue-500/20">
                   {isUploading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   Enviar solicitud
                 </Button>
@@ -578,18 +630,18 @@ export default function ClientCredits() {
 
       {/* ─── Delete Confirmation ─────────────────────────────────── */}
       <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-premium border-white/10 rounded-[2rem]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar solicitud</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="font-black tracking-tight">Eliminar solicitud</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground/60">
               Esta acción eliminará permanentemente tu solicitud de crédito. No se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl border-white/10">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteConfirmId && handleDeleteCredit(deleteConfirmId)}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-rose-600 hover:bg-rose-700 rounded-xl font-black shadow-lg"
             >
               {actionLoading === deleteConfirmId && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Eliminar
