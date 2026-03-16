@@ -33,10 +33,9 @@ import {
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function exportToCSV(records: any[], type: string) {
-    const headers = ['Fecha', 'Nombre', 'Descripción', 'Monto', 'Categoría'];
+    const headers = ['Fecha', 'Nombre / Descripción', 'Monto', 'Categoría'];
     const rows = records.map(r => [
         new Date(r.date || r.createdAt).toLocaleDateString('es-PY'),
-        `"${(r.title || '').replace(/"/g, '""')}"`,
         `"${(r.description || '').replace(/"/g, '""')}"`,
         r.amount,
         r.category?.name || 'Varios'
@@ -53,16 +52,15 @@ function exportToCSV(records: any[], type: string) {
 
 function exportToPDF(records: any[], type: string, total: number) {
     const typeLabels: Record<string, string> = {
-        ingreso: 'Ingresos', egreso: 'Egresos', activo: 'Activos', pasivo: 'Pasivos'
+        income: 'Ingresos', expense: 'Egresos', asset: 'Activos', liability: 'Pasivos'
     };
     const typeColors: Record<string, string> = {
-        ingreso: '#059669', egreso: '#e11d48', activo: '#2563eb', pasivo: '#64748b'
+        income: '#059669', expense: '#e11d48', asset: '#2563eb', liability: '#64748b'
     };
     const rows = records.map(r => `
         <tr>
             <td>${new Date(r.date || r.createdAt).toLocaleDateString('es-PY')}</td>
-            <td><strong>${r.title}</strong></td>
-            <td style="color:#64748b">${r.description || '—'}</td>
+            <td><strong>${r.description || '—'}</strong></td>
             <td style="text-align:right;font-weight:700;color:${typeColors[type]}">${formatCurrency(r.amount)}</td>
             <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:11px">${r.category?.name || 'Varios'}</span></td>
         </tr>`).join('');
@@ -107,7 +105,7 @@ function exportToPDF(records: any[], type: string, total: number) {
             <div class="kpi"><div class="kpi-label">Monto Total</div><div class="kpi-value">${formatCurrency(total)}</div></div>
         </div>
         <table>
-            <thead><tr><th>Fecha</th><th>Nombre</th><th>Descripción</th><th style="text-align:right">Monto</th><th>Categoría</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Nombre / Descripción</th><th style="text-align:right">Monto</th><th>Categoría</th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
         <div class="footer">Ingenio Millonario · Reporte confidencial · ${new Date().getFullYear()}</div>
@@ -625,28 +623,29 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
 
 // ─── Budget View ────────────────────────────────────────────────────────────────
 
-type RecordType = 'ingreso' | 'egreso' | 'activo' | 'pasivo';
+// These must match the PostgreSQL FinancialType enum exactly
+type RecordType = 'income' | 'expense' | 'asset' | 'liability';
 
 const TYPE_CONFIG: Record<RecordType, { label: string; plural: string; color: string; gradient: string; light: string; text: string; dot: string }> = {
-    ingreso: {
+    income: {
         label: 'Ingreso', plural: 'Ingresos',
         color: 'bg-emerald-500', gradient: 'from-emerald-500 to-teal-600',
         light: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400',
         dot: 'bg-emerald-500',
     },
-    egreso: {
+    expense: {
         label: 'Egreso', plural: 'Egresos',
         color: 'bg-rose-500', gradient: 'from-rose-500 to-pink-600',
         light: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-600 dark:text-rose-400',
         dot: 'bg-rose-500',
     },
-    activo: {
+    asset: {
         label: 'Activo', plural: 'Activos',
         color: 'bg-blue-500', gradient: 'from-blue-500 to-indigo-600',
         light: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400',
         dot: 'bg-blue-500',
     },
-    pasivo: {
+    liability: {
         label: 'Pasivo', plural: 'Pasivos',
         color: 'bg-slate-500', gradient: 'from-slate-500 to-slate-700',
         light: 'bg-slate-50 dark:bg-slate-500/10', text: 'text-slate-600 dark:text-slate-400',
@@ -655,12 +654,13 @@ const TYPE_CONFIG: Record<RecordType, { label: string; plural: string; color: st
 };
 
 function BudgetView() {
-    const [activeType, setActiveType] = useState<RecordType>('ingreso');
+    const [activeType, setActiveType] = useState<RecordType>('income');
     const [records, setRecords] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], title: '', description: '', amount: '', categoryId: '' });
+    // 'description' maps directly to the DB field (FinancialRecord.description)
+    const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -676,49 +676,49 @@ function BudgetView() {
     };
 
     const DEFAULT_CATEGORIES = [
-        // Ingresos
-        { name: 'Salario', type: 'ingreso', color: '#059669', icon: 'wallet' },
-        { name: 'Freelance / Honorarios', type: 'ingreso', color: '#0891b2', icon: 'code' },
-        { name: 'Inversiones', type: 'ingreso', color: '#7c3aed', icon: 'trending-up' },
-        { name: 'Alquiler cobrado', type: 'ingreso', color: '#ea580c', icon: 'home' },
-        { name: 'Comisiones', type: 'ingreso', color: '#d97706', icon: 'percent' },
-        { name: 'Bonificaciones', type: 'ingreso', color: '#16a34a', icon: 'gift' },
-        { name: 'Ventas', type: 'ingreso', color: '#2563eb', icon: 'shopping-bag' },
-        { name: 'Dividendos', type: 'ingreso', color: '#9333ea', icon: 'bar-chart' },
-        { name: 'Otros ingresos', type: 'ingreso', color: '#64748b', icon: 'plus' },
-        // Egresos
-        { name: 'Alimentación', type: 'egreso', color: '#dc2626', icon: 'utensils' },
-        { name: 'Transporte', type: 'egreso', color: '#2563eb', icon: 'car' },
-        { name: 'Vivienda / Alquiler', type: 'egreso', color: '#7c3aed', icon: 'home' },
-        { name: 'Salud y Medicina', type: 'egreso', color: '#16a34a', icon: 'heart' },
-        { name: 'Educación', type: 'egreso', color: '#0891b2', icon: 'book' },
-        { name: 'Entretenimiento', type: 'egreso', color: '#e11d48', icon: 'music' },
-        { name: 'Servicios básicos', type: 'egreso', color: '#d97706', icon: 'zap' },
-        { name: 'Vestimenta', type: 'egreso', color: '#ec4899', icon: 'shirt' },
-        { name: 'Comunicaciones', type: 'egreso', color: '#06b6d4', icon: 'phone' },
-        { name: 'Seguros', type: 'egreso', color: '#64748b', icon: 'shield' },
-        { name: 'Cuotas / Deudas', type: 'egreso', color: '#f97316', icon: 'credit-card' },
-        { name: 'Supermercado', type: 'egreso', color: '#84cc16', icon: 'shopping-cart' },
-        { name: 'Restaurantes', type: 'egreso', color: '#f59e0b', icon: 'coffee' },
-        { name: 'Impuestos', type: 'egreso', color: '#475569', icon: 'file-text' },
-        { name: 'Otros gastos', type: 'egreso', color: '#94a3b8', icon: 'more-horizontal' },
-        // Activos
-        { name: 'Efectivo / Cuenta corriente', type: 'activo', color: '#059669', icon: 'banknote' },
-        { name: 'Cuenta de ahorro', type: 'activo', color: '#10b981', icon: 'piggy-bank' },
-        { name: 'Bienes raíces', type: 'activo', color: '#2563eb', icon: 'building' },
-        { name: 'Vehículos', type: 'activo', color: '#7c3aed', icon: 'car' },
-        { name: 'Inversiones / Acciones', type: 'activo', color: '#d97706', icon: 'trending-up' },
-        { name: 'Criptomonedas', type: 'activo', color: '#f59e0b', icon: 'coins' },
-        { name: 'Maquinaria / Equipo', type: 'activo', color: '#0891b2', icon: 'settings' },
-        { name: 'Otros activos', type: 'activo', color: '#64748b', icon: 'package' },
-        // Pasivos
-        { name: 'Préstamo bancario', type: 'pasivo', color: '#dc2626', icon: 'landmark' },
-        { name: 'Tarjeta de crédito', type: 'pasivo', color: '#e11d48', icon: 'credit-card' },
-        { name: 'Hipoteca / Financiamiento', type: 'pasivo', color: '#7c3aed', icon: 'home' },
-        { name: 'Deuda personal', type: 'pasivo', color: '#ea580c', icon: 'users' },
-        { name: 'Préstamo vehicular', type: 'pasivo', color: '#2563eb', icon: 'car' },
-        { name: 'Impuestos pendientes', type: 'pasivo', color: '#475569', icon: 'file-text' },
-        { name: 'Otros pasivos', type: 'pasivo', color: '#94a3b8', icon: 'minus-circle' },
+        // income
+        { name: 'Salario', type: 'income', color: '#059669', icon: 'wallet' },
+        { name: 'Freelance / Honorarios', type: 'income', color: '#0891b2', icon: 'code' },
+        { name: 'Inversiones', type: 'income', color: '#7c3aed', icon: 'trending-up' },
+        { name: 'Alquiler cobrado', type: 'income', color: '#ea580c', icon: 'home' },
+        { name: 'Comisiones', type: 'income', color: '#d97706', icon: 'percent' },
+        { name: 'Bonificaciones', type: 'income', color: '#16a34a', icon: 'gift' },
+        { name: 'Ventas', type: 'income', color: '#2563eb', icon: 'shopping-bag' },
+        { name: 'Dividendos', type: 'income', color: '#9333ea', icon: 'bar-chart' },
+        { name: 'Otros ingresos', type: 'income', color: '#64748b', icon: 'plus' },
+        // expense
+        { name: 'Alimentación', type: 'expense', color: '#dc2626', icon: 'utensils' },
+        { name: 'Transporte', type: 'expense', color: '#2563eb', icon: 'car' },
+        { name: 'Vivienda / Alquiler', type: 'expense', color: '#7c3aed', icon: 'home' },
+        { name: 'Salud y Medicina', type: 'expense', color: '#16a34a', icon: 'heart' },
+        { name: 'Educación', type: 'expense', color: '#0891b2', icon: 'book' },
+        { name: 'Entretenimiento', type: 'expense', color: '#e11d48', icon: 'music' },
+        { name: 'Servicios básicos', type: 'expense', color: '#d97706', icon: 'zap' },
+        { name: 'Vestimenta', type: 'expense', color: '#ec4899', icon: 'shirt' },
+        { name: 'Comunicaciones', type: 'expense', color: '#06b6d4', icon: 'phone' },
+        { name: 'Seguros', type: 'expense', color: '#64748b', icon: 'shield' },
+        { name: 'Cuotas / Deudas', type: 'expense', color: '#f97316', icon: 'credit-card' },
+        { name: 'Supermercado', type: 'expense', color: '#84cc16', icon: 'shopping-cart' },
+        { name: 'Restaurantes', type: 'expense', color: '#f59e0b', icon: 'coffee' },
+        { name: 'Impuestos', type: 'expense', color: '#475569', icon: 'file-text' },
+        { name: 'Otros gastos', type: 'expense', color: '#94a3b8', icon: 'more-horizontal' },
+        // asset
+        { name: 'Efectivo / Cuenta corriente', type: 'asset', color: '#059669', icon: 'banknote' },
+        { name: 'Cuenta de ahorro', type: 'asset', color: '#10b981', icon: 'piggy-bank' },
+        { name: 'Bienes raíces', type: 'asset', color: '#2563eb', icon: 'building' },
+        { name: 'Vehículos', type: 'asset', color: '#7c3aed', icon: 'car' },
+        { name: 'Inversiones / Acciones', type: 'asset', color: '#d97706', icon: 'trending-up' },
+        { name: 'Criptomonedas', type: 'asset', color: '#f59e0b', icon: 'coins' },
+        { name: 'Maquinaria / Equipo', type: 'asset', color: '#0891b2', icon: 'settings' },
+        { name: 'Otros activos', type: 'asset', color: '#64748b', icon: 'package' },
+        // liability
+        { name: 'Préstamo bancario', type: 'liability', color: '#dc2626', icon: 'landmark' },
+        { name: 'Tarjeta de crédito', type: 'liability', color: '#e11d48', icon: 'credit-card' },
+        { name: 'Hipoteca / Financiamiento', type: 'liability', color: '#7c3aed', icon: 'home' },
+        { name: 'Deuda personal', type: 'liability', color: '#ea580c', icon: 'users' },
+        { name: 'Préstamo vehicular', type: 'liability', color: '#2563eb', icon: 'car' },
+        { name: 'Impuestos pendientes', type: 'liability', color: '#475569', icon: 'file-text' },
+        { name: 'Otros pasivos', type: 'liability', color: '#94a3b8', icon: 'minus-circle' },
     ];
 
     const fetchCategories = async () => {
@@ -745,9 +745,15 @@ function BudgetView() {
     }, []);
 
     const handleSave = async () => {
-        if (!form.title || !form.amount) return toast.error('Nombre y monto son obligatorios');
+        if (!form.description || !form.amount) return toast.error('Nombre y monto son obligatorios');
         try {
-            const payload = { ...form, amount: parseFloat(form.amount), type: activeType };
+            const payload = {
+                description: form.description,
+                amount: parseFloat(form.amount),
+                type: activeType,
+                categoryId: form.categoryId || undefined,
+                date: form.date,
+            };
             if (isEditing && editingId) {
                 await financesApi.update(editingId, payload);
                 toast.success('Registro actualizado');
@@ -763,7 +769,6 @@ function BudgetView() {
     const handleEdit = (record: any) => {
         setForm({
             date: new Date(record.date || record.createdAt).toISOString().split('T')[0],
-            title: record.title,
             description: record.description || '',
             amount: record.amount.toString(),
             categoryId: record.categoryId || ''
@@ -783,13 +788,12 @@ function BudgetView() {
     };
 
     const resetForm = () => {
-        setForm({ date: new Date().toISOString().split('T')[0], title: '', description: '', amount: '', categoryId: '' });
+        setForm({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '' });
         setIsEditing(false);
         setEditingId(null);
     };
 
     const filteredRecords = records.filter(r =>
-        r.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -836,12 +840,8 @@ function BudgetView() {
                                 <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="rounded-xl h-10" />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre</Label>
-                                <Input placeholder={`Nombre del ${cfg.label.toLowerCase()}...`} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="rounded-xl h-10" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Descripción</Label>
-                                <Input placeholder="Notas adicionales..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl h-10" />
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre / Descripción</Label>
+                                <Input placeholder={`Ej: Salario enero, Alquiler, Préstamo...`} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl h-10" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monto (₲)</Label>
@@ -938,8 +938,7 @@ function BudgetView() {
                                     <TableHeader>
                                         <TableRow className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                                             <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 pl-4">Fecha</TableHead>
-                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nombre</TableHead>
-                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Descripción</TableHead>
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400" colSpan={2}>Nombre / Descripción</TableHead>
                                             <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Monto</TableHead>
                                             <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 hidden sm:table-cell">Categoría</TableHead>
                                             <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 text-right pr-4">Acciones</TableHead>
@@ -976,8 +975,7 @@ function BudgetView() {
                                                     <TableCell className="pl-4 text-xs text-slate-500 font-medium whitespace-nowrap">
                                                         {new Date(r.date || r.createdAt).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </TableCell>
-                                                    <TableCell className="font-bold text-slate-800 dark:text-white text-sm max-w-[140px] truncate">{r.title}</TableCell>
-                                                    <TableCell className="text-slate-400 text-sm hidden md:table-cell max-w-[160px] truncate">{r.description || '—'}</TableCell>
+                                                    <TableCell className="font-bold text-slate-800 dark:text-white text-sm max-w-[220px] truncate" colSpan={2}>{r.description || '—'}</TableCell>
                                                     <TableCell className="text-right">
                                                         <span className={cn("text-sm font-black", cfg.text)}>{formatCurrency(r.amount)}</span>
                                                     </TableCell>
