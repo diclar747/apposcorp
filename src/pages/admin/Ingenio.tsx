@@ -675,14 +675,74 @@ function BudgetView() {
         finally { setLoading(false); }
     };
 
+    const DEFAULT_CATEGORIES = [
+        // Ingresos
+        { name: 'Salario', type: 'ingreso', color: '#059669', icon: 'wallet' },
+        { name: 'Freelance / Honorarios', type: 'ingreso', color: '#0891b2', icon: 'code' },
+        { name: 'Inversiones', type: 'ingreso', color: '#7c3aed', icon: 'trending-up' },
+        { name: 'Alquiler cobrado', type: 'ingreso', color: '#ea580c', icon: 'home' },
+        { name: 'Comisiones', type: 'ingreso', color: '#d97706', icon: 'percent' },
+        { name: 'Bonificaciones', type: 'ingreso', color: '#16a34a', icon: 'gift' },
+        { name: 'Ventas', type: 'ingreso', color: '#2563eb', icon: 'shopping-bag' },
+        { name: 'Dividendos', type: 'ingreso', color: '#9333ea', icon: 'bar-chart' },
+        { name: 'Otros ingresos', type: 'ingreso', color: '#64748b', icon: 'plus' },
+        // Egresos
+        { name: 'Alimentación', type: 'egreso', color: '#dc2626', icon: 'utensils' },
+        { name: 'Transporte', type: 'egreso', color: '#2563eb', icon: 'car' },
+        { name: 'Vivienda / Alquiler', type: 'egreso', color: '#7c3aed', icon: 'home' },
+        { name: 'Salud y Medicina', type: 'egreso', color: '#16a34a', icon: 'heart' },
+        { name: 'Educación', type: 'egreso', color: '#0891b2', icon: 'book' },
+        { name: 'Entretenimiento', type: 'egreso', color: '#e11d48', icon: 'music' },
+        { name: 'Servicios básicos', type: 'egreso', color: '#d97706', icon: 'zap' },
+        { name: 'Vestimenta', type: 'egreso', color: '#ec4899', icon: 'shirt' },
+        { name: 'Comunicaciones', type: 'egreso', color: '#06b6d4', icon: 'phone' },
+        { name: 'Seguros', type: 'egreso', color: '#64748b', icon: 'shield' },
+        { name: 'Cuotas / Deudas', type: 'egreso', color: '#f97316', icon: 'credit-card' },
+        { name: 'Supermercado', type: 'egreso', color: '#84cc16', icon: 'shopping-cart' },
+        { name: 'Restaurantes', type: 'egreso', color: '#f59e0b', icon: 'coffee' },
+        { name: 'Impuestos', type: 'egreso', color: '#475569', icon: 'file-text' },
+        { name: 'Otros gastos', type: 'egreso', color: '#94a3b8', icon: 'more-horizontal' },
+        // Activos
+        { name: 'Efectivo / Cuenta corriente', type: 'activo', color: '#059669', icon: 'banknote' },
+        { name: 'Cuenta de ahorro', type: 'activo', color: '#10b981', icon: 'piggy-bank' },
+        { name: 'Bienes raíces', type: 'activo', color: '#2563eb', icon: 'building' },
+        { name: 'Vehículos', type: 'activo', color: '#7c3aed', icon: 'car' },
+        { name: 'Inversiones / Acciones', type: 'activo', color: '#d97706', icon: 'trending-up' },
+        { name: 'Criptomonedas', type: 'activo', color: '#f59e0b', icon: 'coins' },
+        { name: 'Maquinaria / Equipo', type: 'activo', color: '#0891b2', icon: 'settings' },
+        { name: 'Otros activos', type: 'activo', color: '#64748b', icon: 'package' },
+        // Pasivos
+        { name: 'Préstamo bancario', type: 'pasivo', color: '#dc2626', icon: 'landmark' },
+        { name: 'Tarjeta de crédito', type: 'pasivo', color: '#e11d48', icon: 'credit-card' },
+        { name: 'Hipoteca / Financiamiento', type: 'pasivo', color: '#7c3aed', icon: 'home' },
+        { name: 'Deuda personal', type: 'pasivo', color: '#ea580c', icon: 'users' },
+        { name: 'Préstamo vehicular', type: 'pasivo', color: '#2563eb', icon: 'car' },
+        { name: 'Impuestos pendientes', type: 'pasivo', color: '#475569', icon: 'file-text' },
+        { name: 'Otros pasivos', type: 'pasivo', color: '#94a3b8', icon: 'minus-circle' },
+    ];
+
     const fetchCategories = async () => {
-        try { setCategories(await financesApi.getCategories()); } catch { }
+        try {
+            const data = await financesApi.getCategories();
+            if (data.length === 0) {
+                // Auto-seed default categories on first use
+                toast.info('Cargando categorías predeterminadas...', { duration: 2000 });
+                await Promise.all(DEFAULT_CATEGORIES.map(cat => financesApi.createCategory(cat)));
+                const seeded = await financesApi.getCategories();
+                setCategories(seeded);
+            } else {
+                setCategories(data);
+            }
+        } catch { }
     };
 
     useEffect(() => {
         fetchRecords();
-        fetchCategories();
     }, [activeType]);
+
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const handleSave = async () => {
         if (!form.title || !form.amount) return toast.error('Nombre y monto son obligatorios');
@@ -794,8 +854,12 @@ function BudgetView() {
                                         <SelectValue placeholder="Seleccionar categoría" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                                        {categories.length === 0 && <SelectItem value="none" disabled>Sin categorías</SelectItem>}
+                                        {categories.filter(c => c.type === activeType).map(cat => (
+                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                        ))}
+                                        {categories.filter(c => c.type === activeType).length === 0 && (
+                                            <SelectItem value="none" disabled>Cargando categorías...</SelectItem>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
