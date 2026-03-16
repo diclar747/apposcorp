@@ -11,6 +11,7 @@ import {
   Fingerprint
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { VirtualCard } from '@/components/client/VirtualCard';
 import { generateQRValue } from '@/lib/qr';
