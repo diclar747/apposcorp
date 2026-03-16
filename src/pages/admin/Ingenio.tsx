@@ -1,169 +1,355 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Search, Plus, BookOpen, MoreHorizontal, Users, Trash2, Edit,
-    ArrowLeft, FolderPlus, FileText, ImageIcon, Video, Link2,
-    ChevronDown, ChevronUp, Eye, EyeOff, UserPlus, X, Sparkles,
-    TrendingUp, TrendingDown, Landmark, Receipt, Calendar, Filter,
-    Wallet, Banknote, LineChart, Coins, GraduationCap
+    Search, Plus, BookOpen, Trash2, Edit,
+    ArrowLeft, Video, ChevronDown, ChevronUp, Sparkles,
+    TrendingUp, TrendingDown, Landmark, GraduationCap,
+    Wallet, Banknote, Coins, Download, FileText,
+    ArrowUpRight, ArrowDownRight, Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
+    Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
-import { coursesApi, usersApi, financesApi } from '@/lib/api';
+import { coursesApi, financesApi } from '@/lib/api';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, PieChart, Pie, Cell,
+    AreaChart, Area
+} from 'recharts';
 
-// ============ DASHBOARD SECTION ============
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function exportToCSV(records: any[], type: string) {
+    const headers = ['Fecha', 'Nombre', 'Descripción', 'Monto', 'Categoría'];
+    const rows = records.map(r => [
+        new Date(r.date || r.createdAt).toLocaleDateString('es-PY'),
+        `"${(r.title || '').replace(/"/g, '""')}"`,
+        `"${(r.description || '').replace(/"/g, '""')}"`,
+        r.amount,
+        r.category?.name || 'Varios'
+    ]);
+    const csv = '\uFEFF' + [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}s_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportToPDF(records: any[], type: string, total: number) {
+    const typeLabels: Record<string, string> = {
+        ingreso: 'Ingresos', egreso: 'Egresos', activo: 'Activos', pasivo: 'Pasivos'
+    };
+    const typeColors: Record<string, string> = {
+        ingreso: '#059669', egreso: '#e11d48', activo: '#2563eb', pasivo: '#64748b'
+    };
+    const rows = records.map(r => `
+        <tr>
+            <td>${new Date(r.date || r.createdAt).toLocaleDateString('es-PY')}</td>
+            <td><strong>${r.title}</strong></td>
+            <td style="color:#64748b">${r.description || '—'}</td>
+            <td style="text-align:right;font-weight:700;color:${typeColors[type]}">${formatCurrency(r.amount)}</td>
+            <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:11px">${r.category?.name || 'Varios'}</span></td>
+        </tr>`).join('');
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+        <meta charset="utf-8">
+        <title>Reporte de ${typeLabels[type]} – Ingenio Millonario</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a; background: #fff; padding: 40px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid ${typeColors[type]}; }
+            .brand { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a; }
+            .brand span { color: ${typeColors[type]}; }
+            .meta { text-align: right; font-size: 12px; color: #64748b; }
+            .title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+            .summary { display: flex; gap: 16px; margin-bottom: 28px; }
+            .kpi { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 24px; flex: 1; }
+            .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 4px; }
+            .kpi-value { font-size: 20px; font-weight: 900; color: ${typeColors[type]}; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+            td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+            tr:hover td { background: #f8fafc; }
+            .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; }
+            @media print { body { padding: 20px; } .no-print { display: none; } }
+        </style>
+    </head><body>
+        <div class="header">
+            <div>
+                <div class="brand">Ingenio <span>Millonario</span></div>
+                <div style="font-size:13px;color:#64748b;margin-top:4px">Sistema de Gestión Financiera</div>
+            </div>
+            <div class="meta">
+                <div class="title">Reporte de ${typeLabels[type]}</div>
+                <div>Generado el ${new Date().toLocaleDateString('es-PY', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            </div>
+        </div>
+        <div class="summary">
+            <div class="kpi"><div class="kpi-label">Total Registros</div><div class="kpi-value">${records.length}</div></div>
+            <div class="kpi"><div class="kpi-label">Monto Total</div><div class="kpi-value">${formatCurrency(total)}</div></div>
+        </div>
+        <table>
+            <thead><tr><th>Fecha</th><th>Nombre</th><th>Descripción</th><th style="text-align:right">Monto</th><th>Categoría</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div class="footer">Ingenio Millonario · Reporte confidencial · ${new Date().getFullYear()}</div>
+        <script>window.onload = () => { window.print(); }<\/script>
+    </body></html>`);
+    win.document.close();
+}
+
+// ─── Dashboard ─────────────────────────────────────────────────────────────────
 
 function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchSummary = async () => {
-            try {
-                setLoading(true);
-                const data = await financesApi.getSummary();
-                setSummary(data);
-            } catch (error) {
-                toast.error('Error al cargar resumen');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSummary();
+        financesApi.getSummary()
+            .then(setSummary)
+            .catch(() => toast.error('Error al cargar resumen'))
+            .finally(() => setLoading(false));
     }, []);
 
-    const cards = [
+    const netWorth = (summary?.totalAssets || 0) - (summary?.totalLiabilities || 0);
+    const balance = summary?.totalIncome - summary?.totalExpenses || 0;
+
+    const kpis = [
         {
-            title: 'Total Ingreso',
-            date: 'Febrero 2026',
-            amount: summary?.totalIncome || 0,
-            color: 'text-blue-500',
-            icon: Wallet,
-            borderColor: 'border-blue-100',
-            bottom: `Total HOY: ${formatCurrency(summary?.todayIncome || 0)}`
+            label: 'Total Ingresos',
+            value: summary?.totalIncome || 0,
+            today: summary?.todayIncome || 0,
+            icon: ArrowUpRight,
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-50 dark:bg-emerald-500/10',
+            border: 'border-l-emerald-500',
+            trend: 'up',
         },
         {
-            title: 'Total Egreso',
-            date: 'Febrero 2026',
-            amount: summary?.totalExpenses || 0,
-            color: 'text-[#f6c23e]',
-            icon: Banknote,
-            borderColor: 'border-yellow-100',
-            bottom: `Total HOY: ${formatCurrency(summary?.todayExpenses || 0)}`
+            label: 'Total Egresos',
+            value: summary?.totalExpenses || 0,
+            today: summary?.todayExpenses || 0,
+            icon: ArrowDownRight,
+            color: 'text-rose-600',
+            bg: 'bg-rose-50 dark:bg-rose-500/10',
+            border: 'border-l-rose-500',
+            trend: 'down',
         },
         {
-            title: 'Total Activo',
-            date: 'Febrero 2026',
-            amount: summary?.totalAssets || 0,
-            color: 'text-[#1cc88a]',
+            label: 'Total Activos',
+            value: summary?.totalAssets || 0,
+            today: null,
             icon: TrendingUp,
-            borderColor: 'border-emerald-100',
-            bottom: '0%'
+            color: 'text-blue-600',
+            bg: 'bg-blue-50 dark:bg-blue-500/10',
+            border: 'border-l-blue-500',
+            trend: 'up',
         },
         {
-            title: 'Total Pasivo',
-            date: 'Febrero 2026',
-            amount: summary?.totalLiabilities || 0,
-            color: 'text-[#e74a3b]',
-            icon: Coins,
-            borderColor: 'border-rose-100',
-            bottom: '0%'
+            label: 'Total Pasivos',
+            value: summary?.totalLiabilities || 0,
+            today: null,
+            icon: TrendingDown,
+            color: 'text-amber-600',
+            bg: 'bg-amber-50 dark:bg-amber-500/10',
+            border: 'border-l-amber-500',
+            trend: 'down',
         },
     ];
+
+    const chartData = [
+        { name: 'Ingresos', value: summary?.totalIncome || 0, fill: '#059669' },
+        { name: 'Egresos', value: summary?.totalExpenses || 0, fill: '#e11d48' },
+        { name: 'Activos', value: summary?.totalAssets || 0, fill: '#2563eb' },
+        { name: 'Pasivos', value: summary?.totalLiabilities || 0, fill: '#d97706' },
+    ];
+
+    const pieData = [
+        { name: 'Activos', value: summary?.totalAssets || 0 },
+        { name: 'Pasivos', value: summary?.totalLiabilities || 0 },
+    ];
+    const PIE_COLORS = ['#2563eb', '#e11d48'];
 
     const navButtons = [
-        { id: 'budget', title: 'Presupuesto', icon: Coins, color: 'text-yellow-500', iconColor: 'text-yellow-500' },
-        { id: 'academy', title: 'Academia Online', icon: GraduationCap, color: 'text-blue-500', iconColor: 'text-blue-500' },
-        { id: 'e1', title: 'Presentación IM E1', icon: GraduationCap, color: 'text-emerald-500', iconColor: 'text-emerald-500' },
-        { id: 'e2', title: 'Presentación IM E2', icon: GraduationCap, color: 'text-rose-500', iconColor: 'text-rose-500' },
+        { id: 'budget', label: 'Presupuesto', icon: Coins, color: 'emerald' },
+        { id: 'academy', label: 'Academia Online', icon: GraduationCap, color: 'blue' },
+        { id: 'e1', label: 'Presentación E1', icon: Sparkles, color: 'violet' },
+        { id: 'e2', label: 'Presentación E2', icon: Sparkles, color: 'amber' },
     ];
 
+    const navColor: Record<string, string> = {
+        emerald: 'from-emerald-500 to-teal-600 shadow-emerald-200 dark:shadow-emerald-900/30',
+        blue: 'from-blue-500 to-indigo-600 shadow-blue-200 dark:shadow-blue-900/30',
+        violet: 'from-violet-500 to-purple-600 shadow-violet-200 dark:shadow-violet-900/30',
+        amber: 'from-amber-500 to-orange-600 shadow-amber-200 dark:shadow-amber-900/30',
+    };
+
     return (
-        <div className="space-y-12 py-4">
-            <div className="flex flex-col items-center justify-center space-y-4">
-                <h1 className="text-4xl font-light text-slate-400 dark:text-slate-500 tracking-tighter">
-                    Saldo Caja: <span className="font-bold text-slate-600 dark:text-slate-300">GS. {formatCurrency(summary?.balance || 0).replace('Gs. ', '')}</span>
-                </h1>
-                <div className="w-full flex justify-end px-4">
-                    <Select defaultValue="feb26">
-                        <SelectTrigger className="w-[180px] rounded-xl border-none shadow-none bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase">
-                            <SelectValue placeholder="Mes" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem value="feb26">Febrero 2026</SelectItem>
-                        </SelectContent>
-                    </Select>
+        <div className="space-y-8">
+            {/* Hero Balance */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 text-white shadow-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent" />
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                    <div>
+                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mb-1">Saldo de Caja</p>
+                        {loading ? (
+                            <div className="h-12 w-64 bg-slate-700 rounded-xl animate-pulse" />
+                        ) : (
+                            <p className="text-5xl font-black tracking-tight">{formatCurrency(summary?.balance || 0)}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-3">
+                            <span className={`text-sm font-semibold flex items-center gap-1 ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {balance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                Flujo: {formatCurrency(Math.abs(balance))}
+                            </span>
+                            <span className="text-slate-500 text-xs">·</span>
+                            <span className="text-slate-400 text-sm">Patrimonio Neto: <strong className={`${netWorth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(netWorth)}</strong></span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-2">
+                        <Activity className="w-4 h-4 text-indigo-400" />
+                        <span className="text-sm text-slate-300 font-medium">Sistema activo</span>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {cards.map((card, i) => (
-                    <Card key={i} className={cn("rounded-3xl border-2 transition-all hover:shadow-lg", card.borderColor)}>
-                        <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
-                            <div className={cn("p-3 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-50 dark:border-slate-800 -mt-12 mb-2")}>
-                                <card.icon className={cn("w-8 h-8", card.color)} />
-                            </div>
-                            <h3 className={cn("text-xs font-black uppercase tracking-widest", card.color)}>{card.title} - {card.date}</h3>
-                            <p className="text-2xl font-black text-slate-700 dark:text-slate-200">GS. {formatCurrency(card.amount).replace('Gs. ', '')}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{card.bottom}</p>
-                        </CardContent>
-                    </Card>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {kpis.map((kpi, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+                        <Card className={cn("border-l-4 shadow-sm hover:shadow-md transition-shadow", kpi.border)}>
+                            <CardContent className="p-5">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className={cn("p-2 rounded-xl", kpi.bg)}>
+                                        <kpi.icon className={cn("w-5 h-5", kpi.color)} />
+                                    </div>
+                                    {kpi.today !== null && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg">
+                                            Hoy: {formatCurrency(kpi.today)}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">{kpi.label}</p>
+                                {loading ? (
+                                    <div className="h-7 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                                ) : (
+                                    <p className={cn("text-2xl font-black", kpi.color)}>{formatCurrency(kpi.value)}</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </motion.div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-                {navButtons.map((btn, i) => (
-                    <Card
-                        key={i}
-                        className="rounded-3xl border border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group"
-                        onClick={() => onNavigate(btn.id)}
-                    >
-                        <CardContent className="p-8 flex flex-col items-center text-center space-y-4">
-                            <div className="p-4 rounded-full bg-slate-50 dark:bg-slate-800 group-hover:scale-110 transition-transform">
-                                <btn.icon className={cn("w-10 h-10", btn.iconColor)} />
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Bar Chart */}
+                <Card className="lg:col-span-2 shadow-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-300">Resumen Financiero Global</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-52">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} barSize={42}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
+                                    <Tooltip
+                                        formatter={(val: number) => [formatCurrency(val), '']}
+                                        contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 12, color: '#f8fafc', fontSize: 13 }}
+                                        cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                                    />
+                                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                        {chartData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Pie Chart */}
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-300">Activos vs Pasivos</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center justify-center">
+                        <div className="h-44 w-full relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={76} paddingAngle={4} dataKey="value">
+                                        {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} strokeWidth={0} />)}
+                                    </Pie>
+                                    <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 10, color: '#f8fafc', fontSize: 12 }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Neto</span>
+                                <span className={cn("text-sm font-black", netWorth >= 0 ? 'text-emerald-600' : 'text-rose-600')}>{formatCurrency(netWorth)}</span>
                             </div>
-                            <h3 className={cn("font-black uppercase tracking-tighter text-lg leading-none", btn.color)}>{btn.title}</h3>
-                        </CardContent>
-                    </Card>
-                ))}
+                        </div>
+                        <div className="flex items-center gap-4 mt-2">
+                            {pieData.map((d, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: PIE_COLORS[i] }} />
+                                    <span className="text-xs text-slate-500 font-medium">{d.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Quick Nav */}
+            <div>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 ml-1">Módulos</h2>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {navButtons.map((btn, i) => (
+                        <motion.button
+                            key={btn.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.07 }}
+                            onClick={() => onNavigate(btn.id)}
+                            className="group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl"
+                        >
+                            <div className={cn("absolute inset-0 bg-gradient-to-br opacity-90 group-hover:opacity-100 transition-opacity", navColor[btn.color])} />
+                            <div className="relative z-10">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <btn.icon className="w-5 h-5 text-white" />
+                                </div>
+                                <p className="text-white font-black text-sm uppercase tracking-tight leading-tight">{btn.label}</p>
+                            </div>
+                        </motion.button>
+                    ))}
+                </div>
             </div>
         </div>
     );
 }
 
-// ============ ACADEMY SECTIONS ============
+// ─── Academy Views ──────────────────────────────────────────────────────────────
 
 function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: any) => void; filter?: string }) {
     const [courses, setCourses] = useState([]);
@@ -172,20 +358,15 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newCourseForm, setNewCourseForm] = useState({ title: '', description: '' });
 
-    useEffect(() => {
-        fetchCourses();
-    }, []);
+    useEffect(() => { fetchCourses(); }, []);
 
     const fetchCourses = async () => {
         try {
             setLoading(true);
             const data = await coursesApi.getAll(true);
             setCourses(data);
-        } catch (error) {
-            toast.error('Error al cargar la academia');
-        } finally {
-            setLoading(false);
-        }
+        } catch { toast.error('Error al cargar la academia'); }
+        finally { setLoading(false); }
     };
 
     const handleCreateCourse = async () => {
@@ -193,38 +374,28 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         try {
             const titleWithFilter = filter ? `${filter}: ${newCourseForm.title}` : newCourseForm.title;
             await coursesApi.create({ ...newCourseForm, title: titleWithFilter });
-            toast.success('Curso creado exitosamente');
+            toast.success('Curso creado');
             setIsCreateOpen(false);
             setNewCourseForm({ title: '', description: '' });
             fetchCourses();
-        } catch (error) {
-            toast.error('Error al crear el curso');
-        }
+        } catch { toast.error('Error al crear el curso'); }
     };
 
     const filteredCourses = courses.filter((course: any) => {
         const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
-        if (filter) {
-            return matchesSearch && course.title.toUpperCase().includes(filter.toUpperCase());
-        }
-        return matchesSearch;
+        return filter ? matchesSearch && course.title.toUpperCase().includes(filter.toUpperCase()) : matchesSearch;
     });
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-2">
-                <h2 className="text-xl font-bold dark:text-white uppercase tracking-tighter">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">
                     {filter ? `Etapas ${filter}` : 'Etapas de Formación'}
                 </h2>
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="Buscar etapa..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-9 h-10 rounded-full w-64 border-slate-200 dark:bg-slate-800"
-                        />
+                        <Input placeholder="Buscar etapa..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-10 rounded-full w-64" />
                     </div>
                     <Button onClick={() => setIsCreateOpen(true)} className="rounded-full bg-blue-600 hover:bg-blue-700 h-10 px-6">
                         <Plus className="w-4 h-4 mr-2" /> Nuevo
@@ -234,7 +405,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {loading ? (
-                    <div className="col-span-full py-20 text-center text-slate-400">Cargando academia...</div>
+                    <div className="col-span-full py-20 text-center text-slate-400">Cargando...</div>
                 ) : filteredCourses.length === 0 ? (
                     <div className="col-span-full py-20 text-center text-slate-400 italic">No se encontraron etapas</div>
                 ) : (
@@ -243,33 +414,25 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                             key={course.id}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: i * 0.1 }}
+                            transition={{ delay: i * 0.08 }}
                             className="relative group bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer text-center"
                             onClick={() => onSelectCourse(course)}
                         >
                             <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-white dark:bg-slate-900 rounded-full shadow-md border border-slate-50 dark:border-slate-800 flex items-center justify-center z-10">
-                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-inner">
+                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                                     <BookOpen className="w-5 h-5 text-white" />
                                 </div>
                             </div>
-
-                            <div className="mt-4 space-y-4">
-                                <h3 className="font-black text-blue-600 dark:text-blue-400 text-lg uppercase tracking-tight leading-none">
-                                    {course.title.toUpperCase()}
-                                </h3>
+                            <div className="mt-4 space-y-3">
+                                <h3 className="font-black text-blue-600 dark:text-blue-400 text-lg uppercase tracking-tight leading-none">{course.title.toUpperCase()}</h3>
                                 <div className="h-0.5 w-12 bg-slate-100 dark:bg-slate-800 mx-auto" />
-                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-tight h-10 line-clamp-2">
-                                    {course.description || "Contenido educativo especializado"}
-                                </p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-tight h-10 line-clamp-2">{course.description || 'Contenido educativo especializado'}</p>
                             </div>
-
                             <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-center gap-2">
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                    {course.modules?.length || 0} SECCIONES
-                                </span>
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{course.modules?.length || 0} SECCIONES</span>
                                 <div className="w-1 h-1 rounded-full bg-slate-200" />
                                 <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none text-[9px] font-bold">
-                                    {course.isPublished ? "PÚBLICO" : "BORRADOR"}
+                                    {course.isPublished ? 'PÚBLICO' : 'BORRADOR'}
                                 </Badge>
                             </div>
                         </motion.div>
@@ -278,29 +441,16 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             </div>
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="rounded-[2rem] sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Nueva Etapa {filter}</DialogTitle>
-                        <DialogHeader>Crea un nuevo curso para la academia online.</DialogHeader>
-                    </DialogHeader>
+                <DialogContent className="rounded-3xl sm:max-w-[425px]">
+                    <DialogHeader><DialogTitle className="text-2xl font-black uppercase tracking-tighter">Nueva Etapa {filter}</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label className="font-bold text-slate-500">Título</Label>
-                            <Input
-                                placeholder="Nombre del curso..."
-                                value={newCourseForm.title}
-                                onChange={e => setNewCourseForm({ ...newCourseForm, title: e.target.value })}
-                                className="rounded-xl border-slate-200"
-                            />
+                            <Input placeholder="Nombre del curso..." value={newCourseForm.title} onChange={e => setNewCourseForm({ ...newCourseForm, title: e.target.value })} className="rounded-xl" />
                         </div>
                         <div className="space-y-2">
                             <Label className="font-bold text-slate-500">Descripción</Label>
-                            <Textarea
-                                placeholder="Breve descripción..."
-                                value={newCourseForm.description}
-                                onChange={e => setNewCourseForm({ ...newCourseForm, description: e.target.value })}
-                                className="rounded-xl border-slate-200 min-h-[100px]"
-                            />
+                            <Textarea placeholder="Breve descripción..." value={newCourseForm.description} onChange={e => setNewCourseForm({ ...newCourseForm, description: e.target.value })} className="rounded-xl min-h-[100px]" />
                         </div>
                     </div>
                     <DialogFooter>
@@ -313,37 +463,25 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     );
 }
 
-// ============ COURSE DETAIL / EDIT VIEW (Ported from Courses.tsx) ============
-
 function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () => void }) {
     const [course, setCourse] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('modules');
-
-    // Dialog states
     const [isModuleOpen, setIsModuleOpen] = useState(false);
     const [moduleForm, setModuleForm] = useState({ title: '', description: '' });
     const [isLessonOpen, setIsLessonOpen] = useState(false);
     const [selectedModuleId, setSelectedModuleId] = useState('');
-    const [lessonForm, setLessonForm] = useState({ title: '', description: '', videoUrl: '', type: 'video' });
-    const [isEditOpen, setIsEditOpen] = useState(false);
-    const [editForm, setEditForm] = useState({ title: '', description: '', price: '', category: '', level: '' });
+    const [lessonForm, setLessonForm] = useState({ title: '', videoUrl: '' });
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
 
-    useEffect(() => {
-        fetchCourse();
-    }, [courseId]);
+    useEffect(() => { fetchCourse(); }, [courseId]);
 
     const fetchCourse = async () => {
         try {
             setLoading(true);
             const data = await coursesApi.getById(courseId);
             setCourse(data);
-        } catch (error) {
-            toast.error('Error al cargar detalle');
-        } finally {
-            setLoading(false);
-        }
+        } catch { toast.error('Error al cargar detalle'); }
+        finally { setLoading(false); }
     };
 
     if (loading || !course) return <div className="p-20 text-center text-slate-400">Cargando material...</div>;
@@ -358,21 +496,17 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
             setIsModuleOpen(false);
             setModuleForm({ title: '', description: '' });
             fetchCourse();
-        } catch (error) { toast.error('Error al crear'); }
+        } catch { toast.error('Error al crear'); }
     };
 
     const handleCreateLesson = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await coursesApi.addLesson(selectedModuleId, {
-                title: lessonForm.title,
-                description: lessonForm.description,
-                videoUrl: lessonForm.videoUrl || null,
-            });
+            await coursesApi.addLesson(selectedModuleId, { title: lessonForm.title, videoUrl: lessonForm.videoUrl || null });
             toast.success('Material agregado');
             setIsLessonOpen(false);
             fetchCourse();
-        } catch (error) { toast.error('Error al agregar'); }
+        } catch { toast.error('Error al agregar'); }
     };
 
     const handleDeleteLesson = async (lessonId: string) => {
@@ -381,16 +515,14 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
             await coursesApi.deleteLesson(lessonId);
             toast.success('Material eliminado');
             fetchCourse();
-        } catch (error) { toast.error('Error al eliminar'); }
+        } catch { toast.error('Error al eliminar'); }
     };
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
+                    <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl"><ArrowLeft className="w-5 h-5" /></Button>
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
                             Gestionar: <span className="text-blue-600">{course.title}</span>
@@ -415,7 +547,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                         <h3 className="font-bold text-slate-800 dark:text-white">{mod.title}</h3>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setSelectedModuleId(mod.id); setIsLessonOpen(true); }}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setSelectedModuleId(mod.id); setIsLessonOpen(true); }}>
                                             <Plus className="w-4 h-4" />
                                         </Button>
                                         {isExp ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -429,12 +561,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                                     <Video className="w-4 h-4 text-slate-400" />
                                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{lsn.title}</span>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lsn.id); }}
-                                                    className="h-7 w-7 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                                                >
+                                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleDeleteLesson(lsn.id); }} className="h-7 w-7 text-rose-500 hover:bg-rose-50">
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </Button>
                                             </div>
@@ -446,24 +573,23 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                         );
                     })}
                 </div>
-                <div className="space-y-6">
+                <div>
                     <Card className="rounded-2xl p-6 border-slate-100 dark:bg-slate-900 shadow-sm">
                         <h3 className="font-bold text-lg mb-4 dark:text-white">Estadísticas</h3>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl">
-                                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Estudiantes</p>
-                                <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{course.enrolledCount}</p>
+                                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Estudiantes</p>
+                                <p className="text-2xl font-black text-blue-700">{course.enrolledCount}</p>
                             </div>
                             <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl">
-                                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Estado</p>
-                                <p className="text-lg font-black text-emerald-700 dark:text-emerald-300">ACTIVO</p>
+                                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Estado</p>
+                                <p className="text-lg font-black text-emerald-700">ACTIVO</p>
                             </div>
                         </div>
                     </Card>
                 </div>
             </div>
 
-            {/* Dialogs scaled down for port */}
             <Dialog open={isModuleOpen} onOpenChange={setIsModuleOpen}>
                 <DialogContent className="rounded-3xl">
                     <DialogTitle>Nuevo Módulo</DialogTitle>
@@ -472,7 +598,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                             <Label>Nombre del Módulo</Label>
                             <Input value={moduleForm.title} onChange={e => setModuleForm({ ...moduleForm, title: e.target.value })} className="rounded-xl" />
                         </div>
-                        <Button onClick={handleCreateModule} className="w-full rounded-xl bg-blue-600">Crear</Button>
+                        <Button onClick={handleCreateModule as any} className="w-full rounded-xl bg-blue-600">Crear</Button>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -489,7 +615,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                             <Label>URL Video</Label>
                             <Input value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} className="rounded-xl" placeholder="YouTube URL..." />
                         </div>
-                        <Button onClick={handleCreateLesson} className="w-full rounded-xl bg-blue-600">Agregar</Button>
+                        <Button onClick={handleCreateLesson as any} className="w-full rounded-xl bg-blue-600">Agregar</Button>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -497,9 +623,36 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
     );
 }
 
-// ============ FINANCE / BUDGET SECTION ============
+// ─── Budget View ────────────────────────────────────────────────────────────────
 
 type RecordType = 'ingreso' | 'egreso' | 'activo' | 'pasivo';
+
+const TYPE_CONFIG: Record<RecordType, { label: string; plural: string; color: string; gradient: string; light: string; text: string; dot: string }> = {
+    ingreso: {
+        label: 'Ingreso', plural: 'Ingresos',
+        color: 'bg-emerald-500', gradient: 'from-emerald-500 to-teal-600',
+        light: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400',
+        dot: 'bg-emerald-500',
+    },
+    egreso: {
+        label: 'Egreso', plural: 'Egresos',
+        color: 'bg-rose-500', gradient: 'from-rose-500 to-pink-600',
+        light: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-600 dark:text-rose-400',
+        dot: 'bg-rose-500',
+    },
+    activo: {
+        label: 'Activo', plural: 'Activos',
+        color: 'bg-blue-500', gradient: 'from-blue-500 to-indigo-600',
+        light: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400',
+        dot: 'bg-blue-500',
+    },
+    pasivo: {
+        label: 'Pasivo', plural: 'Pasivos',
+        color: 'bg-slate-500', gradient: 'from-slate-500 to-slate-700',
+        light: 'bg-slate-50 dark:bg-slate-500/10', text: 'text-slate-600 dark:text-slate-400',
+        dot: 'bg-slate-500',
+    },
+};
 
 function BudgetView() {
     const [activeType, setActiveType] = useState<RecordType>('ingreso');
@@ -507,68 +660,23 @@ function BudgetView() {
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Form state
-    const [form, setForm] = useState({
-        date: new Date().toISOString().split('T')[0],
-        title: '',
-        description: '',
-        amount: '',
-        categoryId: ''
-    });
+    const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], title: '', description: '', amount: '', categoryId: '' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
-    const themeColors = {
-        ingreso: {
-            bg: 'bg-emerald-500',
-            light: 'bg-emerald-50 dark:bg-emerald-500/10',
-            text: 'text-emerald-600 dark:text-emerald-400',
-            header: 'bg-[#82cc9d]', // Green from screenshot
-            button: 'bg-[#82cc9d] hover:bg-[#6fb38a]'
-        },
-        egreso: {
-            bg: 'bg-rose-500',
-            light: 'bg-rose-50 dark:bg-rose-500/10',
-            text: 'text-rose-600 dark:text-rose-400',
-            header: 'bg-[#f08080]', // Light coral/rose
-            button: 'bg-[#f08080] hover:bg-[#e07070]'
-        },
-        activo: {
-            bg: 'bg-blue-500',
-            light: 'bg-blue-50 dark:bg-blue-500/10',
-            text: 'text-blue-600 dark:text-blue-400',
-            header: 'bg-[#5da9e9]',
-            button: 'bg-[#5da9e9] hover:bg-[#4a98d8]'
-        },
-        pasivo: {
-            bg: 'bg-slate-500',
-            light: 'bg-slate-50 dark:bg-slate-500/10',
-            text: 'text-slate-600 dark:text-slate-400',
-            header: 'bg-[#a3a3a3]',
-            button: 'bg-[#a3a3a3] hover:bg-[#8f8f8f]'
-        }
-    };
+    const cfg = TYPE_CONFIG[activeType];
 
     const fetchRecords = async () => {
         try {
             setLoading(true);
             const data = await financesApi.getAll();
             setRecords(data.filter((r: any) => r.type === activeType));
-        } catch (error) {
-            toast.error('Error al cargar registros');
-        } finally {
-            setLoading(false);
-        }
+        } catch { toast.error('Error al cargar registros'); }
+        finally { setLoading(false); }
     };
 
     const fetchCategories = async () => {
-        try {
-            const data = await financesApi.getCategories();
-            setCategories(data);
-        } catch (error) {
-            console.error('Error categories', error);
-        }
+        try { setCategories(await financesApi.getCategories()); } catch { }
     };
 
     useEffect(() => {
@@ -577,18 +685,9 @@ function BudgetView() {
     }, [activeType]);
 
     const handleSave = async () => {
-        if (!form.title || !form.amount) {
-            toast.error('Nombre y monto son obligatorios');
-            return;
-        }
-
+        if (!form.title || !form.amount) return toast.error('Nombre y monto son obligatorios');
         try {
-            const payload = {
-                ...form,
-                amount: parseFloat(form.amount),
-                type: activeType
-            };
-
+            const payload = { ...form, amount: parseFloat(form.amount), type: activeType };
             if (isEditing && editingId) {
                 await financesApi.update(editingId, payload);
                 toast.success('Registro actualizado');
@@ -596,12 +695,9 @@ function BudgetView() {
                 await financesApi.create(payload);
                 toast.success('Registro creado');
             }
-
             resetForm();
             fetchRecords();
-        } catch (error) {
-            toast.error('Error al guardar');
-        }
+        } catch { toast.error('Error al guardar'); }
     };
 
     const handleEdit = (record: any) => {
@@ -618,332 +714,321 @@ function BudgetView() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('¿Está seguro de eliminar este registro?')) return;
+        if (!confirm('¿Eliminar este registro?')) return;
         try {
             await financesApi.delete(id);
             toast.success('Registro eliminado');
             fetchRecords();
-        } catch (error) {
-            toast.error('Error al eliminar');
-        }
+        } catch { toast.error('Error al eliminar'); }
     };
 
     const resetForm = () => {
-        setForm({
-            date: new Date().toISOString().split('T')[0],
-            title: '',
-            description: '',
-            amount: '',
-            categoryId: ''
-        });
+        setForm({ date: new Date().toISOString().split('T')[0], title: '', description: '', amount: '', categoryId: '' });
         setIsEditing(false);
         setEditingId(null);
     };
 
     const filteredRecords = records.filter(r =>
-        r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const total = filteredRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
+
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Type Selector Tabs */}
-            <div className="flex flex-wrap gap-2">
-                {(['ingreso', 'egreso', 'activo', 'pasivo'] as RecordType[]).map(type => (
-                    <button
-                        key={type}
-                        onClick={() => {
-                            setActiveType(type);
-                            resetForm();
-                        }}
-                        className={cn(
-                            "px-6 py-2.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all shadow-sm",
-                            activeType === type
-                                ? `${themeColors[type].bg} text-white shadow-lg scale-105`
-                                : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-800 hover:border-slate-300"
-                        )}
-                    >
-                        {type}s
-                    </button>
-                ))}
+        <div className="space-y-6">
+            {/* Type Selector */}
+            <div className="flex items-center gap-2 flex-wrap">
+                {(Object.keys(TYPE_CONFIG) as RecordType[]).map(type => {
+                    const c = TYPE_CONFIG[type];
+                    const isActive = activeType === type;
+                    return (
+                        <button
+                            key={type}
+                            onClick={() => { setActiveType(type); resetForm(); }}
+                            className={cn(
+                                "flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all",
+                                isActive
+                                    ? `bg-gradient-to-r ${c.gradient} text-white shadow-lg shadow-black/10 scale-105`
+                                    : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                            )}
+                        >
+                            <div className={cn("w-2 h-2 rounded-full", isActive ? 'bg-white' : c.dot)} />
+                            {c.plural}
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* Main Interface Block */}
-            <Card className="border-none shadow-xl overflow-hidden rounded-3xl dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                {/* Dynamic Theme Header */}
-                <div className={cn("h-16 flex items-center justify-center", themeColors[activeType].header)}>
-                    <h2 className="text-white text-xl font-bold tracking-tight uppercase">
-                        {isEditing ? `Editando ${activeType}` : `Gestión de ${activeType}`}
-                    </h2>
-                </div>
-
-                <CardContent className="p-8 space-y-8">
-                    {/* Form Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                        <div className="space-y-2">
-                            <Label className="text-slate-500 font-bold">Fecha</Label>
-                            <Input
-                                type="date"
-                                value={form.date}
-                                onChange={e => setForm({ ...form, date: e.target.value })}
-                                className="rounded-xl border-slate-200"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-slate-500 font-bold">Nomb. {activeType.charAt(0).toUpperCase() + activeType.slice(1)}</Label>
-                            <Input
-                                placeholder={`Nombre del ${activeType}...`}
-                                value={form.title}
-                                onChange={e => setForm({ ...form, title: e.target.value })}
-                                className="rounded-xl border-slate-200"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-slate-500 font-bold">Descripción</Label>
-                            <Input
-                                placeholder="Notas adicionales..."
-                                value={form.description}
-                                onChange={e => setForm({ ...form, description: e.target.value })}
-                                className="rounded-xl border-slate-200"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-slate-500 font-bold">Monto</Label>
-                            <Input
-                                type="number"
-                                placeholder="0"
-                                value={form.amount}
-                                onChange={e => setForm({ ...form, amount: e.target.value })}
-                                className="rounded-xl border-slate-200"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-slate-500 font-bold">Categoría</Label>
-                            <div className="flex gap-2">
-                                <Select
-                                    value={form.categoryId}
-                                    onValueChange={val => setForm({ ...form, categoryId: val })}
-                                >
-                                    <SelectTrigger className="rounded-xl border-slate-200">
-                                        <SelectValue placeholder="<-- Seleccione -->" />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Form Card */}
+                <div className="xl:col-span-1">
+                    <Card className="shadow-sm overflow-hidden">
+                        <div className={cn("h-1.5 bg-gradient-to-r", cfg.gradient)} />
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-300">
+                                {isEditing ? `Editando ${cfg.label}` : `Nuevo ${cfg.label}`}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha</Label>
+                                <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="rounded-xl h-10" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre</Label>
+                                <Input placeholder={`Nombre del ${cfg.label.toLowerCase()}...`} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="rounded-xl h-10" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Descripción</Label>
+                                <Input placeholder="Notas adicionales..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl h-10" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monto (₲)</Label>
+                                <Input type="number" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="rounded-xl h-10 font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría</Label>
+                                <Select value={form.categoryId} onValueChange={val => setForm({ ...form, categoryId: val })}>
+                                    <SelectTrigger className="rounded-xl h-10">
+                                        <SelectValue placeholder="Seleccionar categoría" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {categories.map(cat => (
-                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                        ))}
-                                        {categories.length === 0 && <SelectItem value="none" disabled>No hay categorías</SelectItem>}
+                                        {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                                        {categories.length === 0 && <SelectItem value="none" disabled>Sin categorías</SelectItem>}
                                     </SelectContent>
                                 </Select>
-                                <Button variant="outline" size="icon" className="shrink-0 rounded-xl text-slate-400">+</Button>
                             </div>
-                        </div>
-                    </div>
+                            <div className="flex gap-2 pt-2">
+                                <Button onClick={handleSave} className={cn("flex-1 rounded-xl h-10 text-white font-bold bg-gradient-to-r", cfg.gradient)}>
+                                    {isEditing ? 'Actualizar' : 'Guardar'}
+                                </Button>
+                                {isEditing && (
+                                    <Button variant="outline" onClick={resetForm} className="rounded-xl h-10 px-4">Cancelar</Button>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                    <div className="flex justify-center md:justify-end gap-3 pt-4 border-t border-slate-50 dark:border-slate-800">
-                        <Button
-                            onClick={handleSave}
-                            className={cn("rounded-xl px-10 h-10 text-white font-bold", themeColors[activeType].button)}
-                        >
-                            {isEditing ? 'Actualizar' : 'Guardar'}
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            onClick={resetForm}
-                            className="rounded-xl px-10 h-10 bg-slate-400 hover:bg-slate-500 text-white font-bold"
-                        >
-                            Cancelar
-                        </Button>
-                    </div>
+                    {/* Summary mini card */}
+                    <Card className={cn("mt-4 shadow-sm border-none", cfg.light)}>
+                        <CardContent className="p-4 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5">Total {cfg.plural}</p>
+                                <p className={cn("text-xl font-black", cfg.text)}>{formatCurrency(total)}</p>
+                            </div>
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", cfg.color)}>
+                                <FileText className="w-5 h-5 text-white" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                    {/* Table Section */}
-                    <div className="space-y-4 pt-8">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <h3 className="font-black text-slate-800 dark:text-white text-lg">Listado de {activeType}s</h3>
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <Input
-                                        placeholder="Buscar..."
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        className="pl-9 h-10 rounded-full w-64 border-slate-200 dark:bg-slate-800"
-                                    />
+                {/* Records Table */}
+                <div className="xl:col-span-2">
+                    <Card className="shadow-sm overflow-hidden">
+                        <div className={cn("h-1.5 bg-gradient-to-r", cfg.gradient)} />
+                        <CardHeader className="pb-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-300">
+                                        Listado de {cfg.plural}
+                                    </CardTitle>
+                                    <p className="text-xs text-slate-400 mt-0.5">{filteredRecords.length} registros encontrados</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                        <Input
+                                            placeholder="Buscar..."
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="pl-8 h-9 rounded-full w-44 text-sm"
+                                        />
+                                    </div>
+                                    {/* Export Buttons */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 rounded-xl gap-1.5 text-xs font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                        onClick={() => exportToCSV(filteredRecords, activeType)}
+                                        title="Exportar a Excel (CSV)"
+                                    >
+                                        <Download className="w-3.5 h-3.5" /> Excel
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 rounded-xl gap-1.5 text-xs font-bold border-rose-200 text-rose-700 hover:bg-rose-50"
+                                        onClick={() => exportToPDF(filteredRecords, activeType, total)}
+                                        title="Exportar a PDF"
+                                    >
+                                        <FileText className="w-3.5 h-3.5" /> PDF
+                                    </Button>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="overflow-hidden border border-slate-100 dark:border-slate-800 rounded-2xl">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-slate-50/50 dark:bg-slate-800/50">
-                                        <TableHead className="font-bold text-slate-800 dark:text-slate-200">Fecha</TableHead>
-                                        <TableHead className="font-bold text-slate-800 dark:text-slate-200">Nombre</TableHead>
-                                        <TableHead className="font-bold text-slate-800 dark:text-slate-200">Descripción</TableHead>
-                                        <TableHead className="font-bold text-slate-800 dark:text-slate-200">Monto</TableHead>
-                                        <TableHead className="font-bold text-slate-800 dark:text-slate-200">Categoría</TableHead>
-                                        <TableHead className="text-right font-bold text-slate-800 dark:text-slate-200">Acciones</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-12 text-slate-400">Cargando...</TableCell>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 pl-4">Fecha</TableHead>
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nombre</TableHead>
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Descripción</TableHead>
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">Monto</TableHead>
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 hidden sm:table-cell">Categoría</TableHead>
+                                            <TableHead className="text-[11px] font-black uppercase tracking-widest text-slate-400 text-right pr-4">Acciones</TableHead>
                                         </TableRow>
-                                    ) : filteredRecords.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-12 text-slate-400 italic">
-                                                No se encontraron registros
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredRecords.map((r) => (
-                                            <TableRow key={r.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                                                <TableCell className="text-slate-600 dark:text-slate-300 font-medium">
-                                                    {new Date(r.date || r.createdAt).toLocaleDateString()}
-                                                </TableCell>
-                                                <TableCell className="text-slate-900 dark:text-white font-bold">{r.title}</TableCell>
-                                                <TableCell className="text-slate-500 dark:text-slate-400">{r.description}</TableCell>
-                                                <TableCell className="font-bold text-slate-900 dark:text-white">{formatCurrency(r.amount)}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="rounded-lg text-[10px] uppercase tracking-wider font-black">
-                                                        {r.category?.name || 'Varios'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(r)}
-                                                            className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(r.id)}
-                                                            className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loading ? (
+                                            Array.from({ length: 4 }).map((_, i) => (
+                                                <TableRow key={i}>
+                                                    {Array.from({ length: 5 }).map((_, j) => (
+                                                        <TableCell key={j}><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))
+                                        ) : filteredRecords.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-16">
+                                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3", cfg.light)}>
+                                                        <FileText className={cn("w-6 h-6", cfg.text)} />
                                                     </div>
+                                                    <p className="text-slate-400 font-medium text-sm">No hay {cfg.plural.toLowerCase()} registrados</p>
+                                                    <p className="text-slate-300 text-xs mt-1">Usa el formulario para agregar un nuevo registro</p>
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                                        ) : (
+                                            filteredRecords.map((r, i) => (
+                                                <motion.tr
+                                                    key={r.id}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ delay: i * 0.03 }}
+                                                    className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
+                                                >
+                                                    <TableCell className="pl-4 text-xs text-slate-500 font-medium whitespace-nowrap">
+                                                        {new Date(r.date || r.createdAt).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </TableCell>
+                                                    <TableCell className="font-bold text-slate-800 dark:text-white text-sm max-w-[140px] truncate">{r.title}</TableCell>
+                                                    <TableCell className="text-slate-400 text-sm hidden md:table-cell max-w-[160px] truncate">{r.description || '—'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <span className={cn("text-sm font-black", cfg.text)}>{formatCurrency(r.amount)}</span>
+                                                    </TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider rounded-lg border-slate-200">
+                                                            {r.category?.name || 'Varios'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="pr-4">
+                                                        <div className="flex justify-end gap-1">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg">
+                                                                <Edit className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg">
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </motion.tr>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            {filteredRecords.length > 0 && (
+                                <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/20">
+                                    <span className="text-xs text-slate-400 font-medium">{filteredRecords.length} registros</span>
+                                    <span className={cn("text-sm font-black", cfg.text)}>Total: {formatCurrency(total)}</span>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 }
 
-// ============ MAIN ADMIN COMPONENT ============
+// ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function AdminIngenio() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
-    // If a course is selected, show detail view (Academy edit mode)
-    // We'll import CourseDetailView logic here or define it locally
-    // For brevity in this large component, I'll refer back or use the Courses.tsx component structure if needed
-
     return (
         <div className="max-w-[1400px] mx-auto pb-20">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
-                        Ingenio <span className="text-blue-600">Millonario</span>
+                    <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                        Ingenio <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Millonario</span>
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
-                        Gestión Integral de Finanzas y Academia
+                    <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-sm font-medium">
+                        Gestión Integral de Finanzas · Academia · Estadísticas
                     </p>
                 </div>
-                <div className="flex items-center gap-4 bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                    {selectedCourseId && (
-                        <Button variant="ghost" onClick={() => setSelectedCourseId(null)} className="h-10 rounded-xl">
-                            <ArrowLeft className="w-4 h-4 mr-2" /> Volver a Lista
-                        </Button>
-                    )}
-                </div>
+                {selectedCourseId && (
+                    <Button variant="outline" onClick={() => setSelectedCourseId(null)} className="rounded-xl h-10 gap-2">
+                        <ArrowLeft className="w-4 h-4" /> Volver a Lista
+                    </Button>
+                )}
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-2xl h-14 shadow-sm w-full sm:w-auto flex-wrap sm:flex-nowrap">
-                    <TabsTrigger value="dashboard" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
-                        <Landmark className="w-4 h-4 mr-2" /> Dashboard
-                    </TabsTrigger>
-                    <TabsTrigger value="budget" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
-                        <Landmark className="w-4 h-4 mr-2" /> Presupuesto
-                    </TabsTrigger>
-                    <TabsTrigger value="academy" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
-                        <BookOpen className="w-4 h-4 mr-2" /> Academia Online
-                    </TabsTrigger>
-                    <TabsTrigger value="e1" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
-                        <Sparkles className="w-4 h-4 mr-2" /> Presentación E1
-                    </TabsTrigger>
-                    <TabsTrigger value="e2" className="rounded-xl px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all font-bold">
-                        <Sparkles className="w-4 h-4 mr-2" /> Presentación E2
-                    </TabsTrigger>
+            <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedCourseId(null); }} className="space-y-8">
+                <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl h-auto shadow-sm inline-flex flex-wrap gap-1">
+                    {[
+                        { value: 'dashboard', label: 'Dashboard', icon: Activity },
+                        { value: 'budget', label: 'Presupuesto', icon: Landmark },
+                        { value: 'academy', label: 'Academia Online', icon: BookOpen },
+                        { value: 'e1', label: 'Presentación E1', icon: Sparkles },
+                        { value: 'e2', label: 'Presentación E2', icon: Sparkles },
+                    ].map(tab => (
+                        <TabsTrigger
+                            key={tab.value}
+                            value={tab.value}
+                            className="rounded-xl px-5 py-2 h-9 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-sm flex items-center gap-1.5"
+                        >
+                            <tab.icon className="w-3.5 h-3.5" /> {tab.label}
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeTab}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3 }}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
                     >
-                        <TabsContent value="dashboard">
+                        <TabsContent value="dashboard" forceMount className={activeTab !== 'dashboard' ? 'hidden' : ''}>
                             <DashboardView onNavigate={setActiveTab} />
                         </TabsContent>
-
-                        <TabsContent value="budget">
+                        <TabsContent value="budget" forceMount className={activeTab !== 'budget' ? 'hidden' : ''}>
                             <BudgetView />
                         </TabsContent>
-
-                        <TabsContent value="academy">
+                        <TabsContent value="academy" forceMount className={activeTab !== 'academy' ? 'hidden' : ''}>
                             {selectedCourseId ? (
-                                <CourseDetailView
-                                    courseId={selectedCourseId}
-                                    onBack={() => setSelectedCourseId(null)}
-                                />
+                                <CourseDetailView courseId={selectedCourseId} onBack={() => setSelectedCourseId(null)} />
                             ) : (
-                                <AcademyListView onSelectCourse={(c) => setSelectedCourseId(c.id)} />
+                                <AcademyListView onSelectCourse={c => setSelectedCourseId(c.id)} />
                             )}
                         </TabsContent>
-
-                        <TabsContent value="e1">
+                        <TabsContent value="e1" forceMount className={activeTab !== 'e1' ? 'hidden' : ''}>
                             {selectedCourseId ? (
-                                <CourseDetailView
-                                    courseId={selectedCourseId}
-                                    onBack={() => setSelectedCourseId(null)}
-                                />
+                                <CourseDetailView courseId={selectedCourseId} onBack={() => setSelectedCourseId(null)} />
                             ) : (
-                                <AcademyListView
-                                    onSelectCourse={(c) => setSelectedCourseId(c.id)}
-                                    filter="E1"
-                                />
+                                <AcademyListView onSelectCourse={c => setSelectedCourseId(c.id)} filter="E1" />
                             )}
                         </TabsContent>
-
-                        <TabsContent value="e2">
+                        <TabsContent value="e2" forceMount className={activeTab !== 'e2' ? 'hidden' : ''}>
                             {selectedCourseId ? (
-                                <CourseDetailView
-                                    courseId={selectedCourseId}
-                                    onBack={() => setSelectedCourseId(null)}
-                                />
+                                <CourseDetailView courseId={selectedCourseId} onBack={() => setSelectedCourseId(null)} />
                             ) : (
-                                <AcademyListView
-                                    onSelectCourse={(c) => setSelectedCourseId(c.id)}
-                                    filter="E2"
-                                />
+                                <AcademyListView onSelectCourse={c => setSelectedCourseId(c.id)} filter="E2" />
                             )}
                         </TabsContent>
                     </motion.div>
