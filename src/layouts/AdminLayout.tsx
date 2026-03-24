@@ -227,7 +227,7 @@ export default function AdminLayout() {
 
       {/* Main Content */}
       <div className={cn(
-        'flex-1 flex flex-col min-h-screen transition-all duration-250',
+        'flex-1 flex flex-col min-h-screen transition-all duration-250 w-full',
         'lg:ml-[260px]',
         !sidebarOpen && 'lg:ml-[72px]'
       )}>
@@ -310,11 +310,12 @@ export default function AdminLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
+            className="w-full max-w-full"
           >
             <Outlet />
           </motion.div>

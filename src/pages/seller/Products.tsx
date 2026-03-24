@@ -273,13 +273,13 @@ export default function SellerProducts() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mis Productos</h1>
-          <p className="text-gray-500 dark:text-gray-400">Gestiona tus productos y servicios</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Mis Productos</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona tus productos y servicios</p>
         </div>
-        <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleOpenModal()}>
+        <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Producto
         </Button>
@@ -287,9 +287,9 @@ export default function SellerProducts() {
 
       {/* Filters */}
       <Card className="dark:bg-slate-900 dark:border-slate-800">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Buscar productos..."
@@ -298,10 +298,10 @@ export default function SellerProducts() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant={visibilityFilter === 'all' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('all')} size="sm">Todos</Button>
-              <Button variant={visibilityFilter === 'online' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('online')} size="sm">En línea</Button>
-              <Button variant={visibilityFilter === 'local' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('local')} size="sm">Local</Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant={visibilityFilter === 'all' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('all')} size="sm" className="flex-1 sm:flex-none">Todos</Button>
+              <Button variant={visibilityFilter === 'online' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('online')} size="sm" className="flex-1 sm:flex-none">En línea</Button>
+              <Button variant={visibilityFilter === 'local' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('local')} size="sm" className="flex-1 sm:flex-none">Local</Button>
             </div>
           </div>
         </CardContent>
@@ -315,11 +315,11 @@ export default function SellerProducts() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="dark:text-gray-400">Producto</TableHead>
-                  <TableHead className="dark:text-gray-400">Precio</TableHead>
+                  <TableHead className="dark:text-gray-400 hidden sm:table-cell">Precio</TableHead>
                   <TableHead className="dark:text-gray-400">Stock</TableHead>
-                  <TableHead className="dark:text-gray-400">Proveedor</TableHead>
-                  <TableHead className="dark:text-gray-400">Visibilidad</TableHead>
-                  <TableHead className="dark:text-gray-400">Estado</TableHead>
+                  <TableHead className="dark:text-gray-400 hidden md:table-cell">Proveedor</TableHead>
+                  <TableHead className="dark:text-gray-400 hidden lg:table-cell">Visibilidad</TableHead>
+                  <TableHead className="dark:text-gray-400 hidden xl:table-cell">Estado</TableHead>
                   <TableHead className="text-right dark:text-gray-400">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -333,21 +333,22 @@ export default function SellerProducts() {
                     className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50"
                   >
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         {product.images[0] ? (
-                          <img src={product.images[0]} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
+                          <img src={product.images[0]} alt={product.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0" />
                         ) : (
-                          <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
-                            <Package className="w-6 h-6 text-gray-400" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                            <Package className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
                           </div>
                         )}
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{product.sku}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{product.sku}</p>
+                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 sm:hidden">{formatCurrency(product.price)}</p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <div>
                         <p className="font-medium dark:text-white">{formatCurrency(product.price)}</p>
                         {product.comparePrice && (
@@ -356,27 +357,28 @@ export default function SellerProducts() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={`font-medium ${product.stock < 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-300'}`}>
-                        {product.stock} unidades
+                      <span className={`font-medium text-sm ${product.stock < 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-300'}`}>
+                        {product.stock}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <TableCell className="hidden md:table-cell">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
                         {product.supplier?.name || '-'}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={product.visibility === 'online' ? 'default' : 'secondary'}>
+                    <TableCell className="hidden lg:table-cell">
+                      <Badge variant={product.visibility === 'online' ? 'default' : 'secondary'} className="text-xs">
                         {product.visibility === 'online' ? 'En línea' : product.visibility === 'local' ? 'Local' : 'Ambos'}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={product.status === 'active'}
                           onCheckedChange={() => handleToggleStatus(product.id)}
+                          className="scale-90"
                         />
-                        <span className="text-sm dark:text-gray-400">{product.status === 'active' ? 'Activo' : 'Inactivo'}</span>
+                        <span className="text-xs dark:text-gray-400">{product.status === 'active' ? 'Activo' : 'Inactivo'}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -402,7 +404,7 @@ export default function SellerProducts() {
 
       {/* Product Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800">
+        <DialogContent className="sm:max-w-[600px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
             <DialogTitle className="dark:text-white">{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
             <DialogDescription className="dark:text-gray-400">

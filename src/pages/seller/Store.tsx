@@ -212,30 +212,32 @@ export default function SellerStore() {
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 pb-20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mi Tienda</h1>
-          <p className="text-gray-500">Gestiona la información pública de tu negocio</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mi Tienda</h1>
+          <p className="text-sm text-gray-500">Gestiona la información pública de tu negocio</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <Switch checked={isOnline} onCheckedChange={setIsOnline} />
             <span className="text-sm">{isOnline ? 'En línea' : 'Offline'}</span>
           </div>
           {!isEditing ? (
-            <Button variant="outline" onClick={() => setIsEditing(true)}>
+            <Button variant="outline" onClick={() => setIsEditing(true)} size="sm" className="sm:text-base">
               <Edit className="w-4 h-4 mr-2" />
-              Editar Tienda
+              <span className="hidden sm:inline">Editar Tienda</span>
+              <span className="sm:hidden">Editar</span>
             </Button>
           ) : (
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={handleCancel} disabled={loading}>
-                <X className="w-4 h-4 mr-2" /> Cancelar
+              <Button variant="ghost" onClick={handleCancel} disabled={loading} size="sm">
+                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancelar</span>
               </Button>
-              <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700" size="sm">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                Guardar Cambios
+                <span className="hidden sm:inline">Guardar</span>
+                <span className="sm:hidden">OK</span>
               </Button>
             </div>
           )}
@@ -243,7 +245,7 @@ export default function SellerStore() {
       </div>
 
       {/* Banner */}
-      <div className="relative group rounded-2xl overflow-hidden h-48 md:h-64 bg-gray-100 border border-gray-200">
+      <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden h-32 sm:h-48 md:h-64 bg-gray-100 border border-gray-200">
         {formData.banner ? (
           <img src={formData.banner} alt="Banner" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
         ) : (
@@ -269,10 +271,10 @@ export default function SellerStore() {
       {/* Main Info Card */}
       <Card className="overflow-visible">
         <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-6 -mt-16 md:-mt-20">
+          <div className="flex flex-col md:flex-row gap-4 sm:gap-6 -mt-12 sm:-mt-16 md:-mt-20">
             {/* Logo */}
             <div className="relative shrink-0">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-white p-2 shadow-xl border border-gray-100">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-xl sm:rounded-2xl bg-white p-1.5 sm:p-2 shadow-xl border border-gray-100 mx-auto md:mx-0">
                 {formData.logo ? (
                   <img src={formData.logo} alt="Logo" className="w-full h-full rounded-xl object-cover" />
                 ) : (
@@ -335,7 +337,7 @@ export default function SellerStore() {
       </Card>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Contact Info */}
         <Card>
           <CardHeader>

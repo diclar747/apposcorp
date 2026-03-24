@@ -241,10 +241,10 @@ export default function AdminUsers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Usuarios</h1>
-          <p className="text-gray-500 dark:text-gray-400">Gestiona los usuarios del sistema</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Usuarios</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona los usuarios del sistema</p>
         </div>
-        <Button className="bg-blue-600">
+        <Button className="bg-blue-600 w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Usuario
         </Button>
@@ -252,12 +252,12 @@ export default function AdminUsers() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Buscar usuarios por nombre o email..."
+                placeholder="Buscar usuarios..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -268,6 +268,7 @@ export default function AdminUsers() {
                 variant={filterRole === 'all' ? 'default' : 'outline'}
                 onClick={() => setFilterRole('all')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Todos
               </Button>
@@ -275,6 +276,7 @@ export default function AdminUsers() {
                 variant={filterRole === 'client' ? 'default' : 'outline'}
                 onClick={() => setFilterRole('client')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Clientes
               </Button>
@@ -282,6 +284,7 @@ export default function AdminUsers() {
                 variant={filterRole === 'seller' ? 'default' : 'outline'}
                 onClick={() => setFilterRole('seller')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Vendedores
               </Button>
@@ -289,6 +292,7 @@ export default function AdminUsers() {
                 variant={filterRole === 'superadmin' ? 'default' : 'outline'}
                 onClick={() => setFilterRole('superadmin')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Admins
               </Button>
@@ -305,12 +309,12 @@ export default function AdminUsers() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Usuario</TableHead>
-                  <TableHead>Contacto</TableHead>
+                  <TableHead className="hidden md:table-cell">Contacto</TableHead>
                   <TableHead>Rol</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Ingenio</TableHead>
-                  <TableHead>Registro</TableHead>
-                  <TableHead>Ingenio</TableHead>
+                  <TableHead className="hidden sm:table-cell">Estado</TableHead>
+                  <TableHead className="hidden lg:table-cell">Ingenio</TableHead>
+                  <TableHead className="hidden xl:table-cell">Registro</TableHead>
+                  <TableHead className="hidden lg:table-cell">Cuotas</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -326,61 +330,62 @@ export default function AdminUsers() {
                       className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50"
                     >
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-10 h-10">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
                             <AvatarImage src={user.avatar} />
-                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs sm:text-sm">
                               {user.firstName[0]}{user.lastName[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">{user.firstName} {user.lastName}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">ID: {user.id.slice(0, 8)}...</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{user.firstName} {user.lastName}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">ID: {user.id.slice(0, 8)}...</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Mail className="w-4 h-4" />
-                            {user.email}
+                            <Mail className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{user.email}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Phone className="w-4 h-4" />
+                            <Phone className="w-4 h-4 shrink-0" />
                             {user.phone || 'Sin teléfono'}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={cn(getRoleColor(user.role))}>
-                          <RoleIcon className="w-3 h-3 mr-1" />
-                          {getRoleName(user.role)}
+                        <Badge className={cn(getRoleColor(user.role), "text-xs")}>
+                          <RoleIcon className="w-3 h-3 mr-1 shrink-0" />
+                          <span className="hidden sm:inline">{getRoleName(user.role)}</span>
+                          <span className="sm:hidden">{user.role === 'superadmin' ? 'Admin' : user.role === 'seller' ? 'Vend' : 'Cli'}</span>
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
                           {user.isActive ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {user.ingenioAccess ? (
-                          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">
-                            <CheckCircle className="w-3 h-3 mr-1" />
+                          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none text-xs">
+                            <CheckCircle className="w-3 h-3 mr-1 shrink-0" />
                             Activo
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-gray-400">
-                            <XCircle className="w-3 h-3 mr-1" />
+                          <Badge variant="outline" className="text-gray-400 text-xs">
+                            <XCircle className="w-3 h-3 mr-1 shrink-0" />
                             Inactivo
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden xl:table-cell">
                         <span className="text-sm text-gray-600 dark:text-gray-400">
                           {formatDate(user.createdAt)}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {user.ingenioAccess ? (
                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-100 font-mono text-[10px]">
                             {user.ingenioInstallmentsPaid || 0}/{user.ingenioTotalInstallments || 0}
@@ -440,7 +445,7 @@ export default function AdminUsers() {
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Usuario</DialogTitle>
             <DialogDescription>
@@ -507,7 +512,7 @@ export default function AdminUsers() {
       {/* View User Profile Dialog */}
       <Dialog open={!!viewingUser} onOpenChange={(open) => !open && setViewingUser(null)}>
         {viewingUser && (
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Perfil de Usuario</DialogTitle>
             </DialogHeader>
@@ -662,7 +667,7 @@ export default function AdminUsers() {
 
       {/* Plan Assignment Dialog */}
       <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gestionar Plan de Suscripción</DialogTitle>
             <DialogDescription>

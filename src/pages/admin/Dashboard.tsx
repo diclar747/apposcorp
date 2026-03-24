@@ -121,19 +121,19 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-gray-500 dark:text-gray-400">Resumen general del sistema</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Resumen general del sistema</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="dark:text-gray-300 dark:hover:bg-slate-800 dark:border-slate-700">Exportar reporte</Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">Ver detalles</Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="dark:text-gray-300 dark:hover:bg-slate-800 dark:border-slate-700">Exportar</Button>
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">Detalles</Button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {stats.map((stat, index) => (
           <motion.div
             key={stat.title}
@@ -159,8 +159,8 @@ export default function AdminDashboard() {
                       <span className="text-xs text-gray-400">vs mes anterior</span>
                     </div>
                   </div>
-                  <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center`}>
-                    <stat.icon className="w-5 h-5 text-white" />
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 ${stat.color} rounded-lg flex items-center justify-center shrink-0`}>
+                    <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -170,14 +170,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Sales Chart */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
             <CardTitle className="dark:text-white">Ventas y Comisiones</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={salesData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -201,7 +201,7 @@ export default function AdminDashboard() {
             <CardTitle className="dark:text-white">Crecimiento de Usuarios</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={userGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -220,14 +220,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Order Status */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
             <CardTitle className="dark:text-white">Estado de Pedidos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-56 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-4">
               {orderStatusData.map((item) => (
                 <div key={item.name} className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
@@ -260,9 +260,9 @@ export default function AdminDashboard() {
 
         {/* Recent Orders */}
         <Card className="lg:col-span-2 dark:bg-slate-900 dark:border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="dark:text-white">Pedidos Recientes</CardTitle>
-            <Button variant="ghost" size="sm" className="dark:text-gray-300 dark:hover:bg-slate-800">Ver todos</Button>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <CardTitle className="text-base sm:text-lg dark:text-white">Pedidos Recientes</CardTitle>
+            <Button variant="ghost" size="sm" className="dark:text-gray-300 dark:hover:bg-slate-800 w-full sm:w-auto">Ver todos</Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

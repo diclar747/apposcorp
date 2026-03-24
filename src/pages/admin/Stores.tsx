@@ -250,31 +250,31 @@ export default function AdminStores() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tiendas</h1>
-          <p className="text-gray-500">Gestiona las tiendas del marketplace</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Tiendas</h1>
+          <p className="text-sm text-gray-500">Gestiona las tiendas del marketplace</p>
         </div>
 
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600">
+            <Button className="bg-blue-600 w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Nueva Tienda
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Editar Tienda' : 'Crear Nueva Tienda'}</DialogTitle>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 py-4">
               {/* Left Column: User Data */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg border-b pb-2">Datos del Vendedor (Usuario)</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nombre *</Label>
                     <Input
@@ -369,7 +369,7 @@ export default function AdminStores() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>WhatsApp (Tienda)</Label>
                     <Input
@@ -388,7 +388,7 @@ export default function AdminStores() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Facebook (Link)</Label>
                     <div className="relative">
@@ -430,9 +430,9 @@ export default function AdminStores() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Buscar tiendas..."
@@ -441,11 +441,12 @@ export default function AdminStores() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant={filterStatus === 'all' ? 'default' : 'outline'}
                 onClick={() => setFilterStatus('all')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Todas
               </Button>
@@ -453,6 +454,7 @@ export default function AdminStores() {
                 variant={filterStatus === 'active' ? 'default' : 'outline'}
                 onClick={() => setFilterStatus('active')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Activas
               </Button>
@@ -460,6 +462,7 @@ export default function AdminStores() {
                 variant={filterStatus === 'inactive' ? 'default' : 'outline'}
                 onClick={() => setFilterStatus('inactive')}
                 size="sm"
+                className="flex-1 sm:flex-none"
               >
                 Inactivas
               </Button>
@@ -469,7 +472,7 @@ export default function AdminStores() {
       </Card>
 
       {/* Stores Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredStores.map((store, index) => {
           return (
             <motion.div
@@ -575,7 +578,7 @@ export default function AdminStores() {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!storeToDelete} onOpenChange={(open) => !open && setStoreToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro absolutamente?</AlertDialogTitle>
             <AlertDialogDescription>

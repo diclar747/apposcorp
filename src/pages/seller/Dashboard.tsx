@@ -71,62 +71,62 @@ export default function SellerDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400">Bienvenido de vuelta, {user?.firstName}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Bienvenido de vuelta, {user?.firstName}</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center shrink-0">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales</p>
-                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalSales)}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ventas</p>
+                <p className="text-base sm:text-xl font-bold dark:text-white truncate">{formatCurrency(totalSales)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Ganancias</p>
-                <p className="text-xl font-bold dark:text-white">{formatCurrency(totalEarnings)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                <ShoppingCart className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Pedidos</p>
-                <p className="text-xl font-bold dark:text-white">{orders.length}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ganancias</p>
+                <p className="text-base sm:text-xl font-bold dark:text-white truncate">{formatCurrency(totalEarnings)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                <Package className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center shrink-0">
+                <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Productos</p>
-                <p className="text-xl font-bold dark:text-white">{products.length}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pedidos</p>
+                <p className="text-base sm:text-xl font-bold dark:text-white">{orders.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center shrink-0">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Productos</p>
+                <p className="text-base sm:text-xl font-bold dark:text-white">{products.length}</p>
               </div>
             </div>
           </CardContent>
@@ -139,7 +139,7 @@ export default function SellerDashboard() {
           <CardTitle className="dark:text-white">Ventas de la Semana</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
+          <div className="h-56 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
