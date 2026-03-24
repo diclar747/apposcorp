@@ -19,14 +19,18 @@ function Avatar({
   )
 }
 
+const DEFAULT_AVATAR = "https://apposcorp.vercel.app/icons/icon-192x192.png";
+
 function AvatarImage({
   className,
+  src,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn("aspect-square size-full", className)}
+      src={src || DEFAULT_AVATAR}
       {...props}
     />
   )
