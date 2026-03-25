@@ -71,10 +71,10 @@ export default function AdminSettings() {
         try {
             setSaving(true);
             await settingsApi.update({ settings });
-            toast.success('Configurações salvas com sucesso');
+            toast.success('Configuración guardada exitosamente');
             fetchSettings();
         } catch (error) {
-            toast.error('Erro ao salvar configurações');
+            toast.error('Error al guardar configuración');
         } finally {
             setSaving(false);
         }
@@ -84,34 +84,34 @@ export default function AdminSettings() {
         try {
             setLoading(true);
             await settingsApi.init();
-            toast.success('Configurações padrão inicializadas');
+            toast.success('Valores por defecto inicializados');
             fetchSettings();
         } catch (err) {
-            toast.error('Erro ao inicializar');
+            toast.error('Error al inicializar');
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <div>Carregando...</div>;
+    if (loading) return <div>Cargando...</div>;
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Configurações do Sistema</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Gerencie as configurações globais da plataforma</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Configuración del Sistema</h1>
+                    <p className="text-gray-500 dark:text-gray-400">Gestiona la configuración global de la plataforma</p>
                 </div>
                 <div className="flex gap-2">
                     {settings.length === 0 && (
                         <Button variant="outline" onClick={initializeDefaults}>
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Restaurar Padrões
+                            Restaurar Valores
                         </Button>
                     )}
                     <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
                         <Save className="w-4 h-4 mr-2" />
-                        {saving ? 'Salvando...' : 'Salvar Alterações'}
+                        {saving ? 'Guardando...' : 'Guardar Cambios'}
                     </Button>
                 </div>
             </div>
@@ -119,9 +119,9 @@ export default function AdminSettings() {
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[600px]">
                     <TabsTrigger value="general">Geral</TabsTrigger>
-                    <TabsTrigger value="contact">Contato</TabsTrigger>
-                    <TabsTrigger value="security">Segurança</TabsTrigger>
-                    <TabsTrigger value="maintenance">Manutenção</TabsTrigger>
+                    <TabsTrigger value="contact">Contacto</TabsTrigger>
+                    <TabsTrigger value="security">Seguridad</TabsTrigger>
+                    <TabsTrigger value="maintenance">Mantenimiento</TabsTrigger>
                 </TabsList>
 
                 {/* General Settings */}
@@ -130,20 +130,20 @@ export default function AdminSettings() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Globe className="w-5 h-5 text-blue-500" />
-                                Informações Básicas
+                                Información Básica
                             </CardTitle>
                             <CardDescription>
-                                Configurações visíveis publicamente como nome e descrição do site.
+                                Configuración visible públicamente como nombre y descripción del sitio.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="site_name">Nome do Sistema</Label>
+                                <Label htmlFor="site_name">Nombre del Sistema</Label>
                                 <Input
                                     id="site_name"
                                     value={getSettingValue('site_name')}
                                     onChange={(e) => updateLocalSetting('site_name', e.target.value, 'general', true)}
-                                    placeholder="Ex: Oscorp System"
+                                    placeholder="Ej: Oscorp System"
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -152,7 +152,7 @@ export default function AdminSettings() {
                                     id="site_description"
                                     value={getSettingValue('site_description')}
                                     onChange={(e) => updateLocalSetting('site_description', e.target.value, 'general', true)}
-                                    placeholder="Breve descrição do sistema..."
+                                    placeholder="Breve descripción del sistema..."
                                 />
                             </div>
                             <div className="grid gap-2 pt-4 border-t">
@@ -198,10 +198,10 @@ export default function AdminSettings() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Phone className="w-5 h-5 text-green-500" />
-                                Informações de Contato
+                                Informações de Contacto
                             </CardTitle>
                             <CardDescription>
-                                Informações de contato exibidas para os usuários.
+                                Información de contacto mostrada a los usuarios.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -218,7 +218,7 @@ export default function AdminSettings() {
                                 </div>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="contact_phone">Telefone / WhatsApp</Label>
+                                <Label htmlFor="contact_phone">Teléfono / WhatsApp</Label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -230,7 +230,7 @@ export default function AdminSettings() {
                                 </div>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="contact_address">Endereço</Label>
+                                <Label htmlFor="contact_address">Dirección</Label>
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -251,18 +251,18 @@ export default function AdminSettings() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Shield className="w-5 h-5 text-red-500" />
-                                Segurança e Acesso
+                                Seguridad e Acesso
                             </CardTitle>
                             <CardDescription>
-                                Configurações de segurança e políticas de senha.
+                                Configuración de seguridad y políticas de contraseña.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between space-x-2 border p-4 rounded-lg">
                                 <div className="space-y-0.5">
-                                    <Label className="text-base">Registro de Usuários</Label>
+                                    <Label className="text-base">Registro de Usuarios</Label>
                                     <p className="text-sm text-muted-foreground">
-                                        Permitir que novos usuários se registrem na plataforma.
+                                        Permitir que nuevos usuarios se registren en la plataforma.
                                     </p>
                                 </div>
                                 <Switch
@@ -272,9 +272,9 @@ export default function AdminSettings() {
                             </div>
                             <div className="flex items-center justify-between space-x-2 border p-4 rounded-lg">
                                 <div className="space-y-0.5">
-                                    <Label className="text-base">Verificação de Email</Label>
+                                    <Label className="text-base">Verificación de Email</Label>
                                     <p className="text-sm text-muted-foreground">
-                                        Exigir verificação de email para novos cadastros.
+                                        Exigir verificación de email para nuevos registros.
                                     </p>
                                 </div>
                                 <Switch
@@ -292,18 +292,18 @@ export default function AdminSettings() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-red-600">
                                 <Wrench className="w-5 h-5" />
-                                Manutenção do Sistema
+                                Mantenimiento do Sistema
                             </CardTitle>
                             <CardDescription>
-                                Controle o acesso ao sistema durante manutenções.
+                                Controla el acceso al sistema durante mantenimientos.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between space-x-2 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-4 rounded-lg">
                                 <div className="space-y-0.5">
-                                    <Label className="text-base font-semibold text-red-700 dark:text-red-400">Modo Manutenção</Label>
+                                    <Label className="text-base font-semibold text-red-700 dark:text-red-400">Modo Mantenimiento</Label>
                                     <p className="text-sm text-red-600/80 dark:text-red-400/80">
-                                        Quando ativo, apenas administradores poderão acessar o sistema.
+                                        Cuando esté activo, solo los administradores podrán acceder al sistema.
                                     </p>
                                 </div>
                                 <Switch

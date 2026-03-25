@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           set({
             isLoading: false,
-            error: error.message || 'Erro ao fazer login'
+            error: error.message || 'Error al iniciar sesión'
           });
           return false;
         }
@@ -87,7 +87,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           set({
             isLoading: false,
-            error: error.message || 'Erro ao registrar'
+            error: error.message || 'Error al registrar'
           });
           return false;
         }
@@ -118,7 +118,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           set({
             isLoading: false,
-            error: error.message || 'Erro ao atualizar usuário'
+            error: error.message || 'Error al actualizar usuario'
           });
           return false;
         }
@@ -146,7 +146,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           set({
             isLoading: false,
-            error: error.message || 'Erro ao atualizar dados bancários'
+            error: error.message || 'Error al actualizar datos bancarios'
           });
           return false;
         }
