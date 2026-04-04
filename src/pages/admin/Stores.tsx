@@ -254,8 +254,8 @@ export default function AdminStores() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Tiendas</h1>
-          <p className="text-sm text-gray-500">Gestiona las tiendas del marketplace</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Tiendas</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona las tiendas del marketplace</p>
         </div>
 
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -267,13 +267,13 @@ export default function AdminStores() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingId ? 'Editar Tienda' : 'Crear Nueva Tienda'}</DialogTitle>
+              <DialogTitle className="dark:text-gray-100">{editingId ? 'Editar Tienda' : 'Crear Nueva Tienda'}</DialogTitle>
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 py-4">
               {/* Left Column: User Data */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Datos del Vendedor (Usuario)</h3>
+                <h3 className="font-semibold text-lg border-b pb-2 dark:text-gray-100 dark:border-slate-700">Datos del Vendedor (Usuario)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nombre *</Label>
@@ -325,7 +325,7 @@ export default function AdminStores() {
 
               {/* Right Column: Store Data */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Perfil de la Tienda</h3>
+                <h3 className="font-semibold text-lg border-b pb-2 dark:text-gray-100 dark:border-slate-700">Perfil de la Tienda</h3>
                 <div className="space-y-2">
                   <Label>Nombre de Tienda *</Label>
                   <Input
@@ -481,7 +481,7 @@ export default function AdminStores() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-blue-50/50 border-blue-100">
+              <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-blue-50/50 dark:bg-slate-800/50 border-blue-100 dark:border-slate-700">
                 {/* Banner */}
                 <div className="h-32 bg-gray-200 relative group">
                   {store.banner ? (
@@ -492,7 +492,7 @@ export default function AdminStores() {
                   <div className="absolute top-3 right-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="bg-white/80 hover:bg-white backdrop-blur-sm">
+                        <Button variant="ghost" size="icon" className="bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-700 backdrop-blur-sm">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -514,18 +514,18 @@ export default function AdminStores() {
                 <CardContent className="p-4">
                   {/* Logo and Name */}
                   <div className="flex items-start gap-3 -mt-8 mb-3">
-                    <div className="w-16 h-16 rounded-xl bg-white shadow-md p-1 border border-gray-100">
+                    <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-800 shadow-md p-1 border border-gray-100 dark:border-slate-700">
                       {store.logo ? (
                         <img src={store.logo} alt={store.name} className="w-full h-full rounded-lg object-cover" />
                       ) : (
-                        <div className="w-full h-full rounded-lg bg-gray-100 flex items-center justify-center">
-                          <Store className="w-8 h-8 text-gray-400" />
+                        <div className="w-full h-full rounded-lg bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
+                          <Store className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                         </div>
                       )}
                     </div>
                     <div className="pt-8">
-                      <h3 className="font-semibold text-gray-900 leading-tight">{store.name}</h3>
-                      <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">{store.name}</h3>
+                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
                         <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                         <span>4.8</span>
                         <span>• {store.productCount} prods</span>
@@ -534,24 +534,24 @@ export default function AdminStores() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-4 h-10">{store.description || 'Sin descripción'}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-4 h-10">{store.description || 'Sin descripción'}</p>
 
                   {/* Info */}
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <MapPin className="w-4 h-4 text-blue-500" />
                       <span className="truncate">{store.address || 'Sin dirección'}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <Phone className="w-4 h-4 text-green-500" />
                       <span>{store.phone || 'Sin teléfono'}</span>
                     </div>
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">ID: {store.id.substring(0, 8)}...</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">ID: {store.id.substring(0, 8)}...</span>
                     </div>
                     <Badge variant={store.isActive ? 'default' : 'secondary'} className={store.isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}>
                       {store.isActive ? (
@@ -570,9 +570,9 @@ export default function AdminStores() {
 
       {filteredStores.length === 0 && (
         <div className="text-center py-12">
-          <Store className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No se encontraron tiendas</h3>
-          <p className="text-gray-500">Intenta con otros filtros de búsqueda</p>
+          <Store className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No se encontraron tiendas</h3>
+          <p className="text-gray-500 dark:text-gray-400">Intenta con otros filtros de búsqueda</p>
         </div>
       )}
 
@@ -580,8 +580,8 @@ export default function AdminStores() {
       <AlertDialog open={!!storeToDelete} onOpenChange={(open) => !open && setStoreToDelete(null)}>
         <AlertDialogContent className="w-[calc(100%-2rem)] max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro absolutamente?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="dark:text-gray-100">¿Estás seguro absolutamente?</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
               ¿Estás seguro de que deseas eliminar esta tienda permanentemente? Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -599,24 +599,24 @@ export default function AdminStores() {
         {viewingStore && (
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles de {viewingStore.name}</DialogTitle>
+              <DialogTitle className="dark:text-gray-100">Detalles de {viewingStore.name}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-6">
               {/* Cover & Logo */}
-              <div className="h-40 bg-gray-200 rounded-lg relative overflow-hidden">
+              <div className="h-40 bg-gray-200 dark:bg-slate-700 rounded-lg relative overflow-hidden">
                 {viewingStore.banner ? (
                   <img src={viewingStore.banner} alt="Banner" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500" />
                 )}
                 <div className="absolute -bottom-6 left-6">
-                  <div className="w-24 h-24 bg-white rounded-lg p-1 shadow-lg">
+                  <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-lg p-1 shadow-lg">
                     {viewingStore.logo ? (
                       <img src={viewingStore.logo} alt="Logo" className="w-full h-full rounded-md object-cover" />
                     ) : (
-                      <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
-                        <Store className="w-10 h-10 text-gray-400" />
+                      <div className="w-full h-full bg-gray-100 dark:bg-slate-700 rounded-md flex items-center justify-center">
+                        <Store className="w-10 h-10 text-gray-400 dark:text-gray-500" />
                       </div>
                     )}
                   </div>
@@ -625,48 +625,48 @@ export default function AdminStores() {
 
               <div className="pt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h3 className="font-semibold text-lg text-gray-900 mb-2">Información Principal</h3>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">Información Principal</h3>
                   <div className="space-y-3">
                     <div className="flex items-start gap-2">
-                      <Store className="w-4 h-4 text-gray-500 mt-1" />
+                      <Store className="w-4 h-4 text-gray-500 dark:text-gray-400 mt-1" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{viewingStore.name}</p>
-                        <p className="text-sm text-gray-500">{viewingStore.description || 'Sin descripción'}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{viewingStore.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{viewingStore.description || 'Sin descripción'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-700">{viewingStore.address || 'No especificada'}</span>
+                      <MapPin className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{viewingStore.address || 'No especificada'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle className={`w-4 h-4 ${viewingStore.isActive ? 'text-green-500' : 'text-red-500'}`} />
-                      <span className="text-sm text-gray-700">{viewingStore.isActive ? 'Tienda Activa' : 'Tienda Inactiva'}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{viewingStore.isActive ? 'Tienda Activa' : 'Tienda Inactiva'}</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-lg text-gray-900 mb-2">Contacto y Redes</h3>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">Contacto y Redes</h3>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-500" />
+                      <Phone className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-700">{viewingStore.phone} (Móvil)</span>
-                        {viewingStore.whatsappNumber && <span className="text-xs text-gray-500">{viewingStore.whatsappNumber} (WhatsApp)</span>}
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{viewingStore.phone} (Móvil)</span>
+                        {viewingStore.whatsappNumber && <span className="text-xs text-gray-500 dark:text-gray-400">{viewingStore.whatsappNumber} (WhatsApp)</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-700 break-all">{viewingStore.email}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 break-all">{viewingStore.email}</span>
                     </div>
                     {(viewingStore.facebook || viewingStore.instagram) && (
                       <div className="flex gap-3 mt-2">
                         {viewingStore.facebook && (
-                          <a href={viewingStore.facebook} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors">
+                          <a href={viewingStore.facebook} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
                             <Facebook className="w-4 h-4" />
                           </a>
                         )}
                         {viewingStore.instagram && (
-                          <a href={viewingStore.instagram.startsWith('http') ? viewingStore.instagram : `https://instagram.com/${viewingStore.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-pink-50 text-pink-600 rounded-full hover:bg-pink-100 transition-colors">
+                          <a href={viewingStore.instagram.startsWith('http') ? viewingStore.instagram : `https://instagram.com/${viewingStore.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-full hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors">
                             <Instagram className="w-4 h-4" />
                           </a>
                         )}
@@ -677,15 +677,15 @@ export default function AdminStores() {
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="font-semibold text-sm text-gray-900 mb-2">Datos del Propietario</h3>
+                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">Datos del Propietario</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-500">Nombre:</span>
-                    <span className="ml-2 text-gray-900">{viewingStore.firstName} {viewingStore.lastName}</span>
+                    <span className="text-gray-500 dark:text-gray-400">Nombre:</span>
+                    <span className="ml-2 text-gray-900 dark:text-gray-100">{viewingStore.firstName} {viewingStore.lastName}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">ID Usuario:</span>
-                    <span className="ml-2 text-gray-900 font-mono text-xs">{viewingStore.id}</span>
+                    <span className="text-gray-500 dark:text-gray-400">ID Usuario:</span>
+                    <span className="ml-2 text-gray-900 dark:text-gray-100 font-mono text-xs">{viewingStore.id}</span>
                   </div>
                 </div>
               </div>

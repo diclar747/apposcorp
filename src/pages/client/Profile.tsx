@@ -83,12 +83,48 @@ export default function ClientProfile() {
   };
 
   const [isBankOpen, setIsBankOpen] = useState(false);
+  
+  // Lista de bancos de Paraguay
+  const paraguayBanks = [
+    { value: 'banco_familiar', label: 'Banco Familiar' },
+    { value: 'banco_continental', label: 'Banco Continental' },
+    { value: 'banco_gnb', label: 'Banco GNB Paraguay' },
+    { value: 'banco_brasil', label: 'Banco do Brasil' },
+    { value: 'banco_sudameris', label: 'Banco Sudameris' },
+    { value: 'banco_basa', label: 'Banco BASA' },
+    { value: 'banco_region', label: 'Banco Regional' },
+    { value: 'banco_bnf', label: 'Banco Nacional de Fomento (BNF)' },
+    { value: 'banco_itau', label: 'Banco Itaú' },
+    { value: 'banco_visión', label: 'Banco Visión' },
+    { value: 'banco_atlas', label: 'Banco Atlas' },
+    { value: 'banco_amambay', label: 'Banco Amambay' },
+    { value: 'banco_foundation', label: 'Banco Foundation' },
+    { value: 'banco_rioja', label: 'Banco Rioja' },
+    { value: 'banco_san_cristobal', label: 'Banco San Cristóbal' },
+    { value: 'cambios_chaco', label: 'Cambios Chaco' },
+    { value: 'bonanza', label: 'Bonanza' },
+    { value: 'ecobanco', label: 'Ecobanco' },
+    { value: 'financiera_comercio', label: 'Financiera El Comercio' },
+    { value: 'financiera_vision', label: 'Financiera Visión' },
+    { value: 'interfisa', label: 'Interfisa' },
+    { value: 'ubci', label: 'UBCI' },
+    { value: 'ueno', label: 'Ueno' },
+    { value: 'willian_lindley', label: 'Willian Lindley' },
+    { value: 'coop_nacional', label: 'Cooperativa Nacional' },
+    { value: 'coop_copeme', label: 'Cooperativa COPEME' },
+    { value: 'coop_santa_maria', label: 'Cooperativa Santa María' },
+    { value: 'coop_medalla', label: 'Cooperativa Medalla Milagrosa' },
+    { value: 'coop_cuatro_vientos', label: 'Cooperativa Cuatro Vientos' },
+    { value: 'coop_encarnacion', label: 'Cooperativa Encarnación' },
+  ];
+  
   const [bankFormData, setBankFormData] = useState({
     bankName: '',
     accountNumber: '',
     accountType: 'savings',
     holderName: '',
-    documentId: ''
+    documentId: '',
+    alias: ''
   });
 
   const handleLogout = () => {
@@ -132,7 +168,8 @@ export default function ClientProfile() {
         accountNumber: user.bankData.accountNumber,
         accountType: user.bankData.accountType,
         holderName: user.bankData.holderName,
-        documentId: user.bankData.documentId
+        documentId: user.bankData.documentId,
+        alias: user.bankData.alias || ''
       });
     } else if (user) {
       // Pre-fill holder name with user name if empty
@@ -142,14 +179,22 @@ export default function ClientProfile() {
   };
 
   const handleSaveBankData = async () => {
-    if (!bankFormData.bankName || !bankFormData.accountNumber || !bankFormData.holderName || !bankFormData.documentId) {
-      toast.error('Todos los campos son obligatorios');
+    if (!bankFormData.bankName) {
+      toast.error('Debes seleccionar un banco');
+      return;
+    }
+    if (!bankFormData.accountNumber) {
+      toast.error('El número de cuenta es obligatorio');
+      return;
+    }
+    if (!bankFormData.documentId) {
+      toast.error('El número de cédula es obligatorio');
       return;
     }
 
     const success = await updateBankData(bankFormData);
     if (success) {
-      toast.success('Datos bancarios guardados');
+      toast.success('Datos bancarios guardados exitosamente');
       setIsBankOpen(false);
     } else {
       toast.error('Error al guardar datos bancarios');
@@ -299,6 +344,47 @@ export default function ClientProfile() {
         />
       </div>
 
+      {/* Bank Data Section */}
+      {user?.bankData && (
+        <div className="space-y-3">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 px-1">Mi Cuenta Bancaria</h3>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-premium p-5 rounded-[2rem] border border-white/10 shadow-xl"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-lg">
+                <CreditCard className="w-6 h-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="font-bold text-sm">{paraguayBanks.find(b => b.value === user.bankData?.bankName)?.label || user.bankData?.bankName}</p>
+                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-[0.15em]">
+                  {user.bankData?.accountType === 'savings' ? 'Caja de Ahorro' : 'Cuenta Corriente'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-center py-2 border-b border-white/5">
+                <span className="text-muted-foreground/60 text-xs uppercase tracking-wider">Número de Cuenta</span>
+                <span className="font-mono font-medium">{user.bankData?.accountNumber}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-white/5">
+                <span className="text-muted-foreground/60 text-xs uppercase tracking-wider">Cédula</span>
+                <span className="font-mono font-medium">{user.bankData?.documentId}</span>
+              </div>
+              {user.bankData?.alias && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-muted-foreground/60 text-xs uppercase tracking-wider">Alias</span>
+                  <span className="font-medium text-emerald-400">{user.bankData.alias}</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Menu Options */}
       <div className="glass-premium overflow-hidden rounded-[2.5rem] border border-white/10 shadow-xl">
         <div className="divide-y divide-white/5">
@@ -323,30 +409,45 @@ export default function ClientProfile() {
                       </div>
                     </motion.button>
                   </DialogTrigger>
-                  <DialogContent className="glass-premium border-white/10 rounded-[2rem]">
+                  <DialogContent className="glass-premium border-white/10 rounded-[2rem] max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="font-black tracking-tight text-lg">Datos Bancarios</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
+                      {/* Banco */}
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Banco</Label>
-                        <Input
+                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Banco *</Label>
+                        <Select
                           value={bankFormData.bankName}
-                          onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
-                          className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
-                          placeholder="Ej: Banco Familiar"
-                        />
+                          onValueChange={(val) => setBankFormData({ ...bankFormData, bankName: val })}
+                        >
+                          <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
+                            <SelectValue placeholder="Selecciona un banco" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            {paraguayBanks.map((bank) => (
+                              <SelectItem key={bank.value} value={bank.value}>
+                                {bank.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+
+                      {/* Número de Cuenta */}
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nro. de Cuenta</Label>
+                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nro. de Cuenta *</Label>
                         <Input
                           value={bankFormData.accountNumber}
                           onChange={(e) => setBankFormData({ ...bankFormData, accountNumber: e.target.value })}
                           className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+                          placeholder="Ej: 1234567890"
                         />
                       </div>
+
+                      {/* Tipo de Cuenta */}
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Tipo de Cuenta</Label>
+                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Tipo de Cuenta *</Label>
                         <Select
                           value={bankFormData.accountType}
                           onValueChange={(val) => setBankFormData({ ...bankFormData, accountType: val })}
@@ -360,6 +461,46 @@ export default function ClientProfile() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Número de Cédula */}
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nro. de Cédula *</Label>
+                        <Input
+                          value={bankFormData.documentId}
+                          onChange={(e) => setBankFormData({ ...bankFormData, documentId: e.target.value })}
+                          className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+                          placeholder="Ej: 1234567"
+                        />
+                      </div>
+
+                      {/* Alias (opcional) */}
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">
+                          Alias <span className="text-muted-foreground/30 font-normal">(opcional)</span>
+                        </Label>
+                        <Input
+                          value={bankFormData.alias}
+                          onChange={(e) => setBankFormData({ ...bankFormData, alias: e.target.value })}
+                          className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+                          placeholder="Ej: mi.cuenta.favorita"
+                        />
+                      </div>
+
+                      {/* Resumen de datos guardados (si existen) */}
+                      {user?.bankData && (
+                        <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                          <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black mb-2">Datos Guardados</p>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-muted-foreground/60">Banco:</span> {paraguayBanks.find(b => b.value === user.bankData?.bankName)?.label || user.bankData?.bankName}</p>
+                            <p><span className="text-muted-foreground/60">Cuenta:</span> {user.bankData?.accountNumber}</p>
+                            <p><span className="text-muted-foreground/60">Tipo:</span> {user.bankData?.accountType === 'savings' ? 'Caja de Ahorro' : 'Cuenta Corriente'}</p>
+                            {user.bankData?.alias && (
+                              <p><span className="text-muted-foreground/60">Alias:</span> {user.bankData.alias}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.15em] mt-4 shadow-lg shadow-blue-500/20" onClick={handleSaveBankData}>
                         Guardar Información
                       </Button>

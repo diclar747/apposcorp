@@ -5,8 +5,9 @@ import {
     ArrowLeft, Video, ChevronDown, ChevronUp, Sparkles,
     TrendingUp, TrendingDown, Landmark, GraduationCap,
     Wallet, Banknote, Coins, Download, FileText,
-    ArrowUpRight, ArrowDownRight, Activity
+    ArrowUpRight, ArrowDownRight, Activity, Users, Play
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1016,9 +1017,82 @@ function BudgetView() {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
+// ─── Presentation Card Component ───────────────────────────────────────────────
+
+function PresentationCard({ 
+    code, 
+    name, 
+    description, 
+    color,
+    onConfigure,
+    onView,
+    onStudents 
+}: { 
+    code: string; 
+    name: string; 
+    description: string; 
+    color: string;
+    onConfigure: () => void;
+    onView: () => void;
+    onStudents: () => void;
+}) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-lg border border-slate-200 dark:border-slate-800"
+        >
+            <div className="flex items-start justify-between mb-6">
+                <div
+                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}
+                >
+                    {code}
+                </div>
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                    Activo
+                </Badge>
+            </div>
+            
+            <h3 className="text-2xl font-black mb-2">{name}</h3>
+            <p className="text-slate-500 mb-6">{description}</p>
+            
+            <div className="grid grid-cols-3 gap-3">
+                <Button 
+                    variant="outline" 
+                    className="flex-col h-auto py-4 gap-2"
+                    onClick={onConfigure}
+                >
+                    <Play className="w-5 h-5" />
+                    <span className="text-xs">Configurar</span>
+                </Button>
+                <Button 
+                    variant="outline" 
+                    className="flex-col h-auto py-4 gap-2"
+                    onClick={onView}
+                >
+                    <BookOpen className="w-5 h-5" />
+                    <span className="text-xs">Materiales</span>
+                </Button>
+                <Button 
+                    variant="outline" 
+                    className="flex-col h-auto py-4 gap-2"
+                    onClick={onStudents}
+                >
+                    <Users className="w-5 h-5" />
+                    <span className="text-xs">Alumnos</span>
+                </Button>
+            </div>
+        </motion.div>
+    );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────────
+
 export default function AdminIngenio() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     return (
         <div className="max-w-[1400px] mx-auto pb-20">
@@ -1045,8 +1119,7 @@ export default function AdminIngenio() {
                         { value: 'dashboard', label: 'Dashboard', icon: Activity },
                         { value: 'budget', label: 'Presupuesto', icon: Landmark },
                         { value: 'academy', label: 'Academia Online', icon: BookOpen },
-                        { value: 'e1', label: 'Presentación E1', icon: Sparkles },
-                        { value: 'e2', label: 'Presentación E2', icon: Sparkles },
+                        { value: 'presentations', label: 'Presentaciones', icon: Sparkles },
                     ].map(tab => (
                         <TabsTrigger
                             key={tab.value}
@@ -1079,19 +1152,57 @@ export default function AdminIngenio() {
                                 <AcademyListView onSelectCourse={c => setSelectedCourseId(c.id)} />
                             )}
                         </TabsContent>
-                        <TabsContent value="e1" forceMount className={activeTab !== 'e1' ? 'hidden' : ''}>
-                            {selectedCourseId ? (
-                                <CourseDetailView courseId={selectedCourseId} onBack={() => setSelectedCourseId(null)} />
-                            ) : (
-                                <AcademyListView onSelectCourse={c => setSelectedCourseId(c.id)} filter="E1" />
-                            )}
-                        </TabsContent>
-                        <TabsContent value="e2" forceMount className={activeTab !== 'e2' ? 'hidden' : ''}>
-                            {selectedCourseId ? (
-                                <CourseDetailView courseId={selectedCourseId} onBack={() => setSelectedCourseId(null)} />
-                            ) : (
-                                <AcademyListView onSelectCourse={c => setSelectedCourseId(c.id)} filter="E2" />
-                            )}
+                        <TabsContent value="presentations" forceMount className={activeTab !== 'presentations' ? 'hidden' : ''}>
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <PresentationCard
+                                        code="E1"
+                                        name="Presentación E1"
+                                        description="Primera etapa del programa FGTM - Fundamentos de la gestión del talento monetario"
+                                        color="#3b82f6"
+                                        onConfigure={() => navigate('/admin/ingenio/presentation/E1')}
+                                        onView={() => navigate('/admin/ingenio/presentation/E1')}
+                                        onStudents={() => navigate('/admin/ingenio/students/E1')}
+                                    />
+                                    <PresentationCard
+                                        code="E2"
+                                        name="Presentación E2"
+                                        description="Segunda etapa del programa FGTM - Estrategias avanzadas de ingeniería financiera"
+                                        color="#8b5cf6"
+                                        onConfigure={() => navigate('/admin/ingenio/presentation/E2')}
+                                        onView={() => navigate('/admin/ingenio/presentation/E2')}
+                                        onStudents={() => navigate('/admin/ingenio/students/E2')}
+                                    />
+                                </div>
+                                
+                                {/* Quick Actions */}
+                                <Card className="p-6">
+                                    <CardHeader className="pb-4">
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Users className="w-5 h-5" />
+                                            Gestión de Alumnos
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-4">
+                                            <Button onClick={() => navigate('/admin/ingenio/students')} variant="outline" className="h-auto py-4 px-6">
+                                                <div className="text-left">
+                                                    <p className="font-semibold">Ver Todos los Alumnos</p>
+                                                    <p className="text-xs text-slate-500">Administrar registros y pagos</p>
+                                                </div>
+                                                <ChevronDown className="w-4 h-4 ml-4 rotate-[-90deg]" />
+                                            </Button>
+                                            <Button onClick={() => navigate('/admin/ingenio/students')} className="h-auto py-4 px-6">
+                                                <div className="text-left">
+                                                    <p className="font-semibold">Nuevo Alumno</p>
+                                                    <p className="text-xs text-slate-500">Registrar un participante</p>
+                                                </div>
+                                                <Plus className="w-4 h-4 ml-4" />
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </TabsContent>
                     </motion.div>
                 </AnimatePresence>

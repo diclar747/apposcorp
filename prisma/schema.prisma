@@ -40,19 +40,21 @@ model User {
   transactions        Transaction[]
   virtualCard         VirtualCard?
   wallet              Wallet?
+  ingenioStudent      IngenioStudent?
 
   @@map("users")
 }
 
 model BankData {
-  id            String @id @default(uuid())
-  userId        String @unique
+  id            String  @id @default(uuid())
+  userId        String  @unique
   bankName      String
   accountNumber String
   accountType   String
   holderName    String
   documentId    String
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alias         String?
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("bank_data")
 }
@@ -780,4 +782,140 @@ model SystemSetting {
   updatedAt   DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ============================================
+// INGENIO MILLONARIO - Sistema Completo
+// ============================================
+
+model IngenioStage {
+  id          String           @id @default(uuid())
+  code        String           @unique // E1, E2, E3, etc.
+  name        String
+  description String?
+  color       String           @default("#3B82F6") // Color para la ruleta
+  isActive    Boolean          @default(true)
+  order       Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  materials   IngenioMaterial[]
+  segments    IngenioWheelSegment[]
+  contents    IngenioContent[]
+  students    IngenioStudentAssignment[]
+
+  @@map("ingenio_stages")
+}
+
+model IngenioWheelSegment {
+  id          String       @id @default(uuid())
+  stageId     String
+  number      Int          // 1-10
+  color       String       // Color del segmento en la ruleta
+  title       String       // Título del tema
+  description String?      // Descripción corta
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, number])
+  @@map("ingenio_wheel_segments")
+}
+
+model IngenioContent {
+  id          String       @id @default(uuid())
+  stageId     String
+  segmentNumber Int        // Número del segmento (1-10)
+  title       String
+  description String?
+  type        String       // pdf, video, text
+  url         String?      // URL del archivo
+  fileData    Bytes?       // Archivo binario (para PDFs pequeños)
+  fileName    String?      // Nombre del archivo
+  fileSize    Int?         // Tamaño en bytes
+  duration    Int?         // Duración en segundos (para videos)
+  order       Int          @default(0)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@map("ingenio_contents")
+}
+
+model IngenioMaterial {
+  id          String       @id @default(uuid())
+  stageId     String
+  title       String
+  description String?
+  type        String       // pdf, video, image, link
+  url         String?      // URL externa
+  fileData    Bytes?       // Archivo binario
+  fileName    String?
+  fileSize    Int?
+  thumbnailUrl String?     // Miniatura para videos
+  duration    Int?         // Para videos
+  order       Int          @default(0)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  progress    IngenioMaterialProgress[]
+
+  @@map("ingenio_materials")
+}
+
+model IngenioStudent {
+  id            String                    @id @default(uuid())
+  userId        String?                   @unique // Si está registrado en la plataforma
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  documentId    String?                   // Cédula
+  company       String?                   // Empresa (opcional)
+  notes         String?
+  paymentStatus String                    @default("pending") // pending, partial, paid, scholarship
+  paymentAmount Float?                    // Monto pagado
+  totalAmount   Float?                    // Monto total
+  installmentsPaid Int?                   // Cuotas pagadas
+  totalInstallments Int?                  // Cuotas totales
+  enrolledAt    DateTime                  @default(now())
+  expiresAt     DateTime?                 // Fecha de vencimiento del acceso
+  isActive      Boolean                   @default(true)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  user          User?                     @relation(fields: [userId], references: [id])
+  assignments   IngenioStudentAssignment[]
+  progress      IngenioMaterialProgress[]
+
+  @@map("ingenio_students")
+}
+
+model IngenioStudentAssignment {
+  id        String         @id @default(uuid())
+  studentId String
+  stageId   String
+  assignedAt DateTime      @default(now())
+  completedAt DateTime?    // Cuando completa toda la etapa
+  isCompleted Boolean      @default(false)
+  student   IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  stage     IngenioStage   @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, stageId])
+  @@map("ingenio_student_assignments")
+}
+
+model IngenioMaterialProgress {
+  id         String         @id @default(uuid())
+  studentId  String
+  materialId String
+  completed  Boolean        @default(false)
+  progress   Float          @default(0) // 0-100
+  lastAccessedAt DateTime   @default(now())
+  completedAt DateTime?
+  student    IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  material   IngenioMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, materialId])
+  @@map("ingenio_material_progress")
 }
