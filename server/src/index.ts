@@ -25,6 +25,7 @@ import sellerManagementRoutes from './routes/seller-management.js';
 import reportRoutes from './routes/reports.js';
 import ingenioRoutes from './routes/ingenio.js';
 import setupRoutes from './routes/setup.js';
+import fixLoginRoutes from './routes/fix-login.js';
 import { prisma } from './utils/prisma.js';
 
 const app = express();
@@ -94,6 +95,7 @@ app.use('/api/seller-management', sellerManagementRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ingenio', ingenioRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/fix', fixLoginRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
