@@ -47,6 +47,7 @@ interface Student {
     stageId: string;
     stage: { code: string; name: string };
     isCompleted: boolean;
+    assignedAt: string;
   }[];
 }
 
@@ -54,6 +55,7 @@ interface Stage {
   id: string;
   code: string;
   name: string;
+  description?: string;
 }
 
 const paymentStatusConfig = {
