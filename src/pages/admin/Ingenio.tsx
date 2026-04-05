@@ -351,7 +351,7 @@ function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
 // ─── Academy Views ──────────────────────────────────────────────────────────────
 
 function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: any) => void; filter?: string }) {
-    const [courses, setCourses] = useState([]);
+    const [courses, setCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
