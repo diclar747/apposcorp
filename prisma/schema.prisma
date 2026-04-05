@@ -40,6 +40,8 @@ model User {
   transactions        Transaction[]
   virtualCard         VirtualCard?
   wallet              Wallet?
+  ingenioStudent      IngenioStudent?
+  ingenioReferrals    IngenioStudent[]    @relation("StudentReferrals")
 
   @@map("users")
 }
@@ -780,4 +782,117 @@ model SystemSetting {
   updatedAt   DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ─── Ingenio Millonario Models ──────────────────────────────────────────────────
+
+model IngenioStage {
+  id          String   @id @default(uuid())
+  name        String   // E1, E2, etc.
+  title       String
+  description String?
+  color       String   @default("#8b5cf6")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  wheelSegments IngenioWheelSegment[]
+  contents      IngenioContent[]
+  
+  @@map("ingenio_stages")
+}
+
+model IngenioWheelSegment {
+  id          String   @id @default(uuid())
+  stageId     String
+  number      Int
+  title       String
+  description String   @db.Text
+  color       String
+  icon        String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  
+  @@unique([stageId, number])
+  @@map("ingenio_wheel_segments")
+}
+
+model IngenioContent {
+  id          String   @id @default(uuid())
+  stageId     String
+  segmentId   String?
+  type        String   // video, document, link, text
+  title       String
+  content     String?  @db.Text
+  url         String?
+  fileUrl     String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  
+  @@map("ingenio_contents")
+}
+
+model IngenioMaterial {
+  id          String   @id @default(uuid())
+  stage       String   // E1, E2
+  title       String
+  description String?
+  fileUrl     String
+  fileType    String   // pdf, video, etc.
+  fileSize    Int?
+  isPublic    Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("ingenio_materials")
+}
+
+model IngenioStudent {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  phone         String?
+  city          String?
+  country       String   @default("Paraguay")
+  occupation    String?
+  experience    String?  // beginner, intermediate, advanced
+  goals         String?  @db.Text
+  referralCode  String?  @unique
+  referredById  String?
+  isActive      Boolean  @default(true)
+  joinedAt      DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referredBy    User?    @relation("StudentReferrals", fields: [referredById], references: [id])
+  referrals     User[]   @relation("StudentReferrals")
+  assignments   IngenioStudentAssignment[]
+  
+  @@map("ingenio_students")
+}
+
+model IngenioStudentAssignment {
+  id           String    @id @default(uuid())
+  studentId    String
+  stage        String    // E1, E2
+  status       String    @default("pending") // pending, in_progress, completed
+  progress     Int       @default(0) // 0-100
+  assignedAt   DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  notes        String?   @db.Text
+  
+  student      IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@unique([studentId, stage])
+  @@map("ingenio_student_assignments")
 }
