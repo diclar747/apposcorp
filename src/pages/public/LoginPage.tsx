@@ -11,9 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
 const quickLogins = [
-  { email: 'admin@oscorp.com', password: '123456', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
-  { email: 'seller1@oscorp.com', password: '123456', role: 'seller', label: 'Vendedor', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-  { email: 'client1@oscorp.com', password: '123456', role: 'client', label: 'Cliente', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  { email: 'admin@oscorp.com', password: 'admin123', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+  { email: 'vendedor1@oscorp.com', password: 'seller123', role: 'seller', label: 'Vendedor', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  { email: 'cliente1@oscorp.com', password: 'client123', role: 'client', label: 'Cliente', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
 ];
 
 export default function LoginPage() {
