@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wheel } from '@/components/ingenio/Wheel';
+import { Wheel, type WheelRef } from '@/components/ingenio/Wheel';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ export default function PresentacionE1() {
     const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
     const [showContent, setShowContent] = useState(false);
     const [currentContent, setCurrentContent] = useState<typeof segments[0] | null>(null);
-    const wheelRef = useRef<{ startSpin: () => void; stopSpin: () => void }>(null);
+    const wheelRef = useRef<WheelRef>(null);
 
     const handleSpin = () => {
         wheelRef.current?.startSpin();
