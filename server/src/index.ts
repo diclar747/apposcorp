@@ -28,6 +28,7 @@ import setupRoutes from './routes/setup.js';
 import fixLoginRoutes from './routes/fix-login.js';
 import debugRoutes from './routes/debug.js';
 import emergencyRoutes from './routes/emergency.js';
+import verifyRoutes from './routes/verify.js';
 import { prisma } from './utils/prisma.js';
 
 const app = express();
@@ -100,6 +101,7 @@ app.use('/api/setup', setupRoutes);
 app.use('/api/fix', fixLoginRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/emergency', emergencyRoutes);
+app.use('/api/verify', verifyRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
