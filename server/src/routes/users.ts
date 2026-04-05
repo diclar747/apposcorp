@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
@@ -275,7 +276,6 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req, res) => {
     };
 
     if (password) {
-      const bcrypt = await import('bcryptjs');
       updateData.password = await bcrypt.hash(password, 10);
     }
 

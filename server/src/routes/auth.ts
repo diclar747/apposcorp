@@ -1,5 +1,5 @@
 import { Router } from 'express';
-// import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
@@ -33,7 +33,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Cuenta desactivada' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
@@ -72,7 +71,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email já registrado' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userCount = await prisma.user.count();
@@ -236,7 +234,6 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const isValid = await bcrypt.compare(currentPassword, user.password);
 
     if (!isValid) {
