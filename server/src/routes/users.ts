@@ -329,10 +329,10 @@ router.patch('/:id/ingenio', authenticate, authorize('superadmin'), async (req, 
 router.put('/me/bank-data', authenticate, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.userId;
-    const { bankName, accountNumber, accountType, holderName, documentId, alias } = req.body;
+    const { bankName, accountNumber, accountType, holderName, documentId } = req.body;
 
-    if (!bankName || !accountNumber || !documentId) {
-      return res.status(400).json({ error: 'Banco, número de cuenta y cédula são obrigatórios' });
+    if (!bankName || !accountNumber || !holderName || !documentId) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
 
     const bankData = await prisma.bankData.upsert({
@@ -341,18 +341,16 @@ router.put('/me/bank-data', authenticate, async (req: AuthRequest, res) => {
         bankName,
         accountNumber,
         accountType: accountType || 'savings',
-        holderName: holderName || '',
-        documentId,
-        alias: alias || null
+        holderName,
+        documentId
       },
       create: {
         userId,
         bankName,
         accountNumber,
         accountType: accountType || 'savings',
-        holderName: holderName || '',
-        documentId,
-        alias: alias || null
+        holderName,
+        documentId
       }
     });
 
