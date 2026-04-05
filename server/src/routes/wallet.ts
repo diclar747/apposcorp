@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { sendPushToUser } from '../services/pushService.js';
@@ -155,6 +154,7 @@ router.post('/pin/set', authenticate, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Ya tienes un PIN configurado' });
     }
 
+    const bcrypt = await import('bcryptjs');
     const hashedPin = await bcrypt.hash(pin, 10);
 
     await prisma.wallet.update({
@@ -183,10 +183,12 @@ router.post('/pin/change', authenticate, async (req: AuthRequest, res) => {
 
     if (wallet.transactionPin) {
       if (!currentPin) return res.status(400).json({ error: 'PIN actual requerido' });
+      const bcrypt = await import('bcryptjs');
       const isValid = await bcrypt.compare(currentPin, wallet.transactionPin);
       if (!isValid) return res.status(401).json({ error: 'PIN actual incorrecto' });
     }
 
+    const bcrypt = await import('bcryptjs');
     const hashedPin = await bcrypt.hash(newPin, 10);
 
     await prisma.wallet.update({
@@ -220,6 +222,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
     // Verify transaction PIN if set
     if (fromWallet.transactionPin) {
       if (!pin) return res.status(400).json({ error: 'PIN de transacción requerido' });
+      const bcrypt = await import('bcryptjs');
       const pinValid = await bcrypt.compare(pin, fromWallet.transactionPin);
       if (!pinValid) return res.status(401).json({ error: 'PIN incorrecto' });
     }
