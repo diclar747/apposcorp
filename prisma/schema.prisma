@@ -42,6 +42,7 @@ model User {
   wallet              Wallet?
   ingenioStudent      IngenioStudent?
   ingenioReferrals    IngenioStudent[]    @relation("StudentReferrals")
+  ingenioReferredBy   IngenioStudent[]    @relation("StudentReferredBy")
 
   @@map("users")
 }
@@ -873,7 +874,7 @@ model IngenioStudent {
   updatedAt     DateTime @updatedAt
   
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  referredBy    User?    @relation("StudentReferrals", fields: [referredById], references: [id])
+  referredBy    User?    @relation("StudentReferredBy", fields: [referredById], references: [id])
   referrals     User[]   @relation("StudentReferrals")
   assignments   IngenioStudentAssignment[]
   
