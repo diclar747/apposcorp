@@ -53,6 +53,7 @@ const sidebarItems = [
   { icon: CreditCard, label: 'Créditos', href: '/admin/creditos' },
   { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
   { icon: Sparkles, label: 'Ingenio Millonario', href: '/admin/ingenio' },
+  { icon: BookOpen, label: 'Materiales Ingenio', href: '/admin/ingenio/materiales' },
   { icon: Send, label: 'Campañas', href: '/admin/campanas' },
   { icon: ShieldCheck, label: 'Planes', href: '/admin/planes' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
