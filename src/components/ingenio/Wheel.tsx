@@ -35,15 +35,6 @@ export const Wheel = forwardRef<WheelRef, WheelProps>(function Wheel({
   showControls = true,
   externalSpinning
 }, ref) {
-  // Ensure we have segments
-  if (!segments || segments.length === 0) {
-    return (
-      <div className={cn("flex flex-col items-center justify-center gap-4", className)} style={{ width: size, height: size }}>
-        <div className="w-24 h-24 rounded-full border-4 border-slate-700 border-t-violet-500 animate-spin" />
-        <p className="text-slate-400 text-sm">Cargando ruleta...</p>
-      </div>
-    );
-  }
   const [internalSpinning, setInternalSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [selectedSegment, setSelectedSegment] = useState<WheelSegment | null>(null);
@@ -62,6 +53,16 @@ export const Wheel = forwardRef<WheelRef, WheelProps>(function Wheel({
     startSpin,
     stopSpin,
   }));
+
+  // Validate segments after all hooks
+  if (!segments || segments.length === 0) {
+    return (
+      <div className={cn("flex flex-col items-center justify-center gap-4", className)} style={{ width: size, height: size }}>
+        <div className="w-24 h-24 rounded-full border-4 border-slate-700 border-t-violet-500 animate-spin" />
+        <p className="text-slate-400 text-sm">Cargando ruleta...</p>
+      </div>
+    );
+  }
 
   const wheelSegments: WheelSegment[] = segments.length >= 10 
     ? segments.slice(0, 10) 
