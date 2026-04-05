@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
-import { coursesApi, financesApi } from '@/lib/api';
+import { coursesApi, financesApi, ingenioApi } from '@/lib/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell,
@@ -355,6 +355,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newCourseForm, setNewCourseForm] = useState({ title: '', description: '' });
+    const [initializing, setInitializing] = useState(false);
 
     useEffect(() => { fetchCourses(); }, []);
 
@@ -365,6 +366,19 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             setCourses(data);
         } catch { toast.error('Error al cargar la academia'); }
         finally { setLoading(false); }
+    };
+
+    const handleInitialize = async () => {
+        try {
+            setInitializing(true);
+            const result = await ingenioApi.setup();
+            toast.success(result.message || 'Sistema inicializado correctamente');
+            fetchCourses();
+        } catch (error: any) {
+            toast.error(error.message || 'Error al inicializar el sistema');
+        } finally {
+            setInitializing(false);
+        }
     };
 
     const handleCreateCourse = async () => {
@@ -405,7 +419,23 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                 {loading ? (
                     <div className="col-span-full py-20 text-center text-slate-400">Cargando...</div>
                 ) : filteredCourses.length === 0 ? (
-                    <div className="col-span-full py-20 text-center text-slate-400 italic">No se encontraron etapas</div>
+                    <div className="col-span-full py-20 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                            <BookOpen className="w-8 h-8 text-slate-500" />
+                        </div>
+                        <p className="text-slate-400 italic mb-4">No se encontraron etapas</p>
+                        {filter && (
+                            <Button 
+                                onClick={handleInitialize} 
+                                disabled={initializing}
+                                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                            >
+                                {initializing ? 'Inicializando...' : (
+                                    <><Sparkles className="w-4 h-4 mr-2" /> Inicializar Sistema {filter}</>
+                                )}
+                            </Button>
+                        )}
+                    </div>
                 ) : (
                     filteredCourses.map((course: any, i) => (
                         <motion.div

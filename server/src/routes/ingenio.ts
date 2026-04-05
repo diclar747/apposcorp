@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ─── Middleware ─────────────────────────────────────────────────────────────────
 
@@ -492,6 +491,166 @@ router.get('/stats', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error fetching stats:', error);
         res.status(500).json({ error: 'Error al cargar estadísticas' });
+    }
+});
+
+// ─── Setup / Seed ───────────────────────────────────────────────────────────────
+
+// Initialize Ingenio system with default data
+router.post('/setup', requireAdmin, async (req, res) => {
+    try {
+        const results = { stages: 0, segments: 0, courses: 0 };
+
+        // Check if already initialized
+        const existingStages = await prisma.ingenioStage.count();
+        if (existingStages > 0) {
+            return res.status(400).json({ 
+                error: 'El sistema ya está inicializado',
+                message: 'Ya existen etapas en la base de datos. Use el endpoint de reset si desea reiniciar.'
+            });
+        }
+
+        // Create Stage E1
+        const stageE1 = await prisma.ingenioStage.create({
+            data: {
+                name: 'E1',
+                title: 'Presentación E1 - Fundamentos',
+                description: 'Los 10 principios fundamentales para construir riqueza',
+                color: '#8b5cf6',
+                order: 1,
+                isActive: true,
+            },
+        });
+        results.stages++;
+
+        // Create segments for E1
+        const e1Segments = [
+            { number: 1, title: 'Poder del Dinero', description: 'Entiende cómo funciona el dinero y cómo hacer que trabaje para ti.', color: '#ef4444' },
+            { number: 2, title: 'Crear más Dinero', description: 'Estrategias para generar múltiples fuentes de ingresos.', color: '#f97316' },
+            { number: 3, title: 'Manejar el Dinero', description: 'Presupuestos inteligentes y control de gastos.', color: '#f59e0b' },
+            { number: 4, title: 'Proteger el Dinero', description: 'Seguros, emergencias y protección patrimonial.', color: '#84cc16' },
+            { number: 5, title: 'Ahorrar el Dinero', description: 'Hábitos de ahorro y fondos de emergencia.', color: '#22c55e' },
+            { number: 6, title: 'Crecer el Dinero', description: 'Inversiones que generan retornos consistentes.', color: '#10b981' },
+            { number: 7, title: 'Preservar el Dinero', description: 'Legado familiar y planificación a largo plazo.', color: '#06b6d4' },
+            { number: 8, title: 'Invertir el Dinero', description: 'Oportunidades de inversión diversificadas.', color: '#3b82f6' },
+            { number: 9, title: 'Donar el Dinero', description: 'Filantropía y contribución social.', color: '#6366f1' },
+            { number: 10, title: 'Disfrutar el Dinero', description: 'Balance entre ahorro y disfrute de la vida.', color: '#8b5cf6' },
+        ];
+
+        for (const seg of e1Segments) {
+            await prisma.ingenioWheelSegment.create({
+                data: {
+                    stageId: stageE1.id,
+                    ...seg,
+                    order: seg.number,
+                    isActive: true,
+                },
+            });
+        }
+        results.segments += e1Segments.length;
+
+        // Create Stage E2
+        const stageE2 = await prisma.ingenioStage.create({
+            data: {
+                name: 'E2',
+                title: 'Presentación E2 - Avanzado',
+                description: 'Los 10 pasos avanzados para la maestría financiera',
+                color: '#10b981',
+                order: 2,
+                isActive: true,
+            },
+        });
+        results.stages++;
+
+        // Create segments for E2
+        const e2Segments = [
+            { number: 1, title: 'Mentalidad Ganadora', description: 'El éxito comienza en la mente. Desarrolla una mentalidad de abundancia.', color: '#ef4444' },
+            { number: 2, title: 'Metas Claras', description: 'Define objetivos financieros específicos y medibles.', color: '#f97316' },
+            { number: 3, title: 'Plan de Acción', description: 'Crea un roadmap detallado para alcanzar tus metas.', color: '#f59e0b' },
+            { number: 4, title: 'Ingresos Múltiples', description: 'Diversifica tus fuentes de ingreso.', color: '#84cc16' },
+            { number: 5, title: 'Inversión Inteligente', description: 'Aprende a invertir en activos que generan retornos pasivos.', color: '#22c55e' },
+            { number: 6, title: 'Red de Contactos', description: 'Construye relaciones con personas que impulsen tu crecimiento.', color: '#10b981' },
+            { number: 7, title: 'Educación Continua', description: 'Nunca dejes de aprender. Invierte en tu conocimiento.', color: '#06b6d4' },
+            { number: 8, title: 'Disciplina Financiera', description: 'La consistencia vence a la intensidad.', color: '#3b82f6' },
+            { number: 9, title: 'Dar para Recibir', description: 'La generosidad abre puertas.', color: '#6366f1' },
+            { number: 10, title: 'Legado Duradero', description: 'Construye riqueza que trascienda generaciones.', color: '#8b5cf6' },
+        ];
+
+        for (const seg of e2Segments) {
+            await prisma.ingenioWheelSegment.create({
+                data: {
+                    stageId: stageE2.id,
+                    ...seg,
+                    order: seg.number,
+                    isActive: true,
+                },
+            });
+        }
+        results.segments += e2Segments.length;
+
+        // Create courses for E1 and E2 (for the Academy tabs)
+        const instructor = await prisma.user.findFirst({
+            where: { role: 'superadmin' },
+        });
+
+        if (instructor) {
+            // Check if E1 course exists
+            const existingE1 = await prisma.course.findFirst({
+                where: { title: { contains: 'E1' } },
+            });
+
+            if (!existingE1) {
+                await prisma.course.create({
+                    data: {
+                        title: 'E1 - Fundamentos del Dinero',
+                        slug: 'e1-fundamentos',
+                        description: 'Los 10 principios fundamentales para construir riqueza y libertad financiera.',
+                        shortDescription: 'Descubre los fundamentos del dinero que nadie te enseñó.',
+                        instructorId: instructor.id,
+                        instructorName: `${instructor.firstName} ${instructor.lastName}`,
+                        category: 'Ingenio Millonario',
+                        level: 'beginner',
+                        price: 0,
+                        isPublished: true,
+                        isFeatured: true,
+                    },
+                });
+                results.courses++;
+            }
+
+            // Check if E2 course exists
+            const existingE2 = await prisma.course.findFirst({
+                where: { title: { contains: 'E2' } },
+            });
+
+            if (!existingE2) {
+                await prisma.course.create({
+                    data: {
+                        title: 'E2 - Maestría Financiera',
+                        slug: 'e2-maestria',
+                        description: 'Los 10 pasos avanzados que los millonarios usan para construir riqueza duradera.',
+                        shortDescription: 'Estrategias avanzadas de construcción de riqueza.',
+                        instructorId: instructor.id,
+                        instructorName: `${instructor.firstName} ${instructor.lastName}`,
+                        category: 'Ingenio Millonario',
+                        level: 'advanced',
+                        price: 0,
+                        isPublished: true,
+                        isFeatured: true,
+                    },
+                });
+                results.courses++;
+            }
+        }
+
+        res.json({
+            success: true,
+            message: 'Sistema Ingenio Millonario inicializado correctamente',
+            results,
+        });
+    } catch (error) {
+        console.error('Error initializing Ingenio:', error);
+        res.status(500).json({ error: 'Error al inicializar el sistema' });
     }
 });
 

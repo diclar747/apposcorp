@@ -605,6 +605,36 @@ export const storesApi = {
   getBySlug: (slug: string) => fetchWithAuth(`/stores/${slug}`),
 };
 
+// Ingenio Millonario API
+export const ingenioApi = {
+  // Setup
+  setup: () => fetchWithAuth('/ingenio/setup', { method: 'POST' }),
+  
+  // Stats
+  getStats: () => fetchWithAuth('/ingenio/stats'),
+  
+  // Stages
+  getStages: () => fetchWithAuth('/ingenio/stages'),
+  createStage: (data: any) => fetchWithAuth('/ingenio/stages', { method: 'POST', body: JSON.stringify(data) }),
+  updateStage: (id: string, data: any) => fetchWithAuth(`/ingenio/stages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteStage: (id: string) => fetchWithAuth(`/ingenio/stages/${id}`, { method: 'DELETE' }),
+  
+  // Segments
+  getSegments: (stageId: string) => fetchWithAuth(`/ingenio/segments/${stageId}`),
+  createSegment: (data: any) => fetchWithAuth('/ingenio/segments', { method: 'POST', body: JSON.stringify(data) }),
+  updateSegment: (id: string, data: any) => fetchWithAuth(`/ingenio/segments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSegment: (id: string) => fetchWithAuth(`/ingenio/segments/${id}`, { method: 'DELETE' }),
+  
+  // Students
+  getStudents: () => fetchWithAuth('/ingenio/students'),
+  getMyStudentProfile: () => fetchWithAuth('/ingenio/students/me'),
+  registerAsStudent: (data: any) => fetchWithAuth('/ingenio/students/register', { method: 'POST', body: JSON.stringify(data) }),
+  updateStudentProfile: (data: any) => fetchWithAuth('/ingenio/students/me', { method: 'PUT', body: JSON.stringify(data) }),
+  
+  // Public
+  getPublicWheel: (stageName: string) => fetch(`/api/ingenio/public/wheel/${stageName}`).then(r => r.json()),
+};
+
 export default {
   auth: authApi,
   users: usersApi,
