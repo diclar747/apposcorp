@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import os from 'os';
+import bcrypt from 'bcryptjs';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -96,7 +97,6 @@ app.use('/api/ingenio', ingenioRoutes);
 // Simple setup endpoint
 app.get('/api/setup', async (req, res) => {
   try {
-    const bcrypt = await import('bcryptjs');
     const plainPassword = '123456';
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     
@@ -168,7 +168,6 @@ app.get('/api/setup', async (req, res) => {
 // Resetear contraseña del admin existente
 app.get('/api/fix-admin-password', async (req, res) => {
   try {
-    const bcrypt = await import('bcryptjs');
     const plainPassword = '123456';
     const hash = await bcrypt.hash(plainPassword, 10);
     
