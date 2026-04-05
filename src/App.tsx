@@ -29,6 +29,7 @@ import AdminWithdrawals from '@/pages/admin/Withdrawals';
 import AdminCredits from '@/pages/admin/Credits';
 import AdminReports from '@/pages/admin/Reports';
 import AdminIngenio from '@/pages/admin/Ingenio';
+import AdminIngenioMaterials from '@/pages/admin/IngenioMaterials';
 import AdminPlans from '@/pages/admin/Plans';
 import AdminPushNotifications from '@/pages/admin/PushNotifications';
 import AdminSettings from '@/pages/admin/Settings';
@@ -65,6 +66,7 @@ import ClientOrderDetail from '@/pages/client/OrderDetail';
 import ClientProfile from '@/pages/client/Profile';
 import ClientCredits from '@/pages/client/Credits';
 import ClientIngenio from '@/pages/client/Ingenio';
+import ClientIngenioStudy from '@/pages/client/IngenioStudy';
 import ClientCourses from '@/pages/client/Courses';
 import ClientCourseDetail from '@/pages/client/CourseDetail';
 import ClientNotifications from '@/pages/client/Notifications';
@@ -132,6 +134,7 @@ function App() {
           <Route path="creditos" element={<AdminCredits />} />
           <Route path="reportes" element={<AdminReports />} />
           <Route path="ingenio" element={<AdminIngenio />} />
+          <Route path="ingenio/materiales" element={<AdminIngenioMaterials />} />
           <Route path="campanas" element={<AdminPushNotifications />} />
           <Route path="planes" element={<AdminPlans />} />
           <Route path="configuracion" element={<AdminSettings />} />
@@ -189,6 +192,7 @@ function App() {
           <Route path="perfil" element={<ClientProfile />} />
           <Route path="creditos" element={<ClientCredits />} />
           <Route path="ingenio" element={<ClientIngenio />} />
+          <Route path="ingenio/estudiar" element={<ClientIngenioStudy />} />
           <Route path="cursos" element={<ClientCourses />} />
           <Route path="cursos/:id" element={<ClientCourseDetail />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
