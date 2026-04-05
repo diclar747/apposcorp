@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { motion, animate } from 'framer-motion';
 import { Play, Square, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,54 @@ interface WheelSegment {
 interface WheelProps {
   segments: WheelSegment[];
   onSegmentSelected?: (segment: WheelSegment) => void;
+  onSpinStateChange?: (isSpinning: boolean) => void;
   size?: number;
   className?: string;
+  showControls?: boolean;
+  externalSpinning?: boolean;
 }
 
-export function Wheel({ segments, onSegmentSelected, size = 400, className }: WheelProps) {
-  const [isSpinning, setIsSpinning] = useState(false);
+export interface WheelRef {
+  startSpin: () => void;
+  stopSpin: () => void;
+}
+
+export const Wheel = forwardRef<WheelRef, WheelProps>(function Wheel({ 
+  segments, 
+  onSegmentSelected, 
+  onSpinStateChange,
+  size = 400, 
+  className,
+  showControls = true,
+  externalSpinning
+}, ref) {
+  // Ensure we have segments
+  if (!segments || segments.length === 0) {
+    return (
+      <div className={cn("flex flex-col items-center justify-center gap-4", className)} style={{ width: size, height: size }}>
+        <div className="w-24 h-24 rounded-full border-4 border-slate-700 border-t-violet-500 animate-spin" />
+        <p className="text-slate-400 text-sm">Cargando ruleta...</p>
+      </div>
+    );
+  }
+  const [internalSpinning, setInternalSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [selectedSegment, setSelectedSegment] = useState<WheelSegment | null>(null);
   const animationRef = useRef<any>(null);
+  
+  const isSpinning = externalSpinning !== undefined ? externalSpinning : internalSpinning;
+  const setIsSpinning = (value: boolean) => {
+    if (externalSpinning === undefined) {
+      setInternalSpinning(value);
+    }
+    onSpinStateChange?.(value);
+  };
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    startSpin,
+    stopSpin,
+  }));
 
   const wheelSegments: WheelSegment[] = segments.length >= 10 
     ? segments.slice(0, 10) 
@@ -173,34 +212,36 @@ export function Wheel({ segments, onSegmentSelected, size = 400, className }: Wh
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 pointer-events-none" />
       </div>
       
-      <div className="flex items-center gap-4">
-        <Button
-          onClick={startSpin}
-          disabled={isSpinning}
-          className={cn(
-            "h-14 px-8 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-lg transition-all",
-            isSpinning 
-              ? "bg-gray-500 cursor-not-allowed" 
-              : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 hover:scale-105"
-          )}
-        >
-          <Play className="w-5 h-5 mr-2 fill-current" />
-          Comenzar
-        </Button>
-        
-        <Button
-          onClick={stopSpin}
-          disabled={!isSpinning}
-          variant="destructive"
-          className={cn(
-            "h-14 px-8 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-lg transition-all",
-            !isSpinning && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <Square className="w-5 h-5 mr-2 fill-current" />
-          Detener
-        </Button>
-      </div>
+      {showControls && (
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={startSpin}
+            disabled={isSpinning}
+            className={cn(
+              "h-14 px-8 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-lg transition-all",
+              isSpinning 
+                ? "bg-gray-500 cursor-not-allowed" 
+                : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 hover:scale-105"
+            )}
+          >
+            <Play className="w-5 h-5 mr-2 fill-current" />
+            Comenzar
+          </Button>
+          
+          <Button
+            onClick={stopSpin}
+            disabled={!isSpinning}
+            variant="destructive"
+            className={cn(
+              "h-14 px-8 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-lg transition-all",
+              !isSpinning && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Square className="w-5 h-5 mr-2 fill-current" />
+            Detener
+          </Button>
+        </div>
+      )}
       
       {selectedSegment && (
         <motion.div
@@ -223,3 +264,5 @@ export function Wheel({ segments, onSegmentSelected, size = 400, className }: Wh
     </div>
   );
 }
+
+export default Wheel;

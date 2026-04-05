@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Play, Pause, RotateCcw, ChevronRight, Sparkles,
@@ -30,20 +30,20 @@ export default function PresentacionE2() {
     const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
     const [showContent, setShowContent] = useState(false);
     const [currentContent, setCurrentContent] = useState<typeof segments[0] | null>(null);
+    const wheelRef = useRef<{ startSpin: () => void; stopSpin: () => void }>(null);
 
     const handleSpin = () => {
-        if (spinning) return;
-        setSpinning(true);
-        setSelectedSegment(null);
+        wheelRef.current?.startSpin();
     };
 
     const handleStop = () => {
-        setSpinning(false);
-        // Select random segment
-        const randomIndex = Math.floor(Math.random() * segments.length);
-        setSelectedSegment(randomIndex);
-        setCurrentContent(segments[randomIndex]);
-        setTimeout(() => setShowContent(true), 500);
+        wheelRef.current?.stopSpin();
+    };
+
+    const handleSegmentSelected = (segment: typeof segments[0]) => {
+        setSelectedSegment(segment.number - 1);
+        setCurrentContent(segment);
+        setShowContent(true);
     };
 
     return (
@@ -102,8 +102,11 @@ export default function PresentacionE2() {
                     >
                         <div className="relative">
                             <Wheel
-                                onSelect={(index) => setSelectedSegment(index)}
-                                spinning={spinning}
+                                ref={wheelRef}
+                                segments={segments}
+                                onSegmentSelected={handleSegmentSelected}
+                                onSpinStateChange={setSpinning}
+                                showControls={false}
                                 size={400}
                             />
                         </div>
