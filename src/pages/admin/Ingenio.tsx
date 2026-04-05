@@ -29,6 +29,7 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell,
     AreaChart, Area
 } from 'recharts';
+import Wheel from '@/components/ingenio/Wheel';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -414,8 +415,50 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         return filter ? matchesSearch && course.title.toUpperCase().includes(filter.toUpperCase()) : matchesSearch;
     });
 
+    const wheelColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#14b8a6', '#8b5cf6', '#d946ef', '#f43f5e'];
+    const wheelSegments = filteredCourses.length > 0 
+        ? Array.from({ length: Math.max(12, filteredCourses.length) }).map((_, i) => {
+            const course = filteredCourses[i % filteredCourses.length];
+            // Format title to remove "E1 - " prefix if present for cleaner display on wheel
+            const cleanTitle = course.title.replace(/^(E1|E2) - /i, '').trim();
+            return {
+                number: i + 1,
+                color: wheelColors[i % wheelColors.length],
+                title: cleanTitle,
+            };
+        }) 
+        : [];
+
     return (
         <div className="space-y-6">
+            {(filter === 'E1' || filter === 'E2') && filteredCourses.length > 0 && (
+                <div className="flex flex-col lg:flex-row items-center justify-center gap-12 py-12 px-6 bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800">
+                    <div className="flex-1 flex justify-center">
+                        <Wheel segments={wheelSegments} size={440} />
+                    </div>
+                    <div className="w-full lg:w-96">
+                        <Card className="rounded-3xl shadow-xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+                            <div className="bg-white dark:bg-slate-800 p-6 text-center border-b border-slate-100 dark:border-slate-700">
+                                <h3 className="text-3xl font-light text-[#5CB85C] tracking-tight">Contenido</h3>
+                            </div>
+                            <CardContent className="p-4 max-h-[420px] overflow-y-auto">
+                                <div className="space-y-2">
+                                    {filteredCourses.map((course: any, i: number) => {
+                                        const cleanTitle = course.title.replace(/^(E1|E2) - /i, '').trim();
+                                        return (
+                                            <div key={course.id} className="p-4 border border-slate-100 dark:border-slate-800 rounded-xl hover:shadow-md hover:border-slate-300 transition-all flex items-center gap-4 bg-white dark:bg-slate-900">
+                                                <span className="font-medium text-slate-500 min-w-[20px]">{i + 1}.</span>
+                                                <p className="font-medium text-slate-700 dark:text-slate-300 text-sm leading-tight">{cleanTitle}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">
                     {filter ? `Etapas ${filter}` : 'Etapas de Formación'}

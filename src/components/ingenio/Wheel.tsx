@@ -194,26 +194,23 @@ export function Wheel({
           onClick={startSpin}
           disabled={isSpinning}
           size="lg"
-          className={`h-14 px-8 rounded-full font-bold text-lg shadow-lg transition-all ${
+          className={`h-14 px-8 rounded-full font-bold text-lg shadow-lg transition-all text-white border-none ${
             isSpinning 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:scale-105'
+              : 'bg-[#5CB85C] hover:bg-[#4cae4c] hover:scale-105'
           }`}
         >
-          <Play className="w-5 h-5 mr-2 fill-current" />
-          PLAY
+          COMENZAR
         </Button>
         
         <Button
           onClick={stopSpin}
           disabled={!isSpinning}
           size="lg"
-          variant="outline"
-          className={`h-14 px-8 rounded-full font-bold text-lg border-3 ${
-            !isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100'
+          className={`h-14 px-8 rounded-full font-bold text-lg border-none text-white transition-all ${
+            !isSpinning ? 'opacity-50 cursor-not-allowed bg-red-300' : 'bg-[#FF8A8A] hover:bg-[#ff6b6b]'
           }`}
         >
-          <Square className="w-5 h-5 mr-2 fill-current" />
           DETENER
         </Button>
       </div>
