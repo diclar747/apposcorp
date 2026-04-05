@@ -1,15 +1,13 @@
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-    Play, Pause, RotateCcw, ChevronRight, Sparkles,
-    BookOpen, Users, Target, Zap, Award, ArrowRight
+    Sparkles, Award, ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wheel, type WheelRef } from '@/components/ingenio/Wheel';
+import { Wheel } from '@/components/ingenio/Wheel';
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
+// Segments for E1
 const segments = [
     { number: 1, color: '#ef4444', title: 'Poder del Dinero', description: 'Entiende cómo funciona el dinero y cómo hacer que trabaje para ti.' },
     { number: 2, color: '#f97316', title: 'Crear más Dinero', description: 'Estrategias para generar múltiples fuentes de ingresos.' },
@@ -23,25 +21,11 @@ const segments = [
     { number: 10, color: '#8b5cf6', title: 'Disfrutar el Dinero', description: 'Balance entre ahorro y disfrute de la vida.' },
 ];
 
-// ─── Component ─────────────────────────────────────────────────────────────────
-
 export default function PresentacionE1() {
-    const [spinning, setSpinning] = useState(false);
-    const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
     const [showContent, setShowContent] = useState(false);
     const [currentContent, setCurrentContent] = useState<typeof segments[0] | null>(null);
-    const wheelRef = useRef<WheelRef>(null);
-
-    const handleSpin = () => {
-        wheelRef.current?.startSpin();
-    };
-
-    const handleStop = () => {
-        wheelRef.current?.stopSpin();
-    };
 
     const handleSegmentSelected = (segment: typeof segments[0]) => {
-        setSelectedSegment(segment.number - 1);
         setCurrentContent(segment);
         setShowContent(true);
     };
@@ -73,7 +57,7 @@ export default function PresentacionE1() {
             {/* Hero Section */}
             <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
+                    <div className="text-center mb-12">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -98,188 +82,76 @@ export default function PresentacionE1() {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
-                        className="flex flex-col items-center gap-8"
+                        className="flex justify-center"
                     >
-                        <div className="relative">
-                            <Wheel
-                                ref={wheelRef}
-                                segments={segments}
-                                onSegmentSelected={handleSegmentSelected}
-                                onSpinStateChange={setSpinning}
-                                showControls={false}
-                                size={400}
-                            />
-                        </div>
-
-                        {/* Controls */}
-                        <div className="flex items-center gap-4">
-                            {!spinning ? (
-                                <Button
-                                    size="lg"
-                                    onClick={handleSpin}
-                                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 text-lg font-bold rounded-2xl shadow-2xl shadow-violet-600/25 transition-all hover:scale-105"
-                                >
-                                    <Play className="w-5 h-5 mr-2" />
-                                    Girar Ruleta
-                                </Button>
-                            ) : (
-                                <Button
-                                    size="lg"
-                                    onClick={handleStop}
-                                    variant="outline"
-                                    className="border-2 border-violet-500 text-violet-300 hover:bg-violet-500/20 px-8 py-6 text-lg font-bold rounded-2xl"
-                                >
-                                    <Pause className="w-5 h-5 mr-2" />
-                                    Detener
-                                </Button>
-                            )}
-                            <Button
-                                size="lg"
-                                variant="ghost"
-                                onClick={() => {
-                                    setSelectedSegment(null);
-                                    setShowContent(false);
-                                }}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                <RotateCcw className="w-5 h-5 mr-2" />
-                                Reiniciar
-                            </Button>
-                        </div>
+                        <Wheel
+                            segments={segments}
+                            onSegmentSelected={handleSegmentSelected}
+                            size={380}
+                        />
                     </motion.div>
-
-                    {/* Selected Content Dialog */}
-                    <Dialog open={showContent} onOpenChange={setShowContent}>
-                        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-lg">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-3">
-                                    <div
-                                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xl"
-                                        style={{ backgroundColor: currentContent?.color }}
-                                    >
-                                        {currentContent?.number}
-                                    </div>
-                                    <span className="text-2xl">{currentContent?.title}</span>
-                                </DialogTitle>
-                            </DialogHeader>
-                            <div className="mt-4">
-                                <p className="text-slate-300 text-lg leading-relaxed">
-                                    {currentContent?.description}
-                                </p>
-                                <div className="mt-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                                    <h4 className="font-semibold text-violet-300 mb-2 flex items-center gap-2">
-                                        <Target className="w-4 h-4" />
-                                        Acción Clave
-                                    </h4>
-                                    <p className="text-slate-400 text-sm">
-                                        Implementa este principio en tu vida financiera hoy mismo. 
-                                        Cada pequeño paso cuenta en tu camino hacia la libertad financiera.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="mt-6 flex justify-end">
-                                <Button
-                                    onClick={() => setShowContent(false)}
-                                    className="bg-violet-600 hover:bg-violet-700"
-                                >
-                                    Entendido <ChevronRight className="w-4 h-4 ml-2" />
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
                 </div>
             </section>
 
-            {/* Features Grid */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-950/50">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-bold text-white mb-4">¿Qué aprenderás?</h2>
-                        <p className="text-slate-400">Los 10 pilares de la riqueza financiera</p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        {segments.slice(0, 5).map((segment, i) => (
-                            <motion.div
-                                key={segment.number}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1 }}
-                                className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-violet-500/50 transition-colors"
+            {/* Result Dialog */}
+            <Dialog open={showContent} onOpenChange={setShowContent}>
+                <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-3">
+                            <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xl"
+                                style={{ backgroundColor: currentContent?.color }}
                             >
-                                <div
-                                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold mb-3"
-                                    style={{ backgroundColor: segment.color }}
-                                >
-                                    {segment.number}
-                                </div>
-                                <h3 className="font-semibold text-white text-sm mb-1">{segment.title}</h3>
-                                <p className="text-xs text-slate-400 line-clamp-2">{segment.description}</p>
-                            </motion.div>
-                        ))}
+                                {currentContent?.number}
+                            </div>
+                            <span className="text-xl">{currentContent?.title}</span>
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4">
+                        <p className="text-slate-300 text-lg leading-relaxed">
+                            {currentContent?.description}
+                        </p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
-                        {segments.slice(5, 10).map((segment, i) => (
-                            <motion.div
-                                key={segment.number}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: (i + 5) * 0.1 }}
-                                className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-violet-500/50 transition-colors"
-                            >
-                                <div
-                                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold mb-3"
-                                    style={{ backgroundColor: segment.color }}
-                                >
-                                    {segment.number}
-                                </div>
-                                <h3 className="font-semibold text-white text-sm mb-1">{segment.title}</h3>
-                                <p className="text-xs text-slate-400 line-clamp-2">{segment.description}</p>
-                            </motion.div>
-                        ))}
+                    <div className="mt-6 flex justify-end">
+                        <Button
+                            onClick={() => setShowContent(false)}
+                            className="bg-violet-600 hover:bg-violet-700"
+                        >
+                            Entendido
+                        </Button>
                     </div>
-                </div>
-            </section>
+                </DialogContent>
+            </Dialog>
 
             {/* CTA Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8">
+            <section className="py-16 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-4xl mx-auto text-center">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.6 }}
-                        className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-violet-600/20 to-indigo-600/20 border border-violet-500/30"
+                        className="p-8 rounded-3xl bg-gradient-to-br from-violet-600/20 to-indigo-600/20 border border-violet-500/30"
                     >
-                        <Award className="w-16 h-16 text-violet-400 mx-auto mb-6" />
-                        <h2 className="text-3xl font-bold text-white mb-4">
+                        <Award className="w-12 h-12 text-violet-400 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold text-white mb-3">
                             ¿Listo para transformar tu vida financiera?
                         </h2>
-                        <p className="text-slate-300 mb-8 max-w-xl mx-auto">
-                            Únete a Ingenio Millonario y accede a formación completa, 
-                            mentoría y herramientas para construir tu libertad financiera.
+                        <p className="text-slate-300 mb-6 max-w-lg mx-auto">
+                            Únete a Ingenio Millonario y accede a formación completa.
                         </p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Button
-                                size="lg"
-                                onClick={() => window.location.href = '/register'}
-                                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 text-lg font-bold rounded-xl w-full sm:w-auto"
-                            >
-                                Comenzar Ahora <ArrowRight className="w-5 h-5 ml-2" />
-                            </Button>
-                            <Button
-                                size="lg"
-                                variant="outline"
-                                onClick={() => window.location.href = '/precios'}
-                                className="border-slate-600 text-slate-300 hover:bg-slate-800 px-8 py-6 text-lg rounded-xl w-full sm:w-auto"
-                            >
-                                Ver Planes
-                            </Button>
-                        </div>
+                        <Button
+                            size="lg"
+                            onClick={() => window.location.href = '/register'}
+                            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 rounded-xl"
+                        >
+                            Comenzar Ahora <ArrowRight className="w-5 h-5 ml-2" />
+                        </Button>
                     </motion.div>
                 </div>
             </section>
 
             {/* Footer */}
-            <footer className="py-8 px-4 border-t border-slate-800">
+            <footer className="py-6 px-4 border-t border-slate-800">
                 <div className="max-w-7xl mx-auto text-center text-slate-500 text-sm">
                     <p>© 2026 Oscorp. Todos los derechos reservados.</p>
                 </div>
