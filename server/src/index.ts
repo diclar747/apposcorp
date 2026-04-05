@@ -165,6 +165,46 @@ app.get('/api/setup', async (req, res) => {
   }
 });
 
+// Debug: Listar usuarios
+app.get('/api/users-list', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, role: true, isActive: true }
+    });
+    res.json({ count: users.length, users });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear admin de emergencia
+app.get('/api/create-admin', async (req, res) => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    const hash = await bcrypt.hash('123456', 10);
+    
+    const user = await prisma.user.upsert({
+      where: { email: 'admin@oscorp.com' },
+      update: { password: hash, isActive: true },
+      create: {
+        email: 'admin@oscorp.com',
+        password: hash,
+        firstName: 'Admin',
+        lastName: 'Oscorp',
+        phone: '0000000000',
+        address: 'Test',
+        city: 'Test',
+        role: 'superadmin',
+        isActive: true
+      }
+    });
+    
+    res.json({ success: true, email: user.email, message: 'Admin creado/actualizado' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
