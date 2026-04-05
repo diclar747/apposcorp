@@ -3,9 +3,16 @@ import { motion } from "framer-motion";
 import { 
   TrendingUp, TrendingDown, Home, CreditCard, PieChart as PieChartIcon, Target, Wallet
 } from "lucide-react";
+import { Pickaxe, Plus } from "lucide-react";
 import { financesApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const ssCards = [
@@ -26,6 +33,9 @@ export default function IngenioDashboard() {
     netWorthGrowth: 0
   });
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ type: 'income', amount: '', description: '' });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -43,13 +53,93 @@ export default function IngenioDashboard() {
     }
   };
 
+  const handleCreateRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.amount || isNaN(Number(formData.amount))) {
+      return toast.error("Ingresa un monto válido");
+    }
+    try {
+      setSaving(true);
+      await financesApi.create({
+        type: formData.type,
+        amount: Number(formData.amount),
+        description: formData.description || 'Registro manual',
+      });
+      toast.success("Movimiento registrado exitosamente");
+      setIsModalOpen(false);
+      setFormData({ type: 'income', amount: '', description: '' });
+      fetchData();
+    } catch (error) {
+      toast.error("Error al registrar movimiento");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <div className="animate-pulse space-y-4">Cargando tablero...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Finanzas Master</h1>
-        <p className="text-slate-500 mt-1">Control absoluto sobre tu flujo de caja y patrimonio neto.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Finanzas Master</h1>
+          <p className="text-slate-500 mt-1">Control absoluto sobre tu flujo de caja y patrimonio neto.</p>
+        </div>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 rounded-xl px-6">
+              <Plus className="w-5 h-5 mr-2" />
+              Registrar Movimiento
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md rounded-3xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Nuevo Registro Financiero</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateRecord} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Tipo de Movimiento</Label>
+                <Select value={formData.type} onValueChange={(val) => setFormData({...formData, type: val})}>
+                  <SelectTrigger className="rounded-xl h-12">
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">Ingreso (Aumentar caja)</SelectItem>
+                    <SelectItem value="expense">Gasto (Reducir caja)</SelectItem>
+                    <SelectItem value="asset">Activo (Suma a Patrimonio)</SelectItem>
+                    <SelectItem value="liability">Pasivo/Deuda (Resta a Patrimonio)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Monto (₲)</Label>
+                <Input 
+                  type="number" 
+                  min="0"
+                  step="1000"
+                  placeholder="Ej: 500000" 
+                  className="rounded-xl h-12"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Descripción / Concepto</Label>
+                <Input 
+                  placeholder="Ej: Salario, Venta, Tarjeta de crédito" 
+                  className="rounded-xl h-12"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  required 
+                />
+              </div>
+              <Button type="submit" className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-base" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar Registro"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

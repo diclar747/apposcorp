@@ -65,7 +65,7 @@ export default function IngenioAcademy() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredCourses.map((course: any) => (
-            <Card key={course.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-300 cursor-pointer border-none rounded-3xl bg-white dark:bg-slate-900" onClick={() => navigate(`/app/cursos/${course.id}`)}>
+            <Card key={course.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-300 cursor-pointer border-none rounded-3xl bg-white dark:bg-slate-900" onClick={() => navigate(`/ingenio/cursos/${course.id}`)}>
               <div className="h-44 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
                 {course.coverImage ? (
                   <img src={course.coverImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
