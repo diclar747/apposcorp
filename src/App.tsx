@@ -27,8 +27,6 @@ import AdminWithdrawals from '@/pages/admin/Withdrawals';
 import AdminCredits from '@/pages/admin/Credits';
 import AdminReports from '@/pages/admin/Reports';
 import AdminIngenio from '@/pages/admin/Ingenio';
-import IngenioPresentation from '@/pages/admin/IngenioPresentation';
-import IngenioStudents from '@/pages/admin/IngenioStudents';
 import AdminPlans from '@/pages/admin/Plans';
 import AdminPushNotifications from '@/pages/admin/PushNotifications';
 import AdminSettings from '@/pages/admin/Settings';
@@ -130,9 +128,6 @@ function App() {
           <Route path="creditos" element={<AdminCredits />} />
           <Route path="reportes" element={<AdminReports />} />
           <Route path="ingenio" element={<AdminIngenio />} />
-          <Route path="ingenio/presentation/:stageCode" element={<IngenioPresentation />} />
-          <Route path="ingenio/students" element={<IngenioStudents />} />
-          <Route path="ingenio/students/:stageCode" element={<IngenioStudents />} />
           <Route path="campanas" element={<AdminPushNotifications />} />
           <Route path="planes" element={<AdminPlans />} />
           <Route path="configuracion" element={<AdminSettings />} />

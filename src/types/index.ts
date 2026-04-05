@@ -49,7 +49,6 @@ export interface BankData {
   accountType: 'savings' | 'checking';
   holderName: string;
   documentId: string;
-  alias?: string;
 }
 
 export interface SocialLinks {
@@ -591,107 +590,4 @@ export interface ProductFilters {
   type?: ProductType;
   search?: string;
   sortBy?: 'price_asc' | 'price_desc' | 'newest' | 'popular';
-}
-
-// ============================================
-// INGENIO MILLONARIO
-// ============================================
-
-export interface IngenioStage {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  color: string;
-  isActive: boolean;
-  order: number;
-  createdAt: Date;
-  updatedAt: Date;
-  materials?: IngenioMaterial[];
-  segments?: IngenioWheelSegment[];
-  contents?: IngenioContent[];
-}
-
-export interface IngenioWheelSegment {
-  id: string;
-  stageId: string;
-  number: number;
-  color: string;
-  title: string;
-  description?: string;
-  isActive: boolean;
-}
-
-export interface IngenioContent {
-  id: string;
-  stageId: string;
-  segmentNumber: number;
-  title: string;
-  description?: string;
-  type: 'pdf' | 'video' | 'text';
-  url?: string;
-  fileName?: string;
-  fileSize?: number;
-  duration?: number;
-  order: number;
-  isActive: boolean;
-}
-
-export interface IngenioMaterial {
-  id: string;
-  stageId: string;
-  title: string;
-  description?: string;
-  type: 'pdf' | 'video' | 'image' | 'link';
-  url?: string;
-  fileName?: string;
-  fileSize?: number;
-  thumbnailUrl?: string;
-  duration?: number;
-  order: number;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IngenioStudent {
-  id: string;
-  userId?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  documentId?: string;
-  company?: string;
-  notes?: string;
-  paymentStatus: 'pending' | 'partial' | 'paid' | 'scholarship';
-  paymentAmount?: number;
-  totalAmount?: number;
-  installmentsPaid?: number;
-  totalInstallments?: number;
-  enrolledAt: Date;
-  expiresAt?: Date;
-  isActive: boolean;
-  assignments?: IngenioStudentAssignment[];
-}
-
-export interface IngenioStudentAssignment {
-  id: string;
-  studentId: string;
-  stageId: string;
-  stage?: IngenioStage;
-  assignedAt: Date;
-  completedAt?: Date;
-  isCompleted: boolean;
-}
-
-export interface IngenioMaterialProgress {
-  id: string;
-  studentId: string;
-  materialId: string;
-  material?: IngenioMaterial;
-  completed: boolean;
-  progress: number;
-  lastAccessedAt: Date;
-  completedAt?: Date;
 }

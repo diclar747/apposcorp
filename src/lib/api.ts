@@ -605,65 +605,6 @@ export const storesApi = {
   getBySlug: (slug: string) => fetchWithAuth(`/stores/${slug}`),
 };
 
-// Ingenio Millonario API
-export const ingenioApi = {
-  // Stages
-  getStages: () => fetchWithAuth('/ingenio/stages'),
-  getStage: (id: string) => fetchWithAuth(`/ingenio/stages/${id}`),
-  createStage: (data: any) =>
-    fetchWithAuth('/ingenio/stages', { method: 'POST', body: JSON.stringify(data) }),
-  updateStage: (id: string, data: any) =>
-    fetchWithAuth(`/ingenio/stages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  
-  // Wheel Segments
-  getSegments: (stageId: string) => fetchWithAuth(`/ingenio/stages/${stageId}/segments`),
-  saveSegments: (stageId: string, segments: any[]) =>
-    fetchWithAuth(`/ingenio/stages/${stageId}/segments`, { method: 'POST', body: JSON.stringify({ segments }) }),
-  
-  // Contents
-  getContents: (stageId: string, segmentNumber: number) => 
-    fetchWithAuth(`/ingenio/stages/${stageId}/contents/${segmentNumber}`),
-  createContent: (data: any) =>
-    fetchWithAuth('/ingenio/contents', { method: 'POST', body: JSON.stringify(data) }),
-  updateContent: (id: string, data: any) =>
-    fetchWithAuth(`/ingenio/contents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteContent: (id: string) =>
-    fetchWithAuth(`/ingenio/contents/${id}`, { method: 'DELETE' }),
-  
-  // Materials
-  getMaterials: (stageId: string) => fetchWithAuth(`/ingenio/stages/${stageId}/materials`),
-  createMaterial: (data: any) =>
-    fetchWithAuth('/ingenio/materials', { method: 'POST', body: JSON.stringify(data) }),
-  updateMaterial: (id: string, data: any) =>
-    fetchWithAuth(`/ingenio/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteMaterial: (id: string) =>
-    fetchWithAuth(`/ingenio/materials/${id}`, { method: 'DELETE' }),
-  
-  // Students
-  getStudents: () => fetchWithAuth('/ingenio/students'),
-  getStudent: (id: string) => fetchWithAuth(`/ingenio/students/${id}`),
-  createStudent: (data: any) =>
-    fetchWithAuth('/ingenio/students', { method: 'POST', body: JSON.stringify(data) }),
-  updateStudent: (id: string, data: any) =>
-    fetchWithAuth(`/ingenio/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteStudent: (id: string) =>
-    fetchWithAuth(`/ingenio/students/${id}`, { method: 'DELETE' }),
-  
-  // Assignments
-  assignStages: (studentId: string, stageIds: string[]) =>
-    fetchWithAuth(`/ingenio/students/${studentId}/assign`, { method: 'POST', body: JSON.stringify({ stageIds }) }),
-  removeAssignment: (studentId: string, stageId: string) =>
-    fetchWithAuth(`/ingenio/students/${studentId}/assign/${stageId}`, { method: 'DELETE' }),
-  
-  // Progress
-  getMyProgress: () => fetchWithAuth('/ingenio/my-progress'),
-  updateProgress: (materialId: string, data: { progress?: number; completed?: boolean }) =>
-    fetchWithAuth(`/ingenio/progress/${materialId}`, { method: 'POST', body: JSON.stringify(data) }),
-  
-  // Public presentation
-  getPresentation: (stageCode: string) => fetchWithAuth(`/ingenio/presentations/${stageCode}`),
-};
-
 export default {
   auth: authApi,
   users: usersApi,
@@ -681,5 +622,4 @@ export default {
   management: managementApi,
   reports: reportsApi,
   plans: plansApi,
-  ingenio: ingenioApi,
 };
