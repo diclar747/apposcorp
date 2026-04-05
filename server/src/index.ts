@@ -24,11 +24,6 @@ import storeRoutes from './routes/stores.js';
 import sellerManagementRoutes from './routes/seller-management.js';
 import reportRoutes from './routes/reports.js';
 import ingenioRoutes from './routes/ingenio.js';
-import setupRoutes from './routes/setup.js';
-import fixLoginRoutes from './routes/fix-login.js';
-import debugRoutes from './routes/debug.js';
-import emergencyRoutes from './routes/emergency.js';
-import verifyRoutes from './routes/verify.js';
 import { prisma } from './utils/prisma.js';
 
 const app = express();
@@ -97,11 +92,78 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/seller-management', sellerManagementRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ingenio', ingenioRoutes);
-app.use('/api/setup', setupRoutes);
-app.use('/api/fix', fixLoginRoutes);
-app.use('/api/debug', debugRoutes);
-app.use('/api/emergency', emergencyRoutes);
-app.use('/api/verify', verifyRoutes);
+
+// Simple setup endpoint
+app.get('/api/setup', async (req, res) => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    const plainPassword = '123456';
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    
+    // Crear o actualizar admin
+    await prisma.user.upsert({
+      where: { email: 'admin@oscorp.com' },
+      update: { password: hashedPassword, isActive: true },
+      create: {
+        email: 'admin@oscorp.com',
+        password: hashedPassword,
+        firstName: 'Administrador',
+        lastName: 'Oscorp',
+        phone: '0000000000',
+        address: 'Test Address',
+        city: 'Test City',
+        role: 'superadmin',
+        isActive: true
+      }
+    });
+    
+    // Crear o actualizar seller1
+    await prisma.user.upsert({
+      where: { email: 'seller1@oscorp.com' },
+      update: { password: hashedPassword, isActive: true },
+      create: {
+        email: 'seller1@oscorp.com',
+        password: hashedPassword,
+        firstName: 'Carlos',
+        lastName: 'Vendedor',
+        phone: '0000000001',
+        address: 'Test Address',
+        city: 'Test City',
+        role: 'seller',
+        isActive: true
+      }
+    });
+    
+    // Crear o actualizar client1
+    await prisma.user.upsert({
+      where: { email: 'client1@oscorp.com' },
+      update: { password: hashedPassword, isActive: true },
+      create: {
+        email: 'client1@oscorp.com',
+        password: hashedPassword,
+        firstName: 'Joao',
+        lastName: 'Silva',
+        phone: '0000000003',
+        address: 'Test Address',
+        city: 'Test City',
+        role: 'client',
+        isActive: true
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Usuarios creados/actualizados',
+      credentials: {
+        admin: { email: 'admin@oscorp.com', password: '123456' },
+        seller: { email: 'seller1@oscorp.com', password: '123456' },
+        client: { email: 'client1@oscorp.com', password: '123456' }
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
