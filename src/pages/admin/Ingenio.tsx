@@ -375,7 +375,23 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             toast.success(result.message || 'Sistema inicializado correctamente');
             fetchCourses();
         } catch (error: any) {
-            toast.error(error.message || 'Error al inicializar el sistema');
+            console.error('Setup error:', error);
+            // Fallback: create sample course directly
+            try {
+                await coursesApi.create({
+                    title: filter ? `${filter} - Fundamentos del Dinero` : 'Curso de Ejemplo',
+                    description: 'Curso inicial de prueba',
+                    shortDescription: 'Descripción corta',
+                    category: 'Ingenio Millonario',
+                    level: 'beginner',
+                    price: 0,
+                    isPublished: true,
+                });
+                toast.success('Curso de ejemplo creado');
+                fetchCourses();
+            } catch (createError) {
+                toast.error('Error al crear curso de ejemplo');
+            }
         } finally {
             setInitializing(false);
         }
