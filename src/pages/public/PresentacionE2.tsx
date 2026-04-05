@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import Wheel from '@/components/ingenio/Wheel';
+import { Wheel } from '@/components/ingenio/Wheel';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
