@@ -165,41 +165,52 @@ app.get('/api/setup', async (req, res) => {
   }
 });
 
-// Debug: Listar usuarios
-app.get('/api/users-list', async (req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      select: { id: true, email: true, role: true, isActive: true }
-    });
-    res.json({ count: users.length, users });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Crear admin de emergencia
-app.get('/api/create-admin', async (req, res) => {
+// Resetear contraseña del admin existente
+app.get('/api/fix-admin-password', async (req, res) => {
   try {
     const bcrypt = await import('bcryptjs');
-    const hash = await bcrypt.hash('123456', 10);
+    const plainPassword = '123456';
+    const hash = await bcrypt.hash(plainPassword, 10);
     
-    const user = await prisma.user.upsert({
-      where: { email: 'admin@oscorp.com' },
-      update: { password: hash, isActive: true },
-      create: {
-        email: 'admin@oscorp.com',
-        password: hash,
-        firstName: 'Admin',
-        lastName: 'Oscorp',
-        phone: '0000000000',
-        address: 'Test',
-        city: 'Test',
-        role: 'superadmin',
-        isActive: true
+    // Actualizar TODOS los usuarios demo con la misma contraseña
+    const emails = [
+      'admin@oscorp.com',
+      'seller1@oscorp.com', 
+      'client1@oscorp.com'
+    ];
+    
+    const results = [];
+    for (const email of emails) {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, email: true, password: true }
+      });
+      
+      if (user) {
+        // Verificar si la contraseña actual funciona
+        const currentValid = await bcrypt.compare(plainPassword, user.password);
+        
+        if (!currentValid) {
+          // Actualizar con nueva contraseña
+          await prisma.user.update({
+            where: { email },
+            data: { password: hash, isActive: true }
+          });
+          results.push({ email, action: 'password_reset', previousValid: currentValid });
+        } else {
+          results.push({ email, action: 'no_change', passwordAlreadyValid: true });
+        }
+      } else {
+        results.push({ email, action: 'user_not_found' });
       }
-    });
+    }
     
-    res.json({ success: true, email: user.email, message: 'Admin creado/actualizado' });
+    res.json({ 
+      success: true, 
+      message: 'Contraseñas verificadas/actualizadas',
+      results,
+      credentials: { email: 'admin@oscorp.com', password: '123456' }
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
