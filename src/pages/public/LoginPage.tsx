@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Store, User, Shield } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Store, User, Shield, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,9 @@ import { toast } from 'sonner';
 
 const quickLogins = [
   { email: 'admin@oscorp.com', password: 'admin123', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
-  { email: 'vendedor1@oscorp.com', password: 'seller123', role: 'seller', label: 'Vendedor', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-  { email: 'cliente1@oscorp.com', password: 'client123', role: 'client', label: 'Cliente', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  { email: 'vendedor1@oscorp.com', password: 'seller123', role: 'seller', label: 'Comerciante', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  { email: 'cliente1@oscorp.com', password: 'client123', role: 'client', label: 'Usuarios', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  { email: 'estudiante1@oscorp.com', password: 'student123', role: 'ingenio', label: 'Ingenio Millonario', icon: BookOpen, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
 ];
 
 export default function LoginPage() {
@@ -48,6 +49,8 @@ export default function LoginPage() {
           navigate('/admin');
         } else if (currentUser?.role === 'seller') {
           navigate('/vendedor');
+        } else if (currentUser?.role === 'ingenio') {
+          navigate('/ingenio');
         } else {
           navigate('/app');
         }
@@ -76,6 +79,8 @@ export default function LoginPage() {
           navigate('/admin');
         } else if (currentUser?.role === 'seller') {
           navigate('/vendedor');
+        } else if (currentUser?.role === 'ingenio') {
+          navigate('/ingenio');
         } else {
           navigate('/app');
         }
@@ -119,7 +124,7 @@ export default function LoginPage() {
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-4"
         >
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Acceso rápido para demo</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {quickLogins.map((login) => (
               <button
                 key={login.email}

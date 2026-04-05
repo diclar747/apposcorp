@@ -690,6 +690,7 @@ enum UserRole {
   client
   seller
   superadmin
+  ingenio
 }
 
 enum OrderStatus {

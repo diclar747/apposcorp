@@ -21,6 +21,13 @@ import PresentacionE2 from '@/pages/public/PresentacionE2';
 import AdminDashboard from '@/pages/admin/Dashboard';
 import AdminStores from '@/pages/admin/Stores';
 import AdminUsers from '@/pages/admin/Users';
+
+// Ingenio Pages
+import IngenioLayout from '@/layouts/IngenioLayout';
+import IngenioDashboard from '@/pages/ingenio/Dashboard';
+import IngenioBudget from '@/pages/ingenio/Budget';
+import IngenioAcademy from '@/pages/ingenio/Academy';
+import IngenioWallet from '@/pages/ingenio/Wallet';
 import AdminProducts from '@/pages/admin/Products';
 import AdminOrders from '@/pages/admin/Orders';
 import AdminFinances from '@/pages/admin/Finances';
@@ -78,7 +85,7 @@ function ProtectedRoute({
   allowedRoles
 }: {
   children: React.ReactNode;
-  allowedRoles: ('client' | 'seller' | 'superadmin')[];
+  allowedRoles: ('client' | 'seller' | 'superadmin' | 'ingenio')[];
 }) {
   const { isAuthenticated, user } = useAuthStore();
 
@@ -92,6 +99,8 @@ function ProtectedRoute({
       return <Navigate to="/admin" replace />;
     } else if (user?.role === 'seller') {
       return <Navigate to="/vendedor" replace />;
+    } else if (user?.role === 'ingenio') {
+      return <Navigate to="/ingenio" replace />;
     } else {
       return <Navigate to="/app" replace />;
     }
@@ -196,6 +205,22 @@ function App() {
           <Route path="cursos" element={<ClientCourses />} />
           <Route path="cursos/:id" element={<ClientCourseDetail />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
+        </Route>
+
+        {/* Ingenio Millonario Routes */}
+        <Route
+          path="/ingenio"
+          element={
+            <ProtectedRoute allowedRoles={['ingenio']}>
+              <IngenioLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<IngenioDashboard />} />
+          <Route path="presupuesto" element={<IngenioBudget />} />
+          <Route path="academia" element={<IngenioAcademy />} />
+          <Route path="wallet" element={<IngenioWallet />} />
+          {/* Reuse some course reading logic from client if needed, or point direct */}
         </Route>
 
         {/* Fallback */}

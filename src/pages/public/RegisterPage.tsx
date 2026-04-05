@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight, Store, UserCircle, Check } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight, Store, UserCircle, Check, BookOpen } from 'lucide-react';
 import { useAuthStore, type RegisterData } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,9 @@ const steps = [
 ];
 
 const accountTypes = [
-  { id: 'client', label: 'Usuario', description: 'Accede a tu billetera digital, compra productos y realiza pagos', icon: UserCircle },
+  { id: 'client', label: 'Usuarios', description: 'Accede a tu billetera digital, compra productos y realiza pagos', icon: UserCircle },
   { id: 'seller', label: 'Comerciante', description: 'Gestiona tu tienda, vende productos y accede al sistema comercial completo', icon: Store },
+  { id: 'ingenio', label: 'Ingenio Millonario', description: 'Entorno de estudio diseñado para tu crecimiento financiero', icon: BookOpen },
 ];
 
 export default function RegisterPage() {
@@ -72,6 +73,8 @@ export default function RegisterPage() {
         const currentUser = useAuthStore.getState().user;
         if (currentUser?.role === 'seller') {
           navigate('/vendedor');
+        } else if (currentUser?.role === 'ingenio') {
+          navigate('/ingenio');
         } else {
           navigate('/app');
         }
@@ -226,7 +229,7 @@ export default function RegisterPage() {
                 {accountTypes.map((type) => (
                   <button
                     key={type.id}
-                    onClick={() => updateField('role', type.id as 'client' | 'seller')}
+                    onClick={() => updateField('role', type.id as 'client' | 'seller' | 'ingenio')}
                     className={cn(
                       'w-full p-4 rounded-xl border-2 text-left transition-all',
                       formData.role === type.id
@@ -268,7 +271,7 @@ export default function RegisterPage() {
                 <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
                 <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
                 <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
-                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : 'Comerciante'}</p>
+                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : formData.role === 'seller' ? 'Comerciante' : 'Estudiante Ingenio'}</p>
               </div>
             </div>
           )}

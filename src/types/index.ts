@@ -2,7 +2,7 @@
 // TIPOS BASE - Oscorp Platform
 // ============================================
 
-export type UserRole = 'client' | 'seller' | 'superadmin';
+export type UserRole = 'client' | 'seller' | 'superadmin' | 'ingenio';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'refunded';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type PaymentMethod = 'wallet' | 'cash' | 'card' | 'transfer';
