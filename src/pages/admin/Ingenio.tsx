@@ -371,27 +371,27 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     const handleInitialize = async () => {
         try {
             setInitializing(true);
-            const result = await ingenioApi.setup();
-            toast.success(result.message || 'Sistema inicializado correctamente');
+            // Create course directly without depending on Ingenio tables
+            await coursesApi.create({
+                title: filter === 'E1' ? 'E1 - Fundamentos del Dinero' : 
+                       filter === 'E2' ? 'E2 - Maestría Financiera' : 
+                       'Curso de Ejemplo',
+                description: filter === 'E1' 
+                    ? 'Los 10 principios fundamentales para construir riqueza y libertad financiera.'
+                    : 'Los 10 pasos avanzados que los millonarios usan para construir riqueza duradera.',
+                shortDescription: filter === 'E1'
+                    ? 'Descubre los fundamentos del dinero que nadie te enseñó.'
+                    : 'Estrategias avanzadas de construcción de riqueza.',
+                category: 'Ingenio Millonario',
+                level: filter === 'E2' ? 'advanced' : 'beginner',
+                price: 0,
+                isPublished: true,
+            });
+            toast.success(`Curso ${filter || ''} creado correctamente`);
             fetchCourses();
         } catch (error: any) {
-            console.error('Setup error:', error);
-            // Fallback: create sample course directly
-            try {
-                await coursesApi.create({
-                    title: filter ? `${filter} - Fundamentos del Dinero` : 'Curso de Ejemplo',
-                    description: 'Curso inicial de prueba',
-                    shortDescription: 'Descripción corta',
-                    category: 'Ingenio Millonario',
-                    level: 'beginner',
-                    price: 0,
-                    isPublished: true,
-                });
-                toast.success('Curso de ejemplo creado');
-                fetchCourses();
-            } catch (createError) {
-                toast.error('Error al crear curso de ejemplo');
-            }
+            console.error('Error creating course:', error);
+            toast.error(error.message || 'Error al crear curso');
         } finally {
             setInitializing(false);
         }
