@@ -5,10 +5,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wheel } from '@/components/ingenio/Wheel';
+import { Wheel, type WheelSegment } from '@/components/ingenio/Wheel';
 
 // Segments for E1
-const segments = [
+const segments: WheelSegment[] = [
     { number: 1, color: '#ef4444', title: 'Poder del Dinero', description: 'Entiende cómo funciona el dinero y cómo hacer que trabaje para ti.' },
     { number: 2, color: '#f97316', title: 'Crear más Dinero', description: 'Estrategias para generar múltiples fuentes de ingresos.' },
     { number: 3, color: '#f59e0b', title: 'Manejar el Dinero', description: 'Presupuestos inteligentes y control de gastos.' },

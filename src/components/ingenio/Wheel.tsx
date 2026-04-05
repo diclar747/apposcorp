@@ -3,7 +3,7 @@ import { motion, animate } from 'framer-motion';
 import { Play, Square, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface WheelSegment {
+export interface WheelSegment {
   number: number;
   color: string;
   title: string;

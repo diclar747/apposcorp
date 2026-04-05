@@ -5,10 +5,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wheel } from '@/components/ingenio/Wheel';
+import { Wheel, type WheelSegment } from '@/components/ingenio/Wheel';
 
 // Segments for E2
-const segments = [
+const segments: WheelSegment[] = [
     { number: 1, color: '#ef4444', title: 'Mentalidad Ganadora', description: 'El éxito comienza en la mente. Desarrolla una mentalidad de abundancia.' },
     { number: 2, color: '#f97316', title: 'Metas Claras', description: 'Define objetivos financieros específicos y medibles.' },
     { number: 3, color: '#f59e0b', title: 'Plan de Acción', description: 'Crea un roadmap detallado para alcanzar tus metas.' },
