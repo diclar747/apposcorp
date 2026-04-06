@@ -12,7 +12,7 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+      return res.status(400).json({ error: 'El email y la contraseña son obligatorios' });
     }
 
     const user = await prisma.user.findUnique({
@@ -25,19 +25,27 @@ router.post('/login', async (req, res) => {
       }
     });
 
+    // 1. Mensaje Genérico: Evitamos enumeración de usarios
     if (!user) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
-    }
-
-    if (!user.isActive) {
-      return res.status(401).json({ error: 'Cuenta desactivada' });
+      return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 
     const bcrypt = await import('bcryptjs');
     const isValidPassword = await bcrypt.compare(password, user.password);
 
+    // 1. Mensaje Genérico: Misma respuesta exacta
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Contraseña incorrecta' });
+      return res.status(401).json({ error: 'Credenciales incorrectas' });
+    }
+
+    // Checking status AFTER password match to prevent certain timing attacks
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'La cuenta ha sido desactivada' });
+    }
+
+    // 2. Bloquear no verificados
+    if (user.isVerified === false) {
+      return res.status(403).json({ error: 'Cuenta no verificada. Por favor, revise su correo electrónico.' });
     }
 
     const token = generateToken({
@@ -55,7 +63,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    res.status(500).json({ error: 'Error en el servidor al intentar iniciar sesión' });
   }
 });
 
@@ -64,16 +72,39 @@ router.post('/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, address, city, role } = req.body;
 
+    // 1. Mandatory fields validation
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: 'Campos obligatorios faltantes (email, password, firstName, lastName)' });
+    }
+
+    // 2. Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Formato de email inválido' });
+    }
+
+    // 3. Password strength validation (min 8 chars, 1 number, 1 letter)
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/;
+    if (password.length < 8 || !passwordRegex.test(password)) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres, incluir una letra y un número' });
+    }
+
+    // 4. Duplicate email validation
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'Email já registrado' });
+      return res.status(400).json({ error: 'El email ya está registrado' });
     }
 
     const bcrypt = await import('bcryptjs');
+    const crypto = await import('crypto');
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 5. Generate verification token and expiration
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const userCount = await prisma.user.count();
     const cardNumber = `OSC${String(userCount + 1).padStart(6, '0')}`;
@@ -89,6 +120,9 @@ router.post('/register', async (req, res) => {
         city,
         role: role || 'client',
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        isVerified: false,
+        verificationToken,
+        verificationTokenExpires,
         wallet: {
           create: {
             balance: 0,
@@ -142,6 +176,10 @@ router.post('/register', async (req, res) => {
       },
     });
 
+    // 6. Mock Email Sending (Needs Nodemailer/SendGrid installation)
+    // TODO: Implement real email sending
+    console.log(`[EMAIL SERVICE MOCK] Token de verificación para ${email}: ${verificationToken}`);
+
     const token = generateToken({
       userId: user.id,
       email: user.email,
@@ -151,6 +189,7 @@ router.post('/register', async (req, res) => {
     const { password: _, ...userWithoutPassword } = fullUser!;
 
     res.status(201).json({
+      message: 'Registro exitoso. Se ha enviado un correo de verificación.',
       token,
       user: userWithoutPassword,
     });
@@ -254,6 +293,49 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Verify email
+router.get('/verify', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'Token de verificación faltante o inválido' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        verificationToken: token,
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Token inválido o cuenta ya verificada' });
+    }
+
+    if (!user.verificationTokenExpires || user.verificationTokenExpires < new Date()) {
+      return res.status(400).json({ error: 'El token de verificación ha expirado' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        verificationToken: null,
+        verificationTokenExpires: null,
+      },
+    });
+
+    // Option A: Redirect user to login with success message
+    // return res.redirect('/login?verified=true');
+    
+    // Option B: Just map JSON response
+    res.json({ message: 'Cuenta verificada exitosamente. Ya puedes iniciar sesión.' });
+  } catch (error) {
+    console.error('Verify error:', error);
+    res.status(500).json({ error: 'Error en el servidor al verificar cuenta' });
   }
 });
 

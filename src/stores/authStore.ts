@@ -163,13 +163,20 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             error: null
           });
-        } catch (error) {
-          // Token inválido, fazer logout
+        } catch (error: any) {
+          const errorMessage = error.message || '';
+          // Limpiar todo y desloguear
           localStorage.removeItem('oscorp-token');
           set({
             user: null,
-            isAuthenticated: false
+            isAuthenticated: false,
+            token: null,
+            error: errorMessage
           });
+          // Redirigir siempre que el token esté expirado o inválido
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
       },
 
