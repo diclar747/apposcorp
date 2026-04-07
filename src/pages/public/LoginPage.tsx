@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Store, User, Shield, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores';
@@ -33,12 +33,41 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { login } = useAuthStore();
+  const hasVerified = useRef(false);
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' }
   });
+
+  useEffect(() => {
+    const verifyToken = searchParams.get('verify');
+    if (verifyToken && !hasVerified.current) {
+      hasVerified.current = true;
+      const verifyAccount = async () => {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+          const response = await fetch(`${apiUrl}/auth/verify?token=${verifyToken}`);
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Token inválido o expirado.');
+          }
+          
+          toast.success('Cuenta verificada exitosamente. Ya puedes iniciar sesión.');
+        } catch (error: any) {
+          toast.error(error.message || 'Ocurrió un error en la verificación.');
+        } finally {
+          searchParams.delete('verify');
+          setSearchParams(searchParams);
+        }
+      };
+
+      verifyAccount();
+    }
+  }, [searchParams, setSearchParams]);
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
