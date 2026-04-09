@@ -6,7 +6,8 @@ import {
   Sun,
   Menu,
   ChevronLeft,
-  Search
+  Search,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -114,6 +115,18 @@ export function Header({
               <Moon className="w-5 h-5" />
             </motion.div>
           </Button>
+
+          {/* User Profile */}
+          <Link to="/app/perfil">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9 rounded-full"
+              title="Mi Perfil"
+            >
+              <User className="w-5 h-5" />
+            </Button>
+          </Link>
 
           {/* Notifications */}
           <Link to="/app/notificaciones">

@@ -274,6 +274,14 @@ export default function ClientLayout() {
             <Button
               variant="ghost"
               size="icon"
+              className="w-9 h-9 rounded-full"
+              onClick={() => navigate('/app/perfil')}
+            >
+              <User className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               className="w-9 h-9 rounded-full relative"
               onClick={() => navigate('/app/notificaciones')}
             >

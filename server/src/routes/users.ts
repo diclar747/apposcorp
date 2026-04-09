@@ -4,6 +4,74 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
+// Update profile
+router.put('/profile', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { name, phone, city, avatar } = req.body;
+    
+    // Si viene 'name', procesamos el firstname y lastname
+    const dataToUpdate: any = { phone, city, avatar };
+    if (name) {
+      const nameParts = name.trim().split(' ');
+      dataToUpdate.firstName = nameParts[0];
+      if (nameParts.length > 1) {
+        dataToUpdate.lastName = nameParts.slice(1).join(' ');
+      } else {
+        dataToUpdate.lastName = '';
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: dataToUpdate,
+    });
+
+    const { password: _, ...safeUser } = user;
+    res.json(safeUser);
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: 'Error al actualizar el perfil' });
+  }
+});
+
+// Change password
+router.put('/change-password', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Faltan credenciales' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ message: 'Contraseña actualizada con éxito' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Error al cambiar la contraseña' });
+  }
+});
+
 // Get all users (admin only)
 router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
   try {
@@ -203,7 +271,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
     res.json(updatedProfile);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Erro no servidor ao atualizar perfil' });
+    res.status(500).json({ error: 'Erro no servidor ao actualizar perfil' });
   }
 });
 

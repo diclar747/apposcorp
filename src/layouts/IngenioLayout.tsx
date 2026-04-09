@@ -5,12 +5,15 @@ import {
   Target, User, BookOpen, Wallet, PieChart, Menu, X, LogOut, Bell
 } from "lucide-react";
 import { useAuthStore } from "@/stores";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils";
 
 const menuItems = [
   { icon: Target, label: "Finanzas Master", href: "/ingenio" },
   { icon: PieChart, label: "Presupuesto", href: "/ingenio/presupuesto" },
   { icon: BookOpen, label: "Academia", href: "/ingenio/academia" },
   { icon: Wallet, label: "Billetera", href: "/ingenio/wallet" },
+  { icon: User, label: "Perfil", href: "/ingenio/profile" },
 ];
 
 export default function IngenioLayout() {
@@ -34,12 +37,15 @@ export default function IngenioLayout() {
           </div>
           <span className="font-bold text-lg text-slate-900 dark:text-white">Ingenio</span>
         </Link>
-        <div className="flex items-center gap-4">
-          <button className="text-slate-500 hover:text-slate-900 dark:hover:text-white relative">
+        <div className="flex items-center gap-2">
+          <Link to="/ingenio/profile" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white">
+            <User className="w-6 h-6" />
+          </Link>
+          <button className="text-slate-500 hover:text-slate-900 dark:hover:text-white relative p-2">
             <Bell className="w-6 h-6" />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -53,7 +59,7 @@ export default function IngenioLayout() {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             className={`
-              fixed md:static inset-y-0 left-0 z-50 w-64
+              fixed md:sticky md:top-0 md:h-screen inset-y-0 left-0 z-50 w-64
               bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
               flex flex-col transform md:transform-none transition-transform duration-300 ease-in-out
               ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -92,14 +98,17 @@ export default function IngenioLayout() {
             </div>
 
             {/* Config & Logout */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
               <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-600 dark:text-slate-400">
-                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                </div>
+                <Avatar className="w-9 h-9 border border-indigo-100 dark:border-indigo-900/50">
+                  <AvatarImage src={user?.avatar} />
+                  <AvatarFallback className="bg-indigo-600 text-white text-xs font-bold">
+                    {user ? getInitials(user.firstName, user.lastName || '') : 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.firstName}</p>
-                  <p className="text-xs text-slate-500 truncate">Estudiante</p>
+                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Estudiante</p>
                 </div>
               </div>
               <button
@@ -117,8 +126,11 @@ export default function IngenioLayout() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Desktop Header */}
-        <header className="hidden md:flex items-center justify-end px-8 py-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 z-10 sticky top-0">
-          <button className="text-slate-400 hover:text-indigo-600 transition-colors relative p-2">
+        <header className="hidden md:flex items-center justify-end px-8 py-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 z-10 sticky top-0 gap-2">
+          <Link to="/ingenio/profile" className="text-slate-400 hover:text-indigo-600 transition-colors p-2" title="Mi Perfil">
+            <User className="w-5 h-5" />
+          </Link>
+          <button className="text-slate-400 hover:text-indigo-600 transition-colors relative p-2" title="Notificaciones">
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
           </button>
