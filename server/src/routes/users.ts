@@ -228,6 +228,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
           },
         },
         bankData: true,
+        userCourses: true,
       },
     });
 
@@ -406,6 +407,58 @@ router.put('/me/preferences', authenticate, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Update preferences error:', error);
     res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Assign course to user (admin only)
+router.post('/:id/courses/:courseId', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id as string;
+    const courseId = req.params.courseId as string;
+
+    const userCourse = await prisma.userCourse.upsert({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId,
+        },
+      },
+      update: {
+        status: 'active',
+      },
+      create: {
+        userId,
+        courseId,
+        status: 'active',
+      },
+    });
+
+    res.json(userCourse);
+  } catch (error) {
+    console.error('Assign course error:', error);
+    res.status(500).json({ error: 'Error al asignar curso' });
+  }
+});
+
+// Remove course from user (admin only)
+router.delete('/:id/courses/:courseId', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id as string;
+    const courseId = req.params.courseId as string;
+
+    await prisma.userCourse.delete({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId,
+        },
+      },
+    });
+
+    res.json({ message: 'Acceso al curso eliminado' });
+  } catch (error) {
+    console.error('Remove course error:', error);
+    res.status(500).json({ error: 'Error al revocar acceso' });
   }
 });
 

@@ -20,6 +20,9 @@ model User {
   role                UserRole            @default(client)
   isActive            Boolean             @default(true)
   ingenioAccess       Boolean             @default(false)
+  isVerified          Boolean             @default(false)
+  verificationToken   String?
+  verificationTokenExpires DateTime?
   permissions         Json?               // For granular permissions
   notificationPrefs   Json?               // Notification preferences (push, email, orders, stock, etc.)
   createdAt           DateTime            @default(now())
@@ -28,7 +31,7 @@ model User {
   budgets             Budget[]
   cartItems           CartItem[]
   credits             Credit[]
-  enrollments         Enrollment[]
+  userCourses         UserCourse[]
   financialCategories FinancialCategory[]
   financialRecords    FinancialRecord[]
   notifications       Notification[]
@@ -433,7 +436,7 @@ model Course {
   reviewCount      Int          @default(0)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
-  enrollments      Enrollment[]
+  userCourses      UserCourse[]
   modules          Module[]
   resources        Resource[]
 
@@ -480,10 +483,11 @@ model Resource {
   @@map("resources")
 }
 
-model Enrollment {
+model UserCourse {
   id                String    @id @default(uuid())
   userId            String
   courseId          String
+  status            String    @default("active") // active, completed, etc.
   progress          Float     @default(0)
   completedModules  String[]
   completedLessons  String[]
@@ -496,7 +500,7 @@ model Enrollment {
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
-  @@map("enrollments")
+  @@map("user_courses")
 }
 
 model Credit {

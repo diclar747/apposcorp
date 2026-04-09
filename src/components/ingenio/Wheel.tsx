@@ -44,7 +44,7 @@ export function Wheel({
   const wheelSize = size;
   const center = wheelSize / 2;
   const radius = wheelSize / 2 - 30;
-  const segmentAngle = 360 / 10;
+  const segmentAngle = 360 / segments.length;
 
   const getSegmentPath = (index: number) => {
     const startAngle = (index * segmentAngle - 90) * (Math.PI / 180);
@@ -100,7 +100,7 @@ export function Wheel({
     
     // Calcular dónde está ahora y completar hasta el segmento más cercano
     const currentRotation = rotation % 360;
-    const targetIndex = Math.floor((360 - currentRotation + segmentAngle / 2) / segmentAngle) % 10;
+    const targetIndex = Math.floor((360 - currentRotation + segmentAngle / 2) / segmentAngle) % segments.length;
     const targetAngle = rotation + (360 - currentRotation) + (targetIndex * segmentAngle) - (segmentAngle / 2);
     
     animate(rotation, targetAngle, {
@@ -117,7 +117,7 @@ export function Wheel({
     
     // Calcular el segmento ganador
     const normalizedRotation = ((finalRotation % 360) + 360) % 360;
-    const winningIndex = Math.floor((360 - normalizedRotation + segmentAngle / 2) / segmentAngle) % 10;
+    const winningIndex = Math.floor((360 - normalizedRotation + segmentAngle / 2) / segmentAngle) % segments.length;
     const winner = segments[winningIndex];
     
     setSelectedSegment(winner);

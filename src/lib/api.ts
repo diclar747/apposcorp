@@ -110,6 +110,14 @@ export const usersApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  assignCourse: (userId: string, courseId: string) =>
+    fetchWithAuth(`/users/${userId}/courses/${courseId}`, {
+      method: 'POST',
+    }),
+  removeCourse: (userId: string, courseId: string) =>
+    fetchWithAuth(`/users/${userId}/courses/${courseId}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Plans API
@@ -413,7 +421,7 @@ export const purchasesApi = {
 export const coursesApi = {
   getAll: (all?: boolean) => fetchWithAuth(`/courses${all ? '?all=true' : ''}`),
   getById: (id: string) => fetchWithAuth(`/courses/${id}`),
-  getMyEnrollments: () => fetchWithAuth('/courses/my/enrollments'),
+  getMyCourses: () => fetchWithAuth('/courses/my/enrollments'),
   create: (data: any) =>
     fetchWithAuth('/courses', {
       method: 'POST',
@@ -476,20 +484,20 @@ export const coursesApi = {
     fetchWithAuth(`/courses/resources/${resourceId}`, {
       method: 'DELETE',
     }),
-  // Enrollments (admin)
-  getEnrollments: (courseId: string) =>
-    fetchWithAuth(`/courses/${courseId}/enrollments`),
+  // Course Access (admin)
+  getAccess: (courseId: string) =>
+    fetchWithAuth(`/courses/${courseId}/access`),
   assignUser: (courseId: string, userId: string) =>
     fetchWithAuth(`/courses/${courseId}/assign`, {
       method: 'POST',
       body: JSON.stringify({ userId }),
     }),
-  removeEnrollment: (courseId: string, enrollmentId: string) =>
-    fetchWithAuth(`/courses/${courseId}/enrollments/${enrollmentId}`, {
+  removeAccess: (courseId: string, accessId: string) =>
+    fetchWithAuth(`/courses/${courseId}/access/${accessId}`, {
       method: 'DELETE',
     }),
-  updateProgress: (enrollmentId: string, lessonId: string, completed: boolean) =>
-    fetchWithAuth(`/courses/enrollment/${enrollmentId}/progress`, {
+  updateProgress: (accessId: string, lessonId: string, completed: boolean) =>
+    fetchWithAuth(`/courses/access/${accessId}/progress`, {
       method: 'PATCH',
       body: JSON.stringify({ lessonId, completed }),
     }),

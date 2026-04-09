@@ -30,7 +30,7 @@ export default function ClientCourses() {
       setLoading(true);
       const [coursesData, enrollmentsData] = await Promise.all([
         coursesApi.getAll(),
-        coursesApi.getMyEnrollments(),
+        coursesApi.getMyCourses(),
       ]);
       setCourses(coursesData);
       setEnrollments(enrollmentsData);

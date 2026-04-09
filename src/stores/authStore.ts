@@ -23,7 +23,7 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<boolean>;
+  register: (data: RegisterData) => Promise<any | false>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<boolean>;
   updateBankData: (data: any) => Promise<boolean>;
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null
           });
-          return true;
+          return response;
         } catch (error: any) {
           set({
             isLoading: false,
@@ -163,13 +163,20 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             error: null
           });
-        } catch (error) {
-          // Token inválido, fazer logout
+        } catch (error: any) {
+          const errorMessage = error.message || '';
+          // Limpiar todo y desloguear
           localStorage.removeItem('oscorp-token');
           set({
             user: null,
-            isAuthenticated: false
+            isAuthenticated: false,
+            token: null,
+            error: errorMessage
           });
+          // Redirigir siempre que el token esté expirado o inválido
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
       },
 

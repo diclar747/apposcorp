@@ -38,17 +38,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn, formatNumber, parseFormattedNumber } from '@/lib/utils';
 import { coursesApi, usersApi } from '@/lib/api';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Sparkles, Loader2 } from 'lucide-react';
 
 // ============ Course List View ============
 function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => void }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
 
-  const [newCourse, setNewCourse] = useState({
+  const [formState, setFormState] = useState<any>({
+    id: null,
     title: '',
     description: '',
     price: '',
@@ -72,44 +86,76 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
     }
   };
 
-  const handleCreateCourse = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setFormState({ id: null, title: '', description: '', price: '', category: 'Finanzas', level: 'beginner' });
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEdit = (course: any) => {
+    setFormState({
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      price: course.price > 0 ? formatNumber(course.price) : '',
+      category: course.category,
+      level: course.level
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const course = await coursesApi.create({
-        title: newCourse.title,
-        description: newCourse.description,
-        price: Number(newCourse.price) || 0,
-        category: newCourse.category,
-        level: newCourse.level,
-      });
-      toast.success('Curso creado exitosamente');
-      setIsCreateOpen(false);
-      setNewCourse({ title: '', description: '', price: '', category: 'Finanzas', level: 'beginner' });
+      const payload = {
+        title: formState.title,
+        description: formState.description,
+        price: parseFormattedNumber(formState.price),
+        category: formState.category,
+        level: formState.level,
+      };
+
+      if (formState.id) {
+        await coursesApi.update(formState.id, payload);
+        toast.success('Curso actualizado correctamente');
+      } else {
+        const course = await coursesApi.create(payload);
+        toast.success('Curso creado exitosamente');
+        // If it was a create, maybe select it? The previous code did onSelectCourse(course)
+      }
+      
+      setIsFormOpen(false);
       fetchCourses();
-      onSelectCourse(course);
     } catch (error) {
-      toast.error('Error al crear curso');
+      toast.error(formState.id ? 'Error al actualizar curso' : 'Error al crear curso');
     }
   };
 
-  const handleDeleteCourse = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este curso?')) return;
+  const confirmDelete = (id: string) => {
+    setCourseToDelete(id);
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
     try {
-      await coursesApi.delete(id);
-      toast.success('Curso eliminado');
+      setIsDeleting(true);
+      await coursesApi.delete(courseToDelete);
+      toast.success('El curso ha sido eliminado permanentemente');
       fetchCourses();
     } catch (error) {
-      toast.error('Error al eliminar');
+      toast.error('Ocurrió un error al intentar eliminar el curso');
+    } finally {
+      setIsDeleting(false);
+      setCourseToDelete(null);
     }
   };
 
   const handleTogglePublish = async (course: any) => {
     try {
       await coursesApi.update(course.id, { isPublished: !course.isPublished });
-      toast.success(course.isPublished ? 'Curso despublicado' : 'Curso publicado');
+      toast.success(course.isPublished ? 'Curso ocultado del catálogo' : 'Curso publicado exitosamente');
       fetchCourses();
     } catch (error) {
-      toast.error('Error al actualizar');
+      toast.error('Error al actualizar el estado de publicación');
     }
   };
 
@@ -125,59 +171,94 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
           <p className="text-gray-500 dark:text-gray-400">Gestiona el contenido educativo</p>
         </div>
 
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Curso
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] dark:bg-slate-900 dark:border-slate-800">
             <DialogHeader>
-              <DialogTitle>Crear Nuevo Curso</DialogTitle>
-              <DialogDescription>Añade los detalles del nuevo curso.</DialogDescription>
+              <DialogTitle className="dark:text-white">{formState.id ? 'Editar Curso' : 'Crear Nuevo Curso'}</DialogTitle>
+              <DialogDescription className="dark:text-slate-400">
+                {formState.id ? 'Modifica los detalles del curso seleccionado.' : 'Añade los detalles del nuevo curso académico.'}
+              </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleCreateCourse} className="space-y-4">
+            <form onSubmit={handleSaveCourse} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Título</Label>
-                <Input id="title" value={newCourse.title} onChange={e => setNewCourse({ ...newCourse, title: e.target.value })} required />
+                <Label htmlFor="title" className="dark:text-slate-300">Título</Label>
+                <Input 
+                  id="title" 
+                  value={formState.title} 
+                  onChange={e => setFormState({ ...formState, title: e.target.value })} 
+                  className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  placeholder="Ej: Finanzas Personales"
+                  required 
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="desc">Descripción</Label>
-                <Textarea id="desc" value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} required />
+                <Label htmlFor="desc" className="dark:text-slate-300">Descripción</Label>
+                <Textarea 
+                  id="desc" 
+                  value={formState.description} 
+                  onChange={e => setFormState({ ...formState, description: e.target.value })} 
+                  className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  placeholder="Describe el curso..."
+                  required 
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Precio (Gs)</Label>
-                  <Input id="price" type="number" value={newCourse.price} onChange={e => setNewCourse({ ...newCourse, price: e.target.value })} />
+                  <Label htmlFor="price" className="dark:text-slate-300">Precio del Curso</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
+                    <Input 
+                      id="price" 
+                      type="text" 
+                      placeholder="0"
+                      value={formState.price} 
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        if (!raw) return setFormState({ ...formState, price: '' });
+                        const num = parseInt(raw, 10);
+                        setFormState({ ...formState, price: formatNumber(num) });
+                      }} 
+                      className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Categoría</Label>
-                  <Select value={newCourse.category} onValueChange={val => setNewCourse({ ...newCourse, category: val })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
+                  <Label className="dark:text-slate-300">Categoría</Label>
+                  <Select value={formState.category} onValueChange={val => setFormState({ ...formState, category: val })}>
+                    <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                       <SelectItem value="Finanzas">Finanzas</SelectItem>
                       <SelectItem value="Emprendimiento">Emprendimiento</SelectItem>
                       <SelectItem value="Inversión">Inversión</SelectItem>
                       <SelectItem value="Marketing">Marketing</SelectItem>
+                      <SelectItem value="IM E1">IM E1</SelectItem>
+                      <SelectItem value="IM E2">IM E2</SelectItem>
                       <SelectItem value="General">General</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Nivel</Label>
-                <Select value={newCourse.level} onValueChange={val => setNewCourse({ ...newCourse, level: val })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                <Label className="dark:text-slate-300">Nivel</Label>
+                <Select value={formState.level} onValueChange={val => setFormState({ ...formState, level: val })}>
+                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                     <SelectItem value="beginner">Principiante</SelectItem>
                     <SelectItem value="intermediate">Intermedio</SelectItem>
                     <SelectItem value="advanced">Avanzado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <DialogFooter>
-                <Button type="submit">Crear Curso</Button>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+                  {formState.id ? 'Guardar Cambios' : 'Crear Curso'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -189,7 +270,7 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Buscar cursos..."
+              placeholder="Buscar cursos por título..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
@@ -215,8 +296,13 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
               <TableBody>
                 {filteredCourses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      {loading ? 'Cargando...' : 'No se encontraron cursos'}
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      {loading ? (
+                        <div className="flex flex-col items-center gap-2">
+                           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                           <span>Cargando cursos...</span>
+                        </div>
+                      ) : 'No se encontraron cursos académicos.'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -226,64 +312,82 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer"
-                      onClick={() => onSelectCourse(course)}
+                      className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 group"
                     >
-                      <TableCell>
+                      <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                             <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{course.title}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{course.category} · {course.level}</p>
+                            <p className="font-bold text-gray-900 dark:text-white leading-none">{course.title}</p>
+                            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider">{course.category} · {course.level}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600 dark:text-gray-300">
+                      <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
+                        <Badge variant="outline" className="font-bold bg-slate-50 dark:bg-slate-800 border-none">
                           {course.modules?.length || 0} módulos
-                        </span>
+                        </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm">{course.enrolledCount}</span>
+                      <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
+                        <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                          <Users className="w-4 h-4 text-slate-400" />
+                          <span className="text-sm font-bold">{course.enrolledCount}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-medium text-gray-900 dark:text-white">
+                      <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
+                        <span className="font-black text-gray-900 dark:text-white">
                           {course.price > 0 ? formatCurrency(course.price) : 'Gratis'}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={course.isPublished ? 'default' : 'secondary'}>
+                      <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
+                        <Badge className={cn(
+                          "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border-none",
+                          course.isPublished ? "bg-emerald-100 text-emerald-700 shadow-sm" : "bg-slate-100 text-slate-600"
+                        )}>
                           {course.isPublished ? 'Publicado' : 'Borrador'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="dark:text-gray-400 dark:hover:text-white">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-slate-800">
-                            <DropdownMenuItem onClick={() => onSelectCourse(course)} className="cursor-pointer dark:text-gray-300">
-                              <Edit className="w-4 h-4 mr-2" /> Gestionar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleTogglePublish(course)} className="cursor-pointer dark:text-gray-300">
-                              {course.isPublished ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                              {course.isPublished ? 'Despublicar' : 'Publicar'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600 dark:text-red-400 cursor-pointer"
-                              onClick={() => handleDeleteCourse(course.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" /> Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-2 px-2">
+                           {/* Quick Action Buttons */}
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="w-8 h-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                             onClick={() => handleOpenEdit(course)}
+                             title="Editar detalles"
+                           >
+                             <Edit className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                             onClick={() => confirmDelete(course.id)}
+                             title="Eliminar curso"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
+
+                           <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-slate-800">
+                              <DropdownMenuItem onClick={() => onSelectCourse(course)} className="cursor-pointer dark:text-gray-300 font-bold">
+                                <Eye className="w-4 h-4 mr-2" /> Gestionar Contenido
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleTogglePublish(course)} className="cursor-pointer dark:text-gray-300">
+                                {course.isPublished ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                                {course.isPublished ? 'Ocultar del Catálogo' : 'Publicar en Catálogo'}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </motion.tr>
                   ))
@@ -293,6 +397,33 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={!!courseToDelete} onOpenChange={(open) => !open && setCourseToDelete(null)}>
+        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800 rounded-[2rem]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black text-slate-900 dark:text-white">¿Estás absolutamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
+              Esta acción no se puede deshacer. Se eliminará permanentemente el curso, todos sus módulos, lecciones y el acceso de los estudiantes inscritos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="rounded-xl border-slate-200 hover:bg-slate-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteCourse}
+              disabled={isDeleting}
+              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-600/20"
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Eliminando...</span>
+                </div>
+              ) : 'Sí, eliminar curso'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -356,7 +487,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
       await coursesApi.update(courseId, {
         title: editForm.title,
         description: editForm.description,
-        price: Number(editForm.price) || 0,
+        price: parseFormattedNumber(editForm.price),
         category: editForm.category,
         level: editForm.level,
       });
@@ -373,7 +504,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
     setEditForm({
       title: course.title,
       description: course.description,
-      price: String(course.price),
+      price: course.price > 0 ? formatNumber(course.price) : '',
       category: course.category,
       level: course.level,
     });
@@ -497,7 +628,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
   const handleRemoveEnrollment = async (enrollmentId: string) => {
     if (!confirm('¿Eliminar esta inscripción?')) return;
     try {
-      await coursesApi.removeEnrollment(courseId, enrollmentId);
+      await coursesApi.removeAccess(courseId, enrollmentId);
       toast.success('Inscripción eliminada');
       fetchCourse();
     } catch (error) {
@@ -969,8 +1100,22 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Precio</Label>
-                <Input type="number" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: e.target.value })} />
+                <Label>Precio del Curso</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
+                  <Input 
+                    type="text" 
+                    placeholder="0"
+                    value={editForm.price} 
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      if (!raw) return setEditForm({ ...editForm, price: '' });
+                      const num = parseInt(raw, 10);
+                      setEditForm({ ...editForm, price: formatNumber(num) });
+                    }} 
+                    className="pl-10 font-bold"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Categoría</Label>
@@ -981,6 +1126,8 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                     <SelectItem value="Emprendimiento">Emprendimiento</SelectItem>
                     <SelectItem value="Inversión">Inversión</SelectItem>
                     <SelectItem value="Marketing">Marketing</SelectItem>
+                    <SelectItem value="IM E1">IM E1</SelectItem>
+                    <SelectItem value="IM E2">IM E2</SelectItem>
                     <SelectItem value="General">General</SelectItem>
                   </SelectContent>
                 </Select>

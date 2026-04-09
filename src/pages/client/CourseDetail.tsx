@@ -45,7 +45,7 @@ export default function ClientCourseDetail() {
       setLoading(true);
       const [courseData, enrollmentsData] = await Promise.all([
         coursesApi.getById(id!),
-        coursesApi.getMyEnrollments(),
+        coursesApi.getMyCourses(),
       ]);
       setCourse(courseData);
       const myEnrollment = enrollmentsData.find((e: any) => e.courseId === id);

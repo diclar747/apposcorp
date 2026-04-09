@@ -1,13 +1,29 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight, Store, UserCircle, Check, BookOpen } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Store, UserCircle, Check, BookOpen } from 'lucide-react';
 import { useAuthStore, type RegisterData } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+const registerSchema = z.object({
+  firstName: z.string().min(2, 'Debe tener al menos 2 caracteres'),
+  lastName: z.string().min(2, 'Debe tener al menos 2 caracteres'),
+  email: z.string().email('Formato de email inválido'),
+  phone: z.string().optional(),
+  password: z.string()
+    .min(8, 'Debe tener al menos 8 caracteres')
+    .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/, 'Debe incluir al menos una letra y un número'),
+  role: z.enum(['client', 'seller', 'ingenio']),
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const steps = [
   { id: 1, label: 'Datos personales' },
@@ -23,34 +39,33 @@ const accountTypes = [
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<RegisterData>>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    password: '',
-    role: 'client',
-  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [registeredToken, setRegisteredToken] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { register } = useAuthStore();
+  const { register: authRegister } = useAuthStore();
 
-  const updateField = (field: keyof RegisterData, value: string) => {
-    setFormData((prev: Partial<RegisterData>) => ({ ...prev, [field]: value }));
-  };
+  const { register, handleSubmit, trigger, watch, setValue, formState: { errors } } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      role: 'client',
+    },
+    mode: 'onTouched'
+  });
 
-  const handleNext = () => {
+  const formData = watch();
+
+  const handleNext = async () => {
     if (currentStep === 1) {
-      if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-        toast.error('Por favor completa todos los campos obligatorios');
-        return;
-      }
-      if (formData.password.length < 6) {
-        toast.error('La contraseña debe tener al menos 6 caracteres');
+      const isValid = await trigger(['firstName', 'lastName', 'email', 'password', 'phone']);
+      if (!isValid) {
+        toast.error('Revisa los alertas en rojo antes de continuar');
         return;
       }
     }
@@ -61,26 +76,38 @@ export default function RegisterPage() {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = async () => {
+  const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
 
-    const success = await register(formData as RegisterData);
+    const response = await authRegister({
+      ...data,
+      address: '',
+      city: ''
+    } as RegisterData);
 
-    if (success) {
-      toast.success('¡Cuenta creada exitosamente!');
-
-      setTimeout(() => {
-        const currentUser = useAuthStore.getState().user;
-        if (currentUser?.role === 'seller') {
-          navigate('/vendedor');
-        } else if (currentUser?.role === 'ingenio') {
-          navigate('/ingenio');
-        } else {
-          navigate('/app');
-        }
-      }, 1000);
+    if (response) {
+      if (response.demoToken) {
+        setRegisteredToken(response.demoToken);
+        toast.info(
+          "¡Atención (Modo Demo)! Tu token de verificación es: " + response.demoToken,
+          {
+            duration: 15000,
+            action: {
+              label: "Verificar ahora",
+              onClick: () => navigate(`/login?verify=${response.demoToken}`)
+            },
+          }
+        );
+      } else {
+        toast.success('¡Registro exitoso! Revisa tu bandeja de entrada o spam para verificar tu correo.');
+        
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
     } else {
-      toast.error('Error al crear la cuenta');
+      const authError = useAuthStore.getState().error;
+      toast.error(authError || 'Error al intentar crear la cuenta.');
     }
 
     setIsLoading(false);
@@ -137,144 +164,171 @@ export default function RegisterPage() {
           exit={{ opacity: 0, x: -20 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Datos personales</h2>
+          <form id="register-form" onSubmit={handleSubmit(onSubmit)}>
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Datos personales</h2>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Nombre *</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Nombre *</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                      <Input
+                        id="firstName"
+                        placeholder="Juan"
+                        {...register('firstName')}
+                        className={cn("pl-10", errors.firstName && "border-red-500 focus-visible:ring-red-500")}
+                      />
+                    </div>
+                    {errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Apellido *</Label>
                     <Input
-                      id="firstName"
-                      placeholder="Juan"
-                      value={formData.firstName}
-                      onChange={(e) => updateField('firstName', e.target.value)}
+                      id="lastName"
+                      placeholder="Pérez"
+                      {...register('lastName')}
+                      className={errors.lastName && "border-red-500 focus-visible:ring-red-500"}
+                    />
+                    {errors.lastName && <p className="text-xs text-red-500">{errors.lastName.message}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Correo electrónico *</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      {...register('email')}
+                      className={cn("pl-10", errors.email && "border-red-500 focus-visible:ring-red-500")}
+                    />
+                  </div>
+                  {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Teléfono</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+595 981 123456"
+                      {...register('phone')}
                       className="pl-10"
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Apellido *</Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Pérez"
-                    value={formData.lastName}
-                    onChange={(e) => updateField('lastName', e.target.value)}
-                  />
+                  <Label htmlFor="password">Contraseña *</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      {...register('password')}
+                      className={cn("pl-10 pr-10", errors.password && "border-red-500 focus-visible:ring-red-500")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.password 
+                    ? <p className="text-xs text-red-500">{errors.password.message}</p>
+                    : <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo 8 caracteres (1 Letra y 1 Número recomendado)</p>
+                  }
                 </div>
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo electrónico *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={formData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">¿Qué tipo de cuenta necesitas?</h2>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+595 981 123456"
-                    value={formData.phone}
-                    onChange={(e) => updateField('phone', e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña *</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => updateField('password', e.target.value)}
-                    className="pl-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo 6 caracteres</p>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">¿Qué tipo de cuenta necesitas?</h2>
-
-              <div className="space-y-3">
-                {accountTypes.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => updateField('role', type.id as 'client' | 'seller' | 'ingenio')}
-                    className={cn(
-                      'w-full p-4 rounded-xl border-2 text-left transition-all',
-                      formData.role === type.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 hover:border-gray-300 dark:border-slate-600 dark:hover:border-slate-500'
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={cn(
-                        'w-10 h-10 rounded-lg flex items-center justify-center',
-                        formData.role === type.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300'
-                      )}>
-                        <type.icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">{type.label}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{type.description}</p>
-                      </div>
-                      {formData.role === type.id && (
-                        <Check className="w-5 h-5 text-blue-500 ml-auto" />
+                <div className="space-y-3">
+                  {accountTypes.map((type) => (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => setValue('role', type.id as 'client' | 'seller' | 'ingenio')}
+                      className={cn(
+                        'w-full p-4 rounded-xl border-2 text-left transition-all',
+                        formData.role === type.id
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
+                          : 'border-gray-200 hover:border-gray-300 dark:border-slate-600 dark:hover:border-slate-500'
                       )}
-                    </div>
-                  </button>
-                ))}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          'w-10 h-10 rounded-lg flex items-center justify-center',
+                          formData.role === type.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300'
+                        )}>
+                          <type.icon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900 dark:text-white">{type.label}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{type.description}</p>
+                        </div>
+                        {formData.role === type.id && (
+                          <Check className="w-5 h-5 text-blue-500 ml-auto" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {currentStep === 3 && (
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-                <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
+            {currentStep === 3 && (
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+                  <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {registeredToken ? '¡Token de Demo Generado!' : '¡Todo listo!'}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {registeredToken 
+                    ? 'Copia tu token o haz clic abajo para verificar tu cuenta:' 
+                    : 'Revisa tus datos antes de crear tu cuenta'}
+                </p>
+
+                {registeredToken ? (
+                  <div className="space-y-3">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4">
+                      <code className="text-blue-700 dark:text-blue-300 font-mono text-sm break-all">
+                        {registeredToken}
+                      </code>
+                    </div>
+                    <Button 
+                      onClick={() => navigate(`/login?verify=${registeredToken}`)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Verificar cuenta ahora
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 text-left space-y-2">
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : formData.role === 'seller' ? 'Comerciante' : 'Estudiante Ingenio'}</p>
+                  </div>
+                )}
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">¡Todo listo!</h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Revisa tus datos antes de crear tu cuenta
-              </p>
-              <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 text-left space-y-2">
-                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
-                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
-                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
-                <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : formData.role === 'seller' ? 'Comerciante' : 'Estudiante Ingenio'}</p>
-              </div>
-            </div>
-          )}
+            )}
+          </form>
 
           {/* Navigation Buttons */}
           <div className="flex gap-3 mt-6">
@@ -299,8 +353,8 @@ export default function RegisterPage() {
               </Button>
             ) : (
               <Button
-                type="button"
-                onClick={handleSubmit}
+                type="submit"
+                form="register-form"
                 disabled={isLoading}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600"
               >

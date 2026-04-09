@@ -104,6 +104,12 @@ export function formatNumber(num: number): string {
   return num.toLocaleString('es-PY');
 }
 
+// Parsear número formateado (quitar puntos, etc)
+export function parseFormattedNumber(formatted: string): number {
+  if (!formatted) return 0;
+  return Number(formatted.toString().replace(/\D/g, ''));
+}
+
 // Formatear duración (minutos a horas:minutos)
 export function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);

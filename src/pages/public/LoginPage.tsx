@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Store, User, Shield, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores';
@@ -9,6 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+const loginSchema = z.object({
+  email: z.string().email('Formato de email inválido'),
+  password: z.string().min(1, 'La contraseña es obligatoria')
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const quickLogins = [
   { email: 'admin@oscorp.com', password: 'admin123', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
@@ -18,26 +28,50 @@ const quickLogins = [
 ];
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { login, user } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { login } = useAuthStore();
+  const hasVerified = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' }
+  });
 
-    if (!email || !password) {
-      toast.error('Por favor completa todos los campos');
-      return;
+  useEffect(() => {
+    const verifyToken = searchParams.get('verify');
+    if (verifyToken && !hasVerified.current) {
+      hasVerified.current = true;
+      const verifyAccount = async () => {
+        try {
+          const response = await fetch(`/api/auth/verify?token=${verifyToken}`);
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Token inválido o expirado.');
+          }
+          
+          toast.success('Cuenta verificada exitosamente. Ya puedes iniciar sesión.');
+        } catch (error: any) {
+          toast.error(error.message || 'Ocurrió un error en la verificación.');
+        } finally {
+          searchParams.delete('verify');
+          setSearchParams(searchParams);
+        }
+      };
+
+      verifyAccount();
     }
+  }, [searchParams, setSearchParams]);
 
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
 
-    const success = await login(email, password);
+    const success = await login(data.email, data.password);
 
     if (success) {
       toast.success('¡Bienvenido de vuelta!');
@@ -56,23 +90,23 @@ export default function LoginPage() {
         }
       }, 500);
     } else {
-      toast.error('Credenciales incorrectas');
+      // Atrapar el error descriptivo que guardó Zustand al fallar la petición
+      const authError = useAuthStore.getState().error;
+      toast.error(authError || 'Credenciales incorrectas');
     }
 
     setIsLoading(false);
   };
 
   const handleQuickLogin = async (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
-
+    setValue('email', email);
+    setValue('password', password);
+    
     setIsLoading(true);
-
     const success = await login(email, password);
 
     if (success) {
       toast.success('¡Bienvenido de vuelta!');
-
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
         if (currentUser?.role === 'superadmin') {
@@ -85,8 +119,10 @@ export default function LoginPage() {
           navigate('/app');
         }
       }, 500);
+    } else {
+      const authError = useAuthStore.getState().error;
+      toast.error(authError || 'Error con el acceso rápido');
     }
-
     setIsLoading(false);
   };
 
@@ -130,6 +166,7 @@ export default function LoginPage() {
                 key={login.email}
                 onClick={() => handleQuickLogin(login.email, login.password)}
                 disabled={isLoading}
+                type="button"
                 className={cn(
                   'flex flex-col items-center gap-1 p-2 rounded-lg transition-all hover:scale-105',
                   login.color
@@ -149,7 +186,7 @@ export default function LoginPage() {
           transition={{ delay: 0.4 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
               <div className="relative">
@@ -158,12 +195,12 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  {...register('email')}
+                  className={cn("pl-10", errors.email && "border-red-500 focus-visible:ring-red-500")}
                   disabled={isLoading}
                 />
               </div>
+              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -174,9 +211,8 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  {...register('password')}
+                  className={cn("pl-10 pr-10", errors.password && "border-red-500 focus-visible:ring-red-500")}
                   disabled={isLoading}
                 />
                 <button
@@ -187,6 +223,7 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
             </div>
 
             <div className="flex items-center justify-between">
