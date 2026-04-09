@@ -48,8 +48,7 @@ export default function LoginPage() {
       hasVerified.current = true;
       const verifyAccount = async () => {
         try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-          const response = await fetch(`${apiUrl}/auth/verify?token=${verifyToken}`);
+          const response = await fetch(`/api/auth/verify?token=${verifyToken}`);
           const data = await response.json();
           
           if (!response.ok) {
