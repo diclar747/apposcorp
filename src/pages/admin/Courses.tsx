@@ -482,7 +482,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
 
   // Edit course
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', description: '', price: '', category: '', level: '' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', price: '', category: '', level: '', coverImage: '', updateYear: '' });
 
   // Expanded modules
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
