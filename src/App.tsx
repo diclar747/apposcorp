@@ -29,6 +29,7 @@ import IngenioBudget from '@/pages/ingenio/Budget';
 import IngenioAcademy from '@/pages/ingenio/Academy';
 import IngenioCourseDetail from '@/pages/ingenio/CourseDetail';
 import IngenioWallet from '@/pages/ingenio/Wallet';
+import IngenioProfile from '@/pages/ingenio/Profile';
 import AdminProducts from '@/pages/admin/Products';
 import AdminOrders from '@/pages/admin/Orders';
 import AdminFinances from '@/pages/admin/Finances';
@@ -222,7 +223,7 @@ function App() {
           <Route path="academia" element={<IngenioAcademy />} />
           <Route path="cursos/:id" element={<IngenioCourseDetail />} />
           <Route path="wallet" element={<IngenioWallet />} />
-          {/* Reuse some course reading logic from client if needed, or point direct */}
+          <Route path="profile" element={<IngenioProfile />} />
         </Route>
 
         {/* Fallback */}
