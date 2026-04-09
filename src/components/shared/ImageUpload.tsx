@@ -14,7 +14,7 @@ interface ImageUploadProps {
   className?: string;
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB before compression
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB before compression
 
 export function ImageUpload({
   value,
@@ -34,7 +34,7 @@ export function ImageUpload({
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('La imagen no puede superar 5MB');
+      toast.error('La imagen no puede superar 20MB');
       return;
     }
 
