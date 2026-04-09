@@ -341,47 +341,12 @@ export default function IngenioMaterials() {
                             </Select>
                         </div>
                         <div>
-                            <Label>Archivo del material</Label>
-                            <div className="flex gap-2">
-                                <Input 
-                                    value={form.fileUrl}
-                                    readOnly
-                                    placeholder="Selecciona o sube un archivo..."
-                                    className="bg-slate-50"
-                                />
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    className="hidden" 
-                                    accept=".pdf,.doc,.docx,.mp4,.mp3"
-                                    onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        
-                                        setUploading(true);
-                                        try {
-                                            const res = await uploadApi.uploadFile(file);
-                                            setForm(prev => ({ ...prev, fileUrl: res.url }));
-                                            toast.success('Archivo subido correctamente');
-                                        } catch (err: any) {
-                                            toast.error(err.message || 'Error al subir');
-                                        } finally {
-                                            setUploading(false);
-                                        }
-                                    }}
-                                />
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    disabled={uploading}
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
-                                </Button>
-                            </div>
-                            <p className="text-[10px] text-slate-500 mt-1">
-                                Recomendado: PDF para guías, MP4 para videos. Máx 20MB.
-                            </p>
+                            <Label>Enlace del material</Label>
+                            <Input 
+                                value={form.fileUrl}
+                                onChange={(e) => setForm({...form, fileUrl: e.target.value})}
+                                placeholder="Ej: https://drive.google.com/..."
+                            />
                         </div>
                     </div>
                     <DialogFooter>

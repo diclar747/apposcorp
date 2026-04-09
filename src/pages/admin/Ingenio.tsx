@@ -373,7 +373,9 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         id: null,
         title: '',
         description: '',
-        price: ''
+        price: '',
+        coverImage: '',
+        updateYear: new Date().getFullYear().toString()
     });
 
     useEffect(() => { fetchCourses(); }, []);
@@ -388,7 +390,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     };
 
     const handleOpenCreate = () => {
-        setFormState({ id: null, title: '', description: '', price: '' });
+        setFormState({ id: null, title: '', description: '', price: '', coverImage: '', updateYear: new Date().getFullYear().toString() });
         setIsFormOpen(true);
     };
 
@@ -397,7 +399,9 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             id: course.id,
             title: course.title.includes(':') ? course.title.split(':').slice(1).join(':').trim() : (course.title.includes(' - ') ? course.title.split(' - ').slice(1).join(' - ').trim() : course.title),
             description: course.description,
-            price: course.price > 0 ? formatNumber(course.price) : ''
+            price: course.price > 0 ? formatNumber(course.price) : '',
+            coverImage: course.coverImage || '',
+            updateYear: course.updateYear || new Date().getFullYear().toString()
         });
         setIsFormOpen(true);
     };
@@ -412,7 +416,9 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                  title: titleWithPrefix,
                  description: formState.description,
                  category: imCategory,
-                 price: parseFormattedNumber(formState.price)
+                 price: parseFormattedNumber(formState.price),
+                 coverImage: formState.coverImage,
+                 updateYear: formState.updateYear
             };
 
             if (formState.id) {
@@ -664,6 +670,16 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                         <div className="space-y-2">
                             <Label className="font-bold text-slate-500 dark:text-slate-300">Descripción</Label>
                             <Textarea placeholder="Breve descripción..." value={formState.description} onChange={e => setFormState({ ...formState, description: e.target.value })} className="rounded-xl min-h-[100px] dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="font-bold text-slate-500 dark:text-slate-300">Año Act.</Label>
+                                <Input placeholder="Ej: 2026" value={formState.updateYear} onChange={e => setFormState({ ...formState, updateYear: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="font-bold text-slate-500 dark:text-slate-300">URL Imagen</Label>
+                                <Input placeholder="https://..." value={formState.coverImage} onChange={e => setFormState({ ...formState, coverImage: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

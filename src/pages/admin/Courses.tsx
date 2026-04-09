@@ -67,7 +67,9 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
     description: '',
     price: '',
     category: 'Finanzas',
-    level: 'beginner'
+    level: 'beginner',
+    coverImage: '',
+    updateYear: new Date().getFullYear().toString()
   });
 
   useEffect(() => {
@@ -87,7 +89,7 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
   };
 
   const handleOpenCreate = () => {
-    setFormState({ id: null, title: '', description: '', price: '', category: 'Finanzas', level: 'beginner' });
+    setFormState({ id: null, title: '', description: '', price: '', category: 'Finanzas', level: 'beginner', coverImage: '', updateYear: new Date().getFullYear().toString() });
     setIsFormOpen(true);
   };
 
@@ -98,7 +100,9 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
       description: course.description,
       price: course.price > 0 ? formatNumber(course.price) : '',
       category: course.category,
-      level: course.level
+      level: course.level,
+      coverImage: course.coverImage || '',
+      updateYear: course.updateYear || new Date().getFullYear().toString()
     });
     setIsFormOpen(true);
   };
@@ -112,6 +116,8 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
         price: parseFormattedNumber(formState.price),
         category: formState.category,
         level: formState.level,
+        coverImage: formState.coverImage,
+        updateYear: formState.updateYear,
       };
 
       if (formState.id) {
@@ -244,16 +250,38 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
                   </Select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="dark:text-slate-300">Nivel</Label>
+                  <Select value={formState.level} onValueChange={val => setFormState({ ...formState, level: val })}>
+                    <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                      <SelectItem value="beginner">Principiante</SelectItem>
+                      <SelectItem value="intermediate">Intermedio</SelectItem>
+                      <SelectItem value="advanced">Avanzado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="updateYear" className="dark:text-slate-300">Año de Actualización</Label>
+                  <Input 
+                    id="updateYear" 
+                    value={formState.updateYear} 
+                    onChange={e => setFormState({ ...formState, updateYear: e.target.value })} 
+                    className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    placeholder="Ej: 2026"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label className="dark:text-slate-300">Nivel</Label>
-                <Select value={formState.level} onValueChange={val => setFormState({ ...formState, level: val })}>
-                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"><SelectValue /></SelectTrigger>
-                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                    <SelectItem value="beginner">Principiante</SelectItem>
-                    <SelectItem value="intermediate">Intermedio</SelectItem>
-                    <SelectItem value="advanced">Avanzado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="coverImage" className="dark:text-slate-300">URL Imagen de Portada</Label>
+                <Input 
+                  id="coverImage" 
+                  value={formState.coverImage} 
+                  onChange={e => setFormState({ ...formState, coverImage: e.target.value })} 
+                  className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  placeholder="Ej: https://..."
+                />
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
@@ -490,6 +518,8 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
         price: parseFormattedNumber(editForm.price),
         category: editForm.category,
         level: editForm.level,
+        coverImage: editForm.coverImage,
+        updateYear: editForm.updateYear,
       });
       toast.success('Curso actualizado');
       setIsEditOpen(false);
@@ -507,6 +537,8 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
       price: course.price > 0 ? formatNumber(course.price) : '',
       category: course.category,
       level: course.level,
+      coverImage: course.coverImage || '',
+      updateYear: course.updateYear || new Date().getFullYear().toString(),
     });
     setIsEditOpen(true);
   };
@@ -1133,16 +1165,26 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                 </Select>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nivel</Label>
+                <Select value={editForm.level} onValueChange={val => setEditForm({ ...editForm, level: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Principiante</SelectItem>
+                    <SelectItem value="intermediate">Intermedio</SelectItem>
+                    <SelectItem value="advanced">Avanzado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Año de Actualización</Label>
+                <Input value={editForm.updateYear} onChange={e => setEditForm({ ...editForm, updateYear: e.target.value })} placeholder="Ej: 2026" />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label>Nivel</Label>
-              <Select value={editForm.level} onValueChange={val => setEditForm({ ...editForm, level: val })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">Principiante</SelectItem>
-                  <SelectItem value="intermediate">Intermedio</SelectItem>
-                  <SelectItem value="advanced">Avanzado</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>URL Imagen de Portada</Label>
+              <Input value={editForm.coverImage} onChange={e => setEditForm({ ...editForm, coverImage: e.target.value })} placeholder="Ej: https://..." />
             </div>
           </div>
           <DialogFooter>

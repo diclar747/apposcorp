@@ -388,7 +388,9 @@ export default function IngenioCourseDetail() {
                </div>
                <div>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Actualización</p>
-                 <p className="font-black text-slate-900 dark:text-white uppercase text-sm">2024</p>
+                 <p className="font-black text-slate-900 dark:text-white uppercase text-sm">
+                   {course.updateYear || (course.updatedAt ? new Date(course.updatedAt).getFullYear() : new Date().getFullYear())}
+                 </p>
                </div>
             </div>
           </div>
