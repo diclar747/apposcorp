@@ -653,6 +653,28 @@ export const ingenioApi = {
   getPublicWheel: (stageName: string) => fetch(`/api/ingenio/public/wheel/${stageName}`).then(r => r.json()),
 };
 
+// General API for uploads etc
+export const uploadApi = {
+  uploadFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('oscorp-token');
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(error.details || error.error || 'Error al subir el archivo');
+    }
+
+    return response.json();
+  }
+};
+
 export default {
   auth: authApi,
   users: usersApi,

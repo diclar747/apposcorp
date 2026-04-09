@@ -24,6 +24,7 @@ import storeRoutes from './routes/stores.js';
 import sellerManagementRoutes from './routes/seller-management.js';
 import reportRoutes from './routes/reports.js';
 import ingenioRoutes from './routes/ingenio.js';
+import uploadRoutes from './routes/upload.js';
 import { prisma } from './utils/prisma.js';
 
 const app = express();
@@ -92,6 +93,7 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/seller-management', sellerManagementRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ingenio', ingenioRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Setup endpoint - cria todos os usuários de teste
 app.get('/api/setup', async (req, res) => {
