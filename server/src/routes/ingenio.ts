@@ -1,23 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
 // ─── Middleware ─────────────────────────────────────────────────────────────────
 
-const requireAuth = (req: Request, res: Response, next: Function) => {
-    if (!req.user) {
-        return res.status(401).json({ error: 'No autorizado' });
-    }
-    next();
-};
-
-const requireAdmin = (req: Request, res: Response, next: Function) => {
-    if (!req.user || req.user.role !== 'superadmin') {
-        return res.status(403).json({ error: 'Acceso denegado' });
-    }
-    next();
-};
+const requireAuth = authenticate;
+const requireAdmin = authorize('superadmin');
 
 // ─── Stages ─────────────────────────────────────────────────────────────────────
 
@@ -43,7 +33,7 @@ router.get('/stages', async (req, res) => {
 });
 
 // Create stage (admin only)
-router.post('/stages', requireAdmin, async (req, res) => {
+router.post('/stages', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { name, title, description, color, order } = req.body;
         const stage = await prisma.ingenioStage.create({
@@ -57,11 +47,11 @@ router.post('/stages', requireAdmin, async (req, res) => {
 });
 
 // Update stage (admin only)
-router.put('/stages/:id', requireAdmin, async (req, res) => {
+router.put('/stages/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { name, title, description, color, order, isActive } = req.body;
         const stage = await prisma.ingenioStage.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
             data: { name, title, description, color, order, isActive },
         });
         res.json(stage);
@@ -72,10 +62,10 @@ router.put('/stages/:id', requireAdmin, async (req, res) => {
 });
 
 // Delete stage (admin only)
-router.delete('/stages/:id', requireAdmin, async (req, res) => {
+router.delete('/stages/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await prisma.ingenioStage.delete({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
         });
         res.json({ success: true });
     } catch (error) {
@@ -87,10 +77,10 @@ router.delete('/stages/:id', requireAdmin, async (req, res) => {
 // ─── Wheel Segments ─────────────────────────────────────────────────────────────
 
 // Get segments by stage
-router.get('/segments/:stageId', async (req, res) => {
+router.get('/segments/:stageId', async (req: AuthRequest, res: Response) => {
     try {
         const segments = await prisma.ingenioWheelSegment.findMany({
-            where: { stageId: req.params.stageId },
+            where: { stageId: req.params.stageId as string },
             orderBy: { number: 'asc' },
         });
         res.json(segments);
@@ -101,7 +91,7 @@ router.get('/segments/:stageId', async (req, res) => {
 });
 
 // Create segment (admin only)
-router.post('/segments', requireAdmin, async (req, res) => {
+router.post('/segments', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { stageId, number, title, description, color, icon, order } = req.body;
         const segment = await prisma.ingenioWheelSegment.create({
@@ -115,11 +105,11 @@ router.post('/segments', requireAdmin, async (req, res) => {
 });
 
 // Update segment (admin only)
-router.put('/segments/:id', requireAdmin, async (req, res) => {
+router.put('/segments/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { title, description, color, icon, order, isActive } = req.body;
         const segment = await prisma.ingenioWheelSegment.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
             data: { title, description, color, icon, order, isActive },
         });
         res.json(segment);
@@ -130,10 +120,10 @@ router.put('/segments/:id', requireAdmin, async (req, res) => {
 });
 
 // Delete segment (admin only)
-router.delete('/segments/:id', requireAdmin, async (req, res) => {
+router.delete('/segments/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await prisma.ingenioWheelSegment.delete({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
         });
         res.json({ success: true });
     } catch (error) {
@@ -145,10 +135,10 @@ router.delete('/segments/:id', requireAdmin, async (req, res) => {
 // ─── Contents ───────────────────────────────────────────────────────────────────
 
 // Get contents by stage
-router.get('/contents/:stageId', async (req, res) => {
+router.get('/contents/:stageId', async (req: AuthRequest, res: Response) => {
     try {
         const contents = await prisma.ingenioContent.findMany({
-            where: { stageId: req.params.stageId },
+            where: { stageId: req.params.stageId as string },
             orderBy: { order: 'asc' },
         });
         res.json(contents);
@@ -159,7 +149,7 @@ router.get('/contents/:stageId', async (req, res) => {
 });
 
 // Create content (admin only)
-router.post('/contents', requireAdmin, async (req, res) => {
+router.post('/contents', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { stageId, segmentId, type, title, content, url, fileUrl, order } = req.body;
         const newContent = await prisma.ingenioContent.create({
@@ -173,11 +163,11 @@ router.post('/contents', requireAdmin, async (req, res) => {
 });
 
 // Update content (admin only)
-router.put('/contents/:id', requireAdmin, async (req, res) => {
+router.put('/contents/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { title, content, url, fileUrl, order, isActive } = req.body;
         const updatedContent = await prisma.ingenioContent.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
             data: { title, content, url, fileUrl, order, isActive },
         });
         res.json(updatedContent);
@@ -188,10 +178,10 @@ router.put('/contents/:id', requireAdmin, async (req, res) => {
 });
 
 // Delete content (admin only)
-router.delete('/contents/:id', requireAdmin, async (req, res) => {
+router.delete('/contents/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await prisma.ingenioContent.delete({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
         });
         res.json({ success: true });
     } catch (error) {
@@ -203,7 +193,7 @@ router.delete('/contents/:id', requireAdmin, async (req, res) => {
 // ─── Materials ──────────────────────────────────────────────────────────────────
 
 // Get all materials
-router.get('/materials', async (req, res) => {
+router.get('/materials', async (req: AuthRequest, res: Response) => {
     try {
         const { stage } = req.query;
         const where = stage ? { stage: stage as string } : {};
@@ -219,7 +209,7 @@ router.get('/materials', async (req, res) => {
 });
 
 // Create material (admin only)
-router.post('/materials', requireAdmin, async (req, res) => {
+router.post('/materials', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { stage, title, description, fileUrl, fileType, fileSize, isPublic, order } = req.body;
         const material = await prisma.ingenioMaterial.create({
@@ -233,11 +223,11 @@ router.post('/materials', requireAdmin, async (req, res) => {
 });
 
 // Update material (admin only)
-router.put('/materials/:id', requireAdmin, async (req, res) => {
+router.put('/materials/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { title, description, fileUrl, isPublic, order } = req.body;
         const material = await prisma.ingenioMaterial.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
             data: { title, description, fileUrl, isPublic, order },
         });
         res.json(material);
@@ -248,10 +238,10 @@ router.put('/materials/:id', requireAdmin, async (req, res) => {
 });
 
 // Delete material (admin only)
-router.delete('/materials/:id', requireAdmin, async (req, res) => {
+router.delete('/materials/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await prisma.ingenioMaterial.delete({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
         });
         res.json({ success: true });
     } catch (error) {
@@ -263,7 +253,7 @@ router.delete('/materials/:id', requireAdmin, async (req, res) => {
 // ─── Students ───────────────────────────────────────────────────────────────────
 
 // Get all students (admin only)
-router.get('/students', requireAdmin, async (req, res) => {
+router.get('/students', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const students = await prisma.ingenioStudent.findMany({
             include: {
@@ -291,10 +281,10 @@ router.get('/students', requireAdmin, async (req, res) => {
 });
 
 // Get my student profile
-router.get('/students/me', requireAuth, async (req, res) => {
+router.get('/students/me', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const student = await prisma.ingenioStudent.findUnique({
-            where: { userId: req.user!.id },
+            where: { userId: req.user!.userId },
             include: {
                 assignments: true,
                 referrals: {
@@ -315,7 +305,7 @@ router.get('/students/me', requireAuth, async (req, res) => {
 });
 
 // Register as student
-router.post('/students/register', requireAuth, async (req, res) => {
+router.post('/students/register', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const { phone, city, country, occupation, experience, goals, referralCode } = req.body;
         
@@ -344,7 +334,7 @@ router.post('/students/register', requireAuth, async (req, res) => {
 
         const student = await prisma.ingenioStudent.create({
             data: {
-                userId: req.user!.id,
+                userId: req.user!.userId,
                 phone,
                 city,
                 country,
@@ -358,7 +348,7 @@ router.post('/students/register', requireAuth, async (req, res) => {
 
         // Update user ingenioAccess
         await prisma.user.update({
-            where: { id: req.user!.id },
+            where: { id: req.user!.userId },
             data: { ingenioAccess: true },
         });
 
@@ -370,11 +360,11 @@ router.post('/students/register', requireAuth, async (req, res) => {
 });
 
 // Update student profile
-router.put('/students/me', requireAuth, async (req, res) => {
+router.put('/students/me', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const { phone, city, occupation, experience, goals } = req.body;
         const student = await prisma.ingenioStudent.update({
-            where: { userId: req.user!.id },
+            where: { userId: req.user!.userId },
             data: { phone, city, occupation, experience, goals },
         });
         res.json(student);
@@ -387,11 +377,11 @@ router.put('/students/me', requireAuth, async (req, res) => {
 // ─── Student Assignments ────────────────────────────────────────────────────────
 
 // Get my assignments
-router.get('/assignments/me', requireAuth, async (req, res) => {
+router.get('/assignments/me', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const assignments = await prisma.ingenioStudentAssignment.findMany({
             where: {
-                student: { userId: req.user!.id },
+                student: { userId: req.user!.userId },
             },
             orderBy: { assignedAt: 'desc' },
         });
@@ -403,7 +393,7 @@ router.get('/assignments/me', requireAuth, async (req, res) => {
 });
 
 // Assign stage to student (admin only)
-router.post('/assignments', requireAdmin, async (req, res) => {
+router.post('/assignments', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const { studentId, stage } = req.body;
         const assignment = await prisma.ingenioStudentAssignment.create({
@@ -421,10 +411,10 @@ router.post('/assignments', requireAdmin, async (req, res) => {
 });
 
 // Start assignment
-router.post('/assignments/:id/start', requireAuth, async (req, res) => {
+router.post('/assignments/:id/start', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const assignment = await prisma.ingenioStudentAssignment.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
             data: {
                 status: 'in_progress',
                 startedAt: new Date(),
@@ -438,7 +428,7 @@ router.post('/assignments/:id/start', requireAuth, async (req, res) => {
 });
 
 // Update progress
-router.put('/assignments/:id/progress', requireAuth, async (req, res) => {
+router.put('/assignments/:id/progress', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
         const { progress } = req.body;
         const updateData: any = { progress };
@@ -449,7 +439,7 @@ router.put('/assignments/:id/progress', requireAuth, async (req, res) => {
         }
 
         const assignment = await prisma.ingenioStudentAssignment.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id as string },
             data: updateData,
         });
         res.json(assignment);
@@ -608,7 +598,7 @@ router.post('/setup', requireAdmin, async (req, res) => {
                         shortDescription: 'Descubre los fundamentos del dinero que nadie te enseñó.',
                         instructorId: instructor.id,
                         instructorName: `${instructor.firstName} ${instructor.lastName}`,
-                        category: 'Ingenio Millonario',
+                        category: 'E1', // Ingenio Millonario E1 category
                         level: 'beginner',
                         price: 0,
                         isPublished: true,
@@ -632,7 +622,7 @@ router.post('/setup', requireAdmin, async (req, res) => {
                         shortDescription: 'Estrategias avanzadas de construcción de riqueza.',
                         instructorId: instructor.id,
                         instructorName: `${instructor.firstName} ${instructor.lastName}`,
-                        category: 'Ingenio Millonario',
+                        category: 'E2', // Ingenio Millonario E2 category
                         level: 'advanced',
                         price: 0,
                         isPublished: true,

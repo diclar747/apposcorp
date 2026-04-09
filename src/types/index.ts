@@ -380,9 +380,7 @@ export interface Course {
   resources: Resource[];
   isPublished: boolean;
   isFeatured: boolean;
-  enrolledCount: number;
-  rating: number;
-  reviewCount: number;
+  userCourses: UserCourse[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -413,10 +411,11 @@ export interface Resource {
   url: string;
 }
 
-export interface Enrollment {
+export interface UserCourse {
   id: string;
   userId: string;
   courseId: string;
+  status: string;
   progress: number;
   completedModules: string[];
   completedLessons: string[];

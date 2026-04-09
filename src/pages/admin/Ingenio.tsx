@@ -5,7 +5,7 @@ import {
     ArrowLeft, Video, ChevronDown, ChevronUp, Sparkles,
     TrendingUp, TrendingDown, Landmark, GraduationCap,
     Wallet, Banknote, Coins, Download, FileText,
-    ArrowUpRight, ArrowDownRight, Activity
+    ArrowUpRight, ArrowDownRight, Activity, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,14 +15,24 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-    Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, formatNumber, parseFormattedNumber } from '@/lib/utils';
 import { coursesApi, financesApi, ingenioApi } from '@/lib/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -354,9 +364,17 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     const [courses, setCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [newCourseForm, setNewCourseForm] = useState({ title: '', description: '' });
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
     const [initializing, setInitializing] = useState(false);
+
+    const [formState, setFormState] = useState<any>({
+        id: null,
+        title: '',
+        description: '',
+        price: ''
+    });
 
     useEffect(() => { fetchCourses(); }, []);
 
@@ -369,10 +387,55 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         finally { setLoading(false); }
     };
 
+    const handleOpenCreate = () => {
+        setFormState({ id: null, title: '', description: '', price: '' });
+        setIsFormOpen(true);
+    };
+
+    const handleOpenEdit = (course: any) => {
+        setFormState({
+            id: course.id,
+            title: course.title.includes(':') ? course.title.split(':').slice(1).join(':').trim() : (course.title.includes(' - ') ? course.title.split(' - ').slice(1).join(' - ').trim() : course.title),
+            description: course.description,
+            price: course.price > 0 ? formatNumber(course.price) : ''
+        });
+        setIsFormOpen(true);
+    };
+
+    const handleSaveCourse = async () => {
+        if (!formState.title) return toast.error('El título es obligatorio');
+        try {
+            const imCategory = filter === 'E1' ? 'IM E1' : filter === 'E2' ? 'IM E2' : 'Ingenio Millonario';
+            const titleWithPrefix = filter ? `${filter} - ${formState.title}` : formState.title;
+            
+            const payload = {
+                 title: titleWithPrefix,
+                 description: formState.description,
+                 category: imCategory,
+                 price: parseFormattedNumber(formState.price)
+            };
+
+            if (formState.id) {
+                await coursesApi.update(formState.id, payload);
+                toast.success('Curso actualizado');
+            } else {
+                await coursesApi.create({ ...payload, isPublished: true });
+                toast.success('Curso creado');
+            }
+            
+            setIsFormOpen(false);
+            fetchCourses();
+        } catch { toast.error('Ocurrió un error al guardar el curso'); }
+    };
+
+    const confirmDelete = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setCourseToDelete(id);
+    };
+
     const handleInitialize = async () => {
         try {
             setInitializing(true);
-            // Create course directly without depending on Ingenio tables
             await coursesApi.create({
                 title: filter === 'E1' ? 'E1 - Fundamentos del Dinero' : 
                        filter === 'E2' ? 'E2 - Maestría Financiera' : 
@@ -383,7 +446,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                 shortDescription: filter === 'E1'
                     ? 'Descubre los fundamentos del dinero que nadie te enseñó.'
                     : 'Estrategias avanzadas de construcción de riqueza.',
-                category: 'Ingenio Millonario',
+                category: filter === 'E1' ? 'IM E1' : filter === 'E2' ? 'IM E2' : 'Ingenio Millonario',
                 level: filter === 'E2' ? 'advanced' : 'beginner',
                 price: 0,
                 isPublished: true,
@@ -398,21 +461,24 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         }
     };
 
-    const handleCreateCourse = async () => {
-        if (!newCourseForm.title) return toast.error('El título es obligatorio');
+    const handleDeleteCourse = async () => {
+        if (!courseToDelete) return;
         try {
-            const titleWithFilter = filter ? `${filter}: ${newCourseForm.title}` : newCourseForm.title;
-            await coursesApi.create({ ...newCourseForm, title: titleWithFilter });
-            toast.success('Curso creado');
-            setIsCreateOpen(false);
-            setNewCourseForm({ title: '', description: '' });
+            setIsDeleting(true);
+            await coursesApi.delete(courseToDelete);
+            toast.success('Curso eliminado permanentemente');
             fetchCourses();
-        } catch { toast.error('Error al crear el curso'); }
+        } catch { toast.error('Error al eliminar curso'); }
+        finally {
+            setIsDeleting(false);
+            setCourseToDelete(null);
+        }
     };
-
     const filteredCourses = courses.filter((course: any) => {
         const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
-        return filter ? matchesSearch && course.title.toUpperCase().includes(filter.toUpperCase()) : matchesSearch;
+        if (!filter) return matchesSearch;
+        const imCategory = `IM ${filter.toUpperCase()}`;
+        return matchesSearch && (course.category === imCategory || course.title.toUpperCase().includes(filter.toUpperCase()));
     });
 
     const wheelColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#14b8a6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -468,7 +534,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input placeholder="Buscar etapa..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-10 rounded-full w-64" />
                     </div>
-                    <Button onClick={() => setIsCreateOpen(true)} className="rounded-full bg-blue-600 hover:bg-blue-700 h-10 px-6">
+                    <Button onClick={handleOpenCreate} className="rounded-full bg-blue-600 hover:bg-blue-700 h-10 px-6">
                         <Plus className="w-4 h-4 mr-2" /> Nuevo
                     </Button>
                 </div>
@@ -476,7 +542,12 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {loading ? (
-                    <div className="col-span-full py-20 text-center text-slate-400">Cargando...</div>
+                    <div className="col-span-full py-20 text-center text-slate-400">
+                         <div className="flex flex-col items-center gap-3">
+                             <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+                             <span>Cargando academia...</span>
+                         </div>
+                    </div>
                 ) : filteredCourses.length === 0 ? (
                     <div className="col-span-full py-20 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
@@ -505,47 +576,126 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                             className="relative group bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer text-center"
                             onClick={() => onSelectCourse(course)}
                         >
+                            {/* Admin Actions Overlay */}
+                            <div className="absolute top-4 right-4 flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity z-20">
+                                <Button 
+                                    variant="secondary" 
+                                    size="icon" 
+                                    className="w-9 h-9 rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-md shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-110 transition-all"
+                                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(course); }}
+                                    title="Editar curso"
+                                >
+                                    <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                    variant="secondary" 
+                                    size="icon" 
+                                    className="w-9 h-9 rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-md shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 hover:scale-110 transition-all"
+                                    onClick={(e) => confirmDelete(e, course.id)}
+                                    title="Eliminar curso"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+
                             <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-white dark:bg-slate-900 rounded-full shadow-md border border-slate-50 dark:border-slate-800 flex items-center justify-center z-10">
                                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                                     <BookOpen className="w-5 h-5 text-white" />
                                 </div>
                             </div>
                             <div className="mt-4 space-y-3">
-                                <h3 className="font-black text-blue-600 dark:text-blue-400 text-lg uppercase tracking-tight leading-none">{course.title.toUpperCase()}</h3>
+                                <h3 className="font-black text-blue-600 dark:text-blue-400 text-lg uppercase tracking-tight leading-none line-clamp-1">{course.title.toUpperCase()}</h3>
                                 <div className="h-0.5 w-12 bg-slate-100 dark:bg-slate-800 mx-auto" />
                                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-tight h-10 line-clamp-2">{course.description || 'Contenido educativo especializado'}</p>
                             </div>
-                            <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-center gap-2">
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{course.modules?.length || 0} SECCIONES</span>
-                                <div className="w-1 h-1 rounded-full bg-slate-200" />
-                                <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none text-[9px] font-bold">
-                                    {course.isPublished ? 'PÚBLICO' : 'BORRADOR'}
-                                </Badge>
+                            <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800/50 flex flex-col gap-3">
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{course.modules?.length || 0} SECCIONES</span>
+                                    <div className="w-1 h-1 rounded-full bg-slate-200" />
+                                    <Badge className={cn(
+                                        "border-none text-[9px] font-bold px-2 py-0.5 rounded-full",
+                                        course.isPublished ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600"
+                                    )}>
+                                        {course.isPublished ? 'PÚBLICO' : 'BORRADOR'}
+                                    </Badge>
+                                </div>
+                                <div className="text-xs font-black text-slate-900 dark:text-white">
+                                    {course.price > 0 ? formatCurrency(course.price) : 'GRATIS'}
+                                </div>
                             </div>
                         </motion.div>
                     ))
                 )}
             </div>
 
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="rounded-3xl sm:max-w-[425px]">
-                    <DialogHeader><DialogTitle className="text-2xl font-black uppercase tracking-tighter">Nueva Etapa {filter}</DialogTitle></DialogHeader>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogContent className="rounded-3xl sm:max-w-[425px] dark:bg-slate-900 dark:border-slate-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter dark:text-white">
+                            {formState.id ? 'Editar Etapa' : `Nueva Etapa ${filter}`}
+                        </DialogTitle>
+                        <DialogDescription className="dark:text-slate-400">
+                            Completa los detalles de la etapa académica.
+                        </DialogDescription>
+                    </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label className="font-bold text-slate-500">Título</Label>
-                            <Input placeholder="Nombre del curso..." value={newCourseForm.title} onChange={e => setNewCourseForm({ ...newCourseForm, title: e.target.value })} className="rounded-xl" />
+                            <Label className="font-bold text-slate-500 dark:text-slate-300">Título</Label>
+                            <Input placeholder="Nombre del curso..." value={formState.title} onChange={e => setFormState({ ...formState, title: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="font-bold text-slate-500">Descripción</Label>
-                            <Textarea placeholder="Breve descripción..." value={newCourseForm.description} onChange={e => setNewCourseForm({ ...newCourseForm, description: e.target.value })} className="rounded-xl min-h-[100px]" />
+                            <Label className="font-bold text-slate-500 dark:text-slate-300">Precio del Curso</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
+                                <Input 
+                                    type="text" 
+                                    placeholder="0" 
+                                    value={formState.price} 
+                                    onChange={e => {
+                                        const raw = e.target.value.replace(/\D/g, '');
+                                        if (!raw) return setFormState({ ...formState, price: '' });
+                                        const num = parseInt(raw, 10);
+                                        setFormState({ ...formState, price: formatNumber(num) });
+                                    }} 
+                                    className="pl-10 rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold" 
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="font-bold text-slate-500 dark:text-slate-300">Descripción</Label>
+                            <Textarea placeholder="Breve descripción..." value={formState.description} onChange={e => setFormState({ ...formState, description: e.target.value })} className="rounded-xl min-h-[100px] dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl">Cancelar</Button>
-                        <Button onClick={handleCreateCourse} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-8">Crear Etapa</Button>
+                        <Button variant="ghost" onClick={() => setIsFormOpen(false)} className="rounded-xl dark:text-slate-300">Cancelar</Button>
+                        <Button onClick={handleSaveCourse} className="rounded-xl bg-blue-600 hover:bg-blue-700 px-8">
+                            {formState.id ? 'Guardar Cambios' : 'Crear Etapa'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Alert */}
+            <AlertDialog open={!!courseToDelete} onOpenChange={(open) => !open && setCourseToDelete(null)}>
+                <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800 rounded-[2.5rem]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black uppercase tracking-tighter dark:text-white">¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription className="dark:text-slate-400">
+                            Esta acción eliminará permanentemente la etapa y todo su contenido asociado. No se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-6">
+                        <AlertDialogCancel className="rounded-xl border-slate-200 dark:border-slate-800 dark:text-slate-400">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDeleteCourse}
+                            disabled={isDeleting}
+                            className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-600/20"
+                        >
+                            {isDeleting ? 'Eliminando...' : 'Sí, eliminar etapa'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

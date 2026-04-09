@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save, BookOpen } from 'lucide-react';
 import { cn, getRoleName, getRoleColor, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Table,
@@ -50,8 +51,10 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
-import { usersApi, plansApi } from '@/lib/api';
-import type { SubscriptionPlan, BillingCycle } from '@/types';
+import { usersApi, plansApi, coursesApi } from '@/lib/api';
+import type { SubscriptionPlan, BillingCycle, Course, UserCourse } from '@/types';
+import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Types
 interface UserData {
@@ -96,6 +99,13 @@ export default function AdminUsers() {
     customCommission: 0,
     isCommissionBased: false
   });
+  
+  // Individual Course Management State
+  const [isCoursesModalOpen, setIsCoursesModalOpen] = useState(false);
+  const [selectedUserForCourses, setSelectedUserForCourses] = useState<UserData | null>(null);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [userCoursesIds, setUserCoursesIds] = useState<string[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -213,6 +223,53 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (error) {
       toast.error('Error al asignar el plan');
+    }
+  };
+  
+  const handleOpenCoursesModal = async (user: UserData) => {
+    setSelectedUserForCourses(user);
+    setIsCoursesModalOpen(true);
+    setIsLoadingCourses(true);
+    try {
+      // Fetch all courses
+      const courses = await coursesApi.getAll(true);
+      setAllCourses(courses);
+      
+      // Fetch user specific details to get their current courses
+      const userDetails = await usersApi.getById(user.id);
+      // Assuming backend returns userCourses in the user details
+      // Wait, let's verify if getById includes userCourses.
+      // In prisma/schema.prisma: User has userCourses.
+      // In server/src/routes/users.ts: getById doesn't include userCourses yet. 
+      // I should update the backend to include them or fetch them separately.
+      // Let's assume for now it will be added or fetched via another way.
+      // Actually, I'll update getById in users.ts next.
+      
+      const enrolledIds = userDetails.userCourses?.map((uc: any) => uc.courseId) || [];
+      setUserCoursesIds(enrolledIds);
+    } catch (error) {
+      toast.error('Error al cargar cursos del usuario');
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  const handleToggleCourseAccess = async (courseId: string, isEnrolled: boolean) => {
+    if (!selectedUserForCourses) return;
+    
+    try {
+      if (isEnrolled) {
+        await usersApi.removeCourse(selectedUserForCourses.id, courseId);
+        setUserCoursesIds(prev => prev.filter(id => id !== courseId));
+        toast.success('Acceso revocado');
+      } else {
+        await usersApi.assignCourse(selectedUserForCourses.id, courseId);
+        setUserCoursesIds(prev => [...prev, courseId]);
+        toast.success('Acceso concedido');
+      }
+      fetchUsers(); // Update stats in table
+    } catch (error) {
+      toast.error('Error al actualizar acceso');
     }
   };
 
@@ -414,6 +471,10 @@ export default function AdminUsers() {
                                 Gestionar Plan
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem onClick={() => handleOpenCoursesModal(user)}>
+                              <BookOpen className="w-4 h-4 mr-2" />
+                              Gestionar Cursos
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleToggleIngenio(user.id, user.ingenioAccess)}>
                               {user.ingenioAccess ? 'Desactivar Ingenio' : 'Activar Ingenio'}
@@ -753,6 +814,130 @@ export default function AdminUsers() {
             <Button onClick={handleSavePlanAssignment} className="bg-blue-600 hover:bg-blue-700">
               Confirmar Asignación
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+ 
+      {/* Individual Course Management Dialog */}
+      <Dialog open={isCoursesModalOpen} onOpenChange={setIsCoursesModalOpen}>
+        <DialogContent className="sm:max-w-[550px] w-[calc(100%-2rem)] max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Gestionar Cursos Individuales</DialogTitle>
+            <DialogDescription>
+              Habilita o deshabilita el acceso a cursos específicos para <strong>{selectedUserForCourses?.firstName} {selectedUserForCourses?.lastName}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingCourses ? (
+            <div className="py-20 text-center text-gray-500">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+              Cargando cursos...
+            </div>
+          ) : (
+            <ScrollArea className="h-[50vh] pr-4">
+              <div className="space-y-6 py-4">
+                {/* IM E1 Section */}
+                <div className="space-y-3">
+                  <h3 className="font-bold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-600" />
+                    Cursos IM E1
+                  </h3>
+                  <div className="space-y-2">
+                    {allCourses.filter(c => c.category === 'IM E1').length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">No hay cursos en esta categoría</p>
+                    ) : (
+                      allCourses.filter(c => c.category === 'IM E1').map(course => {
+                        const isEnrolled = userCoursesIds.includes(course.id);
+                        return (
+                          <div key={course.id} className="flex items-center justify-between p-3 rounded-lg border dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                                <BookOpen className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium dark:text-white">{course.title}</p>
+                                <p className="text-[10px] text-gray-500 line-clamp-1">{course.shortDescription}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={isEnrolled}
+                              onCheckedChange={() => handleToggleCourseAccess(course.id, isEnrolled)}
+                            />
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* IM E2 Section */}
+                <div className="space-y-3 pt-4 border-t dark:border-slate-800">
+                  <h3 className="font-bold text-sm text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    Cursos IM E2
+                  </h3>
+                  <div className="space-y-2">
+                    {allCourses.filter(c => c.category === 'IM E2').length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">No hay cursos en esta categoría</p>
+                    ) : (
+                      allCourses.filter(c => c.category === 'IM E2').map(course => {
+                        const isEnrolled = userCoursesIds.includes(course.id);
+                        return (
+                          <div key={course.id} className="flex items-center justify-between p-3 rounded-lg border dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                                <BookOpen className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium dark:text-white">{course.title}</p>
+                                <p className="text-[10px] text-gray-500 line-clamp-1">{course.shortDescription}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={isEnrolled}
+                              onCheckedChange={() => handleToggleCourseAccess(course.id, isEnrolled)}
+                            />
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                
+                {/* Other categories */}
+                {allCourses.filter(c => c.category !== 'IM E1' && c.category !== 'IM E2').length > 0 && (
+                  <div className="space-y-3 pt-4 border-t dark:border-slate-800">
+                    <h3 className="font-bold text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wider">Otros Cursos</h3>
+                    <div className="space-y-2">
+                      {allCourses.filter(c => c.category !== 'IM E1' && c.category !== 'IM E2').map(course => {
+                        const isEnrolled = userCoursesIds.includes(course.id);
+                        return (
+                          <div key={course.id} className="flex items-center justify-between p-3 rounded-lg border dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm opacity-60">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded bg-gray-50 dark:bg-gray-900/30 flex items-center justify-center">
+                                <BookOpen className="w-4 h-4 text-gray-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium dark:text-white">{course.title}</p>
+                                <p className="text-[10px] text-gray-500 line-clamp-1">{course.category}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={isEnrolled}
+                              onCheckedChange={() => handleToggleCourseAccess(course.id, isEnrolled)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setIsCoursesModalOpen(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

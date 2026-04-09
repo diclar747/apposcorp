@@ -44,11 +44,12 @@ router.get('/', async (req: any, res) => {
           orderBy: { order: 'asc' },
         },
         resources: true,
-        enrollments: {
+        userCourses: {
           select: {
             id: true,
             userId: true,
             progress: true,
+            status: true,
           },
         },
       },
@@ -80,11 +81,12 @@ router.get('/slug/:slug', async (req, res) => {
           orderBy: { order: 'asc' },
         },
         resources: true,
-        enrollments: {
+        userCourses: {
           select: {
             id: true,
             progress: true,
             userId: true,
+            status: true,
           },
         },
       },
@@ -103,7 +105,7 @@ router.get('/slug/:slug', async (req, res) => {
 // Get my enrollments (must be before /:id to avoid Express matching "my" as :id)
 router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
   try {
-    const enrollments = await prisma.enrollment.findMany({
+    const userCourses = await prisma.userCourse.findMany({
       where: { userId: req.user!.userId },
       include: {
         course: {
@@ -122,27 +124,28 @@ router.get('/my/enrollments', authenticate, async (req: AuthRequest, res) => {
       },
     });
 
-    res.json(enrollments);
+    res.json(userCourses);
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
+
 // Update lesson progress (must be before /:id to avoid Express matching "enrollment" as :id)
-router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: AuthRequest, res) => {
+router.patch('/access/:accessId/progress', authenticate, async (req: AuthRequest, res) => {
   try {
-    const enrollmentId = req.params.enrollmentId as string;
+    const accessId = req.params.accessId as string;
     const { lessonId, completed } = req.body;
 
-    const enrollment = await prisma.enrollment.findUnique({
-      where: { id: enrollmentId },
+    const userCourse = await prisma.userCourse.findUnique({
+      where: { id: accessId },
     });
 
-    if (!enrollment || enrollment.userId !== req.user!.userId) {
-      return res.status(404).json({ error: 'Matrícula no encontrada' });
+    if (!userCourse || userCourse.userId !== req.user!.userId) {
+      return res.status(404).json({ error: 'Acceso al curso no encontrado' });
     }
 
-    const completedLessons = new Set(enrollment.completedLessons);
+    const completedLessons = new Set(userCourse.completedLessons);
 
     if (completed) {
       completedLessons.add(lessonId);
@@ -151,7 +154,7 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
     }
 
     const course = await prisma.course.findUnique({
-      where: { id: enrollment.courseId },
+      where: { id: userCourse.courseId },
       include: {
         modules: {
           include: {
@@ -172,8 +175,8 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
       ? (completedLessons.size / totalLessons) * 100
       : 0;
 
-    const updatedEnrollment = await prisma.enrollment.update({
-      where: { id: enrollmentId },
+    const updatedAccess = await prisma.userCourse.update({
+      where: { id: accessId },
       data: {
         completedLessons: Array.from(completedLessons),
         progress,
@@ -182,7 +185,7 @@ router.patch('/enrollment/:enrollmentId/progress', authenticate, async (req: Aut
       },
     });
 
-    res.json(updatedEnrollment);
+    res.json(updatedAccess);
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -206,7 +209,7 @@ router.get('/:id', async (req, res) => {
           orderBy: { order: 'asc' },
         },
         resources: true,
-        enrollments: {
+        userCourses: {
           include: {
             user: {
               select: { id: true, firstName: true, lastName: true, email: true, avatar: true },
@@ -272,19 +275,37 @@ router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest,
 router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
-    const { title, description, shortDescription, price, category, level, instructorName, coverImage, previewVideo, isPublished } = req.body;
+    const { 
+      title, description, shortDescription, price, comparePrice,
+      category, level, instructorName, coverImage, previewVideo, 
+      isPublished, isFeatured 
+    } = req.body;
+
+    const existingCourse = await prisma.course.findUnique({ where: { id } });
+    if (!existingCourse) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
 
     const updateData: any = {};
-    if (title !== undefined) updateData.title = title;
+    if (title !== undefined) {
+      updateData.title = title;
+      // If title changes, we might want to update slug (optional, but requested implicitly by "completing CRUD")
+      // In this system, slugs include a timestamp, so we often keep them persistent, 
+      // but let's allow it if the system expects title-slug sync.
+      // updateData.slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
+    }
+    
     if (description !== undefined) updateData.description = description;
     if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
     if (price !== undefined) updateData.price = Number(price);
+    if (comparePrice !== undefined) updateData.comparePrice = Number(comparePrice);
     if (category !== undefined) updateData.category = category;
     if (level !== undefined) updateData.level = level;
     if (instructorName !== undefined) updateData.instructorName = instructorName;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
     if (previewVideo !== undefined) updateData.previewVideo = previewVideo;
     if (isPublished !== undefined) updateData.isPublished = isPublished;
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
 
     const course = await prisma.course.update({
       where: { id },
@@ -310,18 +331,79 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthReques
   }
 });
 
+// Patch course
+router.patch('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const { 
+      title, description, shortDescription, price, comparePrice,
+      category, level, instructorName, coverImage, previewVideo, 
+      isPublished, isFeatured 
+    } = req.body;
+
+    const existingCourse = await prisma.course.findUnique({ where: { id } });
+    if (!existingCourse) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
+    if (price !== undefined) updateData.price = Number(price);
+    if (comparePrice !== undefined) updateData.comparePrice = Number(comparePrice);
+    if (category !== undefined) updateData.category = category;
+    if (level !== undefined) updateData.level = level;
+    if (instructorName !== undefined) updateData.instructorName = instructorName;
+    if (coverImage !== undefined) updateData.coverImage = coverImage;
+    if (previewVideo !== undefined) updateData.previewVideo = previewVideo;
+    if (isPublished !== undefined) updateData.isPublished = isPublished;
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+
+    const course = await prisma.course.update({
+      where: { id },
+      data: updateData,
+      include: {
+        modules: {
+          include: {
+            lessons: {
+              include: { resources: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
+        resources: true,
+      },
+    });
+
+    res.json(course);
+  } catch (error) {
+    console.error('Patch course error:', error);
+    res.status(500).json({ error: 'Error al actualizar curso' });
+  }
+});
+
 // Delete course
 router.delete('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
 
+    // Check existence first
+    const existing = await prisma.course.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+
+    // Deletion: Cascade on UserCourse, Module, Resource is handled by @relation(onDelete: Cascade) in schema.prisma
     await prisma.course.delete({
       where: { id },
     });
 
-    res.json({ message: 'Curso eliminado exitosamente' });
+    res.json({ message: 'Curso eliminado exitosamente', id });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar curso' });
+    console.error('Delete course error:', error);
+    res.status(500).json({ error: 'Error al eliminar el curso. Verifique si tiene dependencias activas.' });
   }
 });
 
@@ -519,11 +601,11 @@ router.delete('/resources/:resourceId', authenticate, authorize('superadmin'), a
 // ============ ENROLLMENTS ============
 
 // Get enrollments for a course (admin)
-router.get('/:id/enrollments', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+router.get('/:id/access', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const courseId = req.params.id as string;
 
-    const enrollments = await prisma.enrollment.findMany({
+    const userCourses = await prisma.userCourse.findMany({
       where: { courseId },
       include: {
         user: {
@@ -533,7 +615,7 @@ router.get('/:id/enrollments', authenticate, authorize('superadmin'), async (req
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json(enrollments);
+    res.json(userCourses);
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -557,19 +639,19 @@ router.post('/:id/assign', authenticate, authorize('superadmin'), async (req: Au
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Check if already enrolled
-    const existing = await prisma.enrollment.findUnique({
+    // Check if already has access
+    const existing = await prisma.userCourse.findUnique({
       where: { userId_courseId: { userId, courseId } },
     });
 
     if (existing) {
-      return res.status(400).json({ error: 'El usuario ya está inscrito en este curso' });
+      return res.status(400).json({ error: 'El usuario ya tiene acceso a este curso' });
     }
 
-    // Create enrollment and activate ingenio access
-    const [enrollment] = await prisma.$transaction([
-      prisma.enrollment.create({
-        data: { userId, courseId },
+    // Create access and activate ingenio access
+    const [userCourse] = await prisma.$transaction([
+      prisma.userCourse.create({
+        data: { userId, courseId, status: 'active' },
         include: {
           user: {
             select: { id: true, firstName: true, lastName: true, email: true, avatar: true },
@@ -586,32 +668,32 @@ router.post('/:id/assign', authenticate, authorize('superadmin'), async (req: Au
       }),
     ]);
 
-    res.status(201).json(enrollment);
+    res.status(201).json(userCourse);
   } catch (error) {
     console.error('Assign user error:', error);
     res.status(500).json({ error: 'Error al asignar usuario' });
   }
 });
 
-// Remove enrollment (admin)
-router.delete('/:id/enrollments/:enrollmentId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+// Remove access (admin)
+router.delete('/:id/access/:accessId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const enrollmentId = req.params.enrollmentId as string;
+    const accessId = req.params.accessId as string;
 
-    const enrollment = await prisma.enrollment.findUnique({ where: { id: enrollmentId } });
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Inscripción no encontrada' });
+    const userCourse = await prisma.userCourse.findUnique({ where: { id: accessId } });
+    if (!userCourse) {
+      return res.status(404).json({ error: 'Acceso no encontrado' });
     }
 
     await prisma.$transaction([
-      prisma.enrollment.delete({ where: { id: enrollmentId } }),
+      prisma.userCourse.delete({ where: { id: accessId } }),
       prisma.course.update({
-        where: { id: enrollment.courseId },
+        where: { id: userCourse.courseId },
         data: { enrolledCount: { decrement: 1 } },
       }),
     ]);
 
-    res.json({ message: 'Inscripción eliminada' });
+    res.json({ message: 'Acceso eliminado' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar inscripción' });
   }
@@ -630,8 +712,8 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
-    // Check if already enrolled
-    const existingEnrollment = await prisma.enrollment.findUnique({
+    // Check if already has access
+    const existingAccess = await prisma.userCourse.findUnique({
       where: {
         userId_courseId: {
           userId: req.user!.userId,
@@ -640,8 +722,8 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
       },
     });
 
-    if (existingEnrollment) {
-      return res.status(400).json({ error: 'Ya estás inscrito en este curso' });
+    if (existingAccess) {
+      return res.status(400).json({ error: 'Ya tienes acceso a este curso' });
     }
 
     // If course is paid, check wallet
@@ -655,7 +737,7 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
       }
 
       // Process payment
-      const enrollment = await prisma.$transaction(async (tx) => {
+      const userCourse = await prisma.$transaction(async (tx) => {
         await tx.wallet.update({
           where: { id: wallet.id },
           data: {
@@ -680,15 +762,16 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           data: { enrolledCount: { increment: 1 } },
         });
 
-        return tx.enrollment.create({
+        return tx.userCourse.create({
           data: {
             userId: req.user!.userId,
             courseId: id,
+            status: 'active',
           },
         });
       });
 
-      return res.status(201).json(enrollment);
+      return res.status(201).json(userCourse);
     } else {
       // Free course, just enroll
       await prisma.course.update({
@@ -696,14 +779,15 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
         data: { enrolledCount: { increment: 1 } },
       });
 
-      const enrollment = await prisma.enrollment.create({
+      const userCourse = await prisma.userCourse.create({
         data: {
           userId: req.user!.userId,
           courseId: id,
+          status: 'active',
         },
       });
 
-      return res.status(201).json(enrollment);
+      return res.status(201).json(userCourse);
     }
   } catch (error) {
     console.error('Enroll error:', error);
@@ -723,12 +807,12 @@ router.post('/:id/request', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
-    // Check if already enrolled
-    const existing = await prisma.enrollment.findUnique({
+    // Check if already has access
+    const existing = await prisma.userCourse.findUnique({
       where: { userId_courseId: { userId, courseId } },
     });
     if (existing) {
-      return res.status(400).json({ error: 'Ya estás inscrito en este curso' });
+      return res.status(400).json({ error: 'Ya tienes acceso a este curso' });
     }
 
     // Create a notification for the admin
