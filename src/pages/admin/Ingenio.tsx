@@ -382,7 +382,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         try {
             setLoading(true);
             const data = await coursesApi.getAll(true);
-            setCourses(data);
+            setCourses([...data].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
         } catch { toast.error('Error al cargar la academia'); }
         finally { setLoading(false); }
     };
@@ -700,6 +700,56 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     );
 }
 
+// ─── Material types mirror IngenioMaterials ────────────────────────────────
+const IM_E1_SEGMENTS = [
+    { number: 1, color: '#ef4444', title: 'Poder del Dinero' },
+    { number: 2, color: '#f97316', title: 'Crear más Dinero' },
+    { number: 3, color: '#f59e0b', title: 'Manejar el Dinero' },
+    { number: 4, color: '#84cc16', title: 'Proteger el Dinero' },
+    { number: 5, color: '#22c55e', title: 'Ahorrar el Dinero' },
+    { number: 6, color: '#10b981', title: 'Crecer el Dinero' },
+    { number: 7, color: '#06b6d4', title: 'Preservar el Dinero' },
+    { number: 8, color: '#3b82f6', title: 'Invertir el Dinero' },
+    { number: 9, color: '#6366f1', title: 'Donar el Dinero' },
+    { number: 10, color: '#8b5cf6', title: 'Disfrutar el Dinero' },
+];
+const IM_E2_SEGMENTS = [
+    { number: 1, color: '#ef4444', title: 'Mentalidad Ganadora' },
+    { number: 2, color: '#f97316', title: 'Metas Claras' },
+    { number: 3, color: '#f59e0b', title: 'Plan de Acción' },
+    { number: 4, color: '#84cc16', title: 'Ingresos Múltiples' },
+    { number: 5, color: '#22c55e', title: 'Inversión Inteligente' },
+    { number: 6, color: '#10b981', title: 'Red de Contactos' },
+    { number: 7, color: '#06b6d4', title: 'Educación Continua' },
+    { number: 8, color: '#3b82f6', title: 'Disciplina Financiera' },
+    { number: 9, color: '#6366f1', title: 'Dar para Recibir' },
+    { number: 10, color: '#8b5cf6', title: 'Legado Duradero' },
+];
+
+interface IMaterial {
+    id: string;
+    title: string;
+    description: string;
+    stage: 'E1' | 'E2';
+    segmentNumber: number;
+    fileUrl: string;
+    fileType: 'pdf' | 'video' | 'audio' | 'doc';
+    createdAt: string;
+}
+
+function useIngenioMaterials() {
+    const getMaterials = (stage: 'E1' | 'E2'): IMaterial[] => {
+        try {
+            const saved = localStorage.getItem(`ingenio-materials-${stage}`);
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    };
+    return {
+        e1: getMaterials('E1'),
+        e2: getMaterials('E2'),
+    };
+}
+
 function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () => void }) {
     const [course, setCourse] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -709,6 +759,9 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
     const [selectedModuleId, setSelectedModuleId] = useState('');
     const [lessonForm, setLessonForm] = useState({ title: '', videoUrl: '' });
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
+    const [pickerStage, setPickerStage] = useState<'E1' | 'E2'>('E1');
+    const [selectedMaterial, setSelectedMaterial] = useState<IMaterial | null>(null);
+    const ingenioMaterials = useIngenioMaterials();
 
     useEffect(() => { fetchCourse(); }, [courseId]);
 
@@ -840,20 +893,150 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isLessonOpen} onOpenChange={setIsLessonOpen}>
-                <DialogContent className="rounded-3xl">
-                    <DialogTitle>Agregar Material</DialogTitle>
-                    <div className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                            <Label>Título</Label>
-                            <Input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} className="rounded-xl" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>URL Video</Label>
-                            <Input value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} className="rounded-xl" placeholder="YouTube URL..." />
-                        </div>
-                        <Button onClick={handleCreateLesson as any} className="w-full rounded-xl bg-blue-600">Agregar</Button>
+            <Dialog open={isLessonOpen} onOpenChange={(open) => { setIsLessonOpen(open); if (!open) { setSelectedMaterial(null); } }}>
+                <DialogContent className="rounded-3xl max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Agregar Material</DialogTitle>
+                        <p className="text-sm text-slate-500">Selecciona un material de Ingenio Millonario para agregar al módulo</p>
+                    </DialogHeader>
+
+                    {/* Stage Tabs */}
+                    <div className="flex gap-2 pt-2">
+                        {(['E1', 'E2'] as const).map(stage => (
+                            <button
+                                key={stage}
+                                onClick={() => { setPickerStage(stage); setSelectedMaterial(null); }}
+                                className={cn(
+                                    'flex-1 py-2 rounded-xl text-sm font-bold transition-all',
+                                    pickerStage === stage
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                                )}
+                            >
+                                {stage} – {stage === 'E1' ? 'Básico' : 'Avanzado'}
+                            </button>
+                        ))}
                     </div>
+
+                    {/* Material List grouped by segment */}
+                    <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-1">
+                        {(() => {
+                            const mats = pickerStage === 'E1' ? ingenioMaterials.e1 : ingenioMaterials.e2;
+                            const segs = pickerStage === 'E1' ? IM_E1_SEGMENTS : IM_E2_SEGMENTS;
+
+                            if (mats.length === 0) {
+                                return (
+                                    <div className="py-12 text-center rounded-2xl bg-slate-50 dark:bg-slate-900">
+                                        <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                        <p className="text-slate-500 text-sm">No hay materiales en {pickerStage}</p>
+                                        <p className="text-xs text-slate-400 mt-1">Sube materiales en la sección «Materiales de Estudio»</p>
+                                    </div>
+                                );
+                            }
+
+                            return segs.map(seg => {
+                                const segMats = mats.filter(m => m.segmentNumber === seg.number);
+                                if (segMats.length === 0) return null;
+                                return (
+                                    <div key={seg.number}>
+                                        {/* Segment header */}
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div
+                                                className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold"
+                                                style={{ backgroundColor: seg.color }}
+                                            >
+                                                {seg.number}
+                                            </div>
+                                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                                                {seg.title}
+                                            </span>
+                                        </div>
+                                        {/* Material cards */}
+                                        <div className="space-y-1.5">
+                                            {segMats.map(mat => {
+                                                const isSelected = selectedMaterial?.id === mat.id;
+                                                return (
+                                                    <button
+                                                        key={mat.id}
+                                                        onClick={() => setSelectedMaterial(isSelected ? null : mat)}
+                                                        className={cn(
+                                                            'w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-all',
+                                                            isSelected
+                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                                : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                                        )}
+                                                    >
+                                                        {/* Icon */}
+                                                        <div
+                                                            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                                                            style={{ backgroundColor: seg.color + '22' }}
+                                                        >
+                                                            {mat.fileType === 'pdf' && <FileText className="w-4 h-4" style={{ color: seg.color }} />}
+                                                            {mat.fileType === 'video' && <Video className="w-4 h-4" style={{ color: seg.color }} />}
+                                                            {mat.fileType === 'audio' && <span className="text-base">🎵</span>}
+                                                            {mat.fileType === 'doc' && <FileText className="w-4 h-4" style={{ color: seg.color }} />}
+                                                        </div>
+                                                        {/* Info */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{mat.title}</p>
+                                                            {mat.description && (
+                                                                <p className="text-xs text-slate-500 truncate">{mat.description}</p>
+                                                            )}
+                                                        </div>
+                                                        {/* Type badge */}
+                                                        <Badge
+                                                            className="text-[10px] uppercase border-none flex-shrink-0"
+                                                            style={{ backgroundColor: seg.color + '22', color: seg.color }}
+                                                        >
+                                                            {mat.fileType}
+                                                        </Badge>
+                                                        {/* Checkmark */}
+                                                        {isSelected && (
+                                                            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()}
+                    </div>
+
+                    {/* Selection preview + action */}
+                    {selectedMaterial && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-0.5">Seleccionado</p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{selectedMaterial.title}</p>
+                            </div>
+                            <Button
+                                onClick={async () => {
+                                    if (!selectedMaterial) return;
+                                    try {
+                                        await coursesApi.addLesson(selectedModuleId, {
+                                            title: selectedMaterial.title,
+                                            videoUrl: selectedMaterial.fileUrl || null,
+                                        });
+                                        toast.success('Material agregado');
+                                        setIsLessonOpen(false);
+                                        setSelectedMaterial(null);
+                                        fetchCourse();
+                                    } catch {
+                                        toast.error('Error al agregar material');
+                                    }
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 rounded-xl flex-shrink-0"
+                            >
+                                Agregar al módulo
+                            </Button>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

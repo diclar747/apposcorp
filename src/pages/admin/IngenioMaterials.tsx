@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Upload, FileText, Video, BookOpen, Trash2, Plus,
-    Sparkles, RotateCcw, ChevronRight
+    Sparkles, RotateCcw, ChevronRight, Loader2, FileUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wheel } from '@/components/ingenio/Wheel';
-import { coursesApi } from '@/lib/api';
+import { coursesApi, uploadApi } from '@/lib/api';
+import { useRef } from 'react';
 
 // Tipos de materiales
 interface Material {
@@ -58,7 +59,9 @@ const e2Segments = [
 export default function IngenioMaterials() {
     const [materials, setMaterials] = useState<Material[]>([]);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedStage, setSelectedStage] = useState<'E1' | 'E2'>('E1');
     const [showWheel, setShowWheel] = useState(false);
     const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
@@ -338,12 +341,47 @@ export default function IngenioMaterials() {
                             </Select>
                         </div>
                         <div>
-                            <Label>URL del archivo</Label>
-                            <Input 
-                                value={form.fileUrl}
-                                onChange={(e) => setForm({...form, fileUrl: e.target.value})}
-                                placeholder="https://..."
-                            />
+                            <Label>Archivo del material</Label>
+                            <div className="flex gap-2">
+                                <Input 
+                                    value={form.fileUrl}
+                                    readOnly
+                                    placeholder="Selecciona o sube un archivo..."
+                                    className="bg-slate-50"
+                                />
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    accept=".pdf,.doc,.docx,.mp4,.mp3"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        
+                                        setUploading(true);
+                                        try {
+                                            const res = await uploadApi.uploadFile(file);
+                                            setForm(prev => ({ ...prev, fileUrl: res.url }));
+                                            toast.success('Archivo subido correctamente');
+                                        } catch (err: any) {
+                                            toast.error(err.message || 'Error al subir');
+                                        } finally {
+                                            setUploading(false);
+                                        }
+                                    }}
+                                />
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    disabled={uploading}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                                Recomendado: PDF para guías, MP4 para videos. Máx 20MB.
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>
