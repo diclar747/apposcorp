@@ -590,3 +590,12 @@ export interface ProductFilters {
   search?: string;
   sortBy?: 'price_asc' | 'price_desc' | 'newest' | 'popular';
 }
+export interface Enrollment {
+  id: string;
+  courseId: string;
+  userId: string;
+  status: string;
+  progress: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
