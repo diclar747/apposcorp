@@ -421,6 +421,7 @@ model Course {
   description      String
   shortDescription String
   coverImage       String?
+  updateYear       String?
   previewVideo     String?
   instructorId     String
   instructorName   String

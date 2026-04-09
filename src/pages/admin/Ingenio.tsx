@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { formatCurrency, cn, formatNumber, parseFormattedNumber } from '@/lib/utils';
 import { coursesApi, financesApi, ingenioApi } from '@/lib/api';
+import { ImageUpload } from '@/components/shared/ImageUpload';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell,
@@ -373,7 +374,9 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         id: null,
         title: '',
         description: '',
-        price: ''
+        price: '',
+        coverImage: '',
+        updateYear: new Date().getFullYear().toString()
     });
 
     useEffect(() => { fetchCourses(); }, []);
@@ -388,7 +391,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     };
 
     const handleOpenCreate = () => {
-        setFormState({ id: null, title: '', description: '', price: '' });
+        setFormState({ id: null, title: '', description: '', price: '', coverImage: '', updateYear: new Date().getFullYear().toString() });
         setIsFormOpen(true);
     };
 
@@ -397,7 +400,9 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             id: course.id,
             title: course.title.includes(':') ? course.title.split(':').slice(1).join(':').trim() : (course.title.includes(' - ') ? course.title.split(' - ').slice(1).join(' - ').trim() : course.title),
             description: course.description,
-            price: course.price > 0 ? formatNumber(course.price) : ''
+            price: course.price > 0 ? formatNumber(course.price) : '',
+            coverImage: course.coverImage || '',
+            updateYear: course.updateYear || new Date().getFullYear().toString()
         });
         setIsFormOpen(true);
     };
@@ -412,7 +417,9 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                  title: titleWithPrefix,
                  description: formState.description,
                  category: imCategory,
-                 price: parseFormattedNumber(formState.price)
+                 price: parseFormattedNumber(formState.price),
+                 coverImage: formState.coverImage,
+                 updateYear: formState.updateYear
             };
 
             if (formState.id) {
@@ -629,7 +636,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             </div>
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogContent className="rounded-3xl sm:max-w-[425px] dark:bg-slate-900 dark:border-slate-800">
+                <DialogContent className="rounded-3xl sm:max-w-[700px] dark:bg-slate-900 dark:border-slate-800">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black uppercase tracking-tighter dark:text-white">
                             {formState.id ? 'Editar Etapa' : `Nueva Etapa ${filter}`}
@@ -638,32 +645,56 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                             Completa los detalles de la etapa académica.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label className="font-bold text-slate-500 dark:text-slate-300">Título</Label>
-                            <Input placeholder="Nombre del curso..." value={formState.title} onChange={e => setFormState({ ...formState, title: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="font-bold text-slate-500 dark:text-slate-300">Precio del Curso</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
-                                <Input 
-                                    type="text" 
-                                    placeholder="0" 
-                                    value={formState.price} 
-                                    onChange={e => {
-                                        const raw = e.target.value.replace(/\D/g, '');
-                                        if (!raw) return setFormState({ ...formState, price: '' });
-                                        const num = parseInt(raw, 10);
-                                        setFormState({ ...formState, price: formatNumber(num) });
-                                    }} 
-                                    className="pl-10 rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold" 
-                                />
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 py-4">
+                        {/* Text fields column */}
+                        <div className="md:col-span-3 space-y-4">
+                            <div className="space-y-2">
+                                <Label className="font-bold text-slate-500 dark:text-slate-300">Título</Label>
+                                <Input placeholder="Nombre del curso..." value={formState.title} onChange={e => setFormState({ ...formState, title: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Precio del Curso</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
+                                        <Input 
+                                            type="text" 
+                                            placeholder="0" 
+                                            value={formState.price} 
+                                            onChange={e => {
+                                                const raw = e.target.value.replace(/\D/g, '');
+                                                if (!raw) return setFormState({ ...formState, price: '' });
+                                                const num = parseInt(raw, 10);
+                                                setFormState({ ...formState, price: formatNumber(num) });
+                                            }} 
+                                            className="pl-10 rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Año Act.</Label>
+                                    <Input placeholder="Ej: 2026" value={formState.updateYear} onChange={e => setFormState({ ...formState, updateYear: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="font-bold text-slate-500 dark:text-slate-300">Descripción</Label>
+                                <Textarea placeholder="Breve descripción..." value={formState.description} onChange={e => setFormState({ ...formState, description: e.target.value })} className="rounded-xl min-h-[90px] resize-none dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="font-bold text-slate-500 dark:text-slate-300">Descripción</Label>
-                            <Textarea placeholder="Breve descripción..." value={formState.description} onChange={e => setFormState({ ...formState, description: e.target.value })} className="rounded-xl min-h-[100px] dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+
+                        {/* Image upload column */}
+                        <div className="md:col-span-2 space-y-2 flex flex-col">
+                            <Label className="font-bold text-slate-500 dark:text-slate-300">Imagen de Portada</Label>
+                            <div className="w-full flex-1">
+                                <ImageUpload
+                                  value={formState.coverImage || null}
+                                  onChange={(val) => setFormState({ ...formState, coverImage: val || '' })}
+                                  shape="rect"
+                                  maxWidth={800}
+                                  maxHeight={800}
+                                  label="Subir foto..."
+                                />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

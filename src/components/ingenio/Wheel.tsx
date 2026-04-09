@@ -98,16 +98,41 @@ export function Wheel({
     // Detener la animación actual
     animationRef.current.stop();
     
-    // Calcular dónde está ahora y completar hasta el segmento más cercano
-    const currentRotation = rotation % 360;
-    const targetIndex = Math.floor((360 - currentRotation + segmentAngle / 2) / segmentAngle) % segments.length;
-    const targetAngle = rotation + (360 - currentRotation) + (targetIndex * segmentAngle) - (segmentAngle / 2);
+    // Calcular el ángulo actual en la parte superior (0 a 360)
+    const currentModuloR = rotation % 360;
+    let currentTopAngle = (360 - currentModuloR) % 360;
+    if (currentTopAngle < 0) currentTopAngle += 360;
     
-    animate(rotation, targetAngle, {
+    // Identificar el índice del segmento actual basado en la posición física
+    const currentIndex = Math.floor(currentTopAngle / segmentAngle) % segments.length;
+    
+    // Calcular el centro de ese segmento para alinearlo perfectamente
+    const targetCenterAngle = currentIndex * segmentAngle + segmentAngle / 2;
+    
+    // ¿Qué rotación "R" pone targetCenterAngle en el top?
+    // Sabemos que topAngle = 360 - R, por lo tanto R = 360 - topAngle
+    const requiredRemainder = (360 - targetCenterAngle) % 360;
+    
+    const fullRotations = rotation - currentModuloR;
+    let targetRotation = fullRotations + requiredRemainder;
+    
+    // Si ya pasamos este centro en la rotación actual, ir al centro del SIGUIENTE segmento
+    if (targetRotation <= rotation) {
+        const nextIndex = (currentIndex + 1) % segments.length;
+        const nextCenterAngle = nextIndex * segmentAngle + segmentAngle / 2;
+        let nextRemainder = (360 - nextCenterAngle) % 360;
+        
+        targetRotation = fullRotations + nextRemainder;
+        if (targetRotation <= rotation) {
+            targetRotation += 360;
+        }
+    }
+    
+    animate(rotation, targetRotation, {
       duration: 1.5,
       ease: 'easeOut',
       onUpdate: (latest) => setRotation(latest),
-      onComplete: () => finishSpin(targetAngle)
+      onComplete: () => finishSpin(targetRotation)
     });
   };
 
@@ -115,9 +140,12 @@ export function Wheel({
     setIsSpinning(false);
     onSpinStateChange?.(false);
     
-    // Calcular el segmento ganador
-    const normalizedRotation = ((finalRotation % 360) + 360) % 360;
-    const winningIndex = Math.floor((360 - normalizedRotation + segmentAngle / 2) / segmentAngle) % segments.length;
+    // Calcular el ángulo real en la parte superior del círculo físico
+    let topAngle = (360 - (finalRotation % 360)) % 360;
+    if (topAngle < 0) topAngle += 360;
+    
+    // El índice ganador es exactamente el segmento que contiene este ángulo
+    const winningIndex = Math.floor(topAngle / segmentAngle) % segments.length;
     const winner = segments[winningIndex];
     
     setSelectedSegment(winner);

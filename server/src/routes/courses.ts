@@ -232,7 +232,7 @@ router.get('/:id', async (req, res) => {
 // Create course (admin only)
 router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
-    const { title, description, shortDescription, price, category, level, instructorName, coverImage, previewVideo, isPublished } = req.body;
+    const { title, description, shortDescription, price, category, level, instructorName, coverImage, updateYear, previewVideo, isPublished } = req.body;
 
     // Generate slug from title
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
@@ -252,6 +252,7 @@ router.post('/', authenticate, authorize('superadmin'), async (req: AuthRequest,
         level: level || 'beginner',
         price: price ? Number(price) : 0,
         coverImage: coverImage || null,
+        updateYear: updateYear || null,
         previewVideo: previewVideo || null,
         isPublished: isPublished ?? true,
       },
@@ -277,7 +278,7 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthReques
     const id = req.params.id as string;
     const { 
       title, description, shortDescription, price, comparePrice,
-      category, level, instructorName, coverImage, previewVideo, 
+      category, level, instructorName, coverImage, updateYear, previewVideo, 
       isPublished, isFeatured 
     } = req.body;
 
@@ -289,10 +290,6 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthReques
     const updateData: any = {};
     if (title !== undefined) {
       updateData.title = title;
-      // If title changes, we might want to update slug (optional, but requested implicitly by "completing CRUD")
-      // In this system, slugs include a timestamp, so we often keep them persistent, 
-      // but let's allow it if the system expects title-slug sync.
-      // updateData.slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
     }
     
     if (description !== undefined) updateData.description = description;
@@ -303,6 +300,7 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req: AuthReques
     if (level !== undefined) updateData.level = level;
     if (instructorName !== undefined) updateData.instructorName = instructorName;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
+    if (updateYear !== undefined) updateData.updateYear = updateYear;
     if (previewVideo !== undefined) updateData.previewVideo = previewVideo;
     if (isPublished !== undefined) updateData.isPublished = isPublished;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
