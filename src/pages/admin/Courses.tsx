@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Search, Plus, BookOpen, MoreHorizontal, Users, Trash2, Edit,
   ArrowLeft, FolderPlus, FileText, ImageIcon, Video, Link2,
-  ChevronDown, ChevronUp, Eye, EyeOff, UserPlus, X
+  ChevronDown, ChevronUp, Eye, EyeOff, UserPlus, X, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { formatCurrency, cn, formatNumber, parseFormattedNumber } from '@/lib/utils';
-import { coursesApi, usersApi } from '@/lib/api';
+import { coursesApi, uploadApi, usersApi } from '@/lib/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -133,6 +133,19 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
       fetchCourses();
     } catch (error) {
       toast.error(formState.id ? 'Error al actualizar curso' : 'Error al crear curso');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const toastId = toast.loading('Subiendo imagen...');
+      const result = await uploadApi.uploadFile(file);
+      setFormState({ ...formState, coverImage: result.url });
+      toast.success('Imagen subida', { id: toastId });
+    } catch {
+      toast.error('Error al subir la imagen');
     }
   };
 
@@ -275,13 +288,20 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
               </div>
               <div className="space-y-2">
                 <Label htmlFor="coverImage" className="dark:text-slate-300">URL Imagen de Portada</Label>
-                <Input 
-                  id="coverImage" 
-                  value={formState.coverImage} 
-                  onChange={e => setFormState({ ...formState, coverImage: e.target.value })} 
-                  className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                  placeholder="Ej: https://..."
-                />
+                <div className="flex gap-2">
+                  <Input 
+                    id="coverImage" 
+                    value={formState.coverImage} 
+                    onChange={e => setFormState({ ...formState, coverImage: e.target.value })} 
+                    className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    placeholder="Ej: https://..."
+                  />
+                  <Label htmlFor="upload-cover-form" className="flex items-center justify-center px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+                    <Download className="w-4 h-4" />
+                    <input id="upload-cover-form" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </Label>
+                </div>
+                <p className="text-[10px] text-slate-400">Las subidas se borran en Vercel. Recomendado: Pegar link.</p>
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
@@ -526,6 +546,19 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
       fetchCourse();
     } catch (error) {
       toast.error('Error al actualizar');
+    }
+  };
+
+  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const toastId = toast.loading('Subiendo imagen...');
+      const result = await uploadApi.uploadFile(file);
+      setEditForm({ ...editForm, coverImage: result.url });
+      toast.success('Imagen subida', { id: toastId });
+    } catch {
+      toast.error('Error al subir la imagen');
     }
   };
 
@@ -1184,7 +1217,14 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
             </div>
             <div className="space-y-2">
               <Label>URL Imagen de Portada</Label>
-              <Input value={editForm.coverImage} onChange={e => setEditForm({ ...editForm, coverImage: e.target.value })} placeholder="Ej: https://..." />
+              <div className="flex gap-2">
+                <Input value={editForm.coverImage} onChange={e => setEditForm({ ...editForm, coverImage: e.target.value })} placeholder="Ej: https://..." />
+                <Label htmlFor="upload-cover-edit" className="flex items-center justify-center px-4 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+                  <Download className="w-4 h-4" />
+                  <input id="upload-cover-edit" type="file" accept="image/*" className="hidden" onChange={handleEditImageUpload} />
+                </Label>
+              </div>
+              <p className="text-[10px] text-slate-400">Las subidas se borran en Vercel. Recomendado: Pegar link.</p>
             </div>
           </div>
           <DialogFooter>

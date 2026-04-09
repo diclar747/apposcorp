@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { formatCurrency, cn, formatNumber, parseFormattedNumber } from '@/lib/utils';
-import { coursesApi, financesApi, ingenioApi } from '@/lib/api';
+import { coursesApi, financesApi, ingenioApi, uploadApi } from '@/lib/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell,
@@ -434,6 +434,19 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         } catch { toast.error('Ocurrió un error al guardar el curso'); }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const toastId = toast.loading('Subiendo imagen...');
+            const result = await uploadApi.uploadFile(file);
+            setFormState({ ...formState, coverImage: result.url });
+            toast.success('Imagen subida', { id: toastId });
+        } catch {
+            toast.error('Error al subir la imagen');
+        }
+    };
+
     const confirmDelete = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         setCourseToDelete(id);
@@ -677,8 +690,15 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                                 <Input placeholder="Ej: 2026" value={formState.updateYear} onChange={e => setFormState({ ...formState, updateYear: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="font-bold text-slate-500 dark:text-slate-300">URL Imagen</Label>
-                                <Input placeholder="https://..." value={formState.coverImage} onChange={e => setFormState({ ...formState, coverImage: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                                <Label className="font-bold text-slate-500 dark:text-slate-300">URL Imagen de Portada</Label>
+                                <div className="flex gap-2">
+                                    <Input placeholder="https://..." value={formState.coverImage} onChange={e => setFormState({ ...formState, coverImage: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                                    <Label htmlFor="upload-cover" className="flex items-center justify-center px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+                                        <Download className="w-4 h-4" />
+                                        <input id="upload-cover" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                    </Label>
+                                </div>
+                                <p className="text-[10px] text-slate-400">En Vercel las subidas se borran solas. Mejor pegar un link externo.</p>
                             </div>
                         </div>
                     </div>
