@@ -176,44 +176,50 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    // 6. Real Email Sending via Nodemailer
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    // 6. Real Email Sending via Nodemailer or Demo Mode
+    const isDemoMode = !process.env.SMTP_USER || !process.env.SMTP_PASS;
 
-    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?verify=${verificationToken}`;
+    if (!isDemoMode) {
+      const nodemailer = await import('nodemailer');
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
 
-    const mailOptions = {
-      from: `"Oscorp Platform" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: 'Oscorp Platform - Verifica tu cuenta',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
-          <h2 style="color: #1e293b; text-align: center;">¡Bienvenido a Oscorp!</h2>
-          <p style="color: #475569; font-size: 16px;">Hola ${firstName},</p>
-          <p style="color: #475569; font-size: 16px;">Gracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico haciendo clic en el siguiente botón:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Verificar mi cuenta</a>
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?verify=${verificationToken}`;
+
+      const mailOptions = {
+        from: `"Oscorp Platform" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: 'Oscorp Platform - Verifica tu cuenta',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <h2 style="color: #1e293b; text-align: center;">¡Bienvenido a Oscorp!</h2>
+            <p style="color: #475569; font-size: 16px;">Hola ${firstName},</p>
+            <p style="color: #475569; font-size: 16px;">Gracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico haciendo clic en el siguiente botón:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Verificar mi cuenta</a>
+            </div>
+            <p style="color: #475569; font-size: 14px;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
+            <p style="color: #2563eb; font-size: 14px; word-break: break-all;">${verifyUrl}</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="color: #94a3b8; font-size: 12px; text-align: center;">Si no solicitaste este registro, por favor ignora este correo.</p>
           </div>
-          <p style="color: #475569; font-size: 14px;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
-          <p style="color: #2563eb; font-size: 14px; word-break: break-all;">${verifyUrl}</p>
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">Si no solicitaste este registro, por favor ignora este correo.</p>
-        </div>
-      `,
-    };
+        `,
+      };
 
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log(`[EMAIL ENVIADO] Verificación enviada exitosamente a ${email}`);
-    } catch (mailError) {
-      console.error('[EMAIL ERROR] Error enviando correo de verificación:', mailError);
-      // Opcional: Podrías decidir revertir el registro o continuar pero advirtiendo
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`[EMAIL ENVIADO] Verificación enviada exitosamente a ${email}`);
+      } catch (mailError) {
+        console.error('[EMAIL ERROR] Error enviando correo de verificación:', mailError);
+        // Opcional: Podrías decidir revertir el registro o continuar pero advirtiendo
+      }
+    } else {
+      console.log('MODO DEMO: Token de verificación ->', verificationToken);
     }
 
     const token = generateToken({
@@ -225,9 +231,12 @@ router.post('/register', async (req, res) => {
     const { password: _, ...userWithoutPassword } = fullUser!;
 
     res.status(201).json({
-      message: 'Registro exitoso. Se ha enviado un correo de verificación.',
+      message: isDemoMode 
+        ? 'Registro exitoso (Modo Demo). Use el demoToken para verificar.' 
+        : 'Registro exitoso. Se ha enviado un correo de verificación.',
       token,
       user: userWithoutPassword,
+      ...(isDemoMode && { demoToken: verificationToken })
     });
   } catch (error) {
     console.error('Register error:', error);

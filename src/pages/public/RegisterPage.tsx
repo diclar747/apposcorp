@@ -41,6 +41,7 @@ export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [registeredToken, setRegisteredToken] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { register: authRegister } = useAuthStore();
@@ -78,19 +79,32 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
 
-    const success = await authRegister({
+    const response = await authRegister({
       ...data,
       address: '',
       city: ''
     } as RegisterData);
 
-    if (success) {
-      toast.success('¡Registro exitoso! Revisa tu bandeja de entrada o spam para verificar tu correo.');
-
-      setTimeout(() => {
-        // Obligamos al usuario a verificar cuenta, por ende lo mandamos al login
-        navigate('/login');
-      }, 3000);
+    if (response) {
+      if (response.demoToken) {
+        setRegisteredToken(response.demoToken);
+        toast.info(
+          "¡Atención (Modo Demo)! Tu token de verificación es: " + response.demoToken,
+          {
+            duration: 15000,
+            action: {
+              label: "Verificar ahora",
+              onClick: () => navigate(`/login?verify=${response.demoToken}`)
+            },
+          }
+        );
+      } else {
+        toast.success('¡Registro exitoso! Revisa tu bandeja de entrada o spam para verificar tu correo.');
+        
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
     } else {
       const authError = useAuthStore.getState().error;
       toast.error(authError || 'Error al intentar crear la cuenta.');
@@ -280,16 +294,38 @@ export default function RegisterPage() {
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
                   <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">¡Todo listo!</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {registeredToken ? '¡Token de Demo Generado!' : '¡Todo listo!'}
+                </h2>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Revisa tus datos antes de crear tu cuenta
+                  {registeredToken 
+                    ? 'Copia tu token o haz clic abajo para verificar tu cuenta:' 
+                    : 'Revisa tus datos antes de crear tu cuenta'}
                 </p>
-                <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 text-left space-y-2">
-                  <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
-                  <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
-                  <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
-                  <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : formData.role === 'seller' ? 'Comerciante' : 'Estudiante Ingenio'}</p>
-                </div>
+
+                {registeredToken ? (
+                  <div className="space-y-3">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4">
+                      <code className="text-blue-700 dark:text-blue-300 font-mono text-sm break-all">
+                        {registeredToken}
+                      </code>
+                    </div>
+                    <Button 
+                      onClick={() => navigate(`/login?verify=${registeredToken}`)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Verificar cuenta ahora
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 text-left space-y-2">
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Nombre:</span> {formData.firstName} {formData.lastName}</p>
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Email:</span> {formData.email}</p>
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Teléfono:</span> {formData.phone || 'No especificado'}</p>
+                    <p className="text-gray-800 dark:text-gray-200"><span className="text-gray-500 dark:text-gray-400">Tipo:</span> {formData.role === 'client' ? 'Usuario' : formData.role === 'seller' ? 'Comerciante' : 'Estudiante Ingenio'}</p>
+                  </div>
+                )}
               </div>
             )}
           </form>

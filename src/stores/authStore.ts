@@ -23,7 +23,7 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<boolean>;
+  register: (data: RegisterData) => Promise<any | false>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<boolean>;
   updateBankData: (data: any) => Promise<boolean>;
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null
           });
-          return true;
+          return response;
         } catch (error: any) {
           set({
             isLoading: false,
