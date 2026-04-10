@@ -83,8 +83,9 @@ export default function LoginPage() {
           navigate('/admin');
         } else if (currentUser?.roles.includes('seller')) {
           navigate('/vendedor');
+        } else if (currentUser?.roles.includes('ingenio') && currentUser?.roles.includes('client')) {
+          navigate(currentUser.initialInterface === 'INGENIO' ? '/ingenio' : '/app');
         } else if (currentUser?.roles.includes('ingenio')) {
-          // Priorizamos Ingenio si el usuario es estudiante
           navigate('/ingenio');
         } else {
           navigate('/app');
@@ -114,8 +115,9 @@ export default function LoginPage() {
           navigate('/admin');
         } else if (currentUser?.roles.includes('seller')) {
           navigate('/vendedor');
+        } else if (currentUser?.roles.includes('ingenio') && currentUser?.roles.includes('client')) {
+          navigate(currentUser.initialInterface === 'INGENIO' ? '/ingenio' : '/app');
         } else if (currentUser?.roles.includes('ingenio')) {
-          // Priorizamos Ingenio si el usuario es estudiante
           navigate('/ingenio');
         } else {
           navigate('/app');
