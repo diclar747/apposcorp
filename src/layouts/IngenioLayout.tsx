@@ -32,7 +32,7 @@ export default function IngenioLayout() {
 
   const handleOscorpWallet = () => {
     if (hasRole(['client'])) {
-      window.location.href = '/app/wallet';
+      navigate("/app");
     } else {
       setShowOscorpAlert(true);
     }
@@ -43,7 +43,7 @@ export default function IngenioLayout() {
     if (success) {
       toast.success('¡Registro exitoso! Tu Billetera Oscorp ha sido activada.');
       setShowOscorpAlert(false);
-      window.location.href = '/app/wallet';
+      navigate("/app");
     }
   };
 
