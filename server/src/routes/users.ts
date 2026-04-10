@@ -233,7 +233,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    if (user.role !== 'seller') {
+    if (!user.roles.includes('seller')) {
       return res.status(400).json({ error: 'Usuário não é um vendedor' });
     }
 
@@ -281,7 +281,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     const id = req.params.id as string;
 
     // Only admin or own user can view
-    if (req.user!.role !== 'superadmin' && req.user!.userId !== id) {
+    if (!req.user!.roles.includes('superadmin') && req.user!.userId !== id) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -333,14 +333,14 @@ router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, r
 router.put('/:id', authenticate, authorize('superadmin'), async (req, res) => {
   try {
     const id = req.params.id as string;
-    const { firstName, lastName, email, phone, role, password } = req.body;
+    const { firstName, lastName, email, phone, roles, password } = req.body;
 
     const updateData: any = {
       firstName,
       lastName,
       email,
       phone,
-      role,
+      roles,
     };
 
     if (password) {
@@ -348,10 +348,36 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req, res) => {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
+    // Ensure wallet and virtual card if 'client' role is added and doesn't exist
+    const oldUser = await prisma.user.findUnique({
+      where: { id },
+      include: { wallet: true }
+    });
+
+    if (roles?.includes('client') && oldUser && !oldUser.wallet) {
+      updateData.wallet = { create: { balance: 0, currency: 'USD' } };
+    }
+
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
+      include: { wallet: true, virtualCard: true }
     });
+
+    // Create virtual card if we just created a wallet
+    if (roles?.includes('client') && oldUser && !oldUser.wallet && user.wallet) {
+      const crypto = await import('crypto');
+      const cardNumber = `OSC${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      await prisma.virtualCard.create({
+        data: {
+          userId: user.id,
+          walletId: user.wallet.id,
+          cardNumber,
+          qrData: JSON.stringify({ userId: user.id, cardNumber }),
+          design: 'gradient_blue',
+        },
+      });
+    }
 
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);

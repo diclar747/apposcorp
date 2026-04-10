@@ -24,7 +24,7 @@ async function main() {
             password: adminPass,
             firstName: 'Admin',
             lastName: 'Oscorp',
-            role: 'superadmin',
+            roles: ['superadmin'],
             isActive: true
         }
     });
@@ -57,7 +57,7 @@ async function main() {
             password: sellerPass,
             firstName: 'Elena',
             lastName: 'Vega',
-            role: 'seller',
+            roles: ['seller'],
             isActive: true
         }
     });
@@ -108,7 +108,7 @@ async function main() {
             password: clientPass,
             firstName: 'Ana',
             lastName: 'Rodríguez',
-            role: 'client',
+            roles: ['client'],
             isActive: true
         }
     });

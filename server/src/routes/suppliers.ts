@@ -17,12 +17,12 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         }
 
         let where: any = {};
-        if (user.role === 'seller') {
+        if (user.roles.includes('seller')) {
             if (!user.sellerProfile) {
                 return res.status(400).json({ error: 'Perfil de vendedor no encontrado' });
             }
             where.sellerId = user.sellerProfile.id;
-        } else if (user.role !== 'superadmin') {
+        } else if (!user.roles.includes('superadmin')) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
 
@@ -46,11 +46,11 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
             include: { sellerProfile: true },
         });
 
-        if (!user || (user.role !== 'seller' && user.role !== 'superadmin')) {
+        if (!user || (!user.roles.includes('seller') && !user.roles.includes('superadmin'))) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
 
-        const sellerId = user.role === 'seller' ? user.sellerProfile?.id : req.body.sellerId;
+        const sellerId = user.roles.includes('seller') ? user.sellerProfile?.id : req.body.sellerId;
 
         if (!sellerId) {
             return res.status(400).json({ error: 'ID de vendedor es obligatorio' });
@@ -97,7 +97,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
         }
 
         // Authorization
-        if (user?.role !== 'superadmin' && supplier.sellerId !== user?.sellerProfile?.id) {
+        if (!user?.roles.includes('superadmin') && supplier.sellerId !== user?.sellerProfile?.id) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
 
@@ -131,7 +131,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
         }
 
         // Authorization
-        if (user?.role !== 'superadmin' && supplier.sellerId !== user?.sellerProfile?.id) {
+        if (!user?.roles.includes('superadmin') && supplier.sellerId !== user?.sellerProfile?.id) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
 

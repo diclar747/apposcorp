@@ -91,17 +91,24 @@ function ProtectedRoute({
 }) {
   const { isAuthenticated, user } = useAuthStore();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user?.role || 'client')) {
-    // Redirect based on role
-    if (user?.role === 'superadmin') {
+  const hasAccess = user.roles?.some((r: string) => allowedRoles.includes(r as any));
+
+  if (!hasAccess) {
+    // Si tiene ambos y no tiene acceso a esta ruta, redirigimos a su principal
+    if (user.roles.includes('client') && user.roles.includes('ingenio')) {
+      return <Navigate to={user.initialInterface === 'INGENIO' ? '/ingenio' : '/app'} replace />;
+    }
+    
+    // Redirect based on sole role
+    if (user.roles.includes('superadmin')) {
       return <Navigate to="/admin" replace />;
-    } else if (user?.role === 'seller') {
+    } else if (user.roles.includes('seller')) {
       return <Navigate to="/vendedor" replace />;
-    } else if (user?.role === 'ingenio') {
+    } else if (user.roles.includes('ingenio')) {
       return <Navigate to="/ingenio" replace />;
     } else {
       return <Navigate to="/app" replace />;

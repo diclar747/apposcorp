@@ -11,7 +11,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     const { as = 'buyer' } = req.query;
 
     let where: any;
-    if (req.user!.role === 'superadmin' && as === 'admin') {
+    if (req.user!.roles.includes('superadmin') && as === 'admin') {
       where = {}; // superadmin sees all orders
     } else if (as === 'seller') {
       where = { sellerId: req.user!.userId };
@@ -91,7 +91,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 
     // Check if user is buyer, seller, or admin
     if (
-      req.user!.role !== 'superadmin' &&
+      !req.user!.roles.includes('superadmin') &&
       order.buyerId !== req.user!.userId &&
       order.sellerId !== req.user!.userId
     ) {
@@ -363,7 +363,7 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
     }
 
     // Only seller or admin can update status
-    if (req.user!.role !== 'superadmin' && order.sellerId !== req.user!.userId) {
+    if (!req.user!.roles.includes('superadmin') && order.sellerId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
 

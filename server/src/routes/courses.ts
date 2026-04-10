@@ -818,7 +818,7 @@ router.post('/:id/request', authenticate, async (req: AuthRequest, res) => {
 
     // Find admin users
     const admins = await prisma.user.findMany({
-      where: { role: 'superadmin' },
+      where: { roles: { has: 'superadmin' } },
       select: { id: true },
     });
 

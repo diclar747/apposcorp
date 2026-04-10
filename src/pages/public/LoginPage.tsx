@@ -21,10 +21,10 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const quickLogins = [
-  { email: 'admin@oscorp.com', password: 'admin123', role: 'superadmin', label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
-  { email: 'vendedor1@oscorp.com', password: 'seller123', role: 'seller', label: 'Comerciante', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-  { email: 'cliente1@oscorp.com', password: 'client123', role: 'client', label: 'Usuarios', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  { email: 'estudiante1@oscorp.com', password: 'student123', role: 'ingenio', label: 'Ingenio Millonario', icon: BookOpen, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
+  { email: 'admin@oscorp.com', password: 'admin123', roles: ['superadmin'], label: 'Admin', icon: Shield, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+  { email: 'vendedor1@oscorp.com', password: 'seller123', roles: ['seller'], label: 'Comerciante', icon: Store, color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  { email: 'cliente1@oscorp.com', password: 'client123', roles: ['client'], label: 'Usuarios', icon: User, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  { email: 'estudiante1@oscorp.com', password: 'student123', roles: ['ingenio'], label: 'Ingenio Millonario', icon: BookOpen, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
 ];
 
 export default function LoginPage() {
@@ -79,11 +79,13 @@ export default function LoginPage() {
       // Redirect based on role
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
-        if (currentUser?.role === 'superadmin') {
+        if (currentUser?.roles.includes('superadmin')) {
           navigate('/admin');
-        } else if (currentUser?.role === 'seller') {
+        } else if (currentUser?.roles.includes('seller')) {
           navigate('/vendedor');
-        } else if (currentUser?.role === 'ingenio') {
+        } else if (currentUser?.roles.includes('ingenio') && currentUser?.roles.includes('client')) {
+          navigate(currentUser.initialInterface === 'INGENIO' ? '/ingenio' : '/app');
+        } else if (currentUser?.roles.includes('ingenio')) {
           navigate('/ingenio');
         } else {
           navigate('/app');
@@ -109,11 +111,13 @@ export default function LoginPage() {
       toast.success('¡Bienvenido de vuelta!');
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
-        if (currentUser?.role === 'superadmin') {
+        if (currentUser?.roles.includes('superadmin')) {
           navigate('/admin');
-        } else if (currentUser?.role === 'seller') {
+        } else if (currentUser?.roles.includes('seller')) {
           navigate('/vendedor');
-        } else if (currentUser?.role === 'ingenio') {
+        } else if (currentUser?.roles.includes('ingenio') && currentUser?.roles.includes('client')) {
+          navigate(currentUser.initialInterface === 'INGENIO' ? '/ingenio' : '/app');
+        } else if (currentUser?.roles.includes('ingenio')) {
           navigate('/ingenio');
         } else {
           navigate('/app');

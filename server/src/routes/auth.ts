@@ -51,7 +51,7 @@ router.post('/login', async (req, res) => {
     const token = generateToken({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      roles: user.roles,
     });
 
     // Remove password from response
@@ -70,7 +70,7 @@ router.post('/login', async (req, res) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone, address, city, role } = req.body;
+    const { email, password, firstName, lastName, phone, address, city, roles, initialInterface } = req.body;
 
     // 1. Mandatory fields validation
     if (!email || !password || !firstName || !lastName) {
@@ -106,8 +106,11 @@ router.post('/register', async (req, res) => {
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    const userCount = await prisma.user.count();
-    const cardNumber = `OSC${String(userCount + 1).padStart(6, '0')}`;
+    const cardNumber = `OSC${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    const includesWallet = roles?.includes('client') || roles?.includes('seller');
+    const includesIngenio = roles?.includes('ingenio');
+    const finalRoles = roles || ['client'];
 
     const user = await prisma.user.create({
       data: {
@@ -118,17 +121,21 @@ router.post('/register', async (req, res) => {
         phone,
         address,
         city,
-        role: role || 'client',
+        roles: finalRoles,
+        initialInterface: initialInterface || 'OSCORP',
+        ingenioAccess: includesIngenio,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
         isVerified: false,
         verificationToken,
         verificationTokenExpires,
-        wallet: {
-          create: {
-            balance: 0,
-            currency: 'USD',
+        ...(includesWallet ? {
+          wallet: {
+            create: {
+              balance: 0,
+              currency: 'USD',
+            },
           },
-        },
+        } : {}),
       },
       include: {
         wallet: true,
@@ -136,19 +143,20 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    // Create virtual card
-    await prisma.virtualCard.create({
-      data: {
-        userId: user.id,
-        walletId: user.wallet!.id,
-        cardNumber,
-        qrData: JSON.stringify({ userId: user.id, cardNumber }),
-        design: 'gradient_blue',
-      },
-    });
+    if (includesWallet && user.wallet) {
+      await prisma.virtualCard.create({
+        data: {
+          userId: user.id,
+          walletId: user.wallet.id,
+          cardNumber,
+          qrData: JSON.stringify({ userId: user.id, cardNumber }),
+          design: 'gradient_blue',
+        },
+      });
+    }
 
     // If seller, create seller profile with 7-day trial
-    if (role === 'seller') {
+    if (roles?.includes('seller')) {
       await prisma.sellerProfile.create({
         data: {
           userId: user.id,
@@ -225,7 +233,7 @@ router.post('/register', async (req, res) => {
     const token = generateToken({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      roles: user.roles,
     });
 
     const { password: _, ...userWithoutPassword } = fullUser!;
@@ -381,6 +389,88 @@ router.get('/verify', async (req, res) => {
   } catch (error) {
     console.error('Verify error:', error);
     res.status(500).json({ error: 'Error en el servidor al verificar cuenta' });
+  }
+});
+// Add Role
+router.post('/add-role', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { role } = req.body;
+    if (!role) return res.status(400).json({ error: 'Rol requerido' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true }
+    });
+
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // Validate role
+    if (!['client', 'ingenio', 'seller'].includes(role)) {
+      return res.status(400).json({ error: 'Rol inválido' });
+    }
+
+    // Check if user already has role
+    if (user.roles.includes(role)) {
+      return res.json(user); // Already has it
+    }
+
+    const updatedRoles = [...user.roles, role];
+    let updateData: any = { roles: updatedRoles };
+
+    if (role === 'client' && !user.wallet) {
+      // Create Wallet if adding 'client' role and doesn't exist
+      updateData.wallet = { create: { balance: 0, currency: 'USD' } };
+    }
+    
+    // Also change initialInterface to the new one so when they login next, they enter the newly added interface? 
+    // Wait, the prompt says "si tiene ambos roles: Llevarlo a la initialInterface guardada". So we leave initialInterface as is, but later on login they could switch it.
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: updateData,
+      include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true }
+    });
+
+    // If we just created the wallet for 'client', create virtual card too
+    if (role === 'client' && !user.wallet && updatedUser.wallet) {
+      const crypto = await import('crypto');
+      const cardNumber = `OSC${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      await prisma.virtualCard.create({
+        data: {
+          userId: user.id,
+          walletId: updatedUser.wallet.id,
+          cardNumber,
+          qrData: JSON.stringify({ userId: user.id, cardNumber }),
+          design: 'gradient_blue',
+        },
+      });
+      // reload user to get the card
+      const finalUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true }
+      });
+      
+      const newToken = generateToken({
+        userId: finalUser!.id,
+        email: finalUser!.email,
+        roles: finalUser!.roles,
+      });
+
+      const { password: _, ...userWithoutPassword } = finalUser!;
+      return res.json({ token: newToken, user: userWithoutPassword });
+    }
+
+    const newToken = generateToken({
+      userId: updatedUser.id,
+      email: updatedUser.email,
+      roles: updatedUser.roles,
+    });
+
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    res.json({ token: newToken, user: userWithoutPassword });
+  } catch (error) {
+    console.error('Add role error:', error);
+    res.status(500).json({ error: 'Error en el servidor al agregar rol' });
   }
 });
 

@@ -18,7 +18,7 @@ async function main() {
             id: 'user-1',
             email: 'admin@oscorp.com',
             password: adminPassword,
-            role: 'superadmin',
+            roles: ['superadmin'],
             firstName: 'Super',
             lastName: 'Admin'
         },
@@ -26,7 +26,7 @@ async function main() {
             id: 'user-2',
             email: 'vendedor1@oscorp.com',
             password: sellerPassword,
-            role: 'seller',
+            roles: ['seller'],
             firstName: 'Carlos',
             lastName: 'Martínez',
             sellerProfile: {
@@ -43,7 +43,7 @@ async function main() {
             id: 'user-3',
             email: 'vendedor2@oscorp.com',
             password: sellerPassword,
-            role: 'seller',
+            roles: ['seller'],
             firstName: 'María',
             lastName: 'González',
             sellerProfile: {
@@ -60,7 +60,7 @@ async function main() {
             id: 'user-7',
             email: 'tech@oscorp.com',
             password: sellerPassword,
-            role: 'seller',
+            roles: ['seller'],
             firstName: 'Elena',
             lastName: 'Vega',
             sellerProfile: {
@@ -77,7 +77,7 @@ async function main() {
             id: 'user-8',
             email: 'gourmet@oscorp.com',
             password: sellerPassword,
-            role: 'seller',
+            roles: ['seller'],
             firstName: 'Marco',
             lastName: 'Rossian',
             sellerProfile: {
@@ -94,7 +94,7 @@ async function main() {
             id: 'user-9',
             email: 'super@oscorp.com',
             password: sellerPassword,
-            role: 'seller',
+            roles: ['seller'],
             firstName: 'Ricardo',
             lastName: 'Altamirano',
             sellerProfile: {
@@ -111,7 +111,7 @@ async function main() {
             id: 'user-4',
             email: 'cliente1@oscorp.com',
             password: clientPassword,
-            role: 'client',
+            roles: ['client'],
             firstName: 'Juan',
             lastName: 'Pérez'
         },
@@ -119,7 +119,7 @@ async function main() {
             id: 'user-5',
             email: 'cliente2@oscorp.com',
             password: clientPassword,
-            role: 'client',
+            roles: ['client'],
             firstName: 'Ana',
             lastName: 'Rodríguez'
         }
@@ -149,7 +149,7 @@ async function main() {
                 password: user.password, // Correct Hashed Password
                 firstName: user.firstName,
                 lastName: user.lastName,
-                role: user.role as any,
+                roles: user.roles as any,
                 isActive: true,
                 ingenioAccess: true,
                 wallet: {

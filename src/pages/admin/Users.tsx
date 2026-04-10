@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save, BookOpen } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save, BookOpen, Check } from 'lucide-react';
 import { cn, getRoleName, getRoleColor, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,7 @@ import { usersApi, plansApi, coursesApi } from '@/lib/api';
 import type { SubscriptionPlan, BillingCycle, Course, UserCourse } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Types
 interface UserData {
@@ -63,7 +64,7 @@ interface UserData {
   firstName: string;
   lastName: string;
   phone: string;
-  role: 'client' | 'seller' | 'superadmin';
+  roles: string[];
   isActive: boolean;
   ingenioAccess: boolean;
   ingenioInstallmentsPaid?: number;
@@ -77,13 +78,12 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'client' | 'seller' | 'superadmin'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'client' | 'seller' | 'superadmin' | 'ingenio'>('all');
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const { isAuthenticated } = useAuthStore();
 
-  // Edit User State
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
-  const [editFormData, setEditFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', role: '' });
+  const [editFormData, setEditFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', roles: [] as string[] });
   const [isSaving, setIsSaving] = useState(false);
 
   // Actions State
@@ -166,7 +166,7 @@ export default function AdminUsers() {
       lastName: user.lastName,
       email: user.email,
       phone: user.phone,
-      role: user.role
+      roles: user.roles || []
     });
   };
 
@@ -277,7 +277,7 @@ export default function AdminUsers() {
     const matchesSearch = user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    const matchesRole = filterRole === 'all' || user.roles?.includes(filterRole);
     return matchesSearch && matchesRole;
   });
 
@@ -353,6 +353,14 @@ export default function AdminUsers() {
               >
                 Admins
               </Button>
+              <Button
+                variant={filterRole === 'ingenio' ? 'default' : 'outline'}
+                onClick={() => setFilterRole('ingenio')}
+                size="sm"
+                className="flex-1 sm:flex-none"
+              >
+                Ingenio
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -377,7 +385,6 @@ export default function AdminUsers() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user, index) => {
-                  const RoleIcon = getRoleIcon(user.role);
                   return (
                     <motion.tr
                       key={user.id}
@@ -413,11 +420,18 @@ export default function AdminUsers() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={cn(getRoleColor(user.role), "text-xs")}>
-                          <RoleIcon className="w-3 h-3 mr-1 shrink-0" />
-                          <span className="hidden sm:inline">{getRoleName(user.role)}</span>
-                          <span className="sm:hidden">{user.role === 'superadmin' ? 'Admin' : user.role === 'seller' ? 'Vend' : 'Cli'}</span>
-                        </Badge>
+                        <div className="flex gap-1 flex-wrap">
+                          {user.roles?.map(role => {
+                            const RIcon = getRoleIcon(role);
+                            return (
+                              <Badge key={role} className={cn(getRoleColor(role), "text-xs")}>
+                                <RIcon className="w-3 h-3 mr-1 shrink-0" />
+                                <span className="hidden sm:inline">{getRoleName(role)}</span>
+                                <span className="sm:hidden">{getRoleName(role).substring(0, 4)}</span>
+                              </Badge>
+                            );
+                          })}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
@@ -465,7 +479,7 @@ export default function AdminUsers() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setViewingUser(user)}>Ver perfil</DropdownMenuItem>
                             <DropdownMenuItem>Ver transacciones</DropdownMenuItem>
-                            {user.role === 'seller' && (
+                            {user.roles.includes('seller') && (
                               <DropdownMenuItem onClick={() => handleOpenPlanModal(user)}>
                                 <Shield className="w-4 h-4 mr-2" />
                                 Gestionar Plan
@@ -547,18 +561,36 @@ export default function AdminUsers() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Rol</Label>
-              <Select value={editFormData.role} onValueChange={(val) => setEditFormData({ ...editFormData, role: val })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione un rol" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">Cliente</SelectItem>
-                  <SelectItem value="seller">Vendedor</SelectItem>
-                  <SelectItem value="superadmin">Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold">Roles del Usuario</Label>
+              <div className="grid grid-cols-1 gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                {[
+                  { id: 'client', label: 'Cliente (Wallet Oscorp)', icon: UserCircle },
+                  { id: 'seller', label: 'Vendedor (Comerciante)', icon: Store },
+                  { id: 'ingenio', label: 'Estudiante (Ingenio Millonario)', icon: BookOpen },
+                  { id: 'superadmin', label: 'Administrador (Super)', icon: Shield },
+                ].map((role) => (
+                  <div key={role.id} className="flex items-center space-x-3">
+                    <Checkbox 
+                      id={`role-${role.id}`}
+                      checked={editFormData.roles.includes(role.id)}
+                      onCheckedChange={(checked) => {
+                        const newRoles = checked 
+                          ? [...editFormData.roles, role.id]
+                          : editFormData.roles.filter(r => r !== role.id);
+                        setEditFormData({ ...editFormData, roles: newRoles });
+                      }}
+                    />
+                    <label 
+                      htmlFor={`role-${role.id}`}
+                      className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      <role.icon className="w-4 h-4 text-slate-500" />
+                      {role.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -588,8 +620,10 @@ export default function AdminUsers() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">{viewingUser.firstName} {viewingUser.lastName}</h3>
                   <p className="text-gray-500">{viewingUser.email}</p>
-                  <div className="flex gap-2 mt-2">
-                    <Badge className={cn(getRoleColor(viewingUser.role))}>{getRoleName(viewingUser.role)}</Badge>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {viewingUser.roles?.map(role => (
+                      <Badge key={role} className={cn(getRoleColor(role))}>{getRoleName(role)}</Badge>
+                    ))}
                     <Badge variant={viewingUser.isActive ? 'default' : 'secondary'}>{viewingUser.isActive ? 'Activo' : 'Inactivo'}</Badge>
                   </div>
                 </div>

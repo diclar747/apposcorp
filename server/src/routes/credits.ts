@@ -103,7 +103,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     if (!credit) {
       return res.status(404).json({ error: 'Crédito no encontrado' });
     }
-    if (req.user!.role !== 'superadmin' && credit.userId !== req.user!.userId) {
+    if (!req.user!.roles.includes('superadmin') && credit.userId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
     res.json(credit);
