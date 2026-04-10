@@ -29,7 +29,8 @@ export interface User {
   address: string;
   city: string;
   avatar?: string;
-  role: UserRole;
+  roles: UserRole[];
+  initialInterface?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -121,13 +121,13 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       include: { sellerProfile: true },
     });
 
-    if (!user || (user.role !== 'seller' && user.role !== 'superadmin')) {
+    if (!user || (!user.roles.includes('seller') && !user.roles.includes('superadmin'))) {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
 
     // Determine sellerId (sellerProfile ID)
     let sellerId: string | undefined;
-    if (user.role === 'seller') {
+    if (user.roles.includes('seller')) {
       sellerId = user.sellerProfile?.id;
     } else {
       // Admin passes userId, we need to find the sellerProfile
@@ -241,7 +241,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     }
 
     // Only seller owner or admin can update
-    if (req.user!.role !== 'superadmin' && product.seller.userId !== req.user!.userId) {
+    if (!req.user!.roles.includes('superadmin') && product.seller.userId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
 
@@ -301,7 +301,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    if (req.user!.role !== 'superadmin' && product.seller.userId !== req.user!.userId) {
+    if (!req.user!.roles.includes('superadmin') && product.seller.userId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
 

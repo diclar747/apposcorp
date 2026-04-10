@@ -11,7 +11,8 @@ export interface RegisterData {
   phone: string;
   address: string;
   city: string;
-  role: UserRole;
+  roles: UserRole[];
+  initialInterface?: string;
 }
 
 interface AuthState {
@@ -20,6 +21,9 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   error: string | null;
+  interfaceMode?: string;
+
+  setInterfaceMode: (mode: string) => void;
 
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
@@ -29,6 +33,7 @@ interface AuthState {
   updateBankData: (data: any) => Promise<boolean>;
   clearError: () => void;
   hasRole: (roles: UserRole[]) => boolean;
+  addRole: (role: UserRole) => Promise<boolean>;
   fetchCurrentUser: () => Promise<void>;
 }
 
@@ -40,6 +45,9 @@ export const useAuthStore = create<AuthState>()(
       token: localStorage.getItem('oscorp-token'),
       isLoading: false,
       error: null,
+      interfaceMode: 'OSCORP',
+
+      setInterfaceMode: (mode: string) => set({ interfaceMode: mode }),
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -184,16 +192,38 @@ export const useAuthStore = create<AuthState>()(
         set({ error: null });
       },
 
+      addRole: async (role: UserRole) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authApi.addRole(role);
+          if (response && response.user) {
+            set({ user: response.user, isLoading: false, error: null });
+            return true;
+          }
+          const { user } = get();
+          if (user && !user.roles.includes(role)) {
+            set({ user: { ...user, roles: [...user.roles, role] }, isLoading: false });
+          } else {
+             set({ isLoading: false });
+          }
+          return true;
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message || 'Error al agregar rol' });
+          return false;
+        }
+      },
+
       hasRole: (roles: UserRole[]) => {
         const { user } = get();
-        return user ? roles.includes(user.role) : false;
+        return user?.roles ? user.roles.some((r: UserRole) => roles.includes(r)) : false;
       },
     }),
     {
       name: 'oscorp-auth',
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated
+        isAuthenticated: state.isAuthenticated,
+        interfaceMode: state.interfaceMode
       }),
     }
   )

@@ -11,7 +11,7 @@ async function getSellerId(userId: string): Promise<string | null> {
         include: { sellerProfile: true },
     });
     if (!user) return null;
-    if (user.role === 'superadmin') return '__admin__';
+    if (user.roles.includes('superadmin')) return '__admin__';
     return user.sellerProfile?.id || null;
 }
 

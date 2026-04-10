@@ -712,7 +712,7 @@ const AboutSection = () => (
 // ─── Testimonials ───────────────────────────────────────────────────
 const TestimonialsSection = () => {
   const testimonials = [
-    { name: 'María González', role: 'Emprendedora', content: 'Oscorp transformó mi negocio. Ahora vendo a todo el país y mis ingresos crecieron un 300%. La plataforma es increíblemente fácil de usar.', rating: 5 },
+    { name: 'María González', roles: ['Emprendedora'], content: 'Oscorp transformó mi negocio. Ahora vendo a todo el país y mis ingresos crecieron un 300%. La plataforma es increíblemente fácil de usar.', rating: 5 },
     { name: 'Carlos Martínez', role: 'Vendedor Profesional', content: 'La billetera digital es increíble. Puedo pagar en cualquier tienda con solo escanear mi QR. Las transferencias son instantáneas.', rating: 5 },
     { name: 'Ana Rodríguez', role: 'Estudiante de Finanzas', content: 'Los cursos de Ingenio Millonario cambiaron mi vida. Ahora tengo control total de mis finanzas y estoy construyendo mi patrimonio.', rating: 5 },
   ];

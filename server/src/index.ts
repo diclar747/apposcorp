@@ -54,7 +54,7 @@ app.get('/api/health/db', async (req, res) => {
   try {
     const userCount = await prisma.user.count();
     const users = await prisma.user.findMany({
-      select: { id: true, email: true, role: true, firstName: true }
+      select: { id: true, email: true, roles: true, firstName: true }
     });
     res.json({
       status: 'ok',
@@ -116,7 +116,7 @@ app.get('/api/setup', async (req, res) => {
         address: '123 Admin Street',
         city: 'New York',
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-        role: 'superadmin',
+        roles: ['superadmin'],
         isActive: true,
         ingenioAccess: true,
         wallet: { create: { balance: 10000, currency: 'USD' } }
@@ -136,7 +136,7 @@ app.get('/api/setup', async (req, res) => {
         design: 'gradient_dark',
       }
     });
-    results.push({ email: admin.email, role: admin.role, status: 'ok' });
+    results.push({ email: admin.email, roles: admin.roles, status: 'ok' });
 
     // 2. Criar Seller 1
     const seller1 = await prisma.user.upsert({
@@ -151,7 +151,7 @@ app.get('/api/setup', async (req, res) => {
         address: '456 Seller Ave',
         city: 'Los Angeles',
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=seller1',
-        role: 'seller',
+        roles: ['seller'],
         isActive: true,
         wallet: { create: { balance: 2500, currency: 'USD', totalIn: 5000, totalOut: 2500 } }
       },
@@ -191,7 +191,7 @@ app.get('/api/setup', async (req, res) => {
         reviewCount: 45,
       }
     });
-    results.push({ email: seller1.email, role: seller1.role, status: 'ok' });
+    results.push({ email: seller1.email, roles: seller1.roles, status: 'ok' });
 
     // 3. Criar Seller 2
     const seller2 = await prisma.user.upsert({
@@ -206,7 +206,7 @@ app.get('/api/setup', async (req, res) => {
         address: '789 Market St',
         city: 'Miami',
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=seller2',
-        role: 'seller',
+        roles: ['seller'],
         isActive: true,
         wallet: { create: { balance: 1800, currency: 'USD', totalIn: 3500, totalOut: 1700 } }
       },
@@ -246,7 +246,7 @@ app.get('/api/setup', async (req, res) => {
         reviewCount: 28,
       }
     });
-    results.push({ email: seller2.email, role: seller2.role, status: 'ok' });
+    results.push({ email: seller2.email, roles: seller2.roles, status: 'ok' });
 
     // 4. Criar Client 1
     const client1 = await prisma.user.upsert({
@@ -261,7 +261,7 @@ app.get('/api/setup', async (req, res) => {
         address: '321 Client Blvd',
         city: 'Chicago',
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=client1',
-        role: 'client',
+        roles: ['client'],
         isActive: true,
         ingenioAccess: true,
         wallet: { create: { balance: 500, currency: 'USD', totalIn: 2000, totalOut: 1500 } }
@@ -280,7 +280,7 @@ app.get('/api/setup', async (req, res) => {
         design: 'gradient_blue',
       }
     });
-    results.push({ email: client1.email, role: client1.role, status: 'ok' });
+    results.push({ email: client1.email, roles: client1.roles, status: 'ok' });
 
     // 5. Criar Client 2
     const client2 = await prisma.user.upsert({
@@ -295,7 +295,7 @@ app.get('/api/setup', async (req, res) => {
         address: '654 User Lane',
         city: 'Boston',
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=client2',
-        role: 'client',
+        roles: ['client'],
         isActive: true,
         wallet: { create: { balance: 150, currency: 'USD', totalIn: 800, totalOut: 650 } }
       },
@@ -313,7 +313,7 @@ app.get('/api/setup', async (req, res) => {
         design: 'gradient_purple',
       }
     });
-    results.push({ email: client2.email, role: client2.role, status: 'ok' });
+    results.push({ email: client2.email, roles: client2.roles, status: 'ok' });
 
     res.json({
       message: 'Todos os usuários criados/atualizados com sucesso!',

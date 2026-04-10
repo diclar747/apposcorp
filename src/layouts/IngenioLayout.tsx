@@ -8,23 +8,43 @@ import { useAuthStore } from "@/stores";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 
-const menuItems = [
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+
+const baseMenuItems = [
   { icon: Target, label: "Finanzas Master", href: "/ingenio" },
   { icon: PieChart, label: "Presupuesto", href: "/ingenio/presupuesto" },
   { icon: BookOpen, label: "Academia", href: "/ingenio/academia" },
-  { icon: Wallet, label: "Billetera", href: "/ingenio/wallet" },
   { icon: User, label: "Perfil", href: "/ingenio/profile" },
 ];
 
 export default function IngenioLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showOscorpAlert, setShowOscorpAlert] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasRole, addRole, isLoading } = useAuthStore();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleOscorpWallet = () => {
+    if (hasRole(['client'])) {
+      window.location.href = '/app/wallet';
+    } else {
+      setShowOscorpAlert(true);
+    }
+  };
+
+  const handleRegisterOscorp = async () => {
+    const success = await addRole('client');
+    if (success) {
+      toast.success('¡Registro exitoso! Tu Billetera Oscorp ha sido activada.');
+      setShowOscorpAlert(false);
+      window.location.href = '/app/wallet';
+    }
   };
 
   return (
@@ -77,7 +97,7 @@ export default function IngenioLayout() {
 
             <div className="flex-1 px-4 py-6 md:py-2 overflow-y-auto space-y-1">
               <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Principal</p>
-              {menuItems.map((item) => {
+              {baseMenuItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <Link
@@ -95,6 +115,16 @@ export default function IngenioLayout() {
                   </Link>
                 );
               })}
+              
+              {(hasRole(['client']) || hasRole(['seller']) || hasRole(['superadmin'])) && (
+                <button
+                  onClick={handleOscorpWallet}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                >
+                  <Wallet className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  <span className="font-medium text-sm flex-1 text-left">Billetera Oscorp</span>
+                </button>
+              )}
             </div>
 
             {/* Config & Logout */}
@@ -143,6 +173,25 @@ export default function IngenioLayout() {
           </div>
         </div>
       </main>
+
+      <AlertDialog open={showOscorpAlert} onOpenChange={setShowOscorpAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Habilita tu Billetera Oscorp</AlertDialogTitle>
+            <AlertDialogDescription>
+              Aún no tienes una billetera activa.
+              <br /><br />
+              Regístrate gratis como Usuario Normal de Oscorp para activar tu billetera y aprovechar todos sus beneficios.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleRegisterOscorp(); }} disabled={isLoading}>
+              {isLoading ? 'Activando...' : 'Sí, crear Billetera'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

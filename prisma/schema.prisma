@@ -17,7 +17,8 @@ model User {
   address             String?
   city                String?
   avatar              String?
-  role                UserRole            @default(client)
+  roles               UserRole[]          @default([client])
+  initialInterface    String              @default("OSCORP")
   isActive            Boolean             @default(true)
   ingenioAccess       Boolean             @default(false)
   isVerified          Boolean             @default(false)

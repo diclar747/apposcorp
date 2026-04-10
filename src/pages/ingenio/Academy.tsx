@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useWalletStore, useAuthStore } from "@/stores";
+import { useAuthStore } from "@/stores";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/utils";
+
 import Wheel from "@/components/ingenio/Wheel";
 import type { WheelSegment } from "@/components/ingenio/Wheel";
 import { HelpCircle } from "lucide-react";
@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 export default function IngenioAcademy() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { wallet, fetchWallet } = useWalletStore();
+
   
   const [courses, setCourses] = useState<any[]>([]);
   const [myCoursesIds, setMyCoursesIds] = useState<string[]>([]);
@@ -26,9 +26,7 @@ export default function IngenioAcademy() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (user?.id) {
-      fetchWallet(user.id);
-    }
+
     fetchData();
   }, [user?.id]);
 
@@ -149,15 +147,6 @@ export default function IngenioAcademy() {
             <p className="text-slate-400 text-lg leading-relaxed">
               Formación avanzada diseñada para tu crecimiento exponencial. Aprende a dominar las finanzas, inversiones y el sistema de negocios.
             </p>
-          </div>
-          
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2.5rem] min-w-[240px]">
-            <p className="text-slate-400 text-xs uppercase font-bold tracking-widest mb-1">Balance en Billetera</p>
-            <p className="text-3xl font-black text-white">{formatCurrency(wallet?.balance || 0)}</p>
-            <div className="flex items-center gap-3 mt-3">
-               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-               <span className="text-xs text-slate-300 font-medium">Billetera Activa</span>
-            </div>
           </div>
         </div>
       </div>

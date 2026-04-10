@@ -45,6 +45,12 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  addRole: (role: string) =>
+    fetchWithAuth('/auth/add-role', {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    }),
+
   getMe: () => fetchWithAuth('/auth/me'),
 
   updateMe: (data: any) =>

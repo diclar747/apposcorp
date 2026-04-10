@@ -81,6 +81,8 @@ export default function RegisterPage() {
 
     const response = await authRegister({
       ...data,
+      roles: [data.role],
+      initialInterface: data.role === 'ingenio' ? 'INGENIO' : 'OSCORP',
       address: '',
       city: ''
     } as RegisterData);
@@ -164,7 +166,19 @@ export default function RegisterPage() {
           exit={{ opacity: 0, x: -20 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          <form id="register-form" onSubmit={handleSubmit(onSubmit)}>
+          <form 
+            id="register-form" 
+            onSubmit={handleSubmit(onSubmit)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (currentStep < 3) {
+                  e.preventDefault();
+                  handleNext();
+                }
+                // If currentStep === 3, the default form submission will trigger onSubmit
+              }
+            }}
+          >
             {currentStep === 1 && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Datos personales</h2>

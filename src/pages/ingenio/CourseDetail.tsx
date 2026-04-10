@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // ─── Media type detection ──────────────────────────────────────────────────────
 
@@ -193,6 +194,8 @@ export default function IngenioCourseDetail() {
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  const [showWalletAlert, setShowWalletAlert] = useState(false);
+  const { hasRole, addRole } = useAuthStore();
 
   useEffect(() => {
     if (id) fetchData();
@@ -226,7 +229,11 @@ export default function IngenioCourseDetail() {
     );
   };
 
-  const handleEnroll = async () => {
+  const handleEnrollWallet = async () => {
+    if (!hasRole(['client'])) {
+      setShowWalletAlert(true);
+      return;
+    }
     if (!course) return;
     setEnrolling(true);
     try {
@@ -238,6 +245,19 @@ export default function IngenioCourseDetail() {
       toast.error(error?.message || 'Error al procesar el pago o inscribirse');
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const handleBankTransfer = () => {
+    toast.info('Contacte al administrador para realizar el pago por transferencia bancaria.');
+  };
+
+  const handleRegisterClient = async () => {
+    const success = await addRole('client');
+    if (success) {
+      toast.success('¡Excelente! Ahora tienes tu Billetera Oscorp. Ya puedes pagar con ella.');
+      setShowWalletAlert(false);
+      fetchWallet(user?.id!);
     }
   };
 
@@ -282,6 +302,7 @@ export default function IngenioCourseDetail() {
   const completedLessons = enrollment?.completedLessons || [];
 
   return (
+    <>
     <div className="space-y-8 pb-32 max-w-4xl mx-auto">
       {/* Header & Back Button */}
       <div className="flex items-center justify-between">
@@ -338,7 +359,7 @@ export default function IngenioCourseDetail() {
                 </p>
                 {!isEnrolled && (
                   <Button 
-                    onClick={handleEnroll}
+                    onClick={handleEnrollWallet}
                     disabled={enrolling}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl h-14 px-10 text-lg font-black shadow-2xl shadow-indigo-600/40 border-b-4 border-indigo-800 transform active:translate-y-1 transition-all"
                   >
@@ -510,22 +531,31 @@ export default function IngenioCourseDetail() {
                  </div>
               </div>
               
-              <div className="flex flex-col md:items-end gap-2 w-full md:w-auto">
+              <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
                  <Button 
-                   onClick={handleEnroll}
+                   onClick={handleEnrollWallet}
                    disabled={enrolling}
-                   className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl h-14 px-10 text-lg font-black shadow-2xl shadow-indigo-600/30 border-b-4 border-indigo-800 transition-all active:border-b-0 active:translate-y-1"
+                   className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl h-14 px-8 text-sm md:text-md font-black shadow-2xl shadow-indigo-600/30 border-b-4 border-indigo-800 transition-all active:border-b-0 active:translate-y-1"
                  >
                     {enrolling ? (
                       <div className="flex items-center gap-2">
                          <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                          <span>Procesando...</span>
                       </div>
-                    ) : 'Adquirir con Billetera'}
+                    ) : 'Pagar con Billetera Oscorp'}
                  </Button>
-                 <div className="flex items-center justify-center md:justify-end gap-2 px-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Tu Saldo:</p>
+                 <Button 
+                   onClick={handleBankTransfer}
+                   disabled={enrolling}
+                   className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl h-14 px-8 text-sm md:text-md font-black shadow-2xl shadow-indigo-600/30 border-b-4 border-indigo-800 transition-all active:border-b-0 active:translate-y-1"
+                 >
+                    Transferencia Bancaria Directa
+                 </Button>
+                 <div className="flex flex-col items-center justify-center pt-2 md:pt-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Tu Saldo:</p>
+                    </div>
                     <span className={cn("text-[11px] font-black", wallet && wallet.balance >= course.price ? "text-emerald-400" : "text-rose-400")}>
                       {formatCurrency(wallet?.balance || 0)}
                     </span>
@@ -536,5 +566,29 @@ export default function IngenioCourseDetail() {
         )}
       </AnimatePresence>
     </div>
+
+      <AlertDialog open={showWalletAlert} onOpenChange={setShowWalletAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¡Aprovecha los beneficios de Oscorp!</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para pagar con billetera, necesitas una Billetera Oscorp. Al crearla obtendrás:
+              <br /><br />
+              • Pagos sin comisiones en miles de tiendas.<br />
+              • Transferencias instantáneas.<br />
+              • Una tarjeta virtual Visa prepaga al instante.<br />
+              <br />
+              ¿Quieres registrarte como Usuario Normal de Oscorp y crear tu billetera gratis con esta misma cuenta?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={enrolling}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleRegisterClient(); }} disabled={enrolling}>
+              {enrolling ? 'Activando...' : 'Sí, crear mi Billetera Oscorp'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

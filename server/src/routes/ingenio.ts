@@ -311,7 +311,7 @@ router.post('/students/register', requireAuth, async (req: AuthRequest, res: Res
         
         // Check if already registered
         const existing = await prisma.ingenioStudent.findUnique({
-            where: { userId: req.user!.id },
+            where: { userId: req.user!.userId },
         });
         
         if (existing) {
@@ -580,7 +580,7 @@ router.post('/setup', requireAdmin, async (req, res) => {
 
         // Create courses for E1 and E2 (for the Academy tabs)
         const instructor = await prisma.user.findFirst({
-            where: { role: 'superadmin' },
+            where: { roles: { has: 'superadmin' } },
         });
 
         if (instructor) {

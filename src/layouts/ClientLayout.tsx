@@ -42,6 +42,8 @@ import { QRPayment } from '@/components/client/QRPayment';
 import { PushPermissionPrompt } from '@/components/push/PushPermissionPrompt';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { FloatingSocialButtons } from '@/components/client/FloatingSocialButtons';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface MenuItem {
   icon: typeof Home;
@@ -93,9 +95,10 @@ const menuSections: MenuSection[] = [
 export default function ClientLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showIngenioAlert, setShowIngenioAlert] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasRole, addRole, isLoading } = useAuthStore();
   const { wallet, fetchWallet } = useWalletStore();
   const { itemCount } = useCartStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
@@ -118,6 +121,23 @@ export default function ClientLayout() {
   const isActive = (href: string) => {
     if (href === '/app') return location.pathname === '/app';
     return location.pathname.startsWith(href);
+  };
+
+  const handleIngenioNavigation = async () => {
+    if (hasRole(['ingenio'])) {
+      window.location.href = '/ingenio';
+      return;
+    }
+    setShowIngenioAlert(true);
+  };
+
+  const handleRegisterIngenio = async () => {
+    const success = await addRole('ingenio');
+    if (success) {
+      toast.success('¡Registro exitoso! Bienvenido a Ingenio Millonario.');
+      setShowIngenioAlert(false);
+      window.location.href = '/ingenio';
+    }
   };
 
   return (
@@ -188,7 +208,9 @@ export default function ClientLayout() {
                             <button
                               key={item.label}
                               onClick={() => {
-                                if (item.action === 'qr') {
+                                if (item.href === '/app/ingenio') {
+                                  handleIngenioNavigation();
+                                } else if (item.action === 'qr') {
                                   setShowQR(true);
                                 } else {
                                   navigate(item.href);
@@ -335,6 +357,25 @@ export default function ClientLayout() {
 
       {/* Floating Social Buttons */}
       <FloatingSocialButtons />
+
+      <AlertDialog open={showIngenioAlert} onOpenChange={setShowIngenioAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Quieres registrarte en Ingenio Millonario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ingenio Millonario es una academia exclusiva donde aprenderás sobre finanzas, e-commerce y desarrollo personal con profesores de alto nivel.
+              <br /><br />
+              Al aceptar, se activará tu acceso a Ingenio Millonario utilizando tu misma cuenta de Oscorp, sin necesidad de crear una nueva.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleRegisterIngenio(); }} disabled={isLoading}>
+              {isLoading ? 'Registrando...' : 'Sí, registrarme'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

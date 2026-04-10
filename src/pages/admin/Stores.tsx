@@ -140,7 +140,7 @@ export default function AdminStores() {
           password: formData.password || '123456', // Default password if not provided
           phone: formData.phone,
           address: formData.address,
-          role: 'seller'
+          roles: ['seller']
         });
         userId = registerRes.user.id;
       }
