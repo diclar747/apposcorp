@@ -99,11 +99,7 @@ export default function IngenioAcademy() {
           )}
           
           <div className="absolute top-4 right-4 z-10">
-            {isEnrolled ? (
-              <Badge className="bg-emerald-500 text-white border-none px-3 py-1 font-bold shadow-lg">
-                <CheckCircle className="w-3 h-3 mr-1" /> Iniciado
-              </Badge>
-            ) : !isActive ? (
+            {!isActive ? (
               <Badge className="bg-slate-900/80 text-white backdrop-blur-md border-none px-3 py-1 font-bold shadow-lg">
                 <Lock className="w-3 h-3 mr-1" /> Premium
               </Badge>
