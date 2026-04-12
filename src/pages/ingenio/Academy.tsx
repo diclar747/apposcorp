@@ -29,6 +29,7 @@ export default function IngenioAcademy() {
   const [myCoursesIds, setMyCoursesIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("IM E1");
 
   if (status !== 'ACTIVE') {
     return <AccessDenied status={status} />;
@@ -152,11 +153,14 @@ export default function IngenioAcademy() {
     c.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const wheelSegments: WheelSegment[] = courses.slice(0, 12).map((c, i) => ({
-    number: i + 1,
-    color: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'][i % 12],
-    title: c.title,
-  }));
+  const wheelSegments: WheelSegment[] = courses
+    .filter(c => c.category === selectedCategory)
+    .slice(0, 12)
+    .map((c, i) => ({
+      number: i + 1,
+      color: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'][i % 12],
+      title: c.title,
+    }));
 
   const handleWheelSelect = (segment: WheelSegment) => {
     toast.success(`Destino sugerido: ${segment.title}`, {
@@ -197,7 +201,7 @@ export default function IngenioAcademy() {
                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Contenido Premium</p>
                   </div>
                   <div className="p-4 bg-white/5 rounded-3xl border border-white/10 text-center flex-1">
-                     <p className="text-2xl font-black text-emerald-400">{courses.length}</p>
+                     <p className="text-2xl font-black text-emerald-400">{courses.filter(c => c.category === selectedCategory).length}</p>
                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Cursos Totales</p>
                   </div>
                </div>
@@ -224,7 +228,7 @@ export default function IngenioAcademy() {
         </div>
       </div>
 
-      <Tabs defaultValue="IM E1" className="w-full">
+      <Tabs defaultValue="IM E1" value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
         <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto mb-10 overflow-x-auto whitespace-nowrap">
           {['IM E1', 'IM E2'].map(cat => (
             <TabsTrigger key={cat} value={cat} className="rounded-xl px-8 py-3 font-black text-sm leading-none data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg">
