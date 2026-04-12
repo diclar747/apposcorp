@@ -17,8 +17,12 @@ export function useIngenioSubscription() {
   const isRevoked = sub?.status === 'REVOKED';
   const isActive = !isRevoked && (user?.ingenioAccess || sub?.status === 'ACTIVE');
 
+  // If isActive is true but there's no subscription (or it's pending), 
+  // we report status as 'ACTIVE' to allow access.
+  const reportingStatus = isActive ? 'ACTIVE' : (sub?.status || 'NONE');
+
   return {
-    status: sub?.status || 'NONE',
+    status: reportingStatus,
     isActive,
     subscription: sub,
     isReadOnly: !isActive
