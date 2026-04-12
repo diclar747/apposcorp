@@ -165,16 +165,6 @@ export default function IngenioAcademy() {
     });
   };
 
-  if (status === 'NONE') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center">
-         <BookOpen className="w-20 h-20 text-indigo-100 mb-6" />
-         <h2 className="text-3xl font-black mb-4">Academia Bloqueada</h2>
-         <p className="text-slate-500 max-w-sm mb-8 font-medium">Suscríbete a Ingenio Millonario para acceder a todo el contenido educativo exclusivo.</p>
-         <Button size="lg" onClick={openPaywall} className="bg-indigo-600 rounded-full h-14 px-10 font-bold text-lg">Activar Acceso</Button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8 pb-10">
@@ -193,40 +183,6 @@ export default function IngenioAcademy() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {!isActive && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className={cn(
-               "p-6 rounded-[2rem] border-2 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6",
-               status === 'PENDING_APPROVAL' 
-                ? "bg-amber-50 border-amber-200"
-                : "bg-indigo-50 border-indigo-200"
-            )}>
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-lg">
-                   {status === 'PENDING_APPROVAL' ? <Clock className="text-amber-500 animate-pulse w-7 h-7" /> : <Lock className="text-indigo-600 w-7 h-7" />}
-                </div>
-                <div>
-                   <p className="font-black text-lg text-slate-900 leading-none mb-1">{status === 'PENDING_APPROVAL' ? 'Suscripción en Trámite' : 'Contenido Protegido'}</p>
-                   <p className="text-sm text-slate-600 font-bold opacity-80">
-                     {status === 'PENDING_APPROVAL' 
-                        ? 'Estamos validando tu pago. En breve tendrás acceso libre a todos los cursos.' 
-                        : 'Para ver las lecciones completas y descargar materiales, necesitas una suscripción activa.'}
-                   </p>
-                </div>
-              </div>
-              {status !== 'PENDING_APPROVAL' && (
-                <Button onClick={openPaywall} className="bg-slate-900 hover:bg-black text-white rounded-2xl h-12 px-8 font-black">Desbloquear Todo</Button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {wheelSegments.length > 0 && (
          <div className="flex flex-col lg:flex-row items-center gap-10 bg-slate-900 dark:bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl relative overflow-hidden">
