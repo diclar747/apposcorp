@@ -197,7 +197,15 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await authApi.addRole(role);
           if (response && response.user) {
-            set({ user: response.user, isLoading: false, error: null });
+            if (response.token) {
+              localStorage.setItem('oscorp-token', response.token);
+            }
+            set({ 
+              user: response.user, 
+              token: response.token || get().token,
+              isLoading: false, 
+              error: null 
+            });
             return true;
           }
           const { user } = get();

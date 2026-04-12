@@ -408,14 +408,82 @@ router.patch('/:id/ingenio', authenticate, authorize('superadmin'), async (req, 
     const id = req.params.id as string;
     const { hasAccess } = req.body;
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: { ingenioAccess: hasAccess },
+    // Get default price for subscription record if creating one
+    const setting = await prisma.systemSetting.findUnique({ where: { key: 'ingenio_price' } });
+    const defaultPrice = Number(setting?.value || 700000);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Get current user data
+      const oldUser = await tx.user.findUnique({ where: { id }, select: { roles: true } });
+      if (!oldUser) return;
+
+      const roles = Array.isArray(oldUser.roles) ? [...oldUser.roles] : [];
+      if (hasAccess && !roles.includes('ingenio')) {
+        roles.push('ingenio');
+      }
+
+      // 2. Update User flag and roles
+      await tx.user.update({
+        where: { id },
+        data: { 
+          ingenioAccess: hasAccess,
+          roles: roles
+        },
+      });
+
+      // 3. Synchronize Subscription table
+      if (hasAccess) {
+        // Find existing sub
+        const existingSub = await tx.ingenioSubscription.findUnique({ where: { userId: id } });
+        
+        if (existingSub) {
+          await tx.ingenioSubscription.update({
+            where: { userId: id },
+            data: { 
+              status: 'ACTIVE',
+              updatedAt: new Date(),
+              approvedAt: existingSub.approvedAt || new Date()
+            }
+          });
+        } else {
+          // Create a "Complimentary" active subscription
+          await tx.ingenioSubscription.create({
+            data: {
+              userId: id,
+              status: 'ACTIVE',
+              totalAmount: defaultPrice,
+              paidAmount: defaultPrice, // Give full credit if manually activated by admin
+              installments: 1,
+              paymentMethod: 'ADMIN_MANUAL',
+              approvedAt: new Date()
+            }
+          });
+        }
+
+        // 4. Create Student profile if missing
+        const existingStudent = await tx.ingenioStudent.findUnique({ where: { userId: id } });
+        if (!existingStudent) {
+          await tx.ingenioStudent.create({
+            data: {
+              userId: id,
+              referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+              isActive: true,
+              joinedAt: new Date()
+            }
+          });
+        }
+      } else {
+        // CLEAN RESET: If deactivating, delete the subscription and student profile
+        // This ensures the user sees the system as if they never had access (landing/pricing)
+        // We KEEP the 'ingenio' role as requested, only the access flag and records are removed.
+        await tx.ingenioSubscription.deleteMany({ where: { userId: id } });
+        await tx.ingenioStudent.deleteMany({ where: { userId: id } });
+      }
     });
 
-    const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    res.json({ success: true });
   } catch (error) {
+    console.error('Update Ingenio Access error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
@@ -553,6 +621,49 @@ router.delete('/:id/courses/:courseId', authenticate, authorize('superadmin'), a
   } catch (error) {
     console.error('Remove course error:', error);
     res.status(500).json({ error: 'Error al revocar acceso' });
+  }
+});
+
+// Upgrade user to client role (adds 'client' role and creates wallet)
+router.post('/upgrade-to-client', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { wallet: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const roles = Array.isArray(user.roles) ? [...user.roles] : [];
+    if (!roles.includes('client')) {
+      roles.push('client');
+    }
+
+    // Update user and create wallet if doesn't exist
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        roles,
+        ...( !user.wallet ? {
+          wallet: {
+            create: {
+              balance: 0,
+              currency: 'USD'
+            }
+          }
+        } : {})
+      },
+      include: { wallet: true }
+    });
+
+    const { password: _, ...safeUser } = updatedUser;
+    res.json(safeUser);
+  } catch (error) {
+    console.error('Upgrade to client error:', error);
+    res.status(500).json({ error: 'Error al actualizar a cliente' });
   }
 });
 

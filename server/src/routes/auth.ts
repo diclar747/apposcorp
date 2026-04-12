@@ -22,6 +22,7 @@ router.post('/login', async (req, res) => {
         virtualCard: true,
         sellerProfile: true,
         bankData: true,
+        ingenioSubscription: true,
       }
     });
 
@@ -123,7 +124,7 @@ router.post('/register', async (req, res) => {
         city,
         roles: finalRoles,
         initialInterface: initialInterface || 'OSCORP',
-        ingenioAccess: includesIngenio,
+        ingenioAccess: false,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
         isVerified: false,
         verificationToken,
@@ -181,6 +182,7 @@ router.post('/register', async (req, res) => {
         virtualCard: true,
         sellerProfile: true,
         bankData: true,
+        ingenioSubscription: true,
       },
     });
 
@@ -262,6 +264,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
         virtualCard: true,
         sellerProfile: true,
         bankData: true,
+        ingenioSubscription: true,
       },
     });
 
@@ -296,6 +299,7 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
         virtualCard: true,
         sellerProfile: true,
         bankData: true,
+        ingenioSubscription: true,
       },
     });
 
@@ -447,7 +451,7 @@ router.post('/add-role', authenticate, async (req: AuthRequest, res) => {
       // reload user to get the card
       const finalUser = await prisma.user.findUnique({
         where: { id: user.id },
-        include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true }
+        include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true, ingenioSubscription: true }
       });
       
       const newToken = generateToken({

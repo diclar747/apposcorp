@@ -14,6 +14,26 @@ export type TransactionType = 'income' | 'expense' | 'transfer_in' | 'transfer_o
 export type FinancialType = 'income' | 'expense' | 'asset' | 'liability';
 export type PlanTier = 'basic' | 'standard' | 'commercial' | 'custom';
 export type BillingCycle = 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'none';
+export type IngenioSubscriptionStatus = 'PENDING_PAYMENT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'REVOKED';
+
+export interface IngenioSubscription {
+  id: string;
+  userId: string;
+  status: IngenioSubscriptionStatus;
+  totalAmount: number;
+  installments: number;
+  paidAmount: number;
+  paymentMethod: 'WALLET' | 'BANK_TRANSFER';
+  createdAt: string;
+  updatedAt: string;
+  approvedAt?: string;
+}
+
+
+
+
+
+
 
 // ============================================
 // USUARIO
@@ -41,6 +61,7 @@ export interface User {
   ingenioAccess: boolean;
   ingenioInstallmentsPaid?: number;
   ingenioTotalInstallments?: number;
+  ingenioSubscription?: IngenioSubscription;
   reviews?: Review[];
 }
 
@@ -229,7 +250,7 @@ export interface Dimensions {
 }
 
 // ============================================
-// RESEÑAS Y CALIFICACIONES
+// RESEÃ‘AS Y CALIFICACIONES
 // ============================================
 
 export interface Review {
@@ -428,7 +449,7 @@ export interface UserCourse {
 }
 
 // ============================================
-// CRÉDITOS
+// CRÃ‰DITOS
 // ============================================
 
 export interface Credit {

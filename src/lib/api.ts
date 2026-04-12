@@ -134,6 +134,7 @@ export const usersApi = {
     fetchWithAuth(`/users/${userId}/courses/${courseId}`, {
       method: 'DELETE',
     }),
+  upgradeToClient: () => fetchWithAuth('/users/upgrade-to-client', { method: 'POST' }),
 };
 
 // Plans API
@@ -535,7 +536,16 @@ export const settingsApi = {
 
 // Finances API
 export const financesApi = {
-  getAll: () => fetchWithAuth('/finances'),
+  getAll: (params?: { month?: number; year?: number; type?: string; startDate?: string; endDate?: string; query?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.set(key, String(value));
+      });
+    }
+    const queryString = searchParams.toString();
+    return fetchWithAuth(`/finances${queryString ? `?${queryString}` : ''}`);
+  },
   getSummary: () => fetchWithAuth('/finances/summary'),
   create: (data: any) =>
     fetchWithAuth('/finances', {
@@ -559,6 +569,38 @@ export const financesApi = {
     fetchWithAuth('/finances/budget', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  createBudgetItem: (data: any) =>
+    fetchWithAuth('/finances/budget/items', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getBudgetItems: (month: number, year: number, filters: any = {}) => {
+    const params = new URLSearchParams({
+      month: month.toString(),
+      year: year.toString(),
+      ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v != null))
+    });
+    return fetchWithAuth(`/finances/budget/items?${params.toString()}`);
+  },
+  deleteBudgetItem: (id: string) =>
+    fetchWithAuth(`/finances/budget/items/${id}`, {
+      method: 'DELETE',
+    }),
+  updateBudgetItem: (id: string, data: any) =>
+    fetchWithAuth(`/finances/budget/items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  logBudgetItemProgress: (id: string, amount: number) =>
+    fetchWithAuth(`/finances/budget/items/${id}/log`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    }),
+  reactivateBudgetItem: (id: string, durationMonths: number) =>
+    fetchWithAuth(`/finances/budget/items/${id}/reactivate`, {
+      method: 'POST',
+      body: JSON.stringify({ durationMonths }),
     }),
   update: (id: string, data: any) =>
     fetchWithAuth(`/finances/${id}`, {
@@ -657,6 +699,24 @@ export const ingenioApi = {
   
   // Public
   getPublicWheel: (stageName: string) => fetch(`/api/ingenio/public/wheel/${stageName}`).then(r => r.json()),
+
+  // Subscription
+  getConfig: () => fetchWithAuth('/ingenio/config'),
+  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER' }) => 
+    fetchWithAuth('/ingenio/subscribe', { method: 'POST', body: JSON.stringify(data) }),
+  getMySubscription: () => fetchWithAuth('/ingenio/me'),
+  
+  // Admin Subscriptions
+  getAllSubscriptions: () => fetchWithAuth('/ingenio/admin/subscriptions'),
+  approveSubscription: (id: string, amountPaid: number) => fetchWithAuth(`/ingenio/admin/subscriptions/${id}/approve`, { method: 'PUT', body: JSON.stringify({ amountPaid }) }),
+  revokeSubscription: (id: string) => fetchWithAuth(`/ingenio/admin/subscriptions/${id}/revoke`, { method: 'PUT' }),
+  deleteSubscription: (id: string) => fetchWithAuth(`/ingenio/admin/subscriptions/${id}`, { method: 'DELETE' }),
+
+  // Materials
+  getMaterials: () => fetchWithAuth('/ingenio/materials'),
+  createMaterial: (data: any) => fetchWithAuth('/ingenio/materials', { method: 'POST', body: JSON.stringify(data) }),
+  updateMaterial: (id: string, data: any) => fetchWithAuth(`/ingenio/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteMaterial: (id: string) => fetchWithAuth(`/ingenio/materials/${id}`, { method: 'DELETE' }),
 };
 
 // General API for uploads etc

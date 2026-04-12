@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Plus, BookOpen, Trash2, Edit,
-    ArrowLeft, Video, ChevronDown, ChevronUp, Sparkles,
+    ArrowLeft, Video, ChevronDown, ChevronUp, Sparkles, Eye,
     TrendingUp, TrendingDown, Landmark, GraduationCap,
     Wallet, Banknote, Coins, Download, FileText,
     ArrowUpRight, ArrowDownRight, Activity, Loader2
@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { formatCurrency, cn, formatNumber, parseFormattedNumber } from '@/lib/utils';
 import { coursesApi, financesApi, ingenioApi } from '@/lib/api';
+import { SecureViewer } from '@/components/shared/SecureViewer';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -278,23 +279,25 @@ function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
                     </CardHeader>
                     <CardContent>
                         <div className="h-52">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} barSize={42}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
-                                    <Tooltip
-                                        formatter={(val: number) => [formatCurrency(val), '']}
-                                        contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 12, color: '#f8fafc', fontSize: 13 }}
-                                        cursor={{ fill: 'rgba(148,163,184,0.08)' }}
-                                    />
-                                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                                        {chartData.map((entry, i) => (
-                                            <Cell key={i} fill={entry.fill} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                            {chartData.length > 0 && (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} barSize={42}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                        <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1_000_000).toFixed(0)}M`} />
+                                        <Tooltip
+                                            formatter={(val: number) => [formatCurrency(val), '']}
+                                            contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 12, color: '#f8fafc', fontSize: 13 }}
+                                            cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                                        />
+                                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                            {chartData.map((entry, i) => (
+                                                <Cell key={i} fill={entry.fill} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -306,14 +309,16 @@ function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center">
                         <div className="h-44 w-full relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={76} paddingAngle={4} dataKey="value">
-                                        {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} strokeWidth={0} />)}
-                                    </Pie>
-                                    <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 10, color: '#f8fafc', fontSize: 12 }} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            {pieData.length > 0 && (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={76} paddingAngle={4} dataKey="value">
+                                            {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} strokeWidth={0} />)}
+                                        </Pie>
+                                        <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ background: '#0f172a', border: 'none', borderRadius: 10, color: '#f8fafc', fontSize: 12 }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            )}
                             <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Neto</span>
                                 <span className={cn("text-sm font-black", netWorth >= 0 ? 'text-emerald-600' : 'text-rose-600')}>{formatCurrency(netWorth)}</span>
@@ -374,7 +379,6 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         id: null,
         title: '',
         description: '',
-        price: '',
         coverImage: '',
         updateYear: new Date().getFullYear().toString()
     });
@@ -391,7 +395,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     };
 
     const handleOpenCreate = () => {
-        setFormState({ id: null, title: '', description: '', price: '', coverImage: '', updateYear: new Date().getFullYear().toString() });
+        setFormState({ id: null, title: '', description: '', coverImage: '', updateYear: new Date().getFullYear().toString() });
         setIsFormOpen(true);
     };
 
@@ -400,7 +404,6 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             id: course.id,
             title: course.title.includes(':') ? course.title.split(':').slice(1).join(':').trim() : (course.title.includes(' - ') ? course.title.split(' - ').slice(1).join(' - ').trim() : course.title),
             description: course.description,
-            price: course.price > 0 ? formatNumber(course.price) : '',
             coverImage: course.coverImage || '',
             updateYear: course.updateYear || new Date().getFullYear().toString()
         });
@@ -417,7 +420,6 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                  title: titleWithPrefix,
                  description: formState.description,
                  category: imCategory,
-                 price: parseFormattedNumber(formState.price),
                  coverImage: formState.coverImage,
                  updateYear: formState.updateYear
             };
@@ -626,8 +628,8 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                                         {course.isPublished ? 'PÚBLICO' : 'BORRADOR'}
                                     </Badge>
                                 </div>
-                                <div className="text-xs font-black text-slate-900 dark:text-white">
-                                    {course.price > 0 ? formatCurrency(course.price) : 'GRATIS'}
+                                <div className="text-xs font-black text-slate-400">
+                                    INCLUIDO EN ACCESO FULL
                                 </div>
                             </div>
                         </motion.div>
@@ -652,30 +654,10 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                                 <Label className="font-bold text-slate-500 dark:text-slate-300">Título</Label>
                                 <Input placeholder="Nombre del curso..." value={formState.title} onChange={e => setFormState({ ...formState, title: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Precio del Curso</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
-                                        <Input 
-                                            type="text" 
-                                            placeholder="0" 
-                                            value={formState.price} 
-                                            onChange={e => {
-                                                const raw = e.target.value.replace(/\D/g, '');
-                                                if (!raw) return setFormState({ ...formState, price: '' });
-                                                const num = parseInt(raw, 10);
-                                                setFormState({ ...formState, price: formatNumber(num) });
-                                            }} 
-                                            className="pl-10 rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold" 
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Año Act.</Label>
+                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Año de Actualización</Label>
                                     <Input placeholder="Ej: 2026" value={formState.updateYear} onChange={e => setFormState({ ...formState, updateYear: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                                 </div>
-                            </div>
                             <div className="space-y-2">
                                 <Label className="font-bold text-slate-500 dark:text-slate-300">Descripción</Label>
                                 <Textarea placeholder="Breve descripción..." value={formState.description} onChange={e => setFormState({ ...formState, description: e.target.value })} className="rounded-xl min-h-[90px] resize-none dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
@@ -768,16 +750,35 @@ interface IMaterial {
     createdAt: string;
 }
 
+interface PreviewData {
+    title: string;
+    fileUrl: string;
+    fileType: 'pdf' | 'video' | 'audio' | 'doc';
+}
+
 function useIngenioMaterials() {
-    const getMaterials = (stage: 'E1' | 'E2'): IMaterial[] => {
+    const [materials, setMaterials] = useState<IMaterial[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [previewMaterial, setPreviewMaterial] = useState<PreviewData | null>(null);
+
+    const refresh = async () => {
         try {
-            const saved = localStorage.getItem(`ingenio-materials-${stage}`);
-            return saved ? JSON.parse(saved) : [];
-        } catch { return []; }
+            setLoading(true);
+            const data = await ingenioApi.getMaterials();
+            setMaterials(data);
+        } catch {
+            toast.error('Error al sincronizar materiales');
+        } finally {
+            setLoading(false);
+        }
     };
+
     return {
-        e1: getMaterials('E1'),
-        e2: getMaterials('E2'),
+        materials,
+        loading,
+        previewMaterial,
+        setPreviewMaterial,
+        refresh
     };
 }
 
@@ -792,7 +793,19 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
     const [pickerStage, setPickerStage] = useState<'E1' | 'E2'>('E1');
     const [selectedMaterial, setSelectedMaterial] = useState<IMaterial | null>(null);
-    const ingenioMaterials = useIngenioMaterials();
+    const { 
+        materials: allMaterials, 
+        loading: materialsLoading, 
+        refresh: refreshMaterials,
+        previewMaterial,
+        setPreviewMaterial
+    } = useIngenioMaterials();
+
+    useEffect(() => {
+        if (isLessonOpen) {
+            refreshMaterials();
+        }
+    }, [isLessonOpen]);
 
     useEffect(() => { fetchCourse(); }, [courseId]);
 
@@ -818,6 +831,17 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
             setModuleForm({ title: '', description: '' });
             fetchCourse();
         } catch { toast.error('Error al crear'); }
+    };
+
+    const getMediaType = (url: string): 'pdf' | 'video' | 'audio' | 'doc' => {
+        if (!url) return 'doc';
+        if (url.startsWith('data:application/pdf')) return 'pdf';
+        if (url.startsWith('data:video/')) return 'video';
+        if (url.startsWith('data:audio/')) return 'audio';
+        if (url.toLowerCase().endsWith('.pdf')) return 'pdf';
+        if (url.toLowerCase().match(/\.(mp4|webm|ogg|mov)$/)) return 'video';
+        if (url.toLowerCase().match(/\.(mp3|wav|ogg|m4a)$/)) return 'audio';
+        return 'doc';
     };
 
     const handleCreateLesson = async (e: React.FormEvent) => {
@@ -876,17 +900,38 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                 </div>
                                 {isExp && (
                                     <div className="p-4 pt-0 space-y-2 border-t border-slate-50 dark:border-slate-800/30">
-                                        {mod.lessons?.map((lsn: any) => (
-                                            <div key={lsn.id} className="flex items-center justify-between p-3 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl">
-                                                <div className="flex items-center gap-3">
-                                                    <Video className="w-4 h-4 text-slate-400" />
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{lsn.title}</span>
-                                                </div>
-                                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleDeleteLesson(lsn.id); }} className="h-7 w-7 text-rose-500 hover:bg-rose-50">
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </Button>
-                                            </div>
-                                        ))}
+                                                {mod.lessons?.map((lsn: any) => (
+                                                    <div key={lsn.id} className="flex items-center justify-between p-3 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl group/lsn">
+                                                        <div className="flex items-center gap-3">
+                                                            {getMediaType(lsn.videoUrl) === 'pdf' && <FileText className="w-4 h-4 text-rose-500" />}
+                                                            {getMediaType(lsn.videoUrl) === 'video' && <Video className="w-4 h-4 text-blue-500" />}
+                                                            {getMediaType(lsn.videoUrl) === 'audio' && <span className="text-base">🎵</span>}
+                                                            {getMediaType(lsn.videoUrl) === 'doc' && <FileText className="w-4 h-4 text-slate-400" />}
+                                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{lsn.title}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setPreviewMaterial({
+                                                                        title: lsn.title,
+                                                                        fileUrl: lsn.videoUrl,
+                                                                        fileType: getMediaType(lsn.videoUrl)
+                                                                    });
+                                                                }} 
+                                                                className="h-7 w-7 text-indigo-500 hover:bg-indigo-50 opacity-0 group-hover/lsn:opacity-100 transition-opacity"
+                                                                title="Vista Previa"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleDeleteLesson(lsn.id); }} className="h-7 w-7 text-rose-500 hover:bg-rose-50 opacity-0 group-hover/lsn:opacity-100 transition-opacity">
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                         {mod.lessons?.length === 0 && <p className="text-center py-4 text-xs text-slate-400 italic">No hay materiales en este módulo</p>}
                                     </div>
                                 )}
@@ -950,24 +995,28 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                     </div>
 
                     {/* Material List grouped by segment */}
-                    <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-1">
-                        {(() => {
-                            const mats = pickerStage === 'E1' ? ingenioMaterials.e1 : ingenioMaterials.e2;
-                            const segs = pickerStage === 'E1' ? IM_E1_SEGMENTS : IM_E2_SEGMENTS;
-
-                            if (mats.length === 0) {
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-6 min-h-[300px]">
+                        {materialsLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20 gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                                <span className="text-sm text-slate-400 font-bold uppercase tracking-widest">Sincronizando biblioteca...</span>
+                            </div>
+                        ) : (() => {
+                            const segments = pickerStage === 'E1' ? IM_E1_SEGMENTS : IM_E2_SEGMENTS;
+                            const stageMaterials = allMaterials.filter(m => m.stage === pickerStage);
+                            
+                            if (stageMaterials.length === 0) {
                                 return (
-                                    <div className="py-12 text-center rounded-2xl bg-slate-50 dark:bg-slate-900">
-                                        <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                        <p className="text-slate-500 text-sm">No hay materiales en {pickerStage}</p>
-                                        <p className="text-xs text-slate-400 mt-1">Sube materiales en la sección «Materiales de Estudio»</p>
+                                    <div className="py-20 text-center">
+                                         <BookOpen className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                        <p className="text-slate-400 italic">No hay materiales cargados en la Etapa {pickerStage}</p>
                                     </div>
                                 );
                             }
 
-                            return segs.map(seg => {
-                                const segMats = mats.filter(m => m.segmentNumber === seg.number);
-                                if (segMats.length === 0) return null;
+                            return segments.map(seg => {
+                                const segMaterials = stageMaterials.filter(m => m.segmentNumber === seg.number);
+                                if (segMaterials.length === 0) return null;
                                 return (
                                     <div key={seg.number}>
                                         {/* Segment header */}
@@ -984,7 +1033,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                         </div>
                                         {/* Material cards */}
                                         <div className="space-y-1.5">
-                                            {segMats.map(mat => {
+                                            {segMaterials.map(mat => {
                                                 const isSelected = selectedMaterial?.id === mat.id;
                                                 return (
                                                     <button
@@ -1047,6 +1096,15 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                 <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{selectedMaterial.title}</p>
                             </div>
                             <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPreviewMaterial(selectedMaterial)}
+                                className="bg-white border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl flex-shrink-0"
+                            >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Vista Previa
+                            </Button>
+                            <Button
                                 onClick={async () => {
                                     if (!selectedMaterial) return;
                                     try {
@@ -1067,6 +1125,19 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                                 Agregar al módulo
                             </Button>
                         </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+            {/* Preview Dialog */}
+            <Dialog open={!!previewMaterial} onOpenChange={(open) => !open && setPreviewMaterial(null)}>
+                <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden border-none bg-transparent shadow-none">
+                    {previewMaterial && (
+                        <SecureViewer 
+                            url={previewMaterial.fileUrl} 
+                            type={previewMaterial.fileType} 
+                            title={previewMaterial.title} 
+                            onClose={() => setPreviewMaterial(null)}
+                        />
                     )}
                 </DialogContent>
             </Dialog>

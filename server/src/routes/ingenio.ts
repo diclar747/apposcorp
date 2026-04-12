@@ -1,13 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/ingenio.js';
 
 const router = Router();
 
 // ─── Middleware ─────────────────────────────────────────────────────────────────
 
 const requireAuth = authenticate;
-const requireAdmin = authorize('superadmin');
+const requireAdmin = [authenticate, authorize('superadmin')];
 
 // ─── Stages ─────────────────────────────────────────────────────────────────────
 
@@ -211,9 +212,19 @@ router.get('/materials', async (req: AuthRequest, res: Response) => {
 // Create material (admin only)
 router.post('/materials', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
-        const { stage, title, description, fileUrl, fileType, fileSize, isPublic, order } = req.body;
+        const { stage, segmentNumber, title, description, fileUrl, fileType, fileSize, isPublic, order } = req.body;
         const material = await prisma.ingenioMaterial.create({
-            data: { stage, title, description, fileUrl, fileType, fileSize, isPublic, order },
+            data: { 
+                stage, 
+                segmentNumber: Number(segmentNumber) || 1, 
+                title, 
+                description, 
+                fileUrl, 
+                fileType, 
+                fileSize: Number(fileSize) || 0, 
+                isPublic: isPublic ?? true, 
+                order: Number(order) || 0 
+            },
         });
         res.status(201).json(material);
     } catch (error) {
@@ -225,10 +236,19 @@ router.post('/materials', requireAdmin, async (req: AuthRequest, res: Response) 
 // Update material (admin only)
 router.put('/materials/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, fileUrl, isPublic, order } = req.body;
+        const { title, description, fileUrl, fileType, fileSize, isPublic, order, segmentNumber } = req.body;
         const material = await prisma.ingenioMaterial.update({
             where: { id: req.params.id as string },
-            data: { title, description, fileUrl, isPublic, order },
+            data: { 
+                title, 
+                description, 
+                fileUrl, 
+                fileType, 
+                fileSize: fileSize !== undefined ? Number(fileSize) : undefined,
+                isPublic, 
+                order: order !== undefined ? Number(order) : undefined,
+                segmentNumber: segmentNumber !== undefined ? Number(segmentNumber) : undefined
+            },
         });
         res.json(material);
     } catch (error) {
@@ -360,7 +380,7 @@ router.post('/students/register', requireAuth, async (req: AuthRequest, res: Res
 });
 
 // Update student profile
-router.put('/students/me', requireAuth, async (req: AuthRequest, res: Response) => {
+router.put('/students/me', requireAuth, requireActiveSubscription, async (req: AuthRequest, res: Response) => {
     try {
         const { phone, city, occupation, experience, goals } = req.body;
         const student = await prisma.ingenioStudent.update({
@@ -411,7 +431,7 @@ router.post('/assignments', requireAdmin, async (req: AuthRequest, res: Response
 });
 
 // Start assignment
-router.post('/assignments/:id/start', requireAuth, async (req: AuthRequest, res: Response) => {
+router.post('/assignments/:id/start', requireAuth, requireActiveSubscription, async (req: AuthRequest, res: Response) => {
     try {
         const assignment = await prisma.ingenioStudentAssignment.update({
             where: { id: req.params.id as string },
@@ -428,7 +448,7 @@ router.post('/assignments/:id/start', requireAuth, async (req: AuthRequest, res:
 });
 
 // Update progress
-router.put('/assignments/:id/progress', requireAuth, async (req: AuthRequest, res: Response) => {
+router.put('/assignments/:id/progress', requireAuth, requireActiveSubscription, async (req: AuthRequest, res: Response) => {
     try {
         const { progress } = req.body;
         const updateData: any = { progress };
@@ -452,7 +472,7 @@ router.put('/assignments/:id/progress', requireAuth, async (req: AuthRequest, re
 // ─── Stats ──────────────────────────────────────────────────────────────────────
 
 // Get Ingenio stats (admin only)
-router.get('/stats', requireAdmin, async (req, res) => {
+router.get('/stats', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const [
             totalStudents,
@@ -487,7 +507,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
 // ─── Setup / Seed ───────────────────────────────────────────────────────────────
 
 // Initialize Ingenio system with default data
-router.post('/setup', requireAdmin, async (req, res) => {
+router.post('/setup', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
         const results = { stages: 0, segments: 0, courses: 0 };
 
@@ -646,27 +666,291 @@ router.post('/setup', requireAdmin, async (req, res) => {
 
 // ─── Public Routes ──────────────────────────────────────────────────────────────
 
-// Get public wheel data (no auth required)
-router.get('/public/wheel/:stageName', async (req, res) => {
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+// Get public config for subscriptions
+router.get('/config', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
-        const stage = await prisma.ingenioStage.findFirst({
-            where: { name: req.params.stageName, isActive: true },
-            include: {
-                wheelSegments: {
-                    where: { isActive: true },
-                    orderBy: { number: 'asc' },
-                },
-            },
+        const settings = await prisma.systemSetting.findMany({
+            where: {
+                key: {
+                    in: ['ingenio_price', 'ingenio_max_installments', 'contact_phone']
+                }
+            }
         });
-        
-        if (!stage) {
-            return res.status(404).json({ error: 'Etapa no encontrada' });
+
+        const config = {
+            price: Number(settings.find(s => s.key === 'ingenio_price')?.value || 700000),
+            maxInstallments: Number(settings.find(s => s.key === 'ingenio_max_installments')?.value || 3),
+            contactPhone: settings.find(s => s.key === 'contact_phone')?.value || ''
+        };
+
+        res.json(config);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener configuración' });
+    }
+});
+
+// Get my subscription status
+router.get('/subscription/me', requireAuth, async (req: AuthRequest, res) => {
+    try {
+        const sub = await prisma.ingenioSubscription.findUnique({
+            where: { userId: req.user!.userId }
+        });
+        res.json(sub);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener suscripción' });
+    }
+});
+
+// Request/Update subscription
+router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
+    try {
+        const userId = req.user!.userId;
+        const { installments, paymentMethod } = req.body;
+
+        // Validar configuración real
+        const settings = await prisma.systemSetting.findMany({
+            where: {
+                key: { in: ['ingenio_price', 'ingenio_max_installments'] }
+            }
+        });
+
+        const realPrice = Number(settings.find(s => s.key === 'ingenio_price')?.value || 700000);
+        const realMaxInstallments = Number(settings.find(s => s.key === 'ingenio_max_installments')?.value || 3);
+
+        if (installments < 1 || installments > realMaxInstallments) {
+            return res.status(400).json({ error: 'Número de cuotas no permitido' });
         }
 
-        res.json(stage);
+        const installmentAmount = realPrice / installments;
+
+        // Check if there's an existing subscription
+        const existingSub = await prisma.ingenioSubscription.findUnique({ where: { userId } });
+        
+        const isRevoked = existingSub?.status === 'REVOKED';
+        const isPayingQuota = existingSub && (existingSub.status === 'ACTIVE' || isRevoked) && existingSub.paidAmount < existingSub.totalAmount;
+
+        // If paying quota, the amount is one installment (or remainder)
+        const totalToPay = isPayingQuota 
+            ? Math.round(existingSub.totalAmount / existingSub.installments)
+            : installmentAmount;
+
+        const currentQuota = isPayingQuota 
+            ? Math.floor(existingSub.paidAmount / (existingSub.totalAmount / existingSub.installments)) + 1
+            : 1;
+
+        // Procesar pago si es Wallet
+        if (paymentMethod === 'WALLET') {
+            const wallet = await prisma.wallet.findUnique({ where: { userId } });
+            if (!wallet || wallet.balance < totalToPay) {
+                return res.status(400).json({ error: 'Saldo insuficiente en Billetera' });
+            }
+
+            // Descontar saldo y crear transacción
+            await prisma.$transaction([
+                prisma.wallet.update({
+                    where: { userId },
+                    data: { balance: { decrement: totalToPay } }
+                }),
+                prisma.transaction.create({
+                    data: {
+                        userId,
+                        walletId: wallet.id,
+                        amount: -totalToPay,
+                        type: 'expense',
+                        description: `Pago suscripción Ingenio Millonario (Cuota ${currentQuota}/${isPayingQuota ? existingSub.installments : installments})`,
+                        category: 'Education'
+                    }
+                }),
+                prisma.ingenioSubscription.upsert({
+                    where: { userId },
+                    update: {
+                        status: isRevoked ? 'ACTIVE' : (isPayingQuota ? existingSub.status : 'PENDING_APPROVAL'),
+                        totalAmount: isPayingQuota ? existingSub.totalAmount : realPrice,
+                        installments: isPayingQuota ? existingSub.installments : installments,
+                        paidAmount: { increment: totalToPay },
+                        paymentMethod: 'WALLET',
+                        approvedAt: isRevoked ? new Date() : (isPayingQuota ? existingSub.approvedAt : null),
+                        updatedAt: new Date()
+                    },
+                    create: {
+                        userId,
+                        status: 'PENDING_APPROVAL',
+                        totalAmount: realPrice,
+                        installments,
+                        paidAmount: totalToPay,
+                        paymentMethod: 'WALLET'
+                    }
+                }),
+                // Si estaba revocado, devolver el acceso al usuario inmediatamente
+                ...(isRevoked ? [
+                    prisma.user.update({
+                        where: { id: userId },
+                        data: { ingenioAccess: true }
+                    })
+                ] : [])
+            ]);
+
+            return res.json({ 
+                message: isRevoked 
+                    ? 'Pago realizado con éxito. Tu acceso ha sido restaurado.' 
+                    : 'Pago realizado con éxito. Pendiente de aprobación.' 
+            });
+        } else {
+            // Transferencia bancaria
+            const sub = await prisma.ingenioSubscription.upsert({
+                where: { userId },
+                update: {
+                    status: isRevoked ? 'REVOKED' : 'PENDING_APPROVAL', // Si está revocado, sigue revocado hasta que admin apruebe
+                    totalAmount: isPayingQuota ? existingSub.totalAmount : realPrice,
+                    installments: isPayingQuota ? existingSub.installments : installments,
+                    paymentMethod: 'BANK_TRANSFER',
+                    updatedAt: new Date()
+                },
+                create: {
+                    userId,
+                    status: 'PENDING_APPROVAL',
+                    totalAmount: realPrice,
+                    installments,
+                    paymentMethod: 'BANK_TRANSFER'
+                }
+            });
+            return res.json({ message: 'Solicitud enviada. Por favor realice la transferencia para procesar la activación.' });
+        }
     } catch (error) {
-        console.error('Error fetching wheel data:', error);
-        res.status(500).json({ error: 'Error al cargar datos' });
+        console.error('Subscription error:', error);
+        res.status(500).json({ error: 'Error al procesar suscripción' });
+    }
+});
+
+// ─── ADMIN Subscriptions ──────────────────────────────────────────────────────
+
+// Get all subscription requests
+router.get('/admin/subscriptions', requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        const subs = await prisma.ingenioSubscription.findMany({
+            include: {
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        avatar: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(subs);
+    } catch (error) {
+        console.error('Error fetching admin subscriptions:', error);
+        res.status(500).json({ error: 'Error al cargar suscripciones' });
+    }
+});
+
+// Approve/Update subscription access
+router.put('/admin/subscriptions/:id/approve', requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        const { amountPaid } = req.body; // Solo necesario para transferencias
+        const subId = req.params.id as string;
+
+        const sub = await prisma.ingenioSubscription.findUnique({
+            where: { id: subId }
+        });
+
+        if (!sub) return res.status(404).json({ error: 'Suscripción no encontrada' });
+
+        const incomingPayment = Number(amountPaid) || 0;
+        const remainingDebt = sub.totalAmount - sub.paidAmount;
+
+        if (incomingPayment > remainingDebt) {
+            return res.status(400).json({ 
+                error: `El monto ingresado (Gs. ${incomingPayment.toLocaleString()}) supera la deuda pendiente (Gs. ${remainingDebt.toLocaleString()})` 
+            });
+        }
+
+        const newPaidAmount = sub.paidAmount + incomingPayment;
+
+        await prisma.$transaction([
+            prisma.ingenioSubscription.update({
+                where: { id: subId },
+                data: {
+                    status: 'ACTIVE',
+                    paidAmount: newPaidAmount,
+                    approvedAt: new Date(),
+                    updatedAt: new Date()
+                }
+            }),
+            prisma.user.update({
+                where: { id: sub.userId },
+                data: { ingenioAccess: true }
+            })
+        ]);
+
+        res.json({ message: 'Acceso concedido exitosamente' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al aprobar suscripción' });
+    }
+});
+
+// Revoke access
+router.put('/admin/subscriptions/:id/revoke', requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        const subId = req.params.id as string;
+        const sub = await prisma.ingenioSubscription.findUnique({
+            where: { id: subId }
+        });
+
+        if (!sub) return res.status(404).json({ error: 'Suscripción no encontrada' });
+
+        await prisma.$transaction([
+            prisma.ingenioSubscription.update({
+                where: { id: subId },
+                data: {
+                    status: 'REVOKED',
+                    updatedAt: new Date()
+                }
+            }),
+            prisma.user.update({
+                where: { id: sub.userId },
+                data: { ingenioAccess: false }
+            })
+        ]);
+        res.json({ message: 'Acceso revocado exitosamente' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al revocar acceso' });
+    }
+});
+
+// Delete subscription (admin only)
+router.delete('/admin/subscriptions/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        const subId = req.params.id as string;
+        const sub = await prisma.ingenioSubscription.findUnique({
+            where: { id: subId }
+        });
+
+        if (!sub) return res.status(404).json({ error: 'Suscripción no encontrada' });
+
+        await prisma.$transaction([
+            prisma.ingenioSubscription.delete({
+                where: { id: subId }
+            }),
+            prisma.user.update({
+                where: { id: sub.userId },
+                data: { ingenioAccess: false }
+            }),
+            // También eliminamos el perfil de estudiante para que desaparezca totalmente de Ingenio
+            prisma.ingenioStudent.deleteMany({
+                where: { userId: sub.userId }
+            })
+        ]);
+
+        res.json({ message: 'Suscripción eliminada exitosamente' });
+    } catch (error) {
+        console.error('Error deleting subscription:', error);
+        res.status(500).json({ error: 'Error al eliminar suscripción' });
     }
 });
 

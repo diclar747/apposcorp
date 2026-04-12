@@ -36,7 +36,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '5mb' }));
 
 // Serve uploaded files statically (local dev only, Vercel uses /tmp)
 const uploadsDir = process.env.NODE_ENV === 'production'

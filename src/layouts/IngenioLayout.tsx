@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Target, User, BookOpen, Wallet, PieChart, Menu, X, LogOut, Bell
+  Target, User, BookOpen, Wallet, PieChart, Menu, X, LogOut, Bell, Sun, Moon, FileText
 } from "lucide-react";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useThemeStore } from "@/stores";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 const baseMenuItems = [
   { icon: Target, label: "Finanzas Master", href: "/ingenio" },
   { icon: PieChart, label: "Presupuesto", href: "/ingenio/presupuesto" },
+  { icon: FileText, label: "Reportes", href: "/ingenio/reportes" },
   { icon: BookOpen, label: "Academia", href: "/ingenio/academia" },
   { icon: User, label: "Perfil", href: "/ingenio/profile" },
 ];
@@ -24,6 +25,7 @@ export default function IngenioLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, hasRole, addRole, isLoading } = useAuthStore();
+  const { resolvedTheme, toggleTheme } = useThemeStore();
 
   const handleLogout = () => {
     logout();
@@ -58,6 +60,13 @@ export default function IngenioLayout() {
           <span className="font-bold text-lg text-slate-900 dark:text-white">Ingenio</span>
         </Link>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={toggleTheme}
+            className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+            title={resolvedTheme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
+          >
+            {resolvedTheme === 'light' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
+          </button>
           <Link to="/ingenio/profile" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white">
             <User className="w-6 h-6" />
           </Link>
@@ -157,6 +166,13 @@ export default function IngenioLayout() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Desktop Header */}
         <header className="hidden md:flex items-center justify-end px-8 py-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 z-10 sticky top-0 gap-2">
+          <button 
+            onClick={toggleTheme}
+            className="text-slate-400 hover:text-indigo-600 transition-colors p-2"
+            title={resolvedTheme === 'light' ? 'Modo Oscuro' : 'Modo Claro'}
+          >
+            {resolvedTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          </button>
           <Link to="/ingenio/profile" className="text-slate-400 hover:text-indigo-600 transition-colors p-2" title="Mi Perfil">
             <User className="w-5 h-5" />
           </Link>
