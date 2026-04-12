@@ -66,7 +66,6 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
     id: null,
     title: '',
     description: '',
-    price: '',
     category: 'Finanzas',
     level: 'beginner',
     coverImage: '',
@@ -90,7 +89,7 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
   };
 
   const handleOpenCreate = () => {
-    setFormState({ id: null, title: '', description: '', price: '', category: 'Finanzas', level: 'beginner', coverImage: '', updateYear: new Date().getFullYear().toString() });
+    setFormState({ id: null, title: '', description: '', category: 'Finanzas', level: 'beginner', coverImage: '', updateYear: new Date().getFullYear().toString() });
     setIsFormOpen(true);
   };
 
@@ -99,7 +98,6 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
       id: course.id,
       title: course.title,
       description: course.description,
-      price: course.price > 0 ? formatNumber(course.price) : '',
       category: course.category,
       level: course.level,
       coverImage: course.coverImage || '',
@@ -114,7 +112,6 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
       const payload = {
         title: formState.title,
         description: formState.description,
-        price: parseFormattedNumber(formState.price),
         category: formState.category,
         level: formState.level,
         coverImage: formState.coverImage,
@@ -217,25 +214,6 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price" className="dark:text-slate-300">Precio del Curso</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
-                    <Input 
-                      id="price" 
-                      type="text" 
-                      placeholder="0"
-                      value={formState.price} 
-                      onChange={e => {
-                        const raw = e.target.value.replace(/\D/g, '');
-                        if (!raw) return setFormState({ ...formState, price: '' });
-                        const num = parseInt(raw, 10);
-                        setFormState({ ...formState, price: formatNumber(num) });
-                      }} 
-                      className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
                   <Label className="dark:text-slate-300">Categoría</Label>
                   <Select value={formState.category} onValueChange={val => setFormState({ ...formState, category: val })}>
                     <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"><SelectValue /></SelectTrigger>
@@ -320,7 +298,6 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
                   <TableHead className="dark:text-gray-400">Curso</TableHead>
                   <TableHead className="dark:text-gray-400">Módulos</TableHead>
                   <TableHead className="dark:text-gray-400">Estudiantes</TableHead>
-                  <TableHead className="dark:text-gray-400">Precio</TableHead>
                   <TableHead className="dark:text-gray-400">Estado</TableHead>
                   <TableHead className="text-right dark:text-gray-400">Acciones</TableHead>
                 </TableRow>
@@ -328,7 +305,7 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
               <TableBody>
                 {filteredCourses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                       {loading ? (
                         <div className="flex flex-col items-center gap-2">
                            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -367,11 +344,6 @@ function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => v
                           <Users className="w-4 h-4 text-slate-400" />
                           <span className="text-sm font-bold">{course.enrolledCount}</span>
                         </div>
-                      </TableCell>
-                      <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
-                        <span className="font-black text-gray-900 dark:text-white">
-                          {course.price > 0 ? formatCurrency(course.price) : 'Gratis'}
-                        </span>
                       </TableCell>
                       <TableCell onClick={() => onSelectCourse(course)} className="cursor-pointer">
                         <Badge className={cn(
@@ -486,7 +458,7 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
 
   // Edit course
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', description: '', price: '', category: '', level: '', coverImage: '', updateYear: '' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', category: '', level: '', coverImage: '', updateYear: '' });
 
   // Expanded modules
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -519,7 +491,6 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
       await coursesApi.update(courseId, {
         title: editForm.title,
         description: editForm.description,
-        price: parseFormattedNumber(editForm.price),
         category: editForm.category,
         level: editForm.level,
         coverImage: editForm.coverImage,
@@ -538,7 +509,6 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
     setEditForm({
       title: course.title,
       description: course.description,
-      price: course.price > 0 ? formatNumber(course.price) : '',
       category: course.category,
       level: course.level,
       coverImage: course.coverImage || '',
@@ -1134,40 +1104,20 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
               <Label>Descripción</Label>
               <Textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Precio del Curso</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
-                  <Input 
-                    type="text" 
-                    placeholder="0"
-                    value={editForm.price} 
-                    onChange={e => {
-                      const raw = e.target.value.replace(/\D/g, '');
-                      if (!raw) return setEditForm({ ...editForm, price: '' });
-                      const num = parseInt(raw, 10);
-                      setEditForm({ ...editForm, price: formatNumber(num) });
-                    }} 
-                    className="pl-10 font-bold"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Categoría</Label>
-                <Select value={editForm.category} onValueChange={val => setEditForm({ ...editForm, category: val })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Finanzas">Finanzas</SelectItem>
-                    <SelectItem value="Emprendimiento">Emprendimiento</SelectItem>
-                    <SelectItem value="Inversión">Inversión</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
-                    <SelectItem value="IM E1">IM E1</SelectItem>
-                    <SelectItem value="IM E2">IM E2</SelectItem>
-                    <SelectItem value="General">General</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <Select value={editForm.category} onValueChange={val => setEditForm({ ...editForm, category: val })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Finanzas">Finanzas</SelectItem>
+                  <SelectItem value="Emprendimiento">Emprendimiento</SelectItem>
+                  <SelectItem value="Inversión">Inversión</SelectItem>
+                  <SelectItem value="Marketing">Marketing</SelectItem>
+                  <SelectItem value="IM E1">IM E1</SelectItem>
+                  <SelectItem value="IM E2">IM E2</SelectItem>
+                  <SelectItem value="General">General</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
