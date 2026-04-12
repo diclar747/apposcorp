@@ -379,7 +379,6 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
         id: null,
         title: '',
         description: '',
-        price: '',
         coverImage: '',
         updateYear: new Date().getFullYear().toString()
     });
@@ -396,7 +395,7 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
     };
 
     const handleOpenCreate = () => {
-        setFormState({ id: null, title: '', description: '', price: '', coverImage: '', updateYear: new Date().getFullYear().toString() });
+        setFormState({ id: null, title: '', description: '', coverImage: '', updateYear: new Date().getFullYear().toString() });
         setIsFormOpen(true);
     };
 
@@ -405,7 +404,6 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
             id: course.id,
             title: course.title.includes(':') ? course.title.split(':').slice(1).join(':').trim() : (course.title.includes(' - ') ? course.title.split(' - ').slice(1).join(' - ').trim() : course.title),
             description: course.description,
-            price: course.price > 0 ? formatNumber(course.price) : '',
             coverImage: course.coverImage || '',
             updateYear: course.updateYear || new Date().getFullYear().toString()
         });
@@ -422,7 +420,6 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                  title: titleWithPrefix,
                  description: formState.description,
                  category: imCategory,
-                 price: parseFormattedNumber(formState.price),
                  coverImage: formState.coverImage,
                  updateYear: formState.updateYear
             };
@@ -631,8 +628,8 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                                         {course.isPublished ? 'PÚBLICO' : 'BORRADOR'}
                                     </Badge>
                                 </div>
-                                <div className="text-xs font-black text-slate-900 dark:text-white">
-                                    {course.price > 0 ? formatCurrency(course.price) : 'GRATIS'}
+                                <div className="text-xs font-black text-slate-400">
+                                    INCLUIDO EN ACCESO FULL
                                 </div>
                             </div>
                         </motion.div>
@@ -657,30 +654,10 @@ function AcademyListView({ onSelectCourse, filter }: { onSelectCourse: (course: 
                                 <Label className="font-bold text-slate-500 dark:text-slate-300">Título</Label>
                                 <Input placeholder="Nombre del curso..." value={formState.title} onChange={e => setFormState({ ...formState, title: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Precio del Curso</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Gs.</span>
-                                        <Input 
-                                            type="text" 
-                                            placeholder="0" 
-                                            value={formState.price} 
-                                            onChange={e => {
-                                                const raw = e.target.value.replace(/\D/g, '');
-                                                if (!raw) return setFormState({ ...formState, price: '' });
-                                                const num = parseInt(raw, 10);
-                                                setFormState({ ...formState, price: formatNumber(num) });
-                                            }} 
-                                            className="pl-10 rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold" 
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Año Act.</Label>
+                                    <Label className="font-bold text-slate-500 dark:text-slate-300">Año de Actualización</Label>
                                     <Input placeholder="Ej: 2026" value={formState.updateYear} onChange={e => setFormState({ ...formState, updateYear: e.target.value })} className="rounded-xl dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                                 </div>
-                            </div>
                             <div className="space-y-2">
                                 <Label className="font-bold text-slate-500 dark:text-slate-300">Descripción</Label>
                                 <Textarea placeholder="Breve descripción..." value={formState.description} onChange={e => setFormState({ ...formState, description: e.target.value })} className="rounded-xl min-h-[90px] resize-none dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
