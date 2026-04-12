@@ -283,7 +283,7 @@ export default function IngenioCourseDetail() {
                     { label: 'Lecciones', value: totalLessons, color: 'text-blue-500' },
                     { label: 'Nivel', value: course.level || 'Multinivel', color: 'text-purple-500' },
                     { label: 'Instructor', value: course.instructorName || 'IM Team', color: 'text-indigo-500' },
-                    { label: 'Actualización', value: '2024', color: 'text-emerald-500' }
+                    { label: 'Actualización', value: course.updateYear || 'Actual', color: 'text-emerald-500' }
                  ].map(stat => (
                     <div key={stat.label} className="p-5 rounded-[2rem] bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-center">
                        <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">{stat.label}</p>

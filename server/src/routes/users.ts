@@ -475,21 +475,9 @@ router.patch('/:id/ingenio', authenticate, authorize('superadmin'), async (req, 
       } else {
         // CLEAN RESET: If deactivating, delete the subscription and student profile
         // This ensures the user sees the system as if they never had access (landing/pricing)
+        // We KEEP the 'ingenio' role as requested, only the access flag and records are removed.
         await tx.ingenioSubscription.deleteMany({ where: { userId: id } });
         await tx.ingenioStudent.deleteMany({ where: { userId: id } });
-        
-        // Also remove the 'ingenio' role so the module disappears from sidebar
-        const remainingRoles = Array.isArray(oldUser.roles) 
-          ? oldUser.roles.filter(r => r !== 'ingenio') 
-          : [];
-          
-        await tx.user.update({
-          where: { id },
-          data: { 
-            ingenioAccess: false,
-            roles: remainingRoles
-          }
-        });
       }
     });
 

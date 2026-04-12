@@ -335,7 +335,7 @@ router.patch('/:id', authenticate, authorize('superadmin'), async (req: AuthRequ
     const id = req.params.id as string;
     const { 
       title, description, shortDescription, price, comparePrice,
-      category, level, instructorName, coverImage, previewVideo, 
+      category, level, instructorName, coverImage, updateYear, previewVideo, 
       isPublished, isFeatured 
     } = req.body;
 
@@ -354,6 +354,7 @@ router.patch('/:id', authenticate, authorize('superadmin'), async (req: AuthRequ
     if (level !== undefined) updateData.level = level;
     if (instructorName !== undefined) updateData.instructorName = instructorName;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
+    if (updateYear !== undefined) updateData.updateYear = updateYear;
     if (previewVideo !== undefined) updateData.previewVideo = previewVideo;
     if (isPublished !== undefined) updateData.isPublished = isPublished;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
