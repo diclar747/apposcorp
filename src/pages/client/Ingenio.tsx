@@ -13,7 +13,11 @@ import {
   Home,
   CreditCard,
   BookOpen,
-  Play
+  Play,
+  Lock,
+  ShieldCheck,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -28,8 +32,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
-import { financesApi, coursesApi, settingsApi, walletApi, usersApi } from '@/lib/api';
+import { financesApi, coursesApi, settingsApi, walletApi, usersApi, ingenioApi } from '@/lib/api';
 import { useWalletStore } from '@/stores/walletStore';
+import { useIngenioSubscription } from '@/hooks/useIngenioSubscription';
+import { usePaywallStore } from '@/stores';
 
 // 5S Methodology Cards
 const ssCards = [
@@ -42,8 +48,8 @@ const ssCards = [
 
 export default function ClientIngenio() {
   const navigate = useNavigate();
-  const { user, fetchCurrentUser } = useAuthStore();
-  const { wallet, fetchWallet } = useWalletStore();
+  const { user } = useAuthStore();
+  const { fetchWallet } = useWalletStore();
   const [summary, setSummary] = useState({
     income: 0,
     expenses: 0,
@@ -53,12 +59,9 @@ export default function ClientIngenio() {
     netWorthGrowth: 0
   });
   const [courses, setCourses] = useState([]);
+  const { status, isActive, isReadOnly, subscription } = useIngenioSubscription();
+  const { openPaywall } = usePaywallStore();
   const [loading, setLoading] = useState(true);
-  const [ingenioPrice, setIngenioPrice] = useState(700000);
-  const [maxInstallments, setMaxInstallments] = useState(3);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [installments, setInstallments] = useState('1');
-  const [paying, setPaying] = useState(false);
 
   // Form State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -70,28 +73,18 @@ export default function ClientIngenio() {
   });
 
   useEffect(() => {
-    fetchSettings();
     if (user) {
       fetchWallet(user.id);
-      if (user.ingenioAccess) {
+      if (status !== 'NONE') {
         fetchData();
         fetchCourses();
+      } else {
+        setLoading(false);
       }
+    } else {
+      setLoading(false);
     }
-  }, [user]);
-
-  const fetchSettings = async () => {
-    try {
-      const settings = await settingsApi.get();
-      const priceSetting = settings.find((s: any) => s.key === 'ingenio_price')?.value;
-      const maxInstSetting = settings.find((s: any) => s.key === 'ingenio_max_installments')?.value;
-
-      if (priceSetting) setIngenioPrice(Number(priceSetting));
-      if (maxInstSetting) setMaxInstallments(Number(maxInstSetting));
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-    }
-  };
+  }, [user, status]);
 
   const fetchData = async () => {
     try {
@@ -116,6 +109,16 @@ export default function ClientIngenio() {
 
   const handleCreateRecord = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      openPaywall();
+      return;
+    }
+
+    if (!newRecord.amount || isNaN(Number(newRecord.amount))) {
+      toast.error('Por favor ingresa un monto válido');
+      return;
+    }
+
     try {
       if (newRecord.type === 'budget') {
         const dateObj = new Date(newRecord.date);
@@ -136,154 +139,65 @@ export default function ClientIngenio() {
       setIsAddOpen(false);
       setNewRecord({ type: 'expense', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
       fetchData();
-    } catch (error) {
-      toast.error('Error al guardar');
+    } catch (error: any) {
+      if (error.message.includes('Suscripción requerida') || error.message.includes('REQUIRES_SUBSCRIPTION')) {
+        openPaywall();
+      } else {
+        toast.error(error.message || 'Error al guardar');
+      }
     }
   };
 
-  const handlePayment = async () => {
-    const isActivation = !user?.ingenioAccess;
-    const currentPaid = user?.ingenioInstallmentsPaid || 0;
-    const totalNeeded = isActivation ? Number(installments) : (user?.ingenioTotalInstallments || 1);
-
-    const amountToPay = Math.round(ingenioPrice / totalNeeded);
-
-    if (!wallet || wallet.balance < amountToPay) {
-      toast.error('Saldo insuficiente en tu billetera');
-      return;
-    }
-
-    try {
-      setPaying(true);
-
-      const nextInstallment = currentPaid + 1;
-      await walletApi.transfer('admin', amountToPay, `Pago Ingenio Millonario - Cuota ${nextInstallment}/${totalNeeded}`);
-
-      // Update access/installments
-      await usersApi.updateIngenio(user!.id, true, nextInstallment, totalNeeded);
-      await fetchCurrentUser();
-
-      toast.success(isActivation ? '¡Activación exitosa! Bienvenido a Ingenio Millonario' : 'Pago de cuota procesado correctamente');
-      setShowPaymentModal(false);
-    } catch (error) {
-      toast.error('Error al procesar el pago');
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  if (!user?.ingenioAccess) {
+  if (status === 'NONE') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-6"
+          className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-indigo-100 dark:shadow-none"
         >
-          <Target className="w-12 h-12 text-purple-600" />
+          <Target className="w-12 h-12 text-indigo-600" />
         </motion.div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Ingenio Millonario</h2>
-        <p className="text-gray-500 max-w-md mx-auto mb-8">
-          Gestiona tus finanzas personales con la metodología 5S, registra activos, pasivos y accede a educación financiera premium.
+        
+        <Badge className="mb-4 bg-indigo-600 hover:bg-indigo-600">Módulo Premium</Badge>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3">Ingenio Millonario</h2>
+        <p className="text-slate-500 max-w-md mx-auto mb-8 font-medium">
+          Toma el control total de tu libertad financiera. Gestiona activos, pasivos y aprende con los mejores cursos de educación financiera.
         </p>
 
-        <Card className="max-w-md w-full mb-8 bg-gradient-to-br from-purple-50 to-white border-purple-100">
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-purple-600 uppercase tracking-wider mb-2">Acceso Premium</p>
-            <p className="text-3xl font-black text-gray-900 mb-4">{formatCurrency(ingenioPrice)}</p>
-            <div className="space-y-3 text-left">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                Control de Ingresos y Egresos
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                Gestión de Activos y Pasivos
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                Presupuesto Inteligente
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                Cursos de Educación Financiera
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-          <DialogTrigger asChild>
-            <Button className="bg-purple-600 hover:bg-purple-700 h-12 px-8 rounded-full shadow-lg shadow-purple-200">
-              Activar Ahora con mi Billetera
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>Activar Ingenio Millonario</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-slate-500">Monto Total</span>
-                  <span className="font-bold">{formatCurrency(ingenioPrice)}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full mb-10">
+          {[
+            { title: "Metodología 5S", desc: "Clasifica y ordena tus finanzas", icon: Target },
+            { title: "Gestión Patrimonial", desc: "Monitorea activos y pasivos", icon: Wallet },
+            { title: "Academia Premium", desc: "Cursos exclusivos incluidos", icon: BookOpen },
+            { title: "Presupuesto Inteligente", desc: "Cumple tus metas mensuales", icon: PieChartIcon }
+          ].map((item, i) => (
+            <Card key={i} className="border-none bg-white dark:bg-slate-900 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0">
+                  <item.icon className="w-5 h-5 text-indigo-600" />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Saldo en Billetera</span>
-                  <span className={`font-semibold ${wallet && wallet.balance >= (ingenioPrice / Number(installments)) ? 'text-green-600' : 'text-red-500'}`}>
-                    {formatCurrency(wallet?.balance || 0)}
-                  </span>
+                <div className="text-left">
+                  <p className="font-bold text-sm dark:text-white">{item.title}</p>
+                  <p className="text-[11px] text-slate-500">{item.desc}</p>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-              <div className="space-y-3">
-                <Label>Selecciona el plan de pagos</Label>
-                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1">
-                  {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => setInstallments(num.toString())}
-                      className={cn(
-                        "flex items-center justify-between p-3 rounded-xl border transition-all",
-                        installments === num.toString() ? "border-purple-600 bg-purple-50 ring-1 ring-purple-600" : "border-slate-200 hover:border-slate-300"
-                      )}
-                    >
-                      <div className="text-left">
-                        <p className="font-bold text-sm">
-                          {num === 1 ? 'Pago Único' : `${num} Cuotas`}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {num === 1 ? 'Activación inmediata' : `Financiación en ${num} meses`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-purple-700">
-                          {formatCurrency(Math.round(ingenioPrice / num))}
-                          {num > 1 && <span className="text-[10px] text-slate-400 ml-1">c/u</span>}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <Button
-                onClick={handlePayment}
-                className="w-full bg-purple-600 h-10"
-                disabled={paying || !wallet || wallet.balance < (ingenioPrice / Number(installments))}
-              >
-                {paying ? 'Procesando...' : `Confirmar y Pagar ${formatCurrency(Math.round(ingenioPrice / Number(installments)))}`}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          onClick={openPaywall}
+          className="bg-indigo-600 hover:bg-indigo-700 h-14 px-10 rounded-full shadow-lg shadow-indigo-200 dark:shadow-none font-bold text-lg"
+        >
+          Solicitar Acceso Full
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Header */}
       <div className="px-4 pt-4 flex justify-between items-center">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -294,47 +208,90 @@ export default function ClientIngenio() {
           </div>
           <p className="text-sm text-gray-500">Tu centro de control financiero</p>
         </div>
+      </div>
 
-        <AnimatePresence>
-          {user?.ingenioInstallmentsPaid !== undefined &&
-            user?.ingenioTotalInstallments !== undefined &&
-            user.ingenioInstallmentsPaid < user.ingenioTotalInstallments && (
-              <motion.div
-                initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-                animate={{ height: 'auto', opacity: 1, marginBottom: 12 }}
-                exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-                className="overflow-hidden mt-4"
-              >
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
-                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-bold uppercase tracking-wider">Pendiente</div>
-                        <h3 className="font-bold">Plan de pagos activo</h3>
-                      </div>
-                      <p className="text-purple-100 text-xs">
-                        Has completado {user.ingenioInstallmentsPaid} de {user.ingenioTotalInstallments} cuotas.
-                        Próximo pago: {formatCurrency(Math.round(ingenioPrice / user.ingenioTotalInstallments))}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => setShowPaymentModal(true)}
-                      size="sm"
-                      className="bg-white text-purple-600 hover:bg-purple-50 font-bold"
-                    >
-                      Pagar Cuota {user.ingenioInstallmentsPaid + 1}
-                    </Button>
-                  </div>
+      <AnimatePresence>
+        {!isActive && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-4 overflow-hidden"
+          >
+            <div className={cn(
+              "p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border-2 shadow-lg",
+              status === 'PENDING_APPROVAL' 
+                ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900/30 dark:text-amber-400"
+                : "bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 text-indigo-800 dark:from-indigo-900/20 dark:to-purple-900/20 dark:border-indigo-900/30 dark:text-indigo-400"
+            )}>
+              <div className="flex items-center gap-4 text-center sm:text-left">
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-inner",
+                  status === 'PENDING_APPROVAL' ? "bg-amber-100 dark:bg-amber-900/40" : "bg-indigo-100 dark:bg-indigo-900/40"
+                )}>
+                  {status === 'PENDING_APPROVAL' ? <Clock className="w-6 h-6 animate-pulse" /> : <ShieldCheck className="w-6 h-6" />}
                 </div>
-              </motion.div>
-            )}
-        </AnimatePresence>
+                <div>
+                  <p className="font-extrabold text-base mb-0.5">
+                    {status === 'PENDING_APPROVAL' ? 'Verificando Suscripción...' : '¡Desbloquea Todo el Potencial!'}
+                  </p>
+                  <p className="text-sm font-medium opacity-90 max-w-lg">
+                    {status === 'PENDING_APPROVAL' 
+                      ? 'Estamos confirmando tu pago. Tendrás acceso total en menos de 24 horas.' 
+                      : 'Actualmente estás en Modo Lectura. Adquiere el Acceso a Ingenio Millonario para registrar movimientos y usar la Academia.'}
+                  </p>
+                </div>
+              </div>
+              {status !== 'PENDING_APPROVAL' && (
+                <Button 
+                  size="lg" 
+                  onClick={openPaywall}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md px-8 h-12"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Obtener Acceso
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        )}
 
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        {isActive && subscription && subscription.paidAmount < subscription.totalAmount && (
+           <motion.div
+             initial={{ height: 0, opacity: 0 }}
+             animate={{ height: 'auto', opacity: 1 }}
+             exit={{ height: 0, opacity: 0 }}
+             className="px-4 overflow-hidden"
+           >
+             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-2xl text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg border-2 border-white/10">
+               <div>
+                  <p className="font-bold text-sm mb-1 uppercase tracking-wider text-indigo-100">Pago Pendiente</p>
+                  <p className="text-sm font-medium">Has abonado {formatCurrency(subscription.paidAmount)} de {formatCurrency(subscription.totalAmount)}.</p>
+               </div>
+               <Button size="sm" variant="secondary" className="font-bold h-10 px-6 rounded-xl" onClick={openPaywall}>
+                 Pagar Próxima Cuota
+               </Button>
+             </div>
+           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="px-4">
+        <Dialog open={isAddOpen} onOpenChange={(open) => {
+          if (open && isReadOnly) {
+            openPaywall();
+            return;
+          }
+          setIsAddOpen(open);
+        }}>
           <DialogTrigger asChild>
-            <Button size="icon" className="rounded-full bg-purple-600 hover:bg-purple-700 h-10 w-10 shadow-lg">
-              <Plus className="w-6 h-6" />
+            <Button size="icon" className={cn(
+              "rounded-full h-12 w-12 shadow-xl transition-all fixed bottom-24 right-6 z-50",
+              isReadOnly 
+                ? "bg-slate-400 dark:bg-slate-700 hover:bg-slate-500" 
+                : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none"
+            )}>
+              {isReadOnly ? <Lock className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
@@ -371,23 +328,13 @@ export default function ClientIngenio() {
                       onChange={(e) => setNewRecord({ ...newRecord, date: e.target.value })}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Se aplicará al mes seleccionado</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Meta de Ingresos</Label>
                     <Input
                       type="number"
                       placeholder="0"
-                      value={newRecord.amount} // We'll use 'amount' for Income Goal temporarily or add new state? 
-                      // actually better to check the handler logic below. 
-                      // Let's use 'amount' for Income Goal and 'description' for Expense Limit (parsed) or just use separate temp state in form?
-                      // To avoid complex refactors, let's just add new fields to state in the main component or handle it here with additional inputs controlled by the same state object if we expand it.
-                      // Let's assume we expanded the state or use 'amount' and 'description' cleverly? No, that's hacky.
-                      // Best is to use specific fields. We can add specific fields to newRecord in the `const [newRecord...` line, but I am only replacing the FORM here.
-                      // I need to update the state definition first.
-                      // Wait, I can't update state definition with this tool if it is outside the range.
-                      // The state definition is at lines 56-61. 
-                      // I should probably use a multi_replace to do both safely.
+                      value={newRecord.amount}
                       onChange={(e) => setNewRecord({ ...newRecord, amount: e.target.value })}
                       required
                     />
@@ -397,8 +344,7 @@ export default function ClientIngenio() {
                     <Input
                       type="number"
                       placeholder="0"
-                      value={newRecord.description} // Using description field for expense limit as a hack or better add fields? 
-                      // I strongly prefer adding fields.
+                      value={newRecord.description}
                       onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
                       required
                     />
@@ -436,131 +382,95 @@ export default function ClientIngenio() {
                   </div>
                 </>
               )}
-              <Button type="submit" className="w-full bg-purple-600">Guardar</Button>
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700">Guardar</Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
       <Tabs defaultValue="dashboard" className="px-4">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
-          <TabsTrigger value="dashboard">Finanzas</TabsTrigger>
-          <TabsTrigger value="budget">Presupuesto</TabsTrigger>
-          <TabsTrigger value="education">Educación</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-6 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl h-12">
+          <TabsTrigger value="dashboard" className="rounded-xl font-bold">Finanzas</TabsTrigger>
+          <TabsTrigger value="budget" className="rounded-xl font-bold">Presupuesto</TabsTrigger>
+          <TabsTrigger value="education" className="rounded-xl font-bold">Academia</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          {/* ... (Existing Dashboard Content) ... */}
-          {/* Balance Cards */}
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-none shadow-lg">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowDownRight className="w-5 h-5 opacity-80" />
-                  <span className="text-sm font-medium opacity-90">Ingresos</span>
-                </div>
-                <p className="text-2xl font-bold">{formatCurrency(summary.income)}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-none shadow-lg overflow-hidden relative">
+              <div className="absolute -right-2 -bottom-2 opacity-20"><TrendingUp className="w-20 h-20" /></div>
+              <CardContent className="p-5">
+                <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Ingresos</p>
+                <p className="text-2xl font-black">{formatCurrency(summary.income)}</p>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-red-500 to-pink-600 text-white border-none shadow-lg">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowUpRight className="w-5 h-5 opacity-80" />
-                  <span className="text-sm font-medium opacity-90">Egresos</span>
-                </div>
-                <p className="text-2xl font-bold">{formatCurrency(summary.expenses)}</p>
+            <Card className="bg-gradient-to-br from-rose-500 to-pink-600 text-white border-none shadow-lg overflow-hidden relative">
+              <div className="absolute -right-2 -bottom-2 opacity-20"><TrendingDown className="w-20 h-20" /></div>
+              <CardContent className="p-5">
+                <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Egresos</p>
+                <p className="text-2xl font-black">{formatCurrency(summary.expenses)}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Net Worth & Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Net Worth Card */}
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Patrimonio Neto</p>
-                    <p className={`text-3xl font-bold ${summary.netWorth >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600'}`}>
-                      {formatCurrency(summary.netWorth)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className={`flex items-center gap-1 font-medium ${summary.netWorthGrowth >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {summary.netWorthGrowth >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                      <span className="text-sm">{summary.netWorthGrowth.toFixed(1)}%</span>
-                    </div>
-                    <p className="text-xs text-gray-400">vs mes anterior</p>
-                  </div>
+          <Card className="dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-xl rounded-3xl overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Patrimonio Neto</p>
+                  <p className={`text-4xl font-black ${summary.netWorth >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-600'}`}>
+                    {formatCurrency(summary.netWorth)}
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-dashed dark:border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <Home className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Activos</p>
-                      <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(summary.assets)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                      <CreditCard className="w-5 h-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Pasivos</p>
-                      <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(summary.liabilities)}</p>
-                    </div>
-                  </div>
+                <div className="text-right">
+                  <Badge className={cn(
+                    "h-8 px-4 font-black rounded-full",
+                    summary.netWorthGrowth >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  )}>
+                    {summary.netWorthGrowth >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
+                    {summary.netWorthGrowth.toFixed(1)}%
+                  </Badge>
+                  <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">vs mes anterior</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Financial Flow Chart */}
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white">Flujo de Caja</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[
-                      { name: 'Ingresos', value: summary.income, fill: '#10b981' },
-                      { name: 'Gastos', value: summary.expenses, fill: '#ef4444' }
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                      <XAxis dataKey="name" stroke="#94a3b8" />
-                      <YAxis stroke="#94a3b8" tickFormatter={(val) => `₲${val / 1000}k`} />
-                      <Tooltip
-                        formatter={(val: number) => formatCurrency(val)}
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff' }}
-                      />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={50} />
-                    </BarChart>
-                  </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <p className="text-xs font-bold text-slate-400 uppercase">Activos</p>
+                  </div>
+                  <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(summary.assets)}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <p className="text-xs font-bold text-slate-400 uppercase">Pasivos</p>
+                  </div>
+                  <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(summary.liabilities)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* 5S Cards */}
           <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-3 ml-1">Metodología 5S</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4 ml-1">Metodología 5S</h2>
+            <div className="grid grid-cols-2 gap-4">
               {ssCards.map((card, index) => (
                 <motion.div
                   key={card.title}
                   initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <Card className="h-full hover:shadow-md transition-all cursor-pointer border-l-4 dark:bg-slate-900 dark:border-t-0 dark:border-r-0 dark:border-b-0" style={{ borderLeftColor: card.color.replace('bg-', '') }}>
-                    <CardContent className="p-3">
-                      <div className={`w-8 h-8 ${card.color} rounded-lg flex items-center justify-center mb-2 shadow-sm`}>
-                        <card.icon className="w-4 h-4 text-white" />
+                  <Card className="h-full hover:shadow-lg transition-all border-none bg-slate-50 dark:bg-slate-900/50 rounded-2xl">
+                    <CardContent className="p-4">
+                      <div className={`w-10 h-10 ${card.color} rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-inner`}>
+                        <card.icon className="w-5 h-5 text-white" />
                       </div>
-                      <p className="font-bold text-gray-900 dark:text-white text-sm">{card.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">{card.subtitle}</p>
+                      <p className="font-black text-slate-900 dark:text-white text-base leading-tight">{card.title}</p>
+                      <p className="text-xs text-slate-500 font-bold opacity-80">{card.subtitle}</p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -575,43 +485,44 @@ export default function ClientIngenio() {
 
         <TabsContent value="education" className="space-y-4">
           {courses.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 font-medium">No hay cursos disponibles aún.</p>
-              <Button variant="outline" className="mt-4" onClick={() => navigate('/app/cursos')}>
-                Ver todos los cursos
-              </Button>
+            <div className="text-center py-16 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+              <BookOpen className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+              <p className="text-slate-500 font-bold">No hay contenido disponible.</p>
             </div>
           ) : (
-            <>
+            <div className="space-y-4">
               {courses.map((course: any) => (
-                <Card key={course.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/app/cursos/${course.id}`)}>
-                  <div className="h-32 bg-gray-100 dark:bg-slate-800 relative">
+                <Card key={course.id} className="overflow-hidden border-none shadow-md bg-white dark:bg-slate-900 rounded-3xl" onClick={() => navigate(`/app/cursos/${course.id}`)}>
+                  <div className="h-40 bg-slate-100 dark:bg-slate-800 relative">
                     {course.coverImage ? (
                       <img src={course.coverImage} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
-                        <BookOpen className="w-10 h-10 text-white/50" />
+                      <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <Play className="w-12 h-12 text-white/30" />
                       </div>
                     )}
+                    <div className="absolute top-4 right-4">
+                      <Badge className="bg-white/90 text-slate-900 hover:bg-white border-none font-bold backdrop-blur-sm">
+                        {course.category}
+                      </Badge>
+                    </div>
                   </div>
-                  <CardContent className="p-4">
-                    <Badge className="mb-2">{course.category}</Badge>
-                    <h3 className="font-bold text-lg mb-1 dark:text-white">{course.title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">{course.description}</p>
+                  <CardContent className="p-5">
+                    <h3 className="font-black text-xl mb-1 dark:text-white leading-tight">{course.title}</h3>
+                    <p className="text-sm text-slate-500 font-medium mb-4 line-clamp-2">{course.description}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">{course.modules?.length || 0} módulos</span>
-                      <Button className="bg-slate-900 dark:bg-slate-700 text-white" onClick={(e) => { e.stopPropagation(); navigate(`/app/cursos/${course.id}`); }}>
-                        Ver Contenido <Play className="w-4 h-4 ml-2" />
+                      <div className="flex items-center gap-1 text-slate-400 font-bold text-xs uppercase tracking-widest">
+                        <BookOpen className="w-3 h-3" />
+                        {course.modules?.length || 0} módulos
+                      </div>
+                      <Button className="bg-indigo-600 hover:bg-indigo-700 rounded-full font-bold h-10 px-6">
+                        Estudiar
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
-              <Button variant="outline" className="w-full" onClick={() => navigate('/app/cursos')}>
-                Ver todos los cursos
-              </Button>
-            </>
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -625,6 +536,9 @@ function BudgetSection() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ incomeGoal: '', expenseLimit: '' });
+
+  const { isReadOnly } = useIngenioSubscription();
+  const { openPaywall } = usePaywallStore();
 
   useEffect(() => {
     fetchBudget();
@@ -651,6 +565,11 @@ function BudgetSection() {
   };
 
   const handleSaveBudget = async () => {
+    if (isReadOnly) {
+      openPaywall();
+      return;
+    }
+
     try {
       const date = new Date();
       const month = date.getMonth() + 1;
@@ -665,8 +584,12 @@ function BudgetSection() {
       toast.success('Presupuesto actualizado');
       setIsEditing(false);
       fetchBudget();
-    } catch (error) {
-      toast.error('Error al guardar presupuesto');
+    } catch (error: any) {
+      if (error.message.includes('Suscripción requerida') || error.message.includes('REQUIRES_SUBSCRIPTION')) {
+        openPaywall();
+      } else {
+        toast.error(error.message || 'Error al guardar presupuesto');
+      }
     }
   };
 
@@ -675,100 +598,81 @@ function BudgetSection() {
 
   return (
     <div className="space-y-6">
-      <Card className="dark:bg-slate-900 dark:border-slate-800">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg font-bold dark:text-white">Resumen Mensual</CardTitle>
-          <Dialog open={isEditing} onOpenChange={setIsEditing}>
+      <Card className="dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b dark:border-slate-800 mb-6">
+          <div>
+            <CardTitle className="text-xl font-black dark:text-white">Metas Mensuales</CardTitle>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-0.5">Control de objetivos</p>
+          </div>
+          <Dialog open={isEditing} onOpenChange={(open) => {
+            if (open && isReadOnly) {
+              openPaywall();
+              return;
+            }
+            setIsEditing(open);
+          }}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">Editar Metas</Button>
+              <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-5 border-slate-200">
+                {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : null}
+                Editar
+              </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Configurar Presupuesto</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
+            <DialogContent className="rounded-3xl">
+              <DialogHeader><DialogTitle className="text-2xl font-black text-center">Configurar Metas</DialogTitle></DialogHeader>
+              <div className="space-y-5 py-4">
                 <div className="space-y-2">
-                  <Label>Meta de Ingresos</Label>
+                  <Label className="font-bold">Meta de Ingresos</Label>
                   <Input
                     type="number"
                     value={editForm.incomeGoal}
                     onChange={e => setEditForm({ ...editForm, incomeGoal: e.target.value })}
+                    className="h-12 rounded-xl text-lg font-bold"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Límite de Gastos</Label>
+                  <Label className="font-bold">Límite de Gastos</Label>
                   <Input
                     type="number"
                     value={editForm.expenseLimit}
                     onChange={e => setEditForm({ ...editForm, expenseLimit: e.target.value })}
+                    className="h-12 rounded-xl text-lg font-bold"
                   />
                 </div>
-                <Button onClick={handleSaveBudget} className="w-full">Guardar</Button>
+                <Button onClick={handleSaveBudget} className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-lg">Guardar Cambios</Button>
               </div>
             </DialogContent>
           </Dialog>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Income Goal */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 dark:text-gray-400">Meta Ingresos</span>
-              <span className="font-medium dark:text-white">{formatCurrency(actuals.income)} / {formatCurrency(budget.incomeGoal)}</span>
+        <CardContent className="space-y-8">
+          <div className="space-y-3">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1">Estado de Ingresos</span>
+                <span className="text-lg font-black dark:text-white">{formatCurrency(actuals.income)} de {formatCurrency(budget.incomeGoal)}</span>
+              </div>
+              <Badge className="bg-emerald-100 text-emerald-700 border-none font-black">{incomeProgress.toFixed(0)}%</Badge>
             </div>
-            <Progress value={Math.min(incomeProgress, 100)} className="h-2 bg-gray-100 dark:bg-slate-800" />
-            <p className="text-xs text-right text-gray-500 dark:text-gray-400">{incomeProgress.toFixed(1)}% completado</p>
+            <Progress value={Math.min(incomeProgress, 100)} className="h-4 bg-slate-100 dark:bg-slate-900 rounded-full" />
           </div>
 
-          {/* Expense Limit */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 dark:text-gray-400">Límite Gastos</span>
-              <span className="font-medium dark:text-white">{formatCurrency(actuals.expenses)} / {formatCurrency(budget.expenseLimit)}</span>
+          <div className="space-y-3">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest block mb-1">Control de Gastos</span>
+                <span className="text-lg font-black dark:text-white">{formatCurrency(actuals.expenses)} de {formatCurrency(budget.expenseLimit)}</span>
+              </div>
+              <Badge className={cn(
+                "font-black border-none",
+                expenseProgress > 100 ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
+              )}>{expenseProgress.toFixed(0)}%</Badge>
             </div>
-            <Progress value={Math.min(expenseProgress, 100)} className="h-2 bg-gray-100 dark:bg-slate-800" />
-            <p className={`text-xs text-right ${expenseProgress > 100 ? 'text-red-500 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
-              {expenseProgress.toFixed(1)}% utilizado
-            </p>
+            <Progress value={Math.min(expenseProgress, 100)} className="h-4 bg-slate-100 dark:bg-slate-900 rounded-full" />
+            {expenseProgress > 100 && (
+              <p className="text-[10px] font-bold text-rose-600 uppercase animate-bounce mt-1">¡Has superado tu límite de gastos!</p>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardHeader>
-            <CardTitle className="dark:text-white">Estado Financiero</CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <div className="h-48 w-48 relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Disponible', value: Math.max(0, budget.expenseLimit - actuals.expenses), fill: '#10b981' },
-                      { name: 'Gastado', value: actuals.expenses, fill: '#ef4444' }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#10b981" />
-                    <Cell fill="#ef4444" />
-                  </Pie>
-                  <Tooltip formatter={(val: number) => formatCurrency(val)} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className="text-xs text-gray-500">Restante</span>
-                <span className="font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(Math.max(0, budget.expenseLimit - actuals.expenses))}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
-

@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 // Formatear moneda (Guaraníes Paraguayos)
 export function formatCurrency(amount: number, currency: string = 'PYG'): string {
   if (currency === 'PYG') {
-    return `₲ ${amount.toLocaleString('es-PY')}`;
+    return `₲ ${Math.round(amount).toLocaleString('es-PY')}`;
   }
   return new Intl.NumberFormat('es-PY', {
     style: 'currency',

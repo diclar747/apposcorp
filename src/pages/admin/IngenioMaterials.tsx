@@ -14,8 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wheel } from '@/components/ingenio/Wheel';
-import { coursesApi, uploadApi } from '@/lib/api';
+import { ingenioApi } from '@/lib/api';
 import { useRef } from 'react';
+import { FilePicker } from '@/components/shared/FilePicker';
+import { SecureViewer } from '@/components/shared/SecureViewer';
 
 // Tipos de materiales
 interface Material {
@@ -65,6 +67,7 @@ export default function IngenioMaterials() {
     const [selectedStage, setSelectedStage] = useState<'E1' | 'E2'>('E1');
     const [showWheel, setShowWheel] = useState(false);
     const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
+    const [viewingMaterial, setViewingMaterial] = useState<Material | null>(null);
     
     const [form, setForm] = useState({
         title: '',
@@ -75,49 +78,65 @@ export default function IngenioMaterials() {
         fileType: 'pdf' as 'pdf' | 'video' | 'audio' | 'doc',
     });
 
-    // Cargar materiales desde localStorage (temporal hasta tener API)
+    // Cargar materiales desde la API
     useEffect(() => {
-        const saved = localStorage.getItem(`ingenio-materials-${selectedStage}`);
-        if (saved) {
-            setMaterials(JSON.parse(saved));
-        }
-        setLoading(false);
+        fetchMaterials();
     }, [selectedStage]);
 
-    const saveMaterials = (newMaterials: Material[]) => {
-        localStorage.setItem(`ingenio-materials-${selectedStage}`, JSON.stringify(newMaterials));
-        setMaterials(newMaterials);
+    const fetchMaterials = async () => {
+        try {
+            setLoading(true);
+            const data = await ingenioApi.getMaterials();
+            // Filtrar por etapa si la API no lo hace, aunque idealmente debería
+            setMaterials(data.filter((m: any) => m.stage === selectedStage));
+        } catch (error) {
+            toast.error('Error al cargar materiales');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleCreate = () => {
+    const handleCreate = async () => {
         if (!form.title || !form.fileUrl) {
-            toast.error('Título y URL del archivo son obligatorios');
+            toast.error('El título y el archivo son obligatorios');
             return;
         }
         
-        const newMaterial: Material = {
-            id: Date.now().toString(),
-            ...form,
-            createdAt: new Date().toISOString(),
-        };
-        
-        saveMaterials([...materials, newMaterial]);
-        toast.success('Material creado correctamente');
-        setIsCreateOpen(false);
-        setForm({
-            title: '',
-            description: '',
-            stage: selectedStage,
-            segmentNumber: 1,
-            fileUrl: '',
-            fileType: 'pdf',
-        });
+        try {
+            setUploading(true);
+            await ingenioApi.createMaterial({
+                ...form,
+                isPublic: true,
+                order: materials.length + 1
+            });
+            
+            toast.success('Material creado correctamente');
+            setIsCreateOpen(false);
+            fetchMaterials();
+            setForm({
+                title: '',
+                description: '',
+                stage: selectedStage,
+                segmentNumber: 1,
+                fileUrl: '',
+                fileType: 'pdf',
+            });
+        } catch (error) {
+            toast.error('Error al crear el material');
+        } finally {
+            setUploading(false);
+        }
     };
 
-    const handleDelete = (id: string) => {
-        const newMaterials = materials.filter(m => m.id !== id);
-        saveMaterials(newMaterials);
-        toast.success('Material eliminado');
+    const handleDelete = async (id: string) => {
+        if (!confirm('¿Estás seguro de eliminar este material?')) return;
+        try {
+            await ingenioApi.deleteMaterial(id);
+            toast.success('Material eliminado');
+            fetchMaterials();
+        } catch (error) {
+            toast.error('No se pudo eliminar el material');
+        }
     };
 
     const handleWheelSelect = (segment: { number: number; color: string; title: string }) => {
@@ -237,14 +256,12 @@ export default function IngenioMaterials() {
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
-                                                <a 
-                                                    href={mat.fileUrl} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-blue-500 hover:underline mt-2 inline-flex items-center gap-1"
+                                                <button 
+                                                    onClick={() => setViewingMaterial(mat)}
+                                                    className="text-xs text-blue-500 hover:text-blue-700 font-bold mt-2 inline-flex items-center gap-1 transition-colors"
                                                 >
                                                     Ver material <ChevronRight className="w-3 h-3" />
-                                                </a>
+                                                </button>
                                             </CardContent>
                                         </Card>
                                     ))}
@@ -323,36 +340,19 @@ export default function IngenioMaterials() {
                                 </div>
                             </div>
                         </div>
-                        <div>
-                            <Label>Tipo de archivo</Label>
-                            <Select 
-                                value={form.fileType} 
-                                onValueChange={(v) => setForm({...form, fileType: v as any})}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="pdf">PDF</SelectItem>
-                                    <SelectItem value="video">Video</SelectItem>
-                                    <SelectItem value="audio">Audio</SelectItem>
-                                    <SelectItem value="doc">Documento</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Enlace del material</Label>
-                            <Input 
+                        <div className="pt-2">
+                            <Label className="mb-2 block">Archivo del Material</Label>
+                            <FilePicker 
                                 value={form.fileUrl}
-                                onChange={(e) => setForm({...form, fileUrl: e.target.value})}
-                                placeholder="Ej: https://drive.google.com/..."
+                                onChange={(val, type) => setForm({...form, fileUrl: val || '', fileType: type as any})}
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleCreate} className="bg-violet-600 hover:bg-violet-700">
-                            <Upload className="w-4 h-4 mr-2" /> Guardar Material
+                        <Button onClick={handleCreate} disabled={uploading} className="bg-violet-600 hover:bg-violet-700">
+                            {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                            {uploading ? 'Guardando...' : 'Guardar Material'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -373,6 +373,19 @@ export default function IngenioMaterials() {
                     </div>
                 </DialogContent>
             </Dialog>
+            {/* Viewer Dialog */}
+            {viewingMaterial && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="w-full max-w-5xl h-[85vh]">
+                        <SecureViewer 
+                            url={viewingMaterial.fileUrl} 
+                            type={viewingMaterial.fileType} 
+                            title={viewingMaterial.title} 
+                            onClose={() => setViewingMaterial(null)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

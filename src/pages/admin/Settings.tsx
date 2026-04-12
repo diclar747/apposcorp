@@ -159,10 +159,17 @@ export default function AdminSettings() {
                                 <Label htmlFor="ingenio_price">Costo Acceso Ingenio Millonario (Gs)</Label>
                                 <Input
                                     id="ingenio_price"
-                                    type="number"
-                                    value={getSettingValue('ingenio_price', '700000')}
-                                    onChange={(e) => updateLocalSetting('ingenio_price', e.target.value, 'general', true)}
-                                    placeholder="700000"
+                                    type="text"
+                                    value={(() => {
+                                        const val = getSettingValue('ingenio_price', '700000');
+                                        const num = parseInt(val, 10);
+                                        return isNaN(num) ? '' : num.toLocaleString('es-PY');
+                                    })()}
+                                    onChange={(e) => {
+                                        const rawValue = e.target.value.replace(/\D/g, '');
+                                        updateLocalSetting('ingenio_price', rawValue, 'general', true);
+                                    }}
+                                    placeholder="700.000"
                                 />
                                 <p className="text-xs text-muted-foreground">Define el costo total que verán los usuarios al solicitar acceso.</p>
                             </div>

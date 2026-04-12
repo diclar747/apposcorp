@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Play, Search, GraduationCap, Lock, CheckCircle, Wallet, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  BookOpen, Play, Search, Lock, CheckCircle, Sparkles, Clock, ShieldCheck, HelpCircle 
+} from "lucide-react";
 import { coursesApi } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,24 +12,29 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/stores";
 import { toast } from "sonner";
-
+import { useIngenioSubscription } from "@/hooks/useIngenioSubscription";
+import { usePaywallStore } from "@/stores";
 import Wheel from "@/components/ingenio/Wheel";
 import type { WheelSegment } from "@/components/ingenio/Wheel";
-import { HelpCircle } from "lucide-react";
-import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { AccessDenied } from "@/components/ingenio/AccessDenied";
 
 export default function IngenioAcademy() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { status, isActive, isReadOnly } = useIngenioSubscription();
+  const { openPaywall } = usePaywallStore();
 
-  
   const [courses, setCourses] = useState<any[]>([]);
   const [myCoursesIds, setMyCoursesIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
+  if (status !== 'ACTIVE') {
+    return <AccessDenied status={status} />;
+  }
 
+  useEffect(() => {
     fetchData();
   }, [user?.id]);
 
@@ -38,7 +46,9 @@ export default function IngenioAcademy() {
         coursesApi.getMyCourses()
       ]);
       
-      setCourses(allCourses);
+      setCourses(allCourses.sort((a: any, b: any) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ));
       setMyCoursesIds(myEnrollments.map((e: any) => e.courseId));
     } catch (error) {
       console.error(error);
@@ -48,15 +58,37 @@ export default function IngenioAcademy() {
     }
   };
 
+  const handleEnroll = async (courseId: string) => {
+    if (!isActive) {
+      openPaywall();
+      return;
+    }
+    
+    try {
+      await coursesApi.enroll(courseId);
+      toast.success("¡Inscripción exitosa! Ya puedes comenzar este curso.");
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || "No se pudo realizar la inscripción.");
+    }
+  };
+
   const CourseCard = ({ course }: { course: any }) => {
-    const hasAccess = myCoursesIds.includes(course.id);
+    const isEnrolled = myCoursesIds.includes(course.id);
+    const canAccess = isActive || isEnrolled;
     
     return (
       <Card 
-        onClick={() => navigate(`/ingenio/cursos/${course.id}`)}
-        className="overflow-hidden group hover:shadow-2xl transition-all duration-500 border-none rounded-[2rem] bg-white dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 cursor-pointer"
+        onClick={() => {
+          if (isEnrolled || isActive) {
+            navigate(`/ingenio/cursos/${course.id}`);
+          } else {
+            openPaywall();
+          }
+        }}
+        className="overflow-hidden group hover:shadow-2xl transition-all duration-500 border-none rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 cursor-pointer"
       >
-        <div className="h-48 relative overflow-hidden">
+        <div className="h-44 relative overflow-hidden">
           {course.coverImage ? (
             <img src={course.coverImage} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
           ) : (
@@ -66,44 +98,50 @@ export default function IngenioAcademy() {
           )}
           
           <div className="absolute top-4 right-4 z-10">
-            {hasAccess ? (
-              <Badge className="bg-emerald-500/90 text-white backdrop-blur-md border-none px-3 py-1 flex items-center gap-1 shadow-lg">
-                <CheckCircle className="w-3 h-3" /> Adquirido
+            {isEnrolled ? (
+              <Badge className="bg-emerald-500 text-white border-none px-3 py-1 font-bold shadow-lg">
+                <CheckCircle className="w-3 h-3 mr-1" /> Iniciado
               </Badge>
-            ) : (
-              <Badge className="bg-slate-900/60 text-white backdrop-blur-md border-none px-3 py-1 flex items-center gap-1 shadow-lg">
-                <Lock className="w-3 h-3" /> Bloqueado
+            ) : !isActive ? (
+              <Badge className="bg-slate-900/80 text-white backdrop-blur-md border-none px-3 py-1 font-bold shadow-lg">
+                <Lock className="w-3 h-3 mr-1" /> Premium
               </Badge>
-            )}
-          </div>
-
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
-             <p className="text-white text-sm font-medium line-clamp-2">{course.shortDescription || course.description}</p>
+            ) : null}
           </div>
         </div>
 
         <CardContent className="p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Badge variant="outline" className="text-[10px] uppercase tracking-tighter border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400">
-              {course.level || "Multinivel"}
+          <div className="flex items-center gap-2 mb-2">
+            <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-400">
+              {course.category}
             </Badge>
-            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase">
               <Play className="w-3 h-3" /> {course.modulesCount || course.modules?.length || 0} módulos
             </span>
           </div>
           
-          <h3 className="font-bold text-xl mb-4 text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition-colors">
+          <h3 className="font-black text-lg mb-4 text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition-colors">
             {course.title}
           </h3>
 
-          <div className="flex items-center justify-between gap-4 mt-6">
-            <Button 
-                variant="outline"
-                className="w-full border-slate-200 dark:border-slate-800 hover:bg-slate-900 hover:text-white rounded-2xl h-11 transition-all duration-300"
-              >
-                {hasAccess ? 'Continuar Aprendiendo' : 'Ver Detalles y Comprar'}
-            </Button>
-          </div>
+          <Button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isEnrolled || isActive) {
+                  navigate(`/ingenio/cursos/${course.id}`);
+                } else {
+                  openPaywall();
+                }
+              }}
+              className={cn(
+                "w-full rounded-2xl h-12 font-black text-sm shadow-lg transition-all",
+                (isEnrolled || isActive) 
+                  ? "bg-slate-900 hover:bg-black text-white" 
+                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              )}
+            >
+              {(isEnrolled || isActive) ? 'Comenzar Ahora' : 'Desbloquear con Acceso Full'}
+          </Button>
         </CardContent>
       </Card>
     );
@@ -114,175 +152,151 @@ export default function IngenioAcademy() {
     c.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const wheelColors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#14b8a6', '#8b5cf6', '#d946ef', '#f43f5e'];
-  const wheelSegments: WheelSegment[] = courses.slice(0, 10).map((c, i) => ({
+  const wheelSegments: WheelSegment[] = courses.slice(0, 12).map((c, i) => ({
     number: i + 1,
-    color: wheelColors[i % wheelColors.length],
-    title: c.title.replace(/^(E1|E2|IM E1|IM E2) - /i, '').trim(),
+    color: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'][i % 12],
+    title: c.title,
   }));
 
   const handleWheelSelect = (segment: WheelSegment) => {
-    toast.success(`¡Excelente elección! Hoy el destino sugiere: ${segment.title}`, {
-      description: "Es un gran momento para avanzar con este módulo.",
-      duration: 5000,
+    toast.success(`Destino sugerido: ${segment.title}`, {
+      description: "Es un excelente momento para avanzar con este módulo.",
       icon: <Sparkles className="w-5 h-5 text-yellow-500" />,
     });
   };
 
+  if (status === 'NONE') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center">
+         <BookOpen className="w-20 h-20 text-indigo-100 mb-6" />
+         <h2 className="text-3xl font-black mb-4">Academia Bloqueada</h2>
+         <p className="text-slate-500 max-w-sm mb-8 font-medium">Suscríbete a Ingenio Millonario para acceder a todo el contenido educativo exclusivo.</p>
+         <Button size="lg" onClick={openPaywall} className="bg-indigo-600 rounded-full h-14 px-10 font-bold text-lg">Activar Acceso</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 pb-20">
-      {/* Header Section */}
-      <div className="relative overflow-hidden rounded-[3rem] bg-slate-900 p-8 md:p-12 text-white shadow-2xl shadow-indigo-500/10">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[100px] -mr-32 -mt-32 rounded-full" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 blur-[100px] -ml-32 -mb-32 rounded-full" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="max-w-2xl">
-            <Badge className="bg-indigo-500/20 text-indigo-300 border-none mb-4 px-4 py-1.5 rounded-full text-sm font-semibold flex w-fit items-center gap-2">
-              <Sparkles className="w-4 h-4" /> Academia Premium
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight leading-tight">
-              Ingenio <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Millonario</span>
-            </h1>
-            <p className="text-slate-400 text-lg leading-relaxed">
-              Formación avanzada diseñada para tu crecimiento exponencial. Aprende a dominar las finanzas, inversiones y el sistema de negocios.
-            </p>
-          </div>
+    <div className="space-y-8 pb-10">
+      <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 blur-[100px] rounded-full -mr-40 -mt-40" />
+        <div className="relative z-10">
+          <Badge className="bg-indigo-500/20 text-indigo-300 border-none mb-4 font-black px-4 h-8 rounded-full">
+            <Sparkles className="w-4 h-4 mr-2" /> Programas de Éxito
+          </Badge>
+          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter">
+            Academia <span className="text-indigo-400">Premium</span>
+          </h1>
+          <p className="text-slate-400 text-lg max-w-2xl font-medium leading-relaxed">
+            Formación avanzada diseñada para tu crecimiento exponencial. Aprende a dominar las finanzas, inversiones y el sistema de negocios.
+          </p>
         </div>
       </div>
 
-      {/* Wheel Section */}
-      {wheelSegments.length >= 2 && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="bg-gradient-to-br from-indigo-50 to-white dark:from-slate-950 dark:to-slate-900 rounded-[3rem] p-8 md:p-12 border border-indigo-100 dark:border-slate-800 shadow-xl overflow-hidden relative group"
-        >
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-             <HelpCircle className="w-64 h-64 rotate-12" />
-          </div>
-
-          <div className="relative z-10 flex flex-col lg:flex-row items-center gap-12">
-            <div className="flex-1 text-center lg:text-left">
-              <Badge className="bg-amber-100 text-amber-600 border-none mb-4 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">
-                Sugerencia del Día
-              </Badge>
-              <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">
-                ¿No estás seguro de <br />
-                <span className="text-indigo-600">por dónde empezar?</span>
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400 text-lg max-w-md mx-auto lg:mx-0 leading-relaxed font-medium">
-                Gira la ruleta y deja que el destino decida tu formación de hoy. ¡Cada paso cuenta en tu camino al éxito!
-              </p>
-              
-              <div className="mt-8 grid grid-cols-2 gap-3 max-w-sm mx-auto lg:mx-0">
-                 <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Cursos</p>
-                    <p className="text-xl font-black text-indigo-600">{courses.length}</p>
-                 </div>
-                 <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Módulos</p>
-                    <p className="text-xl font-black text-amber-500">Premium</p>
-                 </div>
+      <AnimatePresence>
+        {!isActive && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className={cn(
+               "p-6 rounded-[2rem] border-2 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6",
+               status === 'PENDING_APPROVAL' 
+                ? "bg-amber-50 border-amber-200"
+                : "bg-indigo-50 border-indigo-200"
+            )}>
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-lg">
+                   {status === 'PENDING_APPROVAL' ? <Clock className="text-amber-500 animate-pulse w-7 h-7" /> : <Lock className="text-indigo-600 w-7 h-7" />}
+                </div>
+                <div>
+                   <p className="font-black text-lg text-slate-900 leading-none mb-1">{status === 'PENDING_APPROVAL' ? 'Suscripción en Trámite' : 'Contenido Protegido'}</p>
+                   <p className="text-sm text-slate-600 font-bold opacity-80">
+                     {status === 'PENDING_APPROVAL' 
+                        ? 'Estamos validando tu pago. En breve tendrás acceso libre a todos los cursos.' 
+                        : 'Para ver las lecciones completas y descargar materiales, necesitas una suscripción activa.'}
+                   </p>
+                </div>
               </div>
+              {status !== 'PENDING_APPROVAL' && (
+                <Button onClick={openPaywall} className="bg-slate-900 hover:bg-black text-white rounded-2xl h-12 px-8 font-black">Desbloquear Todo</Button>
+              )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="flex-1 flex justify-center scale-75 md:scale-90 lg:scale-100 transition-transform">
-              <Wheel 
-                segments={wheelSegments} 
-                onSegmentSelected={handleWheelSelect}
-                size={window.innerWidth < 768 ? 320 : 400}
-              />
+      {wheelSegments.length > 0 && (
+         <div className="flex flex-col lg:flex-row items-center gap-10 bg-slate-900 dark:bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px]" />
+            <div className="flex-1 relative z-10 text-center lg:text-left">
+               <Badge className="bg-amber-400 text-amber-950 border-none mb-4 font-black">¿INDECISO?</Badge>
+               <h2 className="text-3xl md:text-4xl font-black mb-4 leading-tight">Gira la <span className="text-indigo-400">Rueda del Éxito</span></h2>
+               <p className="text-slate-400 font-medium mb-8 max-w-md mx-auto lg:mx-0">Deja que el destino sugiera tu próxima gran lección para acelerar tu libertad financiera.</p>
+               <div className="flex gap-4">
+                  <div className="p-4 bg-white/5 rounded-3xl border border-white/10 text-center flex-1">
+                     <p className="text-2xl font-black text-indigo-400">100%</p>
+                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Contenido Premium</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-3xl border border-white/10 text-center flex-1">
+                     <p className="text-2xl font-black text-emerald-400">{courses.length}</p>
+                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Cursos Totales</p>
+                  </div>
+               </div>
             </div>
-          </div>
-        </motion.div>
+            <div className="flex-1 flex justify-center scale-90 md:scale-100">
+               <Wheel segments={wheelSegments} onSegmentSelected={handleWheelSelect} size={300} />
+            </div>
+         </div>
       )}
 
-      {/* Search and Filters */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full max-w-xl">
+      <div className="flex flex-col md:flex-row gap-6 items-center">
+        <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <Input 
-            placeholder="Buscar por título o descripción..." 
+            placeholder="¿Qué quieres aprender hoy?..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-14 text-base rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none focus:ring-indigo-500 transition-all"
+            className="pl-12 h-14 text-lg rounded-2xl bg-white dark:bg-slate-950 border-slate-200 shadow-xl shadow-slate-200/50"
           />
         </div>
-        
-        <div className="flex items-center gap-4 text-slate-500 text-sm italic">
-          <BookOpen className="w-4 h-4" />
+        <div className="flex items-center gap-4 text-slate-400 font-black text-xs uppercase tracking-widest">
+          <BookOpen className="w-5 h-5" />
           {courses.length} cursos disponibles
         </div>
       </div>
 
-      {/* Course Categories */}
-      <Tabs defaultValue="im-e1" className="w-full">
-        <TabsList className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl h-auto mb-8 grid grid-cols-2 max-w-sm">
-          <TabsTrigger value="im-e1" className="rounded-xl py-3 data-[state=active]:bg-white data-[state=active]:shadow-lg dark:data-[state=active]:bg-slate-900">
-            Etapa IM E1
-          </TabsTrigger>
-          <TabsTrigger value="im-e2" className="rounded-xl py-3 data-[state=active]:bg-white data-[state=active]:shadow-lg dark:data-[state=active]:bg-slate-900">
-            Etapa IM E2
-          </TabsTrigger>
+      <Tabs defaultValue="IM E1" className="w-full">
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto mb-10 overflow-x-auto whitespace-nowrap">
+          {['IM E1', 'IM E2'].map(cat => (
+            <TabsTrigger key={cat} value={cat} className="rounded-xl px-8 py-3 font-black text-sm leading-none data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg">
+              {cat}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="im-e1">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-10">
-              {[1, 2, 3].map(i => <div key={i} className="h-80 rounded-3xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}
-            </div>
-          ) : filteredCourses.filter(c => c.category === 'IM E1').length === 0 ? (
-            <EmptyState message="No hay cursos disponibles en la etapa E1 todavía." />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredCourses.filter(c => c.category === 'IM E1').map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="im-e2">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-10">
-              {[1, 2, 3].map(i => <div key={i} className="h-80 rounded-3xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}
-            </div>
-          ) : filteredCourses.filter(c => c.category === 'IM E2').length === 0 ? (
-            <EmptyState message="No hay cursos disponibles en la etapa E2 todavía." />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredCourses.filter(c => c.category === 'IM E2').map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-        
-        {/* View all others if any */}
-        {filteredCourses.filter(c => c.category !== 'IM E1' && c.category !== 'IM E2').length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-              <Sparkles className="text-amber-500 w-6 h-6" /> Otros Programas
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredCourses.filter(c => c.category !== 'IM E1' && c.category !== 'IM E2').map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          </div>
-        )}
+        {['IM E1', 'IM E2'].map(cat => (
+          <TabsContent key={cat} value={cat}>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3].map(i => <div key={i} className="h-72 rounded-[2rem] bg-slate-100 animate-pulse" />)}
+              </div>
+            ) : filteredCourses.filter(c => c.category === cat).length === 0 ? (
+              <div className="text-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                <p className="text-slate-400 font-bold uppercase tracking-widest">Próximamente más contenido</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredCourses.filter(c => c.category === cat).map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
 }
-
-const EmptyState = ({ message }: { message: string }) => (
-  <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-800 shadow-sm">
-    <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-      <BookOpen className="w-10 h-10 text-slate-300" />
-    </div>
-    <p className="text-slate-500 font-medium text-lg max-w-sm mx-auto">{message}</p>
-  </div>
-);

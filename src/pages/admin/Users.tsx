@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
-import { usersApi, plansApi, coursesApi } from '@/lib/api';
+import { usersApi, plansApi, coursesApi, ingenioApi } from '@/lib/api';
 import type { SubscriptionPlan, BillingCycle, Course, UserCourse } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -152,6 +152,31 @@ export default function AdminUsers() {
   const handleToggleIngenio = async (userId: string, currentAccess: boolean) => {
     try {
       await usersApi.updateIngenio(userId, !currentAccess);
+      
+      // Sincronización: Si revocamos acceso, revocamos también la suscripción activa
+      if (currentAccess) {
+        try {
+          const allSubs = await ingenioApi.getAllSubscriptions();
+          const userSub = allSubs.find((s: any) => s.userId === userId && s.status !== 'REVOKED');
+          if (userSub) {
+            await ingenioApi.revokeSubscription(userSub.id);
+          }
+        } catch (e) {
+          console.error("Error al sincronizar revocación:", e);
+        }
+      } else {
+        // Sincronización: Si otorgamos acceso, buscamos una suscripción revocada para reactivarla
+        try {
+          const allSubs = await ingenioApi.getAllSubscriptions();
+          const userSub = allSubs.find((s: any) => s.userId === userId && s.status === 'REVOKED');
+          if (userSub) {
+            await ingenioApi.approveSubscription(userSub.id, 0);
+          }
+        } catch (e) {
+          console.error("Error al sincronizar activación:", e);
+        }
+      }
+
       toast.success(`Acceso a Ingenio ${!currentAccess ? 'concedido' : 'revocado'}`);
       fetchUsers();
     } catch (error) {
@@ -379,7 +404,6 @@ export default function AdminUsers() {
                   <TableHead className="hidden sm:table-cell">Estado</TableHead>
                   <TableHead className="hidden lg:table-cell">Ingenio</TableHead>
                   <TableHead className="hidden xl:table-cell">Registro</TableHead>
-                  <TableHead className="hidden lg:table-cell">Cuotas</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -456,15 +480,6 @@ export default function AdminUsers() {
                           {formatDate(user.createdAt)}
                         </span>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {user.ingenioAccess ? (
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-100 font-mono text-[10px]">
-                            {user.ingenioInstallmentsPaid || 0}/{user.ingenioTotalInstallments || 0}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-300 text-[10px]">—</span>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -485,10 +500,6 @@ export default function AdminUsers() {
                                 Gestionar Plan
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => handleOpenCoursesModal(user)}>
-                              <BookOpen className="w-4 h-4 mr-2" />
-                              Gestionar Cursos
-                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleToggleIngenio(user.id, user.ingenioAccess)}>
                               {user.ingenioAccess ? 'Desactivar Ingenio' : 'Activar Ingenio'}
@@ -649,69 +660,7 @@ export default function AdminUsers() {
                       {viewingUser.ingenioAccess ? "Acceso Activo" : "Sin Acceso"}
                     </Badge>
                   </div>
-
-                  <div className="bg-slate-50 rounded-xl p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-slate-500 text-[10px] uppercase">Cuotas Pagadas</Label>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={async () => {
-                              const newVal = Math.max(0, (viewingUser.ingenioInstallmentsPaid || 0) - 1);
-                              await usersApi.updateIngenio(viewingUser.id, viewingUser.ingenioAccess, newVal, viewingUser.ingenioTotalInstallments);
-                              setViewingUser({ ...viewingUser, ingenioInstallmentsPaid: newVal });
-                              fetchUsers();
-                            }}
-                          >
-                            -
-                          </Button>
-                          <span className="font-bold text-sm w-8 text-center">{viewingUser.ingenioInstallmentsPaid || 0}</span>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={async () => {
-                              const newVal = (viewingUser.ingenioInstallmentsPaid || 0) + 1;
-                              await usersApi.updateIngenio(viewingUser.id, viewingUser.ingenioAccess, newVal, viewingUser.ingenioTotalInstallments);
-                              setViewingUser({ ...viewingUser, ingenioInstallmentsPaid: newVal });
-                              fetchUsers();
-                            }}
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-slate-500 text-[10px] uppercase">Total Cuotas</Label>
-                        <Select
-                          value={String(viewingUser.ingenioTotalInstallments || 0)}
-                          onValueChange={async (value) => {
-                            const newVal = Number(value);
-                            await usersApi.updateIngenio(viewingUser.id, viewingUser.ingenioAccess, viewingUser.ingenioInstallmentsPaid, newVal);
-                            setViewingUser({ ...viewingUser, ingenioTotalInstallments: newVal });
-                            fetchUsers();
-                          }}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Total" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 (Único)</SelectItem>
-                            <SelectItem value="2">2 Cuotas</SelectItem>
-                            <SelectItem value="3">3 Cuotas</SelectItem>
-                            <SelectItem value="4">4 Cuotas</SelectItem>
-                            <SelectItem value="5">5 Cuotas</SelectItem>
-                            <SelectItem value="6">6 Cuotas</SelectItem>
-                            <SelectItem value="10">10 Cuotas</SelectItem>
-                            <SelectItem value="12">12 Cuotas</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
+                  <div className="bg-slate-50 rounded-xl p-4">
                     <div className="flex gap-2">
                       <Button
                         size="sm"

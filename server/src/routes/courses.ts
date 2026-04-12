@@ -724,8 +724,20 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Ya tienes acceso a este curso' });
     }
 
-    // If course is paid, check wallet
-    if (course.price > 0) {
+    // Check if user has ACTIVE subscription
+    const subscription = await prisma.ingenioSubscription.findUnique({
+      where: { userId: req.user!.userId }
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { ingenioAccess: true }
+    });
+
+    const isInternalFree = subscription?.status === 'ACTIVE' || user?.ingenioAccess || req.user?.roles.includes('superadmin');
+
+    // If course is paid and user doesn't have active sub, check wallet
+    if (course.price > 0 && !isInternalFree) {
       const wallet = await prisma.wallet.findUnique({
         where: { userId: req.user!.userId },
       });

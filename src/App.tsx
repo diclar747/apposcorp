@@ -1,6 +1,8 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { useAuthStore } from '@/stores';
+import { useThemeStore } from '@/stores/themeStore';
 
 // Layouts
 import AdminLayout from '@/layouts/AdminLayout';
@@ -26,6 +28,7 @@ import AdminUsers from '@/pages/admin/Users';
 import IngenioLayout from '@/layouts/IngenioLayout';
 import IngenioDashboard from '@/pages/ingenio/Dashboard';
 import IngenioBudget from '@/pages/ingenio/Budget';
+import IngenioReports from '@/pages/ingenio/Reports';
 import IngenioAcademy from '@/pages/ingenio/Academy';
 import IngenioCourseDetail from '@/pages/ingenio/CourseDetail';
 import IngenioWallet from '@/pages/ingenio/Wallet';
@@ -39,6 +42,8 @@ import AdminCredits from '@/pages/admin/Credits';
 import AdminReports from '@/pages/admin/Reports';
 import AdminIngenio from '@/pages/admin/Ingenio';
 import AdminIngenioMaterials from '@/pages/admin/IngenioMaterials';
+import IngenioMaterials from '@/pages/ingenio/Materials';
+import AdminIngenioSubscriptions from '@/pages/admin/IngenioSubscriptions';
 import AdminPlans from '@/pages/admin/Plans';
 import AdminPushNotifications from '@/pages/admin/PushNotifications';
 import AdminSettings from '@/pages/admin/Settings';
@@ -80,6 +85,7 @@ import ClientCourses from '@/pages/client/Courses';
 import ClientCourseDetail from '@/pages/client/CourseDetail';
 import ClientNotifications from '@/pages/client/Notifications';
 import TransferMoney from '@/pages/client/TransferMoney';
+import { GlobalPaywall } from '@/components/ingenio/GlobalPaywall';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -95,30 +101,38 @@ function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
-  const hasAccess = user.roles?.some((r: string) => allowedRoles.includes(r as any));
+  const userRoles = Array.isArray(user.roles) ? user.roles : [];
+  const hasAccess = userRoles.some(role => allowedRoles.includes(role));
 
   if (!hasAccess) {
-    // Si tiene ambos y no tiene acceso a esta ruta, redirigimos a su principal
-    if (user.roles.includes('client') && user.roles.includes('ingenio')) {
-      return <Navigate to={user.initialInterface === 'INGENIO' ? '/ingenio' : '/app'} replace />;
-    }
+    // Redirect to their default interface based on role
+    if (userRoles.includes('superadmin')) return <Navigate to="/admin" replace />;
+    if (userRoles.includes('seller')) return <Navigate to="/vendedor" replace />;
+    if (userRoles.includes('ingenio')) return <Navigate to="/ingenio" replace />;
+    if (userRoles.includes('client')) return <Navigate to="/app" replace />;
     
-    // Redirect based on sole role
-    if (user.roles.includes('superadmin')) {
-      return <Navigate to="/admin" replace />;
-    } else if (user.roles.includes('seller')) {
-      return <Navigate to="/vendedor" replace />;
-    } else if (user.roles.includes('ingenio')) {
-      return <Navigate to="/ingenio" replace />;
-    } else {
-      return <Navigate to="/app" replace />;
-    }
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
 }
 
 function App() {
+  useEffect(() => {
+    // Theme initialization
+    const { resolvedTheme } = useThemeStore.getState();
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(resolvedTheme);
+
+    // Hide splash screen after app mounts
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.classList.add('hide');
+      setTimeout(() => splash.remove(), 500);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -153,6 +167,7 @@ function App() {
           <Route path="reportes" element={<AdminReports />} />
           <Route path="ingenio" element={<AdminIngenio />} />
           <Route path="ingenio/materiales" element={<AdminIngenioMaterials />} />
+          <Route path="ingenio/suscripciones" element={<AdminIngenioSubscriptions />} />
           <Route path="campanas" element={<AdminPushNotifications />} />
           <Route path="planes" element={<AdminPlans />} />
           <Route path="configuracion" element={<AdminSettings />} />
@@ -227,7 +242,9 @@ function App() {
         >
           <Route index element={<IngenioDashboard />} />
           <Route path="presupuesto" element={<IngenioBudget />} />
+          <Route path="reportes" element={<IngenioReports />} />
           <Route path="academia" element={<IngenioAcademy />} />
+          <Route path="materiales" element={<IngenioMaterials />} />
           <Route path="cursos/:id" element={<IngenioCourseDetail />} />
           <Route path="wallet" element={<IngenioWallet />} />
           <Route path="profile" element={<IngenioProfile />} />
@@ -237,6 +254,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster position="top-right" richColors />
+      <GlobalPaywall />
     </BrowserRouter>
   );
 }

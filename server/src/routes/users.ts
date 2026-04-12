@@ -556,4 +556,47 @@ router.delete('/:id/courses/:courseId', authenticate, authorize('superadmin'), a
   }
 });
 
+// Upgrade user to client role (adds 'client' role and creates wallet)
+router.post('/upgrade-to-client', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { wallet: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const roles = Array.isArray(user.roles) ? [...user.roles] : [];
+    if (!roles.includes('client')) {
+      roles.push('client');
+    }
+
+    // Update user and create wallet if doesn't exist
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        roles,
+        ...( !user.wallet ? {
+          wallet: {
+            create: {
+              balance: 0,
+              currency: 'USD'
+            }
+          }
+        } : {})
+      },
+      include: { wallet: true }
+    });
+
+    const { password: _, ...safeUser } = updatedUser;
+    res.json(safeUser);
+  } catch (error) {
+    console.error('Upgrade to client error:', error);
+    res.status(500).json({ error: 'Error al actualizar a cliente' });
+  }
+});
+
 export default router;

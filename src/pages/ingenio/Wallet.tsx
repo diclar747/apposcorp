@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VirtualCard } from '@/components/client/VirtualCard';
 import { FinanceChart } from '@/components/client/FinanceChart';
+import { useIngenioSubscription } from '@/hooks/useIngenioSubscription';
+import { AccessDenied } from '@/components/ingenio/AccessDenied';
 
 const quickActions = [
   { icon: ArrowUpRight, label: 'Enviar', href: '/ingenio/wallet/transferir', color: 'bg-indigo-500', bgColor: 'bg-indigo-100 dark:bg-indigo-500/20' },
@@ -22,8 +24,13 @@ const quickActions = [
 export default function IngenioWallet() {
   const { user } = useAuthStore();
   const { wallet, transactions, fetchWallet, fetchTransactions } = useWalletStore();
+  const { status } = useIngenioSubscription();
   const [showBalance, setShowBalance] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all');
+
+  if (status !== 'ACTIVE') {
+    return <AccessDenied status={status} />;
+  }
 
   useEffect(() => {
     if (user) {

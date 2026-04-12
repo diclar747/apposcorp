@@ -30,6 +30,7 @@ model User {
   updatedAt           DateTime            @updatedAt
   bankData            BankData?
   budgets             Budget[]
+  budgetItems         BudgetItem[]
   cartItems           CartItem[]
   credits             Credit[]
   userCourses         UserCourse[]
@@ -45,6 +46,7 @@ model User {
   virtualCard         VirtualCard?
   wallet              Wallet?
   ingenioStudent      IngenioStudent?
+  ingenioSubscription IngenioSubscription?
   ingenioReferrals    IngenioStudent[]    @relation("StudentReferrals")
   ingenioReferredBy   IngenioStudent[]    @relation("StudentReferredBy")
 
@@ -589,6 +591,7 @@ model FinancialRecord {
   type              FinancialType
   amount            Float
   description       String
+  notes             String?
   date              DateTime          @default(now())
   isRecurring       Boolean           @default(false)
   recurrencePattern String?
@@ -600,6 +603,26 @@ model FinancialRecord {
   @@map("financial_records")
 }
 
+model BudgetItem {
+  id              String        @id @default(uuid())
+  userId          String
+  month           Int
+  year            Int
+  type            FinancialType
+  name            String
+  description     String?
+  amount          Float         // Target amount for the period
+  actualAmount    Float         @default(0) // Manual progress in current period
+  savedAmount     Float         @default(0) // Accumulated from past periods
+  durationMonths  Int           @default(1)
+  startDate       DateTime      @default(now())
+  status          String        @default("ACTIVE") // ACTIVE, CLOSED
+  createdAt       DateTime      @default(now())
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("budget_items")
+}
+
 model Budget {
   id             String   @id @default(uuid())
   userId         String
@@ -607,6 +630,8 @@ model Budget {
   year           Int
   incomeGoal     Float    @default(0)
   expenseLimit   Float    @default(0)
+  durationMonths Int      @default(1)
+  startDate      DateTime @default(now())
   categoryLimits Json?
   createdAt      DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -780,6 +805,30 @@ enum CardDesign {
   minimal
 }
 
+enum IngenioSubscriptionStatus {
+  PENDING_PAYMENT
+  PENDING_APPROVAL
+  ACTIVE
+  REVOKED
+}
+
+model IngenioSubscription {
+  id              String                    @id @default(uuid())
+  userId          String                    @unique
+  status          IngenioSubscriptionStatus @default(PENDING_PAYMENT)
+  totalAmount     Float                     @default(0)
+  installments    Int                       @default(1)
+  paidAmount      Float                     @default(0)
+  paymentMethod   String?                   // WALLET, BANK_TRANSFER
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  approvedAt      DateTime?
+  
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ingenio_subscriptions")
+}
+
 model SystemSetting {
   id          String   @id @default(uuid())
   key         String   @unique
@@ -856,7 +905,8 @@ model IngenioMaterial {
   description String?
   fileUrl     String
   fileType    String   // pdf, video, etc.
-  fileSize    Int?
+  segmentNumber Int      @default(1)
+  fileSize      Int?
   isPublic    Boolean  @default(false)
   order       Int      @default(0)
   createdAt   DateTime @default(now())
