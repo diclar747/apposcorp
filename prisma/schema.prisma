@@ -8,47 +8,49 @@ datasource db {
 }
 
 model User {
-  id                  String              @id @default(uuid())
-  email               String              @unique
-  password            String
-  firstName           String
-  lastName            String
-  phone               String?
-  address             String?
-  city                String?
-  avatar              String?
-  roles               UserRole[]          @default([client])
-  initialInterface    String              @default("OSCORP")
-  isActive            Boolean             @default(true)
-  ingenioAccess       Boolean             @default(false)
-  isVerified          Boolean             @default(false)
-  verificationToken   String?
+  id                       String               @id @default(uuid())
+  email                    String               @unique
+  password                 String
+  firstName                String
+  lastName                 String
+  phone                    String?
+  address                  String?
+  city                     String?
+  avatar                   String?
+  isActive                 Boolean              @default(true)
+  permissions              Json?
+  notificationPrefs        Json?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  isVerified               Boolean              @default(false)
+  verificationToken        String?
   verificationTokenExpires DateTime?
-  permissions         Json?               // For granular permissions
-  notificationPrefs   Json?               // Notification preferences (push, email, orders, stock, etc.)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  bankData            BankData?
-  budgets             Budget[]
-  budgetItems         BudgetItem[]
-  cartItems           CartItem[]
-  credits             Credit[]
-  userCourses         UserCourse[]
-  financialCategories FinancialCategory[]
-  financialRecords    FinancialRecord[]
-  notifications       Notification[]
-  pushSubscriptions   PushSubscription[]
-  ordersAsBuyer       Order[]             @relation("BuyerOrders")
-  ordersAsSeller      Order[]             @relation("SellerOrders")
-  reviews             Review[]
-  sellerProfile       SellerProfile?
-  transactions        Transaction[]
-  virtualCard         VirtualCard?
-  wallet              Wallet?
-  ingenioStudent      IngenioStudent?
-  ingenioSubscription IngenioSubscription?
-  ingenioReferrals    IngenioStudent[]    @relation("StudentReferrals")
-  ingenioReferredBy   IngenioStudent[]    @relation("StudentReferredBy")
+  ingenioAccess            Boolean              @default(false)
+  initialInterface         String               @default("OSCORP")
+  roles                    UserRole[]           @default([client])
+  resetToken               String?
+  resetTokenExpires        DateTime?
+  bankData                 BankData?
+  budgetItems              BudgetItem[]
+  budgets                  Budget[]
+  cartItems                CartItem[]
+  credits                  Credit[]
+  financialCategories      FinancialCategory[]
+  financialRecords         FinancialRecord[]
+  ingenioReferredBy        IngenioStudent[]     @relation("StudentReferredBy")
+  ingenioStudent           IngenioStudent?
+  ingenioSubscription      IngenioSubscription?
+  notifications            Notification[]
+  ordersAsBuyer            Order[]              @relation("BuyerOrders")
+  ordersAsSeller           Order[]              @relation("SellerOrders")
+  pushSubscriptions        PushSubscription[]
+  reviews                  Review[]
+  sellerProfile            SellerProfile?
+  transactions             Transaction[]
+  userCourses              UserCourse[]
+  virtualCard              VirtualCard?
+  wallet                   Wallet?
+  ingenioReferrals         IngenioStudent[]     @relation("StudentReferrals")
 
   @@map("users")
 }
@@ -67,36 +69,38 @@ model BankData {
 }
 
 model SellerProfile {
-  id             String     @id @default(uuid())
-  userId         String     @unique
-  storeName      String
-  storeSlug      String     @unique
-  description    String
-  logo           String?
-  banner         String?
-  address        String
-  phone          String
-  email          String
-  whatsappNumber String
-  isVerified     Boolean    @default(false)
-  planActive     Boolean    @default(false)
-  planExpiryDate DateTime?
-  commissionRate Float      @default(5.0)
-  totalSales     Int        @default(0)
-  totalRevenue   Float      @default(0)
-  rating         Float      @default(0)
-  reviewCount    Int        @default(0)
-  businessHours  Json?
-  socialLinks    Json?
-  category       String     @default("General")
-  products       Product[]
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store          Store?
-  suppliers        Supplier[]
-  purchases        Purchase[]
+  id               String           @id @default(uuid())
+  userId           String           @unique
+  storeName        String
+  storeSlug        String           @unique
+  description      String
+  logo             String?
+  banner           String?
+  address          String
+  phone            String
+  email            String
+  whatsappNumber   String
+  isVerified       Boolean          @default(false)
+  planActive       Boolean           @default(false)
+  planExpiryDate   DateTime?
+  planId           String?
+  plan             SubscriptionPlan? @relation(fields: [planId], references: [id])
+  commissionRate   Float            @default(5.0)
+  totalSales       Int              @default(0)
+  totalRevenue     Float            @default(0)
+  rating           Float            @default(0)
+  reviewCount      Int              @default(0)
+  businessHours    Json?
+  socialLinks      Json?
+  category         String           @default("General")
   customers        Customer[]
+  products         Product[]
+  purchases        Purchase[]
   sellerCategories SellerCategory[]
   sellerMovements  SellerMovement[]
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store            Store?
+  suppliers        Supplier[]
 
   @@map("seller_profiles")
 }
@@ -132,15 +136,15 @@ model Supplier {
   email          String?
   phone          String?
   address        String?
-  taxId          String?         // RUC
-  paymentTerms   String?         // Forma de pago: crédito, contado, etc.
+  taxId          String?
+  paymentTerms   String?
   notes          String?
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  stockMovements StockMovement[]
-  purchases      Purchase[]
   products       Product[]
+  purchases      Purchase[]
+  stockMovements StockMovement[]
   seller         SellerProfile   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@map("suppliers")
@@ -167,7 +171,7 @@ model SellerCategory {
   id        String           @id @default(uuid())
   sellerId  String
   name      String
-  type      String           // "income" | "expense"
+  type      String
   color     String           @default("#3B82F6")
   icon      String           @default("wallet")
   isSystem  Boolean          @default(false)
@@ -182,16 +186,16 @@ model SellerMovement {
   id            String         @id @default(uuid())
   sellerId      String
   categoryId    String
-  type          String         // "income" | "expense"
+  type          String
   amount        Float
   description   String
   voucherNumber String?
   date          DateTime       @default(now())
-  reference     String?        // e.g., POS sale ID
+  reference     String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  seller        SellerProfile  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   category      SellerCategory @relation(fields: [categoryId], references: [id])
+  seller        SellerProfile  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@map("seller_movements")
 }
@@ -204,26 +208,26 @@ model Purchase {
   invoiceNumber String
   purchaseDate  DateTime       @default(now())
   totalAmount   Float          @default(0)
-  status        String         @default("completed") // completed, pending, cancelled
+  status        String         @default("completed")
   notes         String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   items         PurchaseItem[]
-  supplier      Supplier       @relation(fields: [supplierId], references: [id])
   seller        SellerProfile  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
 
   @@map("purchases")
 }
 
 model PurchaseItem {
-  id          String   @id @default(uuid())
-  purchaseId  String
-  productId   String
-  quantity    Int
-  unitCost    Float
-  totalCost   Float
-  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id])
+  id         String   @id @default(uuid())
+  purchaseId String
+  productId  String
+  quantity   Int
+  unitCost   Float
+  totalCost  Float
+  product    Product  @relation(fields: [productId], references: [id])
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@map("purchase_items")
 }
@@ -245,38 +249,38 @@ model StockMovement {
 }
 
 model Product {
-  id             String             @id @default(uuid())
-  sellerId       String
-  name           String
-  description    String
-  price          Float
-  cost           Float?             @default(0)
-  profitPercentage Float?           @default(0)
-  comparePrice   Float?
-  stock          Int                @default(0)
-  sku            String             @unique
-  images         String[]
-  category       String
-  subcategory    String?
-  type           ProductType        @default(physical)
-  visibility     ProductVisibility  @default(both)
-  status         String             @default("active")
-  weight         Float?
-  dimensions     Json?
-  tags           String[]
-  isFeatured     Boolean            @default(false)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  attributes     ProductAttribute[]
-  variants       ProductVariant[]
-  seller         SellerProfile      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  reviews        Review[]
-  stockMovements StockMovement[]
-  purchaseItems  PurchaseItem[]
-  supplierId     String?
-  supplier       Supplier?          @relation(fields: [supplierId], references: [id])
+  id               String             @id @default(uuid())
+  sellerId         String
+  name             String
+  description      String
+  price            Float
+  cost             Float?             @default(0)
+  profitPercentage Float?             @default(0)
+  comparePrice     Float?
+  stock            Int                @default(0)
+  sku              String             @unique
+  images           String[]
+  category         String
+  subcategory      String?
+  type             ProductType        @default(physical)
+  visibility       ProductVisibility  @default(both)
+  status           String             @default("active")
+  weight           Float?
+  dimensions       Json?
+  tags             String[]
+  isFeatured       Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  supplierId       String?
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  attributes       ProductAttribute[]
+  variants         ProductVariant[]
+  seller           SellerProfile      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  supplier         Supplier?          @relation(fields: [supplierId], references: [id])
+  purchaseItems    PurchaseItem[]
+  reviews          Review[]
+  stockMovements   StockMovement[]
 
   @@map("products")
 }
@@ -304,20 +308,21 @@ model ProductAttribute {
 }
 
 model Wallet {
-  id           String        @id @default(uuid())
-  userId       String        @unique
-  balance      Float         @default(0)
-  currency     String        @default("USD")
-  status       String        @default("active")
-  dailyLimit   Float         @default(1000)
-  monthlyLimit Float         @default(10000)
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  balance        Float         @default(0)
+  currency       String        @default("USD")
+  status         String        @default("active")
+  dailyLimit     Float         @default(1000)
+  monthlyLimit   Float         @default(10000)
   totalIn        Float         @default(0)
   totalOut       Float         @default(0)
   transactionPin String?
   createdAt      DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime      @updatedAt
+  rewardPoints   Int           @default(0)
+  transactions   Transaction[]
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("wallets")
 }
@@ -424,7 +429,6 @@ model Course {
   description      String
   shortDescription String
   coverImage       String?
-  updateYear       String?
   previewVideo     String?
   instructorId     String
   instructorName   String
@@ -440,9 +444,10 @@ model Course {
   reviewCount      Int          @default(0)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
-  userCourses      UserCourse[]
+  updateYear       String?
   modules          Module[]
   resources        Resource[]
+  userCourses      UserCourse[]
 
   @@map("courses")
 }
@@ -491,7 +496,7 @@ model UserCourse {
   id                String    @id @default(uuid())
   userId            String
   courseId          String
-  status            String    @default("active") // active, completed, etc.
+  status            String    @default("active")
   progress          Float     @default(0)
   completedModules  String[]
   completedLessons  String[]
@@ -591,12 +596,12 @@ model FinancialRecord {
   type              FinancialType
   amount            Float
   description       String
-  notes             String?
   date              DateTime          @default(now())
   isRecurring       Boolean           @default(false)
   recurrencePattern String?
   attachments       String[]
   createdAt         DateTime          @default(now())
+  notes             String?
   category          FinancialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -604,21 +609,21 @@ model FinancialRecord {
 }
 
 model BudgetItem {
-  id              String        @id @default(uuid())
-  userId          String
-  month           Int
-  year            Int
-  type            FinancialType
-  name            String
-  description     String?
-  amount          Float         // Target amount for the period
-  actualAmount    Float         @default(0) // Manual progress in current period
-  savedAmount     Float         @default(0) // Accumulated from past periods
-  durationMonths  Int           @default(1)
-  startDate       DateTime      @default(now())
-  status          String        @default("ACTIVE") // ACTIVE, CLOSED
-  createdAt       DateTime      @default(now())
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String        @id @default(uuid())
+  userId         String
+  month          Int
+  year           Int
+  type           FinancialType
+  name           String
+  description    String?
+  amount         Float
+  createdAt      DateTime      @default(now())
+  durationMonths Int           @default(1)
+  startDate      DateTime      @default(now())
+  actualAmount   Float         @default(0)
+  savedAmount    Float         @default(0)
+  status         String        @default("ACTIVE")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("budget_items")
 }
@@ -630,10 +635,10 @@ model Budget {
   year           Int
   incomeGoal     Float    @default(0)
   expenseLimit   Float    @default(0)
-  durationMonths Int      @default(1)
-  startDate      DateTime @default(now())
   categoryLimits Json?
   createdAt      DateTime @default(now())
+  durationMonths Int      @default(1)
+  startDate      DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, month, year])
@@ -641,35 +646,35 @@ model Budget {
 }
 
 model Notification {
-  id        String    @id @default(uuid())
+  id         String    @id @default(uuid())
   campaignId String?
-  userId    String
-  title     String
-  message   String
-  type      String    @default("info")
-  isRead    Boolean   @default(false)
-  imageUrl  String?
-  actionUrl String?
-  clickedAt DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaign  Campaign? @relation(fields: [campaignId], references: [id])
+  userId     String
+  title      String
+  message    String
+  type       String    @default("info")
+  isRead     Boolean   @default(false)
+  imageUrl   String?
+  actionUrl  String?
+  clickedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
 
 model Campaign {
-  id          String         @id @default(uuid())
-  title       String
-  message     String
-  imageUrl    String?
-  actionUrl   String?
-  targetRole  String         @default("all")
-  status      String         @default("draft") // draft, sent
-  sentAt      DateTime?
-  createdBy   String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String         @id @default(uuid())
+  title         String
+  message       String
+  imageUrl      String?
+  actionUrl     String?
+  targetRole    String         @default("all")
+  status        String         @default("draft")
+  sentAt        DateTime?
+  createdBy     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   notifications Notification[]
 
   @@map("campaigns")
@@ -715,6 +720,141 @@ model Review {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
+}
+
+model IngenioSubscription {
+  id            String                    @id @default(uuid())
+  userId        String                    @unique
+  status        IngenioSubscriptionStatus @default(PENDING_PAYMENT)
+  totalAmount   Float                     @default(0)
+  installments  Int                       @default(1)
+  paidAmount    Float                     @default(0)
+  paymentMethod String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  approvedAt    DateTime?
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ingenio_subscriptions")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  group       String   @default("general")
+  isPublic    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model IngenioStage {
+  id            String                @id @default(uuid())
+  name          String
+  title         String
+  description   String?
+  color         String                @default("#8b5cf6")
+  order         Int                   @default(0)
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  contents      IngenioContent[]
+  wheelSegments IngenioWheelSegment[]
+
+  @@map("ingenio_stages")
+}
+
+model IngenioWheelSegment {
+  id          String       @id @default(uuid())
+  stageId     String
+  number      Int
+  title       String
+  description String
+  color       String
+  icon        String?
+  order       Int          @default(0)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, number])
+  @@map("ingenio_wheel_segments")
+}
+
+model IngenioContent {
+  id        String       @id @default(uuid())
+  stageId   String
+  segmentId String?
+  type      String
+  title     String
+  content   String?
+  url       String?
+  fileUrl   String?
+  order     Int          @default(0)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  stage     IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@map("ingenio_contents")
+}
+
+model IngenioMaterial {
+  id            String   @id @default(uuid())
+  stage         String
+  title         String
+  description   String?
+  fileUrl       String
+  fileType      String
+  fileSize      Int?
+  isPublic      Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  segmentNumber Int      @default(1)
+
+  @@map("ingenio_materials")
+}
+
+model IngenioStudent {
+  id           String                     @id @default(uuid())
+  userId       String                     @unique
+  phone        String?
+  city         String?
+  country      String                     @default("Paraguay")
+  occupation   String?
+  experience   String?
+  goals        String?
+  referralCode String?                    @unique
+  referredById String?
+  isActive     Boolean                    @default(true)
+  joinedAt     DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  assignments  IngenioStudentAssignment[]
+  referredBy   User?                      @relation("StudentReferredBy", fields: [referredById], references: [id])
+  user         User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referrals    User[]                     @relation("StudentReferrals")
+
+  @@map("ingenio_students")
+}
+
+model IngenioStudentAssignment {
+  id          String         @id @default(uuid())
+  studentId   String
+  stage       String
+  status      String         @default("pending")
+  progress    Int            @default(0)
+  assignedAt  DateTime       @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?
+  student     IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, stage])
+  @@map("ingenio_student_assignments")
 }
 
 enum UserRole {
@@ -812,145 +952,22 @@ enum IngenioSubscriptionStatus {
   REVOKED
 }
 
-model IngenioSubscription {
-  id              String                    @id @default(uuid())
-  userId          String                    @unique
-  status          IngenioSubscriptionStatus @default(PENDING_PAYMENT)
-  totalAmount     Float                     @default(0)
-  installments    Int                       @default(1)
-  paidAmount      Float                     @default(0)
-  paymentMethod   String?                   // WALLET, BANK_TRANSFER
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  approvedAt      DateTime?
-  
-  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+model SubscriptionPlan {
+  id                String          @id @default(uuid())
+  name              String
+  tier              String          @default("basic")
+  description       String
+  price             Float           @default(0)
+  prices            Json?
+  features          String[]
+  maxProducts       Int             @default(30)
+  hasReports        Boolean         @default(false)
+  commissionRate    Float           @default(0)
+  isCommissionBased Boolean         @default(false)
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  sellerProfiles    SellerProfile[]
 
-  @@map("ingenio_subscriptions")
-}
-
-model SystemSetting {
-  id          String   @id @default(uuid())
-  key         String   @unique
-  value       String   // JSON stringified value
-  description String?
-  group       String   @default("general") // general, security, notifications, etc.
-  isPublic    Boolean  @default(false)
-  updatedAt   DateTime @updatedAt
-
-  @@map("system_settings")
-}
-
-// ─── Ingenio Millonario Models ──────────────────────────────────────────────────
-
-model IngenioStage {
-  id          String   @id @default(uuid())
-  name        String   // E1, E2, etc.
-  title       String
-  description String?
-  color       String   @default("#8b5cf6")
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  wheelSegments IngenioWheelSegment[]
-  contents      IngenioContent[]
-  
-  @@map("ingenio_stages")
-}
-
-model IngenioWheelSegment {
-  id          String   @id @default(uuid())
-  stageId     String
-  number      Int
-  title       String
-  description String   @db.Text
-  color       String
-  icon        String?
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  
-  @@unique([stageId, number])
-  @@map("ingenio_wheel_segments")
-}
-
-model IngenioContent {
-  id          String   @id @default(uuid())
-  stageId     String
-  segmentId   String?
-  type        String   // video, document, link, text
-  title       String
-  content     String?  @db.Text
-  url         String?
-  fileUrl     String?
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  stage       IngenioStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  
-  @@map("ingenio_contents")
-}
-
-model IngenioMaterial {
-  id          String   @id @default(uuid())
-  stage       String   // E1, E2
-  title       String
-  description String?
-  fileUrl     String
-  fileType    String   // pdf, video, etc.
-  segmentNumber Int      @default(1)
-  fileSize      Int?
-  isPublic    Boolean  @default(false)
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("ingenio_materials")
-}
-
-model IngenioStudent {
-  id            String   @id @default(uuid())
-  userId        String   @unique
-  phone         String?
-  city          String?
-  country       String   @default("Paraguay")
-  occupation    String?
-  experience    String?  // beginner, intermediate, advanced
-  goals         String?  @db.Text
-  referralCode  String?  @unique
-  referredById  String?
-  isActive      Boolean  @default(true)
-  joinedAt      DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  referredBy    User?    @relation("StudentReferredBy", fields: [referredById], references: [id])
-  referrals     User[]   @relation("StudentReferrals")
-  assignments   IngenioStudentAssignment[]
-  
-  @@map("ingenio_students")
-}
-
-model IngenioStudentAssignment {
-  id           String    @id @default(uuid())
-  studentId    String
-  stage        String    // E1, E2
-  status       String    @default("pending") // pending, in_progress, completed
-  progress     Int       @default(0) // 0-100
-  assignedAt   DateTime  @default(now())
-  startedAt    DateTime?
-  completedAt  DateTime?
-  notes        String?   @db.Text
-  
-  student      IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
-  @@unique([studentId, stage])
-  @@map("ingenio_student_assignments")
+  @@map("subscription_plans")
 }

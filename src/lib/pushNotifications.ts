@@ -14,7 +14,7 @@ export function getPermissionStatus(): NotificationPermission {
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    const registration = await navigator.serviceWorker.register(SW_PATH, { scope: '/' });
+    const registration = await navigator.serviceWorker.register(SW_PATH);
     return registration;
   } catch (error) {
     console.error('Service worker registration failed:', error);
@@ -29,20 +29,45 @@ async function getVapidPublicKey(): Promise<string> {
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+  const cleanString = base64String.trim().replace(/['"]+/g, '');
+  const padding = '='.repeat((4 - (cleanString.length % 4)) % 4);
+  const base64 = (cleanString + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  try {
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    
+    return outputArray;
+  } catch (e) {
+    console.error('Failed to decode VAPID key string:', e);
+    throw e;
   }
-  return outputArray;
 }
 
 export async function subscribeToPush(): Promise<boolean> {
   try {
     const registration = await registerServiceWorker();
     if (!registration) return false;
+
+    // Ensure service worker is active
+    if (!registration.active) {
+      await new Promise<void>((resolve) => {
+        const worker = registration.installing || registration.waiting;
+        if (worker) {
+          worker.addEventListener('statechange', (e: any) => {
+            if (e.target.state === 'activated') resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    }
 
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return false;
@@ -52,7 +77,7 @@ export async function subscribeToPush(): Promise<boolean> {
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: applicationServerKey as BufferSource,
+      applicationServerKey: applicationServerKey as any
     });
 
     const p256dh = btoa(
@@ -73,8 +98,12 @@ export async function subscribeToPush(): Promise<boolean> {
     });
 
     return response.ok;
-  } catch (error) {
-    console.error('Failed to subscribe to push:', error);
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.warn('Push registration failed. Ensure your browser supports Google Push Services (Brave users may need to enable them in settings).');
+    } else {
+      console.error('Push subscription failed:', error);
+    }
     return false;
   }
 }

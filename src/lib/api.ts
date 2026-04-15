@@ -216,6 +216,10 @@ export const walletApi = {
       method: 'POST',
       body: JSON.stringify({ toUserId, amount, description, pin }),
     }),
+  approveDeposit: (id: string) =>
+    fetchWithAuth(`/wallet/approve-deposit/${id}`, { method: 'POST' }),
+  rejectDeposit: (id: string) =>
+    fetchWithAuth(`/wallet/reject-deposit/${id}`, { method: 'POST' }),
   getPinStatus: () => fetchWithAuth('/wallet/pin-status'),
   setPin: (pin: string) =>
     fetchWithAuth('/wallet/pin/set', {
@@ -720,6 +724,16 @@ export const ingenioApi = {
 };
 
 // General API for uploads etc
+// Reviews API
+export const reviewsApi = {
+  getByStore: (storeId: string) => fetchWithAuth(`/reviews/store/${storeId}`),
+  create: (data: { storeId?: string; productId?: string; rating: number; comment: string }) =>
+    fetchWithAuth('/reviews', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 export const uploadApi = {
   uploadFile: async (file: File) => {
     const formData = new FormData();

@@ -141,7 +141,8 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
       email,
       logo,
       banner,
-      socialLinks
+      socialLinks,
+      businessHours
     } = req.body;
 
     // Check if profile exists
@@ -174,6 +175,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
       logo,
       banner,
       socialLinks: socialLinks || existingProfile?.socialLinks || {},
+      businessHours: businessHours || existingProfile?.businessHours || {},
     };
 
     if (storeSlug && (!existingProfile || storeSlug !== existingProfile.storeSlug)) {
@@ -195,6 +197,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
         logo: logo || '',
         banner: banner || '',
         socialLinks: socialLinks || {},
+        businessHours: businessHours || {},
         planActive: true,
         planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       }
@@ -220,7 +223,8 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
       email,
       logo,
       banner,
-      socialLinks
+      socialLinks,
+      businessHours
     } = req.body;
 
     // Check if user exists and is a seller
@@ -250,6 +254,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
         logo,
         banner,
         socialLinks: socialLinks || user.sellerProfile?.socialLinks,
+        businessHours: businessHours || user.sellerProfile?.businessHours,
       },
       create: {
         userId,
@@ -571,6 +576,69 @@ router.put('/me/preferences', authenticate, async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Error en el servidor' });
   }
 });
+
+// Assign plan to se// Assign plan to seller (admin only)
+const assignPlanHandler = async (req: any, res: any) => {
+  try {
+    const userId = req.params.id as string;
+    const { planId, billingCycle, customCommission, isCommissionBased } = req.body;
+
+    // 1. Get plan details
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: { id: planId }
+    });
+
+    if (!plan && !isCommissionBased) {
+      return res.status(404).json({ error: 'Plan no encontrado' });
+    }
+
+    // 2. Calculate expiry date based on cycle
+    const now = new Date();
+    let expiryDate = new Date();
+    
+    switch (billingCycle) {
+      case 'quarterly': expiryDate.setMonth(now.getMonth() + 3); break;
+      case 'semi_annual': expiryDate.setMonth(now.getMonth() + 6); break;
+      case 'annual': expiryDate.setFullYear(now.getFullYear() + 1); break;
+      default: expiryDate.setMonth(now.getMonth() + 1); // monthly
+    }
+
+    // 3. Upsert seller profile and activate plan
+    const updatedProfile = await prisma.sellerProfile.upsert({
+      where: { userId },
+      update: {
+        planId: isCommissionBased ? null : planId,
+        planActive: true,
+        planExpiryDate: expiryDate,
+        commissionRate: isCommissionBased ? (parseFloat(customCommission) || 0) : (plan?.commissionRate || 0),
+      },
+      create: {
+        userId,
+        storeName: 'Mi Tienda', // Default
+        storeSlug: `store-${userId.slice(0, 8)}`,
+        description: '',
+        address: '',
+        phone: '',
+        email: '',
+        whatsappNumber: '',
+        planId: isCommissionBased ? null : planId,
+        planActive: true,
+        planExpiryDate: expiryDate,
+        commissionRate: isCommissionBased ? (parseFloat(customCommission) || 0) : (plan?.commissionRate || 0),
+      }
+    });
+
+    res.json(updatedProfile);
+  } catch (error) {
+    console.error('Assign plan error:', error);
+    res.status(500).json({ error: 'Error al asignar el plan' });
+  }
+};
+
+router.post('/:id/plan', authenticate, authorize('superadmin'), assignPlanHandler);
+router.patch('/:id/plan', authenticate, authorize('superadmin'), assignPlanHandler);
+
+// Assign course to user (admin only)
 
 // Assign course to user (admin only)
 router.post('/:id/courses/:courseId', authenticate, authorize('superadmin'), async (req, res) => {

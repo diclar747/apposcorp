@@ -33,7 +33,23 @@ const statusOptions = [
   { value: 'delivered', label: 'Entregado', color: 'bg-green-100 text-green-700' },
 ];
 
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores';
+
 export default function SellerOrders() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && user.sellerProfile && user.sellerProfile.plan) {
+      const features = user.sellerProfile.plan.features || [];
+      if (!features.some(f => f.toLowerCase().includes('pedidos'))) {
+        toast.error('Tu plan no incluye gestión de pedidos');
+        navigate('/vendedor');
+      }
+    }
+  }, [user, navigate]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [orders, setOrders] = useState<any[]>([]);

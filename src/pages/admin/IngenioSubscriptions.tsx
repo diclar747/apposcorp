@@ -261,19 +261,20 @@ export default function IngenioSubscriptions() {
               <TableHead className="font-bold">Plan</TableHead>
               <TableHead className="font-bold">Método</TableHead>
               <TableHead className="font-bold">Pago</TableHead>
+              <TableHead className="font-bold">Último Pago</TableHead>
               <TableHead className="font-bold text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10">
+                <TableCell colSpan={7} className="text-center py-10">
                   <RefreshCw className="w-8 h-8 animate-spin mx-auto text-slate-300" />
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-slate-500">
+                <TableCell colSpan={7} className="text-center py-10 text-slate-500">
                   No se encontraron suscripciones
                 </TableCell>
               </TableRow>
@@ -314,8 +315,10 @@ export default function IngenioSubscriptions() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 text-xs font-medium">
-                      {sub.paymentMethod === 'WALLET' ? <Wallet className="w-3 h-3" /> : <Landmark className="w-3 h-3" />}
-                      {sub.paymentMethod === 'WALLET' ? 'Billetera' : 'Banco'}
+                      {sub.paymentMethod === 'WALLET' ? <Wallet className="w-3 h-3 text-indigo-500" /> : <Landmark className="w-3 h-3 text-slate-400" />}
+                      <span className="truncate max-w-[100px]">
+                        {sub.paymentMethod === 'WALLET' ? 'Billetera Oscorp' : 'Transf. Bancaria'}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -331,6 +334,11 @@ export default function IngenioSubscriptions() {
                           className="h-full bg-indigo-600"
                         />
                       </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-xs text-slate-500 font-medium">
+                      {sub.updatedAt ? new Date(sub.updatedAt).toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '---'}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

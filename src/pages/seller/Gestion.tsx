@@ -32,7 +32,23 @@ import { toast } from 'sonner';
 
 const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6b7280'];
 
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores';
+
 export default function Gestion() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && user.sellerProfile && user.sellerProfile.plan) {
+      const features = user.sellerProfile.plan.features || [];
+      if (!features.some(f => f.toLowerCase().includes('gestión de caja'))) {
+        toast.error('Tu plan no incluye gestión de caja');
+        navigate('/vendedor');
+      }
+    }
+  }, [user, navigate]);
+
   // ─── State ──────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);

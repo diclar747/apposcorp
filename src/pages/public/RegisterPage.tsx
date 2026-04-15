@@ -20,7 +20,11 @@ const registerSchema = z.object({
   password: z.string()
     .min(8, 'Debe tener al menos 8 caracteres')
     .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/, 'Debe incluir al menos una letra y un número'),
+  confirmPassword: z.string().min(1, 'Debes confirmar tu contraseña'),
   role: z.enum(['client', 'seller', 'ingenio']),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -54,6 +58,7 @@ export default function RegisterPage() {
       email: '',
       phone: '',
       password: '',
+      confirmPassword: '',
       role: 'client',
     },
     mode: 'onTouched'
@@ -63,7 +68,7 @@ export default function RegisterPage() {
 
   const handleNext = async () => {
     if (currentStep === 1) {
-      const isValid = await trigger(['firstName', 'lastName', 'email', 'password', 'phone']);
+      const isValid = await trigger(['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'phone']);
       if (!isValid) {
         toast.error('Revisa los alertas en rojo antes de continuar');
         return;
@@ -79,8 +84,10 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
 
+    const { confirmPassword, ...registerData } = data;
+
     const response = await authRegister({
-      ...data,
+      ...registerData,
       roles: [data.role],
       initialInterface: data.role === 'ingenio' ? 'INGENIO' : 'OSCORP',
       address: '',
@@ -245,7 +252,7 @@ export default function RegisterPage() {
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
+                      placeholder="Contraseña"
                       {...register('password')}
                       className={cn("pl-10 pr-10", errors.password && "border-red-500 focus-visible:ring-red-500")}
                     />
@@ -259,8 +266,23 @@ export default function RegisterPage() {
                   </div>
                   {errors.password 
                     ? <p className="text-xs text-red-500">{errors.password.message}</p>
-                    : <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo 8 caracteres (1 Letra y 1 Número recomendado)</p>
+                    : <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo 8 caracteres (1 Letra y 1 Número)</p>
                   }
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Repetir contraseña"
+                      {...register('confirmPassword')}
+                      className={cn("pl-10 pr-10", errors.confirmPassword && "border-red-500 focus-visible:ring-red-500")}
+                    />
+                  </div>
+                  {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword.message}</p>}
                 </div>
               </div>
             )}

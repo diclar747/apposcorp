@@ -51,7 +51,9 @@ export default function PricingPage() {
                     price: 80000,
                     prices: { monthly: 80000, quarterly: 220000, semi_annual: 420000, annual: 800000 },
                     features: ['Punto de Venta (POS)', 'Tienda Online', 'Gestión de Productos', 'Ventas y Pedidos', 'Pagos con QR OKPOS'],
-                    productLimit: 100,
+                    maxProducts: 100,
+                    hasReports: false,
+                    commissionRate: 0,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -65,7 +67,9 @@ export default function PricingPage() {
                     price: 120000,
                     prices: { monthly: 120000, quarterly: 330000, semi_annual: 620000, annual: 1200000 },
                     features: ['Todo lo del Básico', 'Gestión de Proveedores', 'Gestión de Clientes', 'Gestión de Compras', 'Reportes de Ventas'],
-                    productLimit: 250,
+                    maxProducts: 250,
+                    hasReports: true,
+                    commissionRate: 0,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -79,7 +83,9 @@ export default function PricingPage() {
                     price: 160000,
                     prices: { monthly: 160000, quarterly: 440000, semi_annual: 830000, annual: 1600000 },
                     features: ['Todo lo del Estándar', 'Gestión de Caja', 'Reportes Avanzados', 'Soporte 24/7 Personalizado', 'Capacitaciones Exclusivas'],
-                    productLimit: 500,
+                    maxProducts: 500,
+                    hasReports: true,
+                    commissionRate: 0,
                     isCommissionBased: false,
                     isActive: true,
                     createdAt: new Date(),
@@ -185,7 +191,7 @@ export default function PricingPage() {
                                             </div>
                                             <div className="mt-2 h-6">
                                                 <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-100 font-bold uppercase tracking-widest">
-                                                    Hasta {plan.productLimit} productos
+                                                    Hasta {plan.maxProducts} productos
                                                 </Badge>
                                             </div>
                                             {billingCycle === 'annual' && plan.prices.monthly && (

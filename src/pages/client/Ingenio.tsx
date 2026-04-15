@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
@@ -17,7 +17,13 @@ import {
   Lock,
   ShieldCheck,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Users,
+  TrendingUp as TrendingUpIcon,
+  Award,
+  ArrowRight,
+  Zap
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -48,8 +54,15 @@ const ssCards = [
 
 export default function ClientIngenio() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const { fetchWallet } = useWalletStore();
+  
+  // Set default tab based on query param
+  const [activeTab, setActiveTab] = useState(
+    location.search.includes('tab=academy') ? 'education' : 'dashboard'
+  );
+
   const [summary, setSummary] = useState({
     income: 0,
     expenses: 0,
@@ -150,48 +163,65 @@ export default function ClientIngenio() {
 
   if (status === 'NONE') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+      <div className="min-h-[85vh] flex flex-col items-center justify-center px-6 py-12 text-center space-y-8 animate-in fade-in duration-700">
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-indigo-100 dark:shadow-none"
+          className="relative"
         >
-          <Target className="w-12 h-12 text-indigo-600" />
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur-3xl opacity-20 animate-pulse" />
+          <div className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl flex items-center justify-center shadow-[0_0_50px_-12px_rgba(79,70,229,0.4)] border border-indigo-300/30">
+            <TrendingUpIcon className="w-12 h-12 text-white" />
+          </div>
         </motion.div>
-        
-        <Badge className="mb-4 bg-indigo-600 hover:bg-indigo-600">Módulo Premium</Badge>
-        <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3">Ingenio Millonario</h2>
-        <p className="text-slate-500 max-w-md mx-auto mb-8 font-medium">
-          Toma el control total de tu libertad financiera. Gestiona activos, pasivos y aprende con los mejores cursos de educación financiera.
-        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full mb-10">
+        <div className="max-w-md space-y-3">
+          <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">
+            Acceso Exclusivo
+          </Badge>
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">
+            Bienvenido a <span className="text-indigo-600 dark:text-indigo-400">Ingenio Millonario</span>
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Toma el control total de tu libertad financiera. Gestiona activos, pasivos y aprende con la academia más completa de educación financiera.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
           {[
-            { title: "Metodología 5S", desc: "Clasifica y ordena tus finanzas", icon: Target },
-            { title: "Gestión Patrimonial", desc: "Monitorea activos y pasivos", icon: Wallet },
-            { title: "Academia Premium", desc: "Cursos exclusivos incluidos", icon: BookOpen },
-            { title: "Presupuesto Inteligente", desc: "Cumple tus metas mensuales", icon: PieChartIcon }
-          ].map((item, i) => (
-            <Card key={i} className="border-none bg-white dark:bg-slate-900 shadow-sm">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0">
-                  <item.icon className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-bold text-sm dark:text-white">{item.title}</p>
-                  <p className="text-[11px] text-slate-500">{item.desc}</p>
-                </div>
-              </CardContent>
-            </Card>
+            { icon: BookOpen, label: 'Academia Full' },
+            { icon: Users, label: 'Comunidad' },
+            { icon: TrendingUpIcon, label: 'Gestión 5S' },
+            { icon: Award, label: 'Certificados' }
+          ].map((feature, i) => (
+            <motion.div 
+              key={feature.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.1 }}
+              className="flex items-center gap-2 p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-gray-100 dark:border-white/5"
+            >
+              <feature.icon className="w-4 h-4 text-indigo-600" />
+              <span className="text-xs font-bold uppercase tracking-tight text-gray-700 dark:text-gray-300">{feature.label}</span>
+            </motion.div>
           ))}
         </div>
 
         <Button 
+          size="lg"
           onClick={openPaywall}
-          className="bg-indigo-600 hover:bg-indigo-700 h-14 px-10 rounded-full shadow-lg shadow-indigo-200 dark:shadow-none font-bold text-lg"
+          className="w-full max-w-xs h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-500/20 group transition-all"
         >
-          Solicitar Acceso Full
+          Activar mi Membresía
+          <Sparkles className="w-4 h-4 ml-2 group-hover:rotate-12 transition-transform" />
         </Button>
+
+        <button 
+          onClick={() => navigate('/app')}
+          className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 hover:text-foreground transition-colors"
+        >
+          Volver al Inicio
+        </button>
       </div>
     );
   }
@@ -388,7 +418,7 @@ export default function ClientIngenio() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="dashboard" className="px-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4">
         <TabsList className="grid w-full grid-cols-3 mb-6 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl h-12">
           <TabsTrigger value="dashboard" className="rounded-xl font-bold">Finanzas</TabsTrigger>
           <TabsTrigger value="budget" className="rounded-xl font-bold">Presupuesto</TabsTrigger>
@@ -483,44 +513,74 @@ export default function ClientIngenio() {
           <BudgetSection />
         </TabsContent>
 
-        <TabsContent value="education" className="space-y-4">
+        <TabsContent value="education" className="space-y-6">
+          <div className="flex items-center justify-between px-1">
+            <div className="space-y-1">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Catálogo Academia</h3>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] italic">Contenido incluido en tu membresía</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+            </div>
+          </div>
+
           {courses.length === 0 ? (
-            <div className="text-center py-16 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
-              <BookOpen className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-              <p className="text-slate-500 font-bold">No hay contenido disponible.</p>
+            <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
+              <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <BookOpen className="w-8 h-8 text-slate-200" />
+              </div>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Próximamente nuevo contenido</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {courses.map((course: any) => (
-                <Card key={course.id} className="overflow-hidden border-none shadow-md bg-white dark:bg-slate-900 rounded-3xl" onClick={() => navigate(`/app/cursos/${course.id}`)}>
-                  <div className="h-40 bg-slate-100 dark:bg-slate-800 relative">
-                    {course.coverImage ? (
-                      <img src={course.coverImage} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
-                        <Play className="w-12 h-12 text-white/30" />
+            <div className="grid gap-5">
+              {courses.map((course: any, index: number) => (
+                <motion.div
+                  key={course.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => navigate(`/app/cursos/${course.id}`)}
+                  className="group relative bg-white dark:bg-slate-950 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 hover:-translate-y-1 cursor-pointer"
+                >
+                  <div className="flex gap-4 p-4 items-center">
+                    <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-[1.8rem] shadow-lg group-hover:scale-105 transition-transform duration-700">
+                      {course.coverImage ? (
+                        <img src={course.coverImage} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                          <Play className="w-8 h-8 text-white/30" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="space-y-1">
+                        <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-none text-[8px] font-black uppercase px-2 h-4 shadow-none">
+                          Premium
+                        </Badge>
+                        <h3 className="font-black text-base dark:text-white leading-tight line-clamp-1 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
+                          {course.title}
+                        </h3>
                       </div>
-                    )}
-                    <div className="absolute top-4 right-4">
-                      <Badge className="bg-white/90 text-slate-900 hover:bg-white border-none font-bold backdrop-blur-sm">
-                        {course.category}
-                      </Badge>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <BookOpen className="w-3 h-3" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">{course.modules?.length || 0} módulos</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-emerald-500">
+                          <Zap className="w-3 h-3 fill-current" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Incluido</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                      <ArrowRight className="w-5 h-5" />
                     </div>
                   </div>
-                  <CardContent className="p-5">
-                    <h3 className="font-black text-xl mb-1 dark:text-white leading-tight">{course.title}</h3>
-                    <p className="text-sm text-slate-500 font-medium mb-4 line-clamp-2">{course.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-slate-400 font-bold text-xs uppercase tracking-widest">
-                        <BookOpen className="w-3 h-3" />
-                        {course.modules?.length || 0} módulos
-                      </div>
-                      <Button className="bg-indigo-600 hover:bg-indigo-700 rounded-full font-bold h-10 px-6">
-                        Estudiar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                </motion.div>
               ))}
             </div>
           )}

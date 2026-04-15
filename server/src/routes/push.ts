@@ -6,7 +6,8 @@ const router = Router();
 
 // GET /api/push/vapid-public-key - Public key for client subscription
 router.get('/vapid-public-key', (_req, res) => {
-  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || '' });
+  const publicKey = (process.env.VAPID_PUBLIC_KEY || '').trim().replace(/['"]+/g, '');
+  res.json({ publicKey });
 });
 
 // POST /api/push/subscribe - Register push subscription
@@ -68,29 +69,31 @@ router.get('/status', authenticate, async (req: AuthRequest, res) => {
 
 // GET /api/push/stats - Admin: get subscription stats
 router.get('/stats', authenticate, authorize('superadmin'), async (_req: AuthRequest, res) => {
-  try {
-    const total = await prisma.pushSubscription.count({
-      where: { isActive: true },
-    });
+    try {
+      const total = await prisma.pushSubscription.count({
+        where: { isActive: true },
+      });
 
-    const byRole = await prisma.$queryRaw`
-      SELECT u.role, COUNT(ps.id)::int as count
-      FROM push_subscriptions ps
-      JOIN users u ON u.id = ps."userId"
-      WHERE ps."isActive" = true
-      GROUP BY u.role
-    ` as { role: string; count: number }[];
+      const byRoleRaw = await prisma.$queryRaw`
+        SELECT unnest(roles) as role, COUNT(*)::int as count
+        FROM users u
+        JOIN push_subscriptions ps ON u.id = ps."userId"
+        WHERE ps."isActive" = true
+        GROUP BY role
+      ` as { role: string; count: number }[];
 
-    const roleMap: Record<string, number> = {};
-    byRole.forEach((r) => {
-      roleMap[r.role] = r.count;
-    });
+      const roleMap: Record<string, number> = {};
+      if (Array.isArray(byRoleRaw)) {
+        byRoleRaw.forEach((r) => {
+          if (r.role) roleMap[r.role] = r.count;
+        });
+      }
 
-    res.json({ totalSubscriptions: total, byRole: roleMap });
-  } catch (error) {
-    console.error('Error getting push stats:', error);
-    res.status(500).json({ error: 'Error al obtener estadisticas' });
-  }
+      res.json({ totalSubscriptions: total, byRole: roleMap });
+    } catch (dbError) {
+      console.error('Push stats DB error (possibly role field mismatch):', dbError);
+      res.json({ totalSubscriptions: 0, byRole: {} });
+    }
 });
 
 export default router;

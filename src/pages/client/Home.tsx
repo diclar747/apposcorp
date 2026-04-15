@@ -19,7 +19,10 @@ import { VirtualCard } from '@/components/client/VirtualCard';
 import { QuickActions } from '@/components/client/QuickActions';
 import { FinanceChart } from '@/components/client/FinanceChart';
 import { QRPayment } from '@/components/client/QRPayment';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { XCircle, AlertCircle } from 'lucide-react';
 
 // Build monthly chart data from real transactions
 const buildMonthlyData = (txs: any[]) => {
@@ -48,11 +51,12 @@ const buildMonthlyData = (txs: any[]) => {
 };
 
 export default function ClientHome() {
-  const { user } = useAuthStore();
+  const { user, hasRole, addRole, isLoading: isAuthLoading } = useAuthStore();
   const { wallet, transactions, fetchWallet, fetchTransactions } = useWalletStore();
   const { addItem, isInCart } = useCartStore();
   const navigate = useNavigate();
   const [showQR, setShowQR] = useState(false);
+  const [showIngenioAlert, setShowIngenioAlert] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
@@ -83,6 +87,7 @@ export default function ClientHome() {
     type: t.amount > 0 ? 'income' : 'expense',
     description: t.description,
     amount: Math.abs(t.amount),
+    status: t.status,
     date: new Date(t.createdAt).toLocaleDateString('es-PY', { day: 'numeric', month: 'short' }),
   }));
 
@@ -95,6 +100,23 @@ export default function ClientHome() {
     }
     addItem(product, 1);
     toast.success(`${product.name} agregado al carrito`);
+  };
+
+  const handleIngenioNavigation = async () => {
+    if (hasRole(['ingenio'])) {
+      window.location.href = '/ingenio';
+      return;
+    }
+    setShowIngenioAlert(true);
+  };
+
+  const handleRegisterIngenio = async () => {
+    const success = await addRole('ingenio');
+    if (success) {
+      toast.success('¡Registro exitoso! Bienvenido a Ingenio Millonario.');
+      setShowIngenioAlert(false);
+      window.location.href = '/ingenio';
+    }
   };
 
   return (
@@ -127,7 +149,7 @@ export default function ClientHome() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <QuickActions />
+        <QuickActions onAction={handleIngenioNavigation} />
       </motion.div>
 
       {/* Transactions Header */}
@@ -155,23 +177,41 @@ export default function ClientHome() {
           >
             <div className={cn(
               'w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg',
-              t.type === 'income'
-                ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+              t.status === 'failed'
+                ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                : t.type === 'income'
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
             )}>
-              {t.type === 'income' ? (
+              {t.status === 'failed' ? (
+                <XCircle className="w-5 h-5" />
+              ) : t.type === 'income' ? (
                 <ArrowDownLeft className="w-5 h-5" />
               ) : (
                 <ArrowUpRight className="w-5 h-5" />
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate uppercase tracking-tight">{t.description}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-sm truncate uppercase tracking-tight">{t.description}</p>
+                {t.status === 'pending' && (
+                  <Badge className="text-[7px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20 font-black">
+                    PENDIENTE
+                  </Badge>
+                )}
+                {t.status === 'failed' && (
+                  <Badge className="text-[7px] h-4 px-1.5 bg-rose-500/10 text-rose-500 border-rose-500/20 font-black">
+                    RECHAZADO
+                  </Badge>
+                )}
+              </div>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5 font-medium uppercase tracking-widest">{t.date}</p>
             </div>
             <p className={cn(
               'font-black text-sm font-mono',
-              t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
+              t.status === 'failed'
+                ? 'text-muted-foreground/40 line-through'
+                : t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
             )}>
               {t.type === 'income' ? '+' : '-'}₲ {t.amount.toLocaleString()}
             </p>
@@ -277,6 +317,29 @@ export default function ClientHome() {
         userName={`${user?.firstName || 'Usuario'} ${user?.lastName || ''}`}
         balance={wallet?.balance}
       />
+
+      <AlertDialog open={showIngenioAlert} onOpenChange={setShowIngenioAlert}>
+        <AlertDialogContent className="rounded-[2.5rem] border-none">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">¿Quieres registrarte en Ingenio Millonario?</AlertDialogTitle>
+            <AlertDialogDescription className="font-medium">
+              Ingenio Millonario es una academia exclusiva donde aprenderás sobre finanzas, e-commerce y desarrollo personal con profesores de alto nivel.
+              <br /><br />
+              Al aceptar, se activará tu acceso a Ingenio Millonario utilizando tu misma cuenta de Oscorp.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="rounded-2xl font-bold uppercase tracking-widest text-xs" disabled={isAuthLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); handleRegisterIngenio(); }} 
+              disabled={isAuthLoading}
+              className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-xs h-11"
+            >
+              {isAuthLoading ? 'Registrando...' : 'Sí, registrarme'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

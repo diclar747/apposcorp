@@ -46,6 +46,16 @@ export default function AdminPlans() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
 
+    // Formateador de miles para los inputs
+    const formatInputNumber = (val: number | string) => {
+        if (!val) return '';
+        return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    };
+
+    const parseInputNumber = (val: string) => {
+        return Number(val.replace(/\./g, '')) || 0;
+    };
+
     const [formData, setFormData] = useState({
         name: '',
         tier: 'basic' as PlanTier,
@@ -58,9 +68,10 @@ export default function AdminPlans() {
             annual: 0,
         },
         features: [] as string[],
-        productLimit: 0,
+        maxProducts: 0,
+        hasReports: false,
         isCommissionBased: false,
-        commissionPercentage: 0,
+        commissionRate: 0,
         isActive: true,
     });
 
@@ -86,8 +97,10 @@ export default function AdminPlans() {
                     price: 80000,
                     prices: { monthly: 80000, quarterly: 220000, semi_annual: 420000, annual: 800000 },
                     features: ['POS', 'Tienda Online', 'Gestión de Productos', 'Ventas', 'QR OKPOS'],
-                    productLimit: 100,
+                    maxProducts: 100,
                     isCommissionBased: false,
+                    commissionRate: 0,
+                    hasReports: false,
                     isActive: true,
                     createdAt: new Date(),
                     updatedAt: new Date(),
@@ -100,8 +113,10 @@ export default function AdminPlans() {
                     price: 120000,
                     prices: { monthly: 120000, quarterly: 330000, semi_annual: 620000, annual: 1200000 },
                     features: ['Todo lo del Básico', 'Proveedores', 'Clientes', 'Compras', 'Pedidos', 'QR OKPOS'],
-                    productLimit: 250,
+                    maxProducts: 250,
                     isCommissionBased: false,
+                    commissionRate: 0,
+                    hasReports: true,
                     isActive: true,
                     createdAt: new Date(),
                     updatedAt: new Date(),
@@ -114,8 +129,10 @@ export default function AdminPlans() {
                     price: 160000,
                     prices: { monthly: 160000, quarterly: 440000, semi_annual: 830000, annual: 1600000 },
                     features: ['Todo lo del Estándar', 'Reportes Avanzados', 'Gestión de Caja', 'Soporte 24/7', 'QR OKPOS'],
-                    productLimit: 500,
+                    maxProducts: 500,
                     isCommissionBased: false,
+                    commissionRate: 0,
+                    hasReports: true,
                     isActive: true,
                     createdAt: new Date(),
                     updatedAt: new Date(),
@@ -137,9 +154,10 @@ export default function AdminPlans() {
                 price: plan.price,
                 prices: plan.prices,
                 features: plan.features,
-                productLimit: plan.productLimit,
+                maxProducts: plan.maxProducts,
+                hasReports: plan.hasReports || false,
                 isCommissionBased: plan.isCommissionBased,
-                commissionPercentage: plan.commissionPercentage || 0,
+                commissionRate: plan.commissionRate || 0,
                 isActive: plan.isActive,
             });
         } else {
@@ -151,9 +169,10 @@ export default function AdminPlans() {
                 price: 0,
                 prices: { monthly: 0, quarterly: 0, semi_annual: 0, annual: 0 },
                 features: [],
-                productLimit: 0,
+                maxProducts: 0,
+                hasReports: false,
                 isCommissionBased: false,
-                commissionPercentage: 0,
+                commissionRate: 0,
                 isActive: true,
             });
         }
@@ -162,11 +181,21 @@ export default function AdminPlans() {
 
     const handleSavePlan = async () => {
         try {
+            // Auto-detect reports based on keywords to set the flag
+            const featuresLower = formData.features.map(f => f.toLowerCase());
+            const finalData = {
+                ...formData,
+                hasReports: featuresLower.some(f => f.includes('reportes')),
+                price: Math.max(0, formData.price),
+                maxProducts: Math.max(0, formData.maxProducts),
+                commissionRate: Math.max(0, formData.commissionRate)
+            };
+
             if (editingPlan) {
-                await plansApi.update(editingPlan.id, formData);
+                await plansApi.update(editingPlan.id, finalData);
                 toast.success('Plan actualizado correctamente');
             } else {
-                await plansApi.create(formData);
+                await plansApi.create(finalData);
                 toast.success('Plan creado correctamente');
             }
             setIsModalOpen(false);
@@ -229,7 +258,7 @@ export default function AdminPlans() {
                                 {plan.isCommissionBased ? (
                                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                                         <Percent className="w-5 h-5 font-bold" />
-                                        <span className="text-2xl font-black">{plan.commissionPercentage}%</span>
+                                        <span className="text-2xl font-black">{plan.commissionRate}%</span>
                                         <span className="text-sm text-gray-500 dark:text-gray-400">por cada venta</span>
                                     </div>
                                 ) : (
@@ -238,7 +267,7 @@ export default function AdminPlans() {
                                             <span className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(plan.price)}</span>
                                             <span className="text-sm text-gray-500 dark:text-gray-400">/mes</span>
                                         </div>
-                                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Límite: {plan.productLimit} productos</p>
+                                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Límite: {plan.maxProducts} productos</p>
                                     </div>
                                 )}
                             </div>
@@ -312,8 +341,13 @@ export default function AdminPlans() {
                             <Input
                                 id="limit"
                                 type="number"
-                                value={formData.productLimit}
-                                onChange={(e) => setFormData({ ...formData, productLimit: Number(e.target.value) })}
+                                min="0"
+                                value={formData.maxProducts || ''}
+                                onChange={(e) => {
+                                    const val = Math.max(0, e.target.value === '' ? 0 : Number(e.target.value));
+                                    setFormData({ ...formData, maxProducts: val });
+                                }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                 placeholder="Ej: 100"
                             />
                         </div>
@@ -325,13 +359,15 @@ export default function AdminPlans() {
                                     <Label className="text-base font-bold">Modelo de Cobro</Label>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">Elige entre cuota fija o comisión por venta</p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Label htmlFor="isCommission" className="text-sm font-medium">Bajo Comisión</Label>
-                                    <Checkbox
-                                        id="isCommission"
-                                        checked={formData.isCommissionBased}
-                                        onCheckedChange={(checked) => setFormData({ ...formData, isCommissionBased: checked === true })}
-                                    />
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Label htmlFor="isCommission" className="text-sm font-medium">Bajo Comisión</Label>
+                                        <Checkbox
+                                            id="isCommission"
+                                            checked={formData.isCommissionBased}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, isCommissionBased: checked === true })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -344,8 +380,13 @@ export default function AdminPlans() {
                                         <Input
                                             id="commission"
                                             type="number"
-                                            value={formData.commissionPercentage}
-                                            onChange={(e) => setFormData({ ...formData, commissionPercentage: Number(e.target.value) })}
+                                            min="0"
+                                            value={formData.commissionRate || ''}
+                                            onChange={(e) => {
+                                                const val = Math.max(0, e.target.value === '' ? 0 : Number(e.target.value));
+                                                setFormData({ ...formData, commissionRate: val });
+                                            }}
+                                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                             className="max-w-[150px]"
                                         />
                                         <span className="text-sm text-gray-500">% por cada venta procesada en la plataforma.</span>
@@ -359,43 +400,56 @@ export default function AdminPlans() {
                                             <Label htmlFor="p-monthly" className="text-xs">Mensual (Base)</Label>
                                             <Input
                                                 id="p-monthly"
-                                                type="number"
-                                                value={formData.prices.monthly}
+                                                type="text"
+                                                value={formatInputNumber(formData.prices?.monthly || 0)}
                                                 onChange={(e) => {
-                                                    const val = Number(e.target.value);
+                                                    const val = Math.max(0, parseInputNumber(e.target.value));
                                                     setFormData({
                                                         ...formData,
                                                         price: val,
-                                                        prices: { ...formData.prices, monthly: val }
+                                                        prices: { ...(formData.prices || {}), monthly: val }
                                                     });
                                                 }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="p-quarterly" className="text-xs">Trimestral (3 meses)</Label>
                                             <Input
                                                 id="p-quarterly"
-                                                type="number"
-                                                value={formData.prices.quarterly}
-                                                onChange={(e) => setFormData({ ...formData, prices: { ...formData.prices, quarterly: Number(e.target.value) } })}
+                                                type="text"
+                                                value={formatInputNumber(formData.prices?.quarterly || 0)}
+                                                onChange={(e) => {
+                                                    const val = Math.max(0, parseInputNumber(e.target.value));
+                                                    setFormData({ ...formData, prices: { ...(formData.prices || {}), quarterly: val } });
+                                                }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="p-semiannual" className="text-xs">Semestral (6 meses)</Label>
                                             <Input
                                                 id="p-semiannual"
-                                                type="number"
-                                                value={formData.prices.semi_annual}
-                                                onChange={(e) => setFormData({ ...formData, prices: { ...formData.prices, semi_annual: Number(e.target.value) } })}
+                                                type="text"
+                                                value={formatInputNumber(formData.prices?.semi_annual || 0)}
+                                                onChange={(e) => {
+                                                    const val = Math.max(0, parseInputNumber(e.target.value));
+                                                    setFormData({ ...formData, prices: { ...(formData.prices || {}), semi_annual: val } });
+                                                }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="p-annual" className="text-xs">Anual (12 meses)</Label>
                                             <Input
                                                 id="p-annual"
-                                                type="number"
-                                                value={formData.prices.annual}
-                                                onChange={(e) => setFormData({ ...formData, prices: { ...formData.prices, annual: Number(e.target.value) } })}
+                                                type="text"
+                                                value={formatInputNumber(formData.prices?.annual || 0)}
+                                                onChange={(e) => {
+                                                    const val = Math.max(0, parseInputNumber(e.target.value));
+                                                    setFormData({ ...formData, prices: { ...(formData.prices || {}), annual: val } });
+                                                }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                             />
                                         </div>
                                     </div>
