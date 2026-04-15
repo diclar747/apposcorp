@@ -25,7 +25,24 @@ import sellerManagementRoutes from './routes/seller-management.js';
 import reportRoutes from './routes/reports.js';
 import ingenioRoutes from './routes/ingenio.js';
 import uploadRoutes from './routes/upload.js';
+import planRoutes from './routes/plans.js';
+import reviewRoutes from './routes/reviews.js';
 import { prisma } from './utils/prisma.js';
+import webpush from 'web-push';
+
+// Configure Web Push if keys are present
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  const publicKey = process.env.VAPID_PUBLIC_KEY.trim().replace(/['"]+/g, '');
+  const privateKey = process.env.VAPID_PRIVATE_KEY.trim().replace(/['"]+/g, '');
+  
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || 'admin@oscorp.com'}`,
+    publicKey,
+    privateKey
+  );
+  console.log('🔔 Web Push configurado correctamente');
+  console.log('🗝️ VAPID Public Key (start):', publicKey.substring(0, 10) + '...');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -89,11 +106,13 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/plans', planRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/seller-management', sellerManagementRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ingenio', ingenioRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Setup endpoint - cria todos os usuários de teste
 app.get('/api/setup', async (req, res) => {

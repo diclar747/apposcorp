@@ -16,6 +16,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useCartStore } from '@/stores/cartStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import { reviewsApi } from '@/lib/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -26,6 +31,14 @@ export default function StorePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
+  const [tempPriceRange, setTempPriceRange] = useState<[number, number]>([0, 1000000]);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Cart Store
   const { addItem, items, total, removeItem, updateQuantity } = useCartStore();
@@ -36,6 +49,17 @@ export default function StorePage() {
       try {
         const data = await storesApi.getBySlug(slug);
         setStore(data);
+        
+        // Init price range
+        if (data.products && data.products.length > 0) {
+          const max = Math.max(...data.products.map((p: any) => p.price));
+          setPriceRange([0, max]);
+          setTempPriceRange([0, max]);
+        }
+
+        // Fetch real reviews
+        const reviewsData = await reviewsApi.getByStore(data.id);
+        setReviews(reviewsData);
       } catch (error) {
         console.error('Error fetching store:', error);
       } finally {
@@ -45,7 +69,26 @@ export default function StorePage() {
     fetchStore();
   }, [slug]);
 
-  const reviews: any[] = [];
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success('¡Enlace copiado al portapapeles!');
+  };
+
+  const handleLeaveReview = async () => {
+    try {
+      const newReview = await reviewsApi.create({
+        storeId: store.id,
+        rating: reviewForm.rating,
+        comment: reviewForm.comment
+      });
+      setReviews([newReview, ...reviews]);
+      setIsReviewModalOpen(false);
+      setReviewForm({ rating: 5, comment: '' });
+      toast.success('¡Gracias por tu opinión!');
+    } catch (error) {
+      toast.error('Debes iniciar sesión para dejar una opinión');
+    }
+  };
 
   const categories = useMemo((): string[] => {
     if (!store?.products) return [];
@@ -60,9 +103,12 @@ export default function StorePage() {
         (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'todos' || p.category === selectedCategory;
       const isVisible = p.visibility !== 'local';
-      return matchesSearch && matchesCategory && isVisible;
+      
+      const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
+
+      return matchesSearch && matchesCategory && isVisible && matchesPrice;
     });
-  }, [store, searchQuery, selectedCategory]);
+  }, [store, searchQuery, selectedCategory, priceRange]);
 
   if (loading) {
     return (
@@ -143,7 +189,12 @@ export default function StorePage() {
             </div>
 
             <div className="absolute top-6 right-6 md:right-12 flex gap-3">
-              <Button size="icon" variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
+              <Button 
+                onClick={handleShare}
+                size="icon" 
+                variant="outline" 
+                className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
+              >
                 <Share2 className="w-4 h-4" />
               </Button>
             </div>
@@ -222,7 +273,7 @@ export default function StorePage() {
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto relative">
               {/* Search Bar */}
               <div className="relative flex-1 lg:w-80 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -234,7 +285,14 @@ export default function StorePage() {
                 />
               </div>
 
-              <Button variant="outline" className="h-12 w-12 rounded-2xl p-0 border-gray-100 dark:border-slate-800">
+              <Button 
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                variant="outline" 
+                className={cn(
+                  "h-12 w-12 rounded-2xl p-0 border-gray-100 dark:border-slate-800 transition-colors",
+                  isFilterOpen && "bg-blue-600 text-white border-blue-600"
+                )}
+              >
                 <Filter className="w-5 h-5" />
               </Button>
 
@@ -256,6 +314,67 @@ export default function StorePage() {
                   <List className="w-4 h-4" />
                 </Button>
               </div>
+              
+              <AnimatePresence>
+                {isFilterOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-4 w-80 p-7 bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.2)] border border-gray-100 dark:border-slate-800 z-50"
+                  >
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Rango de Precio</h3>
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-0 font-black">
+                          {formatCurrency(tempPriceRange[0])} - {formatCurrency(tempPriceRange[1])}
+                        </Badge>
+                      </div>
+
+                      <div className="px-2 pt-4">
+                        <Slider
+                          defaultValue={[tempPriceRange[0], tempPriceRange[1]]}
+                          max={Math.max(...(store?.products?.map((p: any) => p.price) || [1000000]))}
+                          step={5000}
+                          value={[tempPriceRange[0], tempPriceRange[1]]}
+                          onValueChange={(val: number[]) => setTempPriceRange([val[0], val[1]])}
+                          className="mb-8"
+                        />
+                        <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          <span>Mínimo</span>
+                          <span>Máximo</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                         <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="rounded-xl font-bold text-gray-400"
+                          onClick={() => {
+                            const max = Math.max(...(store?.products?.map((p: any) => p.price) || [1000000]));
+                            setTempPriceRange([0, max]);
+                            setPriceRange([0, max]);
+                            setIsFilterOpen(false);
+                          }}
+                        >
+                          Reiniciar
+                        </Button>
+                        <Button 
+                          size="sm"
+                          className="rounded-xl bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 dark:shadow-none"
+                          onClick={() => {
+                            setPriceRange(tempPriceRange);
+                            setIsFilterOpen(false);
+                          }}
+                        >
+                          Aplicar Filtro
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -311,6 +430,10 @@ export default function StorePage() {
                           key={product.id}
                           product={product}
                           onAddToCart={() => addItem(product, 1)}
+                          onViewProduct={() => {
+                            setSelectedProduct(product);
+                            setActiveImageIndex(0);
+                          }}
                           viewMode={viewMode}
                         />
                       ))}
@@ -326,7 +449,13 @@ export default function StorePage() {
                       <p className="text-gray-500">Prueba con otra búsqueda o categoría.</p>
                       <Button
                         variant="link"
-                        onClick={() => { setSearchQuery(''); setSelectedCategory('todos'); }}
+                        onClick={() => { 
+                          setSearchQuery(''); 
+                          setSelectedCategory('todos');
+                          const max = Math.max(...(store?.products?.map((p: any) => p.price) || [1000000]));
+                          setPriceRange([0, max]);
+                          setTempPriceRange([0, max]);
+                        }}
                         className="text-blue-600 font-bold mt-2"
                       >
                         Limpiar filtros
@@ -387,22 +516,68 @@ export default function StorePage() {
                     Horarios
                   </h3>
                   <div className="space-y-3 font-medium">
-                    {store.businessHours ? Object.entries(store.businessHours).map(([day, hours]: [string, any]) => (
-                      <div key={day} className="flex justify-between items-center py-1 border-b border-gray-50 dark:border-slate-800 last:border-0">
-                        <span className="capitalize text-gray-500 text-sm">{day}</span>
-                        {hours?.isOpen ? (
-                          <span className="text-sm font-black text-gray-900 dark:text-white">{hours.open} - {hours.close}</span>
-                        ) : (
-                          <span className="text-sm font-bold text-red-400 italic">Cerrado</span>
-                        )}
-                      </div>
-                    )) : (
-                      <p className="text-gray-400 text-sm">Horarios no disponibles</p>
-                    )}
+                    {(() => {
+                      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                      const dayLabels: Record<string, string> = {
+                        monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles',
+                        thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo'
+                      };
+                      
+                      // Use stored hours or a sensible default if missing
+                      const hoursData = store.businessHours || {
+                        monday: { isOpen: true, open: '08:00', close: '18:00' },
+                        tuesday: { isOpen: true, open: '08:00', close: '18:00' },
+                        wednesday: { isOpen: true, open: '08:00', close: '18:00' },
+                        thursday: { isOpen: true, open: '08:00', close: '18:00' },
+                        friday: { isOpen: true, open: '08:00', close: '18:00' },
+                        saturday: { isOpen: true, open: '08:00', close: '13:00' },
+                        sunday: { isOpen: false, open: '00:00', close: '00:00' },
+                      };
+
+                      const todayIndex = new Date().getDay(); // 0 is Sunday
+                      const todayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][todayIndex];
+
+                      return days.map((day) => {
+                        const hours = hoursData[day];
+                        const isToday = day === todayName;
+
+                        return (
+                          <div 
+                            key={day} 
+                            className={cn(
+                              "flex justify-between items-center py-2 px-3 rounded-xl transition-all",
+                              isToday ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800" : "border-b border-gray-50 dark:border-slate-800 last:border-0"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={cn("text-sm", isToday ? "text-blue-700 dark:text-blue-400 font-black" : "text-gray-500 font-bold")}>
+                                {dayLabels[day]}
+                              </span>
+                              {isToday && <Badge className="bg-blue-600 text-[8px] h-4 px-1.5 uppercase tracking-tighter">Hoy</Badge>}
+                            </div>
+                            {hours?.isOpen ? (
+                              <span className={cn("text-sm font-black", isToday ? "text-blue-900 dark:text-white" : "text-gray-900 dark:text-gray-300")}>
+                                {hours.open} - {hours.close}
+                              </span>
+                            ) : (
+                              <span className="text-sm font-bold text-red-500 italic opacity-70">Cerrado</span>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </section>
 
-                <Button className="w-full bg-green-600 hover:bg-green-700 h-16 rounded-3xl text-lg font-black shadow-xl shadow-green-100 dark:shadow-none transition-all hover:scale-[1.02]">
+                <Button 
+                  onClick={() => {
+                    const number = store.whatsappNumber || store.phone;
+                    const cleanNumber = number.replace(/\D/g, '');
+                    const message = `Hola ${store.name}, vengo de tu tienda en Oscorp y me gustaría realizar una consulta.`;
+                    window.open(`https://wa.me/${cleanNumber.startsWith('595') ? cleanNumber : '595' + cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700 h-16 rounded-3xl text-lg font-black shadow-xl shadow-green-100 dark:shadow-none transition-all hover:scale-[1.02]"
+                >
                   <MessageCircle className="w-6 h-6 mr-3" />
                   Escribir por WhatsApp
                 </Button>
@@ -426,7 +601,10 @@ export default function StorePage() {
                 <div className="p-8 bg-blue-600 rounded-[2.5rem] text-white shadow-xl shadow-blue-100 dark:shadow-none">
                   <h4 className="font-black text-2xl mb-4 leading-tight">¿Qué te pareció esta tienda?</h4>
                   <p className="text-blue-100 text-sm mb-6 leading-relaxed">Tu opinión ayuda a otros compradores y hace crecer a nuestros vendedores.</p>
-                  <Button className="w-full bg-white text-blue-600 hover:bg-blue-50 h-14 rounded-2xl font-black border-0">
+                  <Button 
+                    onClick={() => setIsReviewModalOpen(true)}
+                    className="w-full bg-white text-blue-600 hover:bg-blue-50 h-14 rounded-2xl font-black border-0"
+                  >
                     Dejar mi opinión
                   </Button>
                 </div>
@@ -495,13 +673,158 @@ export default function StorePage() {
         updateQuantity={updateQuantity}
         bottomOffset={isInApp ? "bottom-24" : "bottom-10"}
       />
+
+      {/* Opinion Modal */}
+      <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-[2rem] p-0 overflow-hidden border-none dark:bg-slate-900">
+          <DialogHeader className="p-8 pb-4">
+            <DialogTitle className="text-3xl font-black tracking-tight">Tu Experiencia</DialogTitle>
+            <DialogDescription className="text-gray-500 font-medium pt-2">
+              Califica tu experiencia con <span className="text-blue-600 font-bold">{store.name}</span>. Tu opinión es muy valiosa.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="px-8 space-y-8 pb-8">
+            <div className="flex flex-col items-center gap-4 py-4 bg-gray-50 dark:bg-slate-800 rounded-3xl">
+              <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Selecciona tu calificación</p>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <motion.button
+                    key={star}
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                    className="focus:outline-none"
+                  >
+                    <Star 
+                      className={cn(
+                        "w-10 h-10 transition-colors",
+                        star <= reviewForm.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300 dark:text-slate-700"
+                      )}
+                    />
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-2">¿Qué te pareció?</label>
+              <Textarea 
+                placeholder="Escribe aquí tu comentario, sugerencia o agradecimiento..."
+                className="min-h-[120px] rounded-2xl bg-gray-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-blue-500 text-base"
+                value={reviewForm.comment}
+                onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="p-8 pt-0 flex gap-3">
+            <Button 
+              variant="outline" 
+              className="flex-1 h-14 rounded-2xl font-bold uppercase tracking-widest"
+              onClick={() => setIsReviewModalOpen(false)}
+            >Cancelar</Button>
+            <Button 
+              className="flex-[2] h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest shadow-xl shadow-blue-100 dark:shadow-none"
+              onClick={handleLeaveReview}
+            >Enviar Opinión</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Product Details Modal */}
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="sm:max-w-[800px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 border-none bg-white dark:bg-slate-900 shadow-3xl">
+          {selectedProduct && (
+            <div className="flex flex-col md:flex-row gap-0">
+              {/* Product Image Gallery */}
+              <div className="md:w-1/2 bg-gray-50 dark:bg-slate-800 p-6 flex flex-col items-center justify-center min-h-[300px] sm:min-h-[400px]">
+                <div className="w-full aspect-square rounded-[2rem] overflow-hidden shadow-2xl">
+                  <img 
+                    src={selectedProduct.images[activeImageIndex] || selectedProduct.images[0]} 
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover transition-all duration-500"
+                  />
+                </div>
+                {selectedProduct.images.length > 1 && (
+                  <div className="flex gap-2 mt-4 overflow-x-auto pb-2 w-full">
+                    {selectedProduct.images.map((img: string, i: number) => (
+                      <div 
+                        key={i} 
+                        onClick={() => setActiveImageIndex(i)}
+                        className={cn(
+                          "w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer",
+                          activeImageIndex === i ? "border-blue-500 scale-95 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                        )}
+                      >
+                        <img src={img} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Product Info */}
+              <div className="md:w-1/2 p-8 md:p-10 flex flex-col h-full">
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-[0.2em] text-blue-600 border-blue-100 dark:border-blue-900/30 px-3 py-1">
+                      {selectedProduct.category}
+                    </Badge>
+                    <div className="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 px-3 py-1 rounded-full text-xs font-black">
+                      <Star className="w-3.5 h-3.5 fill-yellow-600" />
+                      <span>4.9 (24 reseñas)</span>
+                    </div>
+                  </div>
+                  <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight mb-4">{selectedProduct.name}</h2>
+                  <div className="flex items-end gap-3 mb-6">
+                    <span className="text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
+                      {formatCurrency(selectedProduct.price)}
+                    </span>
+                    {selectedProduct.comparePrice && (
+                      <span className="text-lg text-gray-400 line-through font-bold mb-1.5 opacity-60">
+                        {formatCurrency(selectedProduct.comparePrice)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Descripción</h4>
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                      {selectedProduct.description || 'Este producto no cuenta con una descripción detallada.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-auto space-y-4 pt-6 border-t dark:border-slate-800">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                    <span>Disponibilidad: <span className="text-green-500">En Stock</span></span>
+                    <span>SKU: {selectedProduct.sku || 'N/A'}</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button 
+                      onClick={() => {
+                        addItem(selectedProduct, 1);
+                        setSelectedProduct(null);
+                        toast.success('Producto añadido al carrito');
+                      }}
+                      className="flex-1 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+                    >
+                      Añadir al Carrito
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 // --- Sub-components ---
 
-function ProductCard({ product, onAddToCart, viewMode }: { product: any, onAddToCart: () => void, viewMode: 'grid' | 'list' }) {
+function ProductCard({ product, onAddToCart, onViewProduct, viewMode }: { product: any, onAddToCart: () => void, onViewProduct: () => void, viewMode: 'grid' | 'list' }) {
   if (viewMode === 'list') {
     return (
       <motion.div
@@ -525,7 +848,12 @@ function ProductCard({ product, onAddToCart, viewMode }: { product: any, onAddTo
                 <span className="text-sm">4.9</span>
               </div>
             </div>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 transition-colors leading-tight">{product.name}</h3>
+            <h3 
+              onClick={onViewProduct}
+              className="text-2xl font-black text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 cursor-pointer transition-colors leading-tight"
+            >
+              {product.name}
+            </h3>
             <p className="text-gray-500 dark:text-gray-400 line-clamp-2 mb-6 font-light leading-relaxed">{product.description}</p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-6">
@@ -540,6 +868,9 @@ function ProductCard({ product, onAddToCart, viewMode }: { product: any, onAddTo
               )}
             </div>
             <div className="flex gap-3">
+              <Button onClick={onViewProduct} size="icon" variant="outline" className="h-14 w-14 rounded-2xl border-gray-100 active:scale-95 shadow-sm">
+                <Search className="w-5 h-5" />
+              </Button>
               <Button size="icon" variant="outline" className="h-14 w-14 rounded-2xl border-gray-100 active:scale-95 shadow-sm">
                 <Share2 className="w-5 h-5" />
               </Button>
@@ -566,12 +897,17 @@ function ProductCard({ product, onAddToCart, viewMode }: { product: any, onAddTo
         <img
           src={product.images[0]}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 cursor-pointer"
+          onClick={onViewProduct}
         />
 
         {/* Floating Actions */}
         <div className="absolute top-4 right-4 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
-          <Button size="icon" className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl text-gray-900 hover:bg-white shadow-xl mb-2">
+          <Button 
+            onClick={onViewProduct}
+            size="icon" 
+            className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl text-gray-900 hover:bg-white shadow-xl mb-2"
+          >
             <Search className="w-5 h-5" />
           </Button>
         </div>
@@ -600,7 +936,12 @@ function ProductCard({ product, onAddToCart, viewMode }: { product: any, onAddTo
             <span>4.9</span>
           </div>
         </div>
-        <h4 className="font-black text-gray-900 dark:text-white text-xl mb-3 leading-tight group-hover:text-blue-600 transition-colors line-clamp-1">{product.name}</h4>
+        <h4 
+          onClick={onViewProduct}
+          className="font-black text-gray-900 dark:text-white text-xl mb-3 leading-tight group-hover:text-blue-600 cursor-pointer transition-colors line-clamp-1"
+        >
+          {product.name}
+        </h4>
 
         <div className="mt-auto flex items-end justify-between">
           <div className="flex flex-col">

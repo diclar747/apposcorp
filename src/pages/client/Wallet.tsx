@@ -9,7 +9,8 @@ import {
   ChevronRight,
   MoreHorizontal,
   Eye,
-  EyeOff
+  EyeOff,
+  XCircle
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -23,7 +24,7 @@ const quickActions = [
   { icon: ArrowUpRight, label: 'Enviar', href: '/app/wallet/transferir', color: 'bg-blue-500', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
   { icon: ArrowDownLeft, label: 'Recibir', href: '/app/tarjeta', color: 'bg-green-500', bgColor: 'bg-green-100 dark:bg-green-500/20' },
   { icon: Wallet, label: 'Préstamos', href: '/app/creditos', color: 'bg-purple-500', bgColor: 'bg-purple-100 dark:bg-purple-500/20' },
-  { icon: QrCode, label: 'Cargar', href: '/app/escanear', color: 'bg-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
+  { icon: QrCode, label: 'Cargar', href: '/app/wallet/recargar', color: 'bg-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
 ];
 
 export default function ClientWallet() {
@@ -31,6 +32,7 @@ export default function ClientWallet() {
   const { wallet, transactions, fetchWallet, fetchTransactions } = useWalletStore();
   const [showBalance, setShowBalance] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all');
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -40,7 +42,7 @@ export default function ClientWallet() {
   }, [user, fetchWallet, fetchTransactions]);
 
   // Transform transactions for display
-  const recentTransactions = transactions.slice(0, 10).map(t => {
+  const displayTransactions = (showAll ? transactions : transactions.slice(0, 10)).map(t => {
     const isIncome = t.amount > 0;
     const categoryMap: Record<string, string> = {
       purchase: 'store',
@@ -61,17 +63,17 @@ export default function ClientWallet() {
     };
   });
 
-  const filteredTransactions = recentTransactions.filter(t => {
+  const filteredTransactions = displayTransactions.filter(t => {
     if (activeTab === 'all') return true;
     return t.type === activeTab;
   });
 
-  // Calculate stats
+  // Calculate stats - ONLY include completed transactions
   const totalIncome = transactions
-    .filter(t => t.amount > 0)
+    .filter(t => t.amount > 0 && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions
-    .filter(t => t.amount < 0)
+    .filter(t => t.amount < 0 && t.status === 'completed')
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   return (
@@ -192,11 +194,15 @@ export default function ClientWallet() {
               >
                 <div className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg',
-                  transaction.type === 'income'
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                  transaction.status === 'failed'
+                    ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                    : transaction.type === 'income'
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
                 )}>
-                  {transaction.type === 'income' ? (
+                  {transaction.status === 'failed' ? (
+                    <XCircle className="w-6 h-6" />
+                  ) : transaction.type === 'income' ? (
                     <ArrowDownLeft className="w-5 h-5" />
                   ) : (
                     <ArrowUpRight className="w-5 h-5" />
@@ -211,6 +217,11 @@ export default function ClientWallet() {
                         PENDIENTE
                       </Badge>
                     )}
+                    {transaction.status === 'failed' && (
+                      <Badge variant="destructive" className="text-[8px] uppercase tracking-widest bg-rose-500/10 text-rose-500 border-rose-500/20">
+                        RECHAZADO
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-[10px] text-muted-foreground/60 mt-0.5 font-medium uppercase tracking-widest">{transaction.date}</p>
                 </div>
@@ -218,7 +229,9 @@ export default function ClientWallet() {
                 <div className="text-right flex-shrink-0">
                   <p className={cn(
                     'font-black text-sm font-mono',
-                    transaction.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
+                    transaction.status === 'failed'
+                      ? 'text-muted-foreground/40 line-through'
+                      : transaction.type === 'income' ? 'text-emerald-500' : 'text-rose-500'
                   )}>
                     {transaction.type === 'income' ? '+' : '-'} ₲ {transaction.amount.toLocaleString()}
                   </p>
@@ -240,13 +253,14 @@ export default function ClientWallet() {
           </div>
         )}
 
-        {/* View All */}
-        <Link to="/app/wallet">
-          <Button variant="ghost" className="w-full mt-4 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-widest text-muted-foreground group">
-            Historial completo
-            <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </Link>
+        <Button 
+          variant="ghost" 
+          className="w-full mt-4 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-widest text-muted-foreground group"
+          onClick={() => setShowAll(!showAll)}
+        >
+          {showAll ? 'Ver menos' : 'Historial completo'}
+          <ChevronRight className={cn("w-4 h-4 ml-2 transition-transform", showAll ? "rotate-90" : "group-hover:translate-x-1")} />
+        </Button>
       </div>
 
       {/* My Card Link */}

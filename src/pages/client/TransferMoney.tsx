@@ -321,9 +321,12 @@ export default function TransferMoney() {
                                 <div className="flex items-center justify-center gap-2">
                                     <span className="text-3xl font-black text-blue-400">₲</span>
                                     <input
-                                        type="number"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
+                                        type="text"
+                                        value={amount ? Number(amount).toLocaleString('es-PY') : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            setAmount(val);
+                                        }}
                                         placeholder="0"
                                         className="bg-transparent border-none text-5xl font-black text-white focus:outline-none w-full text-center placeholder:text-white/10 tracking-tighter"
                                         autoFocus

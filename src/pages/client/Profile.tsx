@@ -13,7 +13,10 @@ import {
   Bell,
   HelpCircle,
   FileText,
-  Sparkles
+  Sparkles,
+  Eye,
+  EyeOff,
+  AlertCircle
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { getInitials, cn } from '@/lib/utils';
@@ -30,18 +33,21 @@ import { generateQRValue } from '@/lib/qr';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 
 const menuItems = [
-  { icon: User, label: 'Editar perfil', href: '#', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { icon: Shield, label: 'Seguridad', href: '#', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { icon: CreditCard, label: 'Métodos de pago', href: '#', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { icon: Bell, label: 'Notificaciones', href: '#', color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  { icon: HelpCircle, label: 'Ayuda y soporte', href: '#', color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { icon: FileText, label: 'Términos y condiciones', href: '#', color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { icon: User, label: 'Editar perfil', action: 'edit', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { icon: Shield, label: 'Seguridad', action: 'security', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { icon: CreditCard, label: 'Datos Bancarios', action: 'bank', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { icon: Bell, label: 'Notificaciones', action: 'push', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  { icon: HelpCircle, label: 'Ayuda y soporte', action: 'support', color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { icon: FileText, label: 'Términos y condiciones', action: 'terms', color: 'text-rose-500', bg: 'bg-rose-500/10' },
 ];
 
 export default function ClientProfile() {
-  const { user, logout, updateUser, updateBankData } = useAuthStore();
+  const { user, logout, updateUser, updateBankData, changePassword } = useAuthStore();
   const { wallet, fetchWallet } = useWalletStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
+  const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
 
   useEffect(() => {
     if (user) {
@@ -107,6 +113,7 @@ export default function ClientProfile() {
         avatar: user.avatar || ''
       });
       setIsEditing(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -153,6 +160,65 @@ export default function ClientProfile() {
       setIsBankOpen(false);
     } else {
       toast.error('Error al guardar datos bancarios');
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordData.current || !passwordData.new || !passwordData.confirm) {
+      toast.error('Todos los campos son obligatorios');
+      return;
+    }
+    
+    // Registration logic: Min 8 chars, 1 letter, 1 number
+    const hasLetter = /[A-Za-z]/.test(passwordData.new);
+    const hasNumber = /\d/.test(passwordData.new);
+    const hasMinLength = passwordData.new.length >= 8;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/;
+    if (passwordData.new.length < 8 || !passwordRegex.test(passwordData.new)) {
+      toast.error('La nueva contraseña debe tener al menos 8 caracteres, incluir una letra y un número');
+      return;
+    }
+
+    if (passwordData.new === passwordData.current) {
+      toast.error('La nueva contraseña no puede ser igual a la contraseña actual');
+      return;
+    }
+
+    if (passwordData.new !== passwordData.confirm) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
+    const success = await changePassword(passwordData.current, passwordData.new);
+    if (success) {
+      toast.success('Contraseña actualizada');
+      setIsPasswordOpen(false);
+      setPasswordData({ current: '', new: '', confirm: '' });
+    } else {
+      const authError = useAuthStore.getState().error;
+      toast.error(authError || 'Error al cambiar contraseña');
+    }
+  };
+
+  const handleMenuAction = (action: string) => {
+    switch (action) {
+      case 'edit':
+        initEdit();
+        break;
+      case 'security':
+        setIsPasswordOpen(true);
+        break;
+      case 'bank':
+        initBankData();
+        break;
+      case 'support':
+        window.open('https://wa.me/595981279526', '_blank');
+        break;
+      case 'terms':
+        toast.info('Términos y condiciones actualizados', { description: 'Disponibles en el panel administrativo.' });
+        break;
+      default:
+        break;
     }
   };
 
@@ -214,6 +280,15 @@ export default function ClientProfile() {
                   <Input
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50">Dirección</Label>
+                  <Input
+                    value={formData.address || ''}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
                   />
                 </div>
@@ -303,72 +378,22 @@ export default function ClientProfile() {
       <div className="glass-premium overflow-hidden rounded-[2.5rem] border border-white/10 shadow-xl">
         <div className="divide-y divide-white/5">
           {menuItems.map((item, index) => {
-            if (item.label === 'Métodos de pago') {
+            if (item.action === 'bank') {
               return (
-                <Dialog key={item.label} open={isBankOpen} onOpenChange={setIsBankOpen}>
-                  <DialogTrigger asChild>
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={initBankData}
-                      className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-all", item.bg)}>
-                          <item.icon className={cn("w-5 h-5", item.color)} />
-                        </div>
-                        <span className="font-bold text-sm">Datos Bancarios</span>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
-                      </div>
-                    </motion.button>
-                  </DialogTrigger>
-                  <DialogContent className="glass-premium border-white/10 rounded-[2rem]">
-                    <DialogHeader>
-                      <DialogTitle className="font-black tracking-tight text-lg">Datos Bancarios</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Banco</Label>
-                        <Input
-                          value={bankFormData.bankName}
-                          onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
-                          className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
-                          placeholder="Ej: Banco Familiar"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nro. de Cuenta</Label>
-                        <Input
-                          value={bankFormData.accountNumber}
-                          onChange={(e) => setBankFormData({ ...bankFormData, accountNumber: e.target.value })}
-                          className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Tipo de Cuenta</Label>
-                        <Select
-                          value={bankFormData.accountType}
-                          onValueChange={(val) => setBankFormData({ ...bankFormData, accountType: val })}
-                        >
-                          <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="savings">Caja de Ahorro</SelectItem>
-                            <SelectItem value="checking">Cuenta Corriente</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.15em] mt-4 shadow-lg shadow-blue-500/20" onClick={handleSaveBankData}>
-                        Guardar Información
-                      </Button>
+                <div key={item.label} onClick={initBankData} className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-all", item.bg)}>
+                      <item.icon className={cn("w-5 h-5", item.color)} />
                     </div>
-                  </DialogContent>
-                </Dialog>
+                    <span className="font-bold text-sm">{item.label}</span>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
+                  </div>
+                </div>
               );
             }
-            if (item.label === 'Notificaciones' && pushSupported) {
+            if (item.action === 'push' && pushSupported) {
               return (
                 <div key={item.label} className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group">
                   <div className="flex items-center gap-4">
@@ -393,6 +418,7 @@ export default function ClientProfile() {
               <motion.button
                 key={item.label}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => handleMenuAction(item.action || '')}
                 className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group text-left"
               >
                 <div className="flex items-center gap-4">
@@ -410,11 +436,160 @@ export default function ClientProfile() {
         </div>
       </div>
 
+      {/* Bank Dialog */}
+      <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
+        <DialogContent className="glass-premium border-white/10 rounded-[2rem]">
+          <DialogHeader>
+            <DialogTitle className="font-black tracking-tight text-lg">Datos Bancarios</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Banco</Label>
+              <Input
+                value={bankFormData.bankName}
+                onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
+                className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+                placeholder="Ej: Banco Familiar"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nro. de Cuenta</Label>
+              <Input
+                value={bankFormData.accountNumber}
+                onChange={(e) => setBankFormData({ ...bankFormData, accountNumber: e.target.value })}
+                className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Tipo de Cuenta</Label>
+              <Select
+                value={bankFormData.accountType}
+                onValueChange={(val) => setBankFormData({ ...bankFormData, accountType: val })}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 rounded-xl h-12">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="savings">Caja de Ahorro</SelectItem>
+                  <SelectItem value="checking">Cuenta Corriente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nro. de Documento</Label>
+              <Input
+                value={bankFormData.documentId}
+                onChange={(e) => setBankFormData({ ...bankFormData, documentId: e.target.value })}
+                className="bg-white/5 border-white/10 rounded-xl h-12 font-medium"
+              />
+            </div>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.15em] mt-4 shadow-lg shadow-blue-500/20" onClick={handleSaveBankData}>
+              Guardar Información
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Security Dialog */}
+      <Dialog open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
+        <DialogContent className="glass-premium border-white/10 rounded-[2rem]">
+          <DialogHeader>
+            <DialogTitle className="font-black tracking-tight text-lg">Cambiar Contraseña</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Contraseña Actual</Label>
+              <div className="relative">
+                <Input
+                  type={showPass.current ? "text" : "password"}
+                  value={passwordData.current}
+                  onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+                  className="bg-white/5 border-white/10 rounded-xl h-12 pr-12 transition-all focus:border-indigo-500/50"
+                  placeholder="Tu contraseña actual"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass({ ...showPass, current: !showPass.current })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-indigo-400 hover:bg-white/5 transition-all"
+                >
+                  {showPass.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nueva Contraseña</Label>
+              <div className="relative">
+                <Input
+                  type={showPass.new ? "text" : "password"}
+                  value={passwordData.new}
+                  onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                  className="bg-white/5 border-white/10 rounded-xl h-12 pr-12 transition-all focus:border-indigo-500/50"
+                  placeholder="Ingresa la contraseña nueva"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass({ ...showPass, new: !showPass.new })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-indigo-400 hover:bg-white/5 transition-all"
+                >
+                  {showPass.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              
+              {/* Requirements */}
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-3 mt-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">Requisitos:</p>
+                  <ul className="text-[9px] font-medium text-muted-foreground/70 space-y-1">
+                    <li className="flex items-center gap-1.5">
+                      <div className={cn("w-1 h-1 rounded-full", passwordData.new.length >= 8 ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                      Mínimo 8 caracteres
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <div className={cn("w-1 h-1 rounded-full", /[A-Za-z]/.test(passwordData.new) ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                      Al menos una letra
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <div className={cn("w-1 h-1 rounded-full", /\d/.test(passwordData.new) ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                      Al menos un número
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Confirmar Nueva Contraseña</Label>
+              <div className="relative">
+                <Input
+                  type={showPass.confirm ? "text" : "password"}
+                  value={passwordData.confirm}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                  className="bg-white/5 border-white/10 rounded-xl h-12 pr-12 transition-all focus:border-indigo-500/50"
+                  placeholder="Repite la nueva contraseña"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass({ ...showPass, confirm: !showPass.confirm })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-indigo-400 hover:bg-white/5 transition-all"
+                >
+                  {showPass.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.15em] mt-4 shadow-lg shadow-indigo-500/20" onClick={handleChangePassword}>
+              Actualizar Contraseña
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Logout */}
       <motion.div whileTap={{ scale: 0.98 }}>
         <Button
           variant="ghost"
-          className="w-full h-16 rounded-[2rem] bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-black text-xs uppercase tracking-[0.15em] border border-rose-500/20 shadow-lg"
+          className="w-full h-16 rounded-[2rem] bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-black text-xs uppercase tracking-[0.15em] border border-rose-500/20 shadow-lg mt-6"
           onClick={handleLogout}
         >
           <LogOut className="w-5 h-5 mr-3" />

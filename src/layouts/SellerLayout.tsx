@@ -63,15 +63,23 @@ export default function SellerLayout() {
 
   // Fetch notifications on mount + poll every 30s
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  const isPlanActive = user?.sellerProfile?.planActive;
+  const isOnPlansPage = location.pathname === '/vendedor/planes';
+
   useEffect(() => {
     if (user) {
+      if (!isPlanActive && !isOnPlansPage) {
+        navigate('/vendedor/planes');
+      }
+      
       fetchNotifications();
       pollingRef.current = setInterval(() => fetchNotifications(), 30000);
     }
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, isPlanActive, isOnPlansPage, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -130,17 +138,45 @@ export default function SellerLayout() {
           {sidebarItems.map((item) => {
             const isActive = location.pathname === item.href ||
               (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
+            
+            // Si el plan no está activo, bloqueamos visualmente casi todo
+            const isDisabled = !isPlanActive && item.href !== '/vendedor/planes';
+            
+            if (isDisabled && !isOnPlansPage) return null;
+
+            // Restricción por características del plan
+            if (isPlanActive) {
+               const features = user?.sellerProfile?.plan?.features || [];
+               const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
+               
+               // Mapeo estricto basado en la captura del usuario
+               if (item.href === '/vendedor/pos' && !hasFeature('POS')) return null;
+               if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online')) return null;
+               if (item.href === '/vendedor/productos' && !hasFeature('Productos')) return null;
+               if (item.href === '/vendedor/ventas' && !hasFeature('Ventas')) return null;
+               
+               if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores')) return null;
+               if (item.href === '/vendedor/clientes' && !hasFeature('Clientes')) return null;
+               if (item.href === '/vendedor/compras' && !hasFeature('Compras')) return null;
+               if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos')) return null;
+               
+               if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes')) return null;
+               if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja')) return null;
+            }
+
             return (
               <Link
                 key={item.href}
-                to={item.href}
+                to={isDisabled ? '#' : item.href}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
                   'hover:bg-gray-100 dark:hover:bg-slate-800 group',
                   isActive
                     ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
-                    : 'text-gray-600 dark:text-gray-400'
+                    : 'text-gray-600 dark:text-gray-400',
+                  isDisabled && 'opacity-30 cursor-not-allowed grayscale'
                 )}
+                onClick={(e) => isDisabled && e.preventDefault()}
               >
                 <item.icon className={cn(
                   'w-5 h-5 flex-shrink-0',

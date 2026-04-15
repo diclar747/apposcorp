@@ -54,7 +54,23 @@ interface Supplier {
     notes: string;
 }
 
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores';
+
 export default function Suppliers() {
+    const { user } = useAuthStore();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user && user.sellerProfile && user.sellerProfile.plan) {
+            const features = user.sellerProfile.plan.features || [];
+            if (!features.some(f => f.toLowerCase().includes('proveedores'))) {
+                toast.error('Tu plan no incluye gestión de proveedores');
+                navigate('/vendedor');
+            }
+        }
+    }, [user, navigate]);
+
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');

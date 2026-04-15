@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
-import { productsApi, walletApi, customersApi, managementApi } from '@/lib/api';
+import { productsApi, walletApi, customersApi, managementApi, ordersApi } from '@/lib/api';
 import { generateQRValue } from '@/lib/qr';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -49,6 +49,7 @@ interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  stock: number;
 }
 
 export default function SellerPOS() {
@@ -82,6 +83,8 @@ export default function SellerPOS() {
 
   // Mobile cart drawer
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [amountReceived, setAmountReceived] = useState<number | string>('');
+  const [showInsufficientError, setShowInsufficientError] = useState(false);
   // Sales history toggle (mobile)
   const [showHistory, setShowHistory] = useState(false);
 
@@ -104,6 +107,18 @@ export default function SellerPOS() {
     };
     fetchProducts();
   }, [sellerProfile?.id]);
+
+  // Plan Restriction Check
+  useEffect(() => {
+    if (user && user.sellerProfile && user.sellerProfile.plan) {
+      const features = user.sellerProfile.plan.features || [];
+      const hasPOS = features.some(f => f.toLowerCase().includes('pos'));
+      if (!hasPOS) {
+        toast.error('Tu plan no incluye acceso al Punto de Venta (POS)');
+        navigate('/vendedor');
+      }
+    }
+  }, [user, navigate]);
 
   // Fetch customers for crédito sales + POS category for Gestión integration
   useEffect(() => {
@@ -253,20 +268,30 @@ export default function SellerPOS() {
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const addToCart = useCallback((product: Product) => {
-    playBeep();
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
+        if (existing.quantity >= product.stock) {
+          toast.error(`Stock máximo alcanzado para ${product.name} (${product.stock} disp.)`);
+          return prev;
+        }
+        playBeep();
         return prev.map(item =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
+      if (product.stock <= 0) {
+        toast.error('Producto sin stock disponible');
+        return prev;
+      }
+      playBeep();
       return [...prev, {
         id: product.id,
         name: product.name,
         price: product.price,
         quantity: 1,
-        image: product.images?.[0] || ''
+        image: product.images?.[0] || '',
+        stock: product.stock // Keep track of stock in cart item for easier validation
       }];
     });
   }, []);
@@ -279,17 +304,33 @@ export default function SellerPOS() {
     setCart(prev => prev.map(item => {
       if (item.id === id) {
         const newQty = item.quantity + delta;
+        
+        if (delta > 0 && newQty > item.stock) {
+           toast.error(`No hay más stock disponible (${item.stock} total)`);
+           return item;
+        }
+        
         return newQty > 0 ? { ...item, quantity: newQty } : item;
       }
       return item;
     }));
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
+    // Validate Cash amount if method is cash
+    if (paymentMethod === 'cash') {
+      const received = Number(String(amountReceived).replace(/\./g, ''));
+      if (amountReceived === '' || received < total) {
+        setShowInsufficientError(true);
+        toast.error('Monto insuficiente');
+        return;
+      }
+    }
+    setShowInsufficientError(false);
     setProcessing(true);
-    setTimeout(() => {
+    try {
       const saleData = {
-        id: `V-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: `V-${Math.floor(1000 + Math.random() * 9000).toString().padStart(4, '0')}`,
         date: new Date(),
         items: [...cart],
         subtotal, tax, total,
@@ -298,9 +339,52 @@ export default function SellerPOS() {
         saleType,
         customer: saleType === 'credito' ? selectedCustomer : null,
       };
+
+      // 1. Create real order to update Dashboard sales & earnings
+      const orderData = {
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        total,
+        paymentMethod: paymentMethod,
+        customerName: saleData.customerName,
+        status: 'delivered', // Match OrderStatus enum
+        paymentStatus: 'paid', // POS sales are paid immediately
+        isPosSale: true,
+        deliveryType: 'presencial',
+        sellerId: sellerProfile?.id
+      };
+      
+      const createdOrder = await ordersApi.create(orderData);
+
+      // 2. Update local state only (Backend already updated DB stock)
+      for (const item of cart) {
+        const product = products.find(p => p.id === item.id);
+        if (product) {
+          const newStock = Math.max(0, product.stock - item.quantity);
+          setProducts(prev => prev.map(p => 
+            p.id === item.id ? { ...p, stock: newStock } : p
+          ));
+        }
+      }
+
+      // 3. Register in Gestión as income movement
+      if (posCategoryId) {
+        await managementApi.createMovement({
+          categoryId: posCategoryId,
+          type: 'income',
+          amount: total,
+          description: `Venta POS ${saleData.id} - ${saleData.customerName}`,
+          voucherNumber: saleData.id,
+          reference: createdOrder.id || saleData.id,
+        });
+      }
+
+      // 3. Finalize UI
       setLastSale(saleData);
       setSalesHistory(prev => [saleData, ...prev].slice(0, 10));
-      setProcessing(false);
       setIsCheckoutOpen(false);
       setCart([]);
       setMobileCartOpen(false);
@@ -308,20 +392,15 @@ export default function SellerPOS() {
       setCustomerName('Consumidor Final');
       setSaleType('contado');
       setSelectedCustomer(null);
-      toast.success('Venta realizada con éxito');
-
-      // Register in Gestión as income movement
-      if (posCategoryId) {
-        managementApi.createMovement({
-          categoryId: posCategoryId,
-          type: 'income',
-          amount: total,
-          description: `Venta POS ${saleData.id} - ${saleData.customerName}`,
-          voucherNumber: saleData.id,
-          reference: saleData.id,
-        }).catch(() => {});
-      }
-    }, 1000);
+      setAmountReceived('');
+      toast.success('Venta realizada y stock actualizado');
+      
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Error al procesar la venta');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // ─── Guard: No store ──────────────────────────────────────────────
@@ -399,7 +478,11 @@ export default function SellerPOS() {
                   <Minus className="w-3 h-3 text-muted-foreground" />
                 </button>
                 <span className="text-xs font-bold w-5 text-center text-foreground">{item.quantity}</span>
-                <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-background rounded transition-all">
+                <button 
+                  onClick={() => updateQuantity(item.id, 1)} 
+                  className="p-1 hover:bg-background rounded transition-all disabled:opacity-20"
+                  disabled={item.quantity >= item.stock}
+                >
                   <Plus className="w-3 h-3 text-muted-foreground" />
                 </button>
               </div>
@@ -558,7 +641,10 @@ export default function SellerPOS() {
                       <h3 className="font-medium text-foreground text-xs sm:text-sm line-clamp-2 leading-tight min-h-[2rem] sm:min-h-[2.5rem]">{product.name}</h3>
                       <div className="flex items-center justify-between mt-1.5">
                         <p className="font-bold text-blue-600 dark:text-blue-400 text-xs sm:text-sm">{formatCurrency(product.price)}</p>
-                        <p className="text-[9px] text-muted-foreground bg-muted px-1 py-0.5 rounded font-mono hidden sm:block">{product.sku}</p>
+                        <div className="flex flex-col items-end">
+                            <p className="text-[10px] font-black uppercase text-slate-500">{product.stock} <span className="text-[8px] opacity-70">DISP.</span></p>
+                            <p className="text-[9px] text-muted-foreground bg-muted px-1 py-0.5 rounded font-mono hidden sm:block mt-0.5">{product.sku}</p>
+                        </div>
                       </div>
                     </motion.div>
                   );
@@ -770,35 +856,44 @@ export default function SellerPOS() {
               <p className="text-3xl sm:text-4xl font-black text-foreground tracking-tighter">{formatCurrency(total)}</p>
             </div>
 
-            {/* Sale Type: Contado / Crédito */}
             <div className="space-y-3">
               <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Tipo de Venta</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => { setSaleType('contado'); setSelectedCustomer(null); }}
                   className={cn(
-                    'py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition-all',
+                    'py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center',
                     saleType === 'contado'
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
                       : 'border-muted bg-background text-muted-foreground hover:border-gray-300'
                   )}
                 >
-                  <Banknote className="w-4 h-4 inline mr-1.5" />
+                  <Banknote className="w-4 h-4 mr-1.5" />
                   Contado
                 </button>
-                <button
-                  onClick={() => setSaleType('credito')}
-                  className={cn(
-                    'py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition-all',
-                    saleType === 'credito'
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                      : 'border-muted bg-background text-muted-foreground hover:border-gray-300'
+                <div className="relative group">
+                  <button
+                    disabled={!user?.sellerProfile?.plan?.features?.some(f => f.toLowerCase().includes('clientes'))}
+                    onClick={() => setSaleType('credito')}
+                    className={cn(
+                      'w-full py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center',
+                      saleType === 'credito'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                        : 'border-muted bg-background text-muted-foreground hover:border-gray-300',
+                      !user?.sellerProfile?.plan?.features?.some(f => f.toLowerCase().includes('clientes')) && 'opacity-50 cursor-not-allowed grayscale'
+                    )}
+                  >
+                    <CreditCard className="w-4 h-4 mr-1.5" />
+                    Crédito
+                  </button>
+                  {!user?.sellerProfile?.plan?.features?.some(f => f.toLowerCase().includes('clientes')) && (
+                    <div className="absolute -bottom-6 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <span className="text-[9px] text-amber-600 font-bold uppercase whitespace-nowrap">Requiere Gestión de Clientes</span>
+                    </div>
                   )}
-                >
-                  <CreditCard className="w-4 h-4 inline mr-1.5" />
-                  Crédito
-                </button>
+                </div>
               </div>
+            </div>
 
               {saleType === 'credito' && (
                 <div className="space-y-2">
@@ -832,8 +927,6 @@ export default function SellerPOS() {
                   )}
                 </div>
               )}
-            </div>
-
             <Tabs defaultValue="cash" onValueChange={(v) => setPaymentMethod(v as any)} className="w-full">
               <TabsList className="grid w-full grid-cols-3 h-11">
                 <TabsTrigger value="cash" className="gap-1.5 text-xs">
@@ -854,10 +947,30 @@ export default function SellerPOS() {
               <TabsContent value="cash" className="mt-4">
                 <div className="space-y-3">
                   <Label className="text-xs font-bold uppercase">Monto Recibido</Label>
-                  <Input type="number" placeholder="0" className="h-12 text-xl font-bold border-2 focus-visible:ring-blue-600" />
+                  <Input 
+                    type="text" 
+                    value={amountReceived}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, '');
+                      if (rawValue === '') {
+                        setAmountReceived('');
+                        return;
+                      }
+                      const formatted = new Intl.NumberFormat('de-DE').format(Number(rawValue));
+                      setAmountReceived(formatted);
+                    }}
+                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                    placeholder="0" 
+                    className="h-12 text-xl font-bold border-2 focus-visible:ring-blue-600" 
+                  />
                   <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl flex justify-between items-center border border-blue-100 dark:border-blue-500/20">
                     <span className="text-sm font-bold text-blue-700 dark:text-blue-300">Cambio:</span>
-                    <span className="text-lg font-black text-blue-800 dark:text-blue-200">₲ 0</span>
+                    <span className="text-lg font-black text-blue-800 dark:text-blue-200">
+                      {(() => {
+                        const received = Number(String(amountReceived).replace(/\./g, ''));
+                        return formatCurrency(received > total ? received - total : 0);
+                      })()}
+                    </span>
                   </div>
                 </div>
               </TabsContent>
@@ -913,54 +1026,57 @@ export default function SellerPOS() {
 
           <DialogFooter className="gap-2 sm:gap-0 border-t pt-4">
             <Button variant="ghost" onClick={() => setIsCheckoutOpen(false)} className="font-bold text-muted-foreground">CANCELAR</Button>
-            <Button onClick={handleCheckout} disabled={processing || (saleType === 'credito' && !selectedCustomer)} className="bg-green-600 hover:bg-green-700 font-bold px-6">
-              {processing ? 'PROCESANDO...' : 'CONFIRMAR PAGO'}
+            <Button 
+              onClick={handleCheckout} 
+              disabled={
+                processing || 
+                (saleType === 'credito' && !selectedCustomer)
+              } 
+              className={cn(
+                "font-bold px-6 transition-all bg-green-600 hover:bg-green-700 text-white"
+              )}
+            >
+              {processing ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> PROCESANDO...
+                </span>
+              ) : 'CONFIRMAR PAGO'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ═══ Receipt Modal ═══ */}
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-0 shadow-2xl max-h-[90dvh]">
-          <div className="overflow-y-auto">
-            <div className="p-6 sm:p-8 font-mono text-sm text-slate-800 dark:text-slate-200" id="receipt-content">
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 bg-slate-900 dark:bg-slate-700 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Receipt className="w-6 h-6 text-white" />
+        <DialogContent className="sm:max-w-[350px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-0 shadow-2xl flex flex-col rounded-[1.5rem]">
+          <div className="overflow-y-auto flex-1 max-h-[75dvh]">
+            <div className="p-6 font-mono text-sm text-slate-800 dark:text-slate-100" id="receipt-content">
+              <div className="text-center mb-5">
+                <Receipt className="w-8 h-8 text-slate-900 dark:text-slate-100 mx-auto mb-2 opacity-20" />
+                <h2 className="text-xl font-black uppercase tracking-tighter mb-0.5">{storeName}</h2>
+                <p className="text-[8px] text-slate-400 uppercase font-black tracking-[0.2em] mb-3">Oscorp POS System</p>
+                <div className="space-y-0.5 text-[10px] text-slate-500 font-bold uppercase">
+                  <p>RUC: 80012345-0</p>
+                  <p className="truncate px-2">{storeAddress}</p>
+                  <p>TEL: {storePhone}</p>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter mb-1">{storeName}</h2>
-                <p className="text-[10px] text-slate-400 uppercase font-black">Powered by Oscorp Systems</p>
-                <div className="border-b border-dashed border-slate-200 dark:border-slate-700 my-5" />
-                <p className="text-xs font-bold">RUC: 80012345-0</p>
-                <p className="text-xs">{storeAddress}</p>
-                <p className="text-xs">Tel: {storePhone}</p>
               </div>
 
-              <div className="space-y-1 mb-5 text-xs border-b border-dashed border-slate-200 dark:border-slate-700 pb-4">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">FECHA:</span>
-                  <span>{lastSale?.date?.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">COMPROBANTE:</span>
-                  <span className="font-bold">{lastSale?.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">TIPO:</span>
-                  <span className="font-bold uppercase">{lastSale?.saleType === 'credito' ? 'CRÉDITO' : 'CONTADO'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">CLIENTE:</span>
-                  <span className="font-bold uppercase">{lastSale?.customerName || customerName}</span>
-                </div>
-                {lastSale?.customer?.ruc && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">RUC CLIENTE:</span>
-                    <span className="font-bold">{lastSale.customer.ruc}</span>
+              <div className="border-t border-b border-dashed border-slate-300 dark:border-slate-700 py-3 my-4 grid grid-cols-2 gap-y-1 text-[10px] font-bold">
+                <div className="text-slate-400 uppercase">Fecha</div>
+                <div className="text-right">{lastSale?.date?.toLocaleString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="text-slate-400 uppercase">Nro</div>
+                <div className="text-right">{lastSale?.id}</div>
+                <div className="text-slate-400 uppercase">Venta</div>
+                <div className="text-right uppercase">{lastSale?.saleType === 'credito' ? 'CRÉDITO' : 'CONTADO'}</div>
+                <div className="text-slate-400 uppercase">Cliente</div>
+                <div className="text-right uppercase truncate">{lastSale?.customerName || customerName}</div>
+              </div>
+                 {lastSale?.customer?.ruc && (
+                  <div className="flex justify-between text-[11px] font-bold">
+                    <span className="text-slate-400 uppercase">RUC CLIENTE</span>
+                    <span className="text-right">{lastSale?.customer?.ruc}</span>
                   </div>
                 )}
-              </div>
 
               <div className="space-y-2 mb-6">
                 <div className="flex justify-between font-black text-[10px] text-slate-400 uppercase tracking-widest pb-2 border-b border-slate-100 dark:border-slate-700">
@@ -995,84 +1111,62 @@ export default function SellerPOS() {
               <div className="mt-8 text-center space-y-3">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pago: {lastSale?.paymentMethod?.toUpperCase()}</p>
                 <div className="flex justify-center flex-col items-center gap-1">
-                  <Barcode className="w-36 h-8 opacity-40" />
+                  <div className="w-48 h-10 border-2 border-black/10 dark:border-white/10 flex items-center justify-center p-1 rounded">
+                    <Barcode className="w-full h-full opacity-60" />
+                  </div>
                   <p className="text-[9px] font-mono text-slate-400">*{lastSale?.id}*</p>
                 </div>
-                <p className="text-[11px] font-black uppercase border-t border-dashed border-slate-200 dark:border-slate-700 pt-5">
+                <p className="text-[11px] font-black uppercase border-t border-dashed border-slate-200 dark:border-slate-700 pt-5 text-slate-500">
                   ¡GRACIAS POR SU PREFERENCIA!
                 </p>
               </div>
             </div>
           </div>
-          <div className="p-4 bg-slate-50 dark:bg-slate-800 flex gap-2 border-t print:hidden">
-            <Button variant="outline" className="flex-1 font-bold" onClick={() => setIsReceiptOpen(false)}>
-              <X className="w-4 h-4 mr-1" />
-              SALIR
+          <div className="p-5 bg-white dark:bg-slate-900 grid grid-cols-2 gap-3 border-t print:hidden">
+            <Button 
+              variant="outline" 
+              className="h-12 font-bold border-2 hover:bg-slate-100 dark:hover:bg-slate-800" 
+              onClick={() => {
+                setIsReceiptOpen(false);
+                setAmountReceived('');
+              }}
+            >
+              <X className="w-4 h-4 mr-2" />
+              CERRAR
             </Button>
-            <Button variant="outline" className="flex-1 font-bold" onClick={() => {
-              const el = document.getElementById('receipt-content');
-              if (!el) return;
-              const printWindow = window.open('', '_blank', 'width=400,height=700');
-              if (!printWindow) { toast.error('Permite ventanas emergentes para descargar'); return; }
-              printWindow.document.write(`<!DOCTYPE html><html><head><title>Comprobante ${lastSale?.id || ''}</title><style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Courier New', monospace; font-size: 12px; color: #1e293b; padding: 24px; max-width: 380px; margin: 0 auto; }
-                .text-center { text-align: center; } .font-bold { font-weight: bold; } .font-black { font-weight: 900; }
-                .text-xl { font-size: 18px; } .text-xs { font-size: 11px; } .text-\\[10px\\] { font-size: 10px; } .text-\\[9px\\] { font-size: 9px; }
-                .uppercase { text-transform: uppercase; } .mb-1 { margin-bottom: 4px; } .mb-4 { margin-bottom: 16px; } .mb-5 { margin-bottom: 20px; } .mb-6 { margin-bottom: 24px; }
-                .mt-8 { margin-top: 32px; } .pt-2 { padding-top: 8px; } .pt-5 { padding-top: 20px; } .pb-4 { padding-bottom: 16px; }
-                .border-dashed { border-style: dashed; } .border-b { border-bottom: 1px dashed #cbd5e1; }
-                .border-t { border-top: 1px dashed #cbd5e1; } .my-5 { margin-top: 20px; margin-bottom: 20px; }
-                .flex { display: flex; } .justify-between { justify-content: space-between; }
-                .space-y-1 > * + * { margin-top: 4px; } .space-y-2 > * + * { margin-top: 8px; } .space-y-3 > * + * { margin-top: 12px; }
-                .text-slate-400 { color: #94a3b8; } .tracking-tighter { letter-spacing: -0.05em; } .tracking-widest { letter-spacing: 0.1em; }
-                .w-1\\/2 { width: 50%; } .w-1\\/4 { width: 25%; } .text-right { text-align: right; }
-                .icon-placeholder { width: 48px; height: 48px; background: #1e293b; border-radius: 12px; margin: 0 auto 16px; display:flex; align-items:center; justify-content:center; }
-                .icon-placeholder svg { width:24px; height:24px; color:white; }
-                .barcode { width: 144px; height: 32px; margin: 0 auto; opacity: 0.4; background: repeating-linear-gradient(90deg, #1e293b 0px, #1e293b 2px, transparent 2px, transparent 5px); }
-              </style></head><body>`);
-              printWindow.document.write(el.innerHTML);
-              printWindow.document.write('</body></html>');
-              printWindow.document.close();
-              // Replace icons with placeholders
-              const svgs = printWindow.document.querySelectorAll('svg');
-              svgs.forEach(svg => { const span = printWindow!.document.createElement('span'); span.textContent = ''; svg.replaceWith(span); });
-              setTimeout(() => { printWindow.document.title = `Comprobante_${lastSale?.id || 'receipt'}`; printWindow.print(); }, 300);
-              toast.success('Descarga iniciada');
-            }}>
-              <Download className="w-4 h-4 mr-1" />
-              DESCARGAR
-            </Button>
-            <Button className="flex-1 bg-slate-900 dark:bg-blue-600 font-bold" onClick={() => {
-              const el = document.getElementById('receipt-content');
-              if (!el) return;
-              const printWindow = window.open('', '_blank', 'width=400,height=700');
-              if (!printWindow) { toast.error('Permite ventanas emergentes para imprimir'); return; }
-              printWindow.document.write(`<!DOCTYPE html><html><head><title>Comprobante</title><style>
-                @media print { @page { margin: 10mm; size: 80mm auto; } }
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; padding: 8px; max-width: 300px; margin: 0 auto; }
-                .text-center { text-align: center; } .font-bold { font-weight: bold; } .font-black { font-weight: 900; }
-                .text-xl { font-size: 16px; } .text-xs { font-size: 10px; } .text-\\[10px\\] { font-size: 9px; } .text-\\[9px\\] { font-size: 8px; } .text-\\[11px\\] { font-size: 10px; }
-                .uppercase { text-transform: uppercase; } .mb-1 { margin-bottom: 3px; } .mb-4 { margin-bottom: 10px; } .mb-5 { margin-bottom: 14px; } .mb-6 { margin-bottom: 16px; }
-                .mt-8 { margin-top: 20px; } .pt-2 { padding-top: 6px; } .pt-5 { padding-top: 14px; } .pb-4 { padding-bottom: 10px; }
-                .border-dashed { border-style: dashed; } .border-b { border-bottom: 1px dashed #999; }
-                .border-t { border-top: 1px dashed #999; } .my-5 { margin-top: 14px; margin-bottom: 14px; }
-                .flex { display: flex; } .justify-between { justify-content: space-between; }
-                .space-y-1 > * + * { margin-top: 3px; } .space-y-2 > * + * { margin-top: 6px; } .space-y-3 > * + * { margin-top: 8px; }
-                .text-slate-400 { color: #666; } .tracking-tighter { letter-spacing: -0.04em; } .tracking-widest { letter-spacing: 0.08em; }
-                .w-1\\/2 { width: 50%; } .w-1\\/4 { width: 25%; } .text-right { text-align: right; }
-                .icon-placeholder { display:none; }
-                .barcode { width: 120px; height: 24px; margin: 0 auto; opacity: 0.5; background: repeating-linear-gradient(90deg, #000 0px, #000 1.5px, transparent 1.5px, transparent 4px); }
-                svg { display: none; }
-              </style></head><body>`);
-              printWindow.document.write(el.innerHTML);
-              printWindow.document.write('</body></html>');
-              printWindow.document.close();
-              setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
-            }}>
-              <Printer className="w-4 h-4 mr-1" />
-              IMPRIMIR
+            <Button 
+              className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-500/20" 
+              onClick={() => {
+                const el = document.getElementById('receipt-content');
+                if (!el) return;
+                const printWindow = window.open('', '_blank', 'width=400,height=700');
+                if (!printWindow) { toast.error('Permite ventanas emergentes para imprimir'); return; }
+                printWindow.document.write(`<!DOCTYPE html><html><head><title>Comprobante</title><style>
+                  @media print { @page { margin: 0; size: 80mm auto; } body { margin: 0; } }
+                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                  body { font-family: 'Courier New', monospace; font-size: 13px; color: #000; padding: 15px; max-width: 300px; margin: 0 auto; line-height: 1.2; }
+                  .text-center { text-align: center; } .font-bold { font-weight: bold; } .font-black { font-weight: 900; }
+                  .text-xl { font-size: 18px; } .text-xs { font-size: 11px; } .text-\\[10px\\] { font-size: 10px; } .text-\\[9px\\] { font-size: 9px; } .text-\\[11px\\] { font-size: 11px; }
+                  .uppercase { text-transform: uppercase; } .mb-1 { margin-bottom: 4px; } .mb-4 { margin-bottom: 12px; } .mb-5 { margin-bottom: 16px; } .mb-6 { margin-bottom: 20px; }
+                  .mt-8 { margin-top: 25px; } .pt-2 { padding-top: 8px; } .pt-5 { padding-top: 15px; } .pb-4 { padding-bottom: 12px; }
+                  .border-dashed { border-style: dashed; } .border-b { border-bottom: 1px dashed #000; }
+                  .border-t { border-top: 1px dashed #000; } .my-5 { margin-top: 15px; margin-bottom: 15px; }
+                  .flex { display: flex; } .justify-between { justify-content: space-between; }
+                  .space-y-1 > * + * { margin-top: 4px; } .space-y-2 > * + * { margin-top: 8px; } .space-y-3 > * + * { margin-top: 10px; }
+                  .text-slate-400 { color: #000; } .tracking-tighter { letter-spacing: -0.05em; } .tracking-widest { letter-spacing: 0.1em; }
+                  .w-1\\/2 { width: 50%; } .w-1\\/4 { width: 25%; } .text-right { text-align: right; }
+                  svg, .print\\:hidden, button { display: none !important; }
+                  .barcode { width: 140px; height: 30px; margin: 0 auto; opacity: 1; border: 1px solid #000; position: relative; }
+                  .barcode::after { content: '|| ||| || ||| || ||'; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 20px; font-family: sans-serif; }
+                </style></head><body>`);
+                printWindow.document.write(el.innerHTML);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+              }}
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              IMPRIMIR TICKET
             </Button>
           </div>
         </DialogContent>

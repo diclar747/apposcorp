@@ -111,7 +111,7 @@ export interface SellerProfile {
   whatsappNumber: string;
   isVerified: boolean;
   planId?: string;
-  currentPlan?: SubscriptionPlan;
+  plan?: SubscriptionPlan;
   planActive: boolean;
   planExpiryDate?: Date;
   planBillingCycle?: BillingCycle;
@@ -135,7 +135,9 @@ export interface SubscriptionPlan {
     annual: number;
   };
   features: string[];
-  productLimit: number;
+  maxProducts: number;
+  hasReports: boolean;
+  commissionRate: number;
   isCommissionBased: boolean;
   commissionPercentage?: number;
   isActive: boolean;
@@ -273,6 +275,7 @@ export interface Wallet {
   id: string;
   userId: string;
   balance: number;
+  rewardPoints: number;
   currency: string;
   status: 'active' | 'frozen' | 'suspended';
   dailyLimit: number;

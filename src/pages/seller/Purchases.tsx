@@ -69,7 +69,23 @@ interface Purchase {
     items: any[];
 }
 
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores';
+
 export default function Purchases() {
+    const { user } = useAuthStore();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user && user.sellerProfile && user.sellerProfile.plan) {
+            const features = user.sellerProfile.plan.features || [];
+            if (!features.some(f => f.toLowerCase().includes('compras'))) {
+                toast.error('Tu plan no incluye gestión de compras');
+                navigate('/vendedor');
+            }
+        }
+    }, [user, navigate]);
+
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);

@@ -23,9 +23,11 @@ import {
   Settings,
   HelpCircle,
   Moon,
-  Sun
+  Sun,
+  Coins
 } from 'lucide-react';
 import { useAuthStore, useCartStore, useNotificationStore, useWalletStore } from '@/stores';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -79,15 +81,14 @@ const menuSections: MenuSection[] = [
   {
     title: 'Educación',
     items: [
-      { icon: GraduationCap, label: 'Cursos', href: '/app/cursos' },
       { icon: TrendingUp, label: 'Ingenio Millonario', href: '/app/ingenio', premium: true },
     ]
   },
   {
     title: 'Configuración',
     items: [
-      { icon: Settings, label: 'Ajustes', href: '/app/ajustes' },
-      { icon: HelpCircle, label: 'Ayuda', href: '/app/ayuda' },
+      { icon: Settings, label: 'Ajustes', href: '/app/perfil' },
+      { icon: HelpCircle, label: 'Ayuda', href: '/app/perfil' },
     ]
   }
 ];
@@ -182,13 +183,19 @@ export default function ClientLayout() {
                       <p className="text-sm text-white/70">{user?.email}</p>
                     </div>
                     <div className="mt-4 flex gap-3">
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2">
-                        <p className="text-xs text-white/60">Saldo</p>
-                        <p className="font-semibold text-white">₲ 8,545,000</p>
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Wallet className="w-3 h-3 text-white/60" />
+                          <p className="text-[10px] text-white/60 uppercase font-bold tracking-wider">Saldo</p>
+                        </div>
+                        <p className="font-bold text-white text-sm">{formatCurrency(wallet?.balance || 0)}</p>
                       </div>
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2">
-                        <p className="text-xs text-white/60">Puntos</p>
-                        <p className="font-semibold text-white">2,450</p>
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Coins className="w-3 h-3 text-white/60" />
+                          <p className="text-[10px] text-white/60 uppercase font-bold tracking-wider">Puntos</p>
+                        </div>
+                        <p className="font-bold text-white text-sm">{formatNumber(wallet?.rewardPoints || 0)}</p>
                       </div>
                     </div>
                   </div>

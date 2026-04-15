@@ -20,7 +20,11 @@ router.post('/login', async (req, res) => {
       include: {
         wallet: true,
         virtualCard: true,
-        sellerProfile: true,
+        sellerProfile: {
+          include: {
+            plan: true
+          }
+        },
         bankData: true,
         ingenioSubscription: true,
       }
@@ -168,8 +172,8 @@ router.post('/register', async (req, res) => {
           phone: phone || '',
           email,
           whatsappNumber: phone || '',
-          planActive: true,
-          planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          planActive: false,
+          planExpiryDate: null,
         },
       });
     }
@@ -180,7 +184,11 @@ router.post('/register', async (req, res) => {
       include: {
         wallet: true,
         virtualCard: true,
-        sellerProfile: true,
+        sellerProfile: {
+          include: {
+            plan: true
+          }
+        },
         bankData: true,
         ingenioSubscription: true,
       },
@@ -262,7 +270,11 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       include: {
         wallet: true,
         virtualCard: true,
-        sellerProfile: true,
+        sellerProfile: {
+          include: {
+            plan: true
+          }
+        },
         bankData: true,
         ingenioSubscription: true,
       },
@@ -297,7 +309,11 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
       include: {
         wallet: true,
         virtualCard: true,
-        sellerProfile: true,
+        sellerProfile: {
+          include: {
+            plan: true
+          }
+        },
         bankData: true,
         ingenioSubscription: true,
       },
@@ -320,8 +336,13 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ error: 'La nueva contraseña no puede ser igual a la actual' });
+    }
+
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/;
+    if (newPassword.length < 8 || !passwordRegex.test(newPassword)) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres, incluir una letra y un número' });
     }
 
     const user = await prisma.user.findUnique({
@@ -403,7 +424,7 @@ router.post('/add-role', authenticate, async (req: AuthRequest, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
-      include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true }
+      include: { wallet: true, virtualCard: true, sellerProfile: { include: { plan: true } }, bankData: true }
     });
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -432,7 +453,7 @@ router.post('/add-role', authenticate, async (req: AuthRequest, res) => {
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: updateData,
-      include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true }
+      include: { wallet: true, virtualCard: true, sellerProfile: { include: { plan: true } }, bankData: true }
     });
 
     // If we just created the wallet for 'client', create virtual card too
@@ -451,7 +472,7 @@ router.post('/add-role', authenticate, async (req: AuthRequest, res) => {
       // reload user to get the card
       const finalUser = await prisma.user.findUnique({
         where: { id: user.id },
-        include: { wallet: true, virtualCard: true, sellerProfile: true, bankData: true, ingenioSubscription: true }
+        include: { wallet: true, virtualCard: true, sellerProfile: { include: { plan: true } }, bankData: true, ingenioSubscription: true }
       });
       
       const newToken = generateToken({
@@ -475,6 +496,125 @@ router.post('/add-role', authenticate, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Add role error:', error);
     res.status(500).json({ error: 'Error en el servidor al agregar rol' });
+  }
+});
+
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'El email es obligatorio' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Mensaje genérico por seguridad (no confirmar si el email existe)
+    if (!user) {
+      return res.json({ message: 'Si el correo está registrado, recibirás un enlace de recuperación.' });
+    }
+
+    const crypto = await import('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetTokenExpires,
+      },
+    });
+
+    const isDemoMode = !process.env.SMTP_USER || !process.env.SMTP_PASS;
+
+    if (!isDemoMode) {
+      const nodemailer = await import('nodemailer');
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+
+      const mailOptions = {
+        from: `"Oscorp Security" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: 'Recuperación de contraseña - Oscorp',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <h2 style="color: #1e293b; text-align: center;">Recuperación de Contraseña</h2>
+            <p style="color: #475569; font-size: 16px;">Has solicitado restablecer tu contraseña. Haz clic en el siguiente botón para continuar:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Restablecer Contraseña</a>
+            </div>
+            <p style="color: #475569; font-size: 14px;">Este enlace expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          </div>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`[EMAIL ENVIADO] Recuperación enviada a ${email}`);
+      } catch (mailError) {
+        console.error('[EMAIL ERROR] Error enviando recuperación:', mailError);
+        // Continuamos de todas formas para que el usuario pueda usar el modo demo o el admin lo ayude
+      }
+    } else {
+      console.log('MODO DEMO: Token de recuperación para', email, '->', resetToken);
+    }
+
+    res.json({ 
+      message: 'Si el correo está registrado, recibirás un enlace de recuperación.',
+      ...(isDemoMode && { demoToken: resetToken })
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// Reset Password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpires: { gte: new Date() },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'El enlace de recuperación es inválido o ha expirado' });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpires: null,
+      },
+    });
+
+    res.json({ message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Error al restablecer la contraseña' });
   }
 });
 

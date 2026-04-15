@@ -69,6 +69,7 @@ router.get('/transactions', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Deposit money to wallet
+// Deposit money to wallet (Pending manual approval)
 router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
   try {
     const { amount, description } = req.body;
@@ -85,42 +86,137 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Billetera no encontrada' });
     }
 
+    // Create a PENDING transaction record
+    const transaction = await prisma.transaction.create({
+      data: {
+        walletId: wallet.id,
+        userId: req.user!.userId,
+        type: 'deposit',
+        amount: parseFloat(amount),
+        description: description || 'Depósito pendiente de aprobación',
+        status: 'pending',
+      },
+    });
+
+    // Send push to user about pending request
+    sendPushToUser(req.user!.userId, {
+      title: 'Solicitud de Depósito',
+      body: `Tu solicitud de recarga por ₲ ${amount.toLocaleString()} ha sido recibida y está en proceso de validación.`,
+      url: '/app/wallet',
+      tag: 'deposit-request'
+    }).catch(console.error);
+
+    res.json({ message: 'Solicitud recibida', transaction });
+  } catch (error) {
+    console.error('Error in deposit:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Approve deposit (Admin only)
+router.post('/approve-deposit/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: id as string },
+      include: { wallet: true }
+    });
+
+    if (!transaction || transaction.type !== 'deposit' || transaction.status !== 'pending') {
+      return res.status(404).json({ error: 'Transacción pendiente no encontrada' });
+    }
+
     const result = await prisma.$transaction(async (tx) => {
-      // Update wallet balance
+      // 1. Update wallet balance
       const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
+        where: { id: transaction.walletId },
         data: {
-          balance: { increment: amount },
-          totalIn: { increment: amount },
+          balance: { increment: transaction.amount },
+          totalIn: { increment: transaction.amount },
         },
       });
 
-      // Create transaction record
-      await tx.transaction.create({
+      // 2. Mark transaction as completed
+      await tx.transaction.update({
+        where: { id: id as string },
+        data: { status: 'completed' },
+      });
+
+      // 3. Create financial record
+      let category = await tx.financialCategory.findFirst({
+        where: { userId: transaction.userId, name: 'Depósitos', type: 'income' }
+      });
+
+      if (!category) {
+        category = await tx.financialCategory.create({
+          data: {
+            userId: transaction.userId,
+            name: 'Depósitos',
+            type: 'income',
+            color: '#10b981',
+            icon: 'wallet'
+          }
+        });
+      }
+
+      await tx.financialRecord.create({
         data: {
-          walletId: wallet.id,
-          userId: req.user!.userId,
-          type: 'deposit',
-          amount,
-          description: description || 'Depósito',
-          status: 'completed',
-        },
+          userId: transaction.userId,
+          amount: transaction.amount,
+          description: `Recarga Aprobada: ${transaction.description}`,
+          type: 'income',
+          categoryId: category.id,
+          date: new Date()
+        }
       });
 
       return updatedWallet;
     });
 
-    // Push notification for deposit
-    sendPushToUser(req.user!.userId, {
-      title: 'Deposito acreditado',
-      body: `Se acreditaron ₲${amount.toLocaleString()} a tu billetera`,
+    // Notify user
+    sendPushToUser(transaction.userId, {
+      title: 'Depósito Aprobado',
+      body: `Tu recarga por ₲ ${transaction.amount.toLocaleString()} ha sido validada y acreditada.`,
       url: '/app/wallet',
-      tag: 'deposit',
-    }).catch(() => {});
+      tag: 'deposit-approved'
+    }).catch(console.error);
 
-    res.json(result);
+    res.json({ success: true, wallet: result });
   } catch (error) {
-    res.status(500).json({ error: 'Error del servidor' });
+    console.error('Error approving deposit:', error);
+    res.status(500).json({ error: 'Error al aprobar depósito' });
+  }
+});
+
+// Reject deposit (Admin only)
+router.post('/reject-deposit/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const transaction = await prisma.transaction.updateMany({
+      where: { id: id as string, status: 'pending', type: 'deposit' },
+      data: { status: 'failed' }
+    });
+
+    if (transaction.count === 0) {
+      return res.status(404).json({ error: 'Transacción no encontrada o ya procesada' });
+    }
+
+    // Get original transaction for notification
+    const originalTx = await prisma.transaction.findUnique({ where: { id: id as string } });
+    if (originalTx) {
+      sendPushToUser(originalTx.userId, {
+        title: 'Depósito Rechazado',
+        body: 'Tu solicitud de recarga ha sido rechazada tras la validación.',
+        url: '/app/wallet',
+        tag: 'deposit-rejected'
+      }).catch(console.error);
+    }
+
+    res.json({ success: true, message: 'Depósito rechazado' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al rechazar depósito' });
   }
 });
 
@@ -283,6 +379,47 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
           relatedUserId: req.user!.userId,
         },
       });
+
+      // --- INTEGRACIÓN CON FINANZAS (EMISOR) ---
+      let catOut = await tx.financialCategory.findFirst({
+        where: { userId: req.user!.userId, name: 'Transferencias', type: 'expense' }
+      });
+      if (!catOut) {
+        catOut = await tx.financialCategory.create({
+          data: { userId: req.user!.userId, name: 'Transferencias', type: 'expense', color: '#ef4444', icon: 'send' }
+        });
+      }
+      await tx.financialRecord.create({
+        data: {
+          userId: req.user!.userId,
+          amount,
+          description: description || `Transferencia enviada a ${toUserId}`,
+          type: 'expense',
+          categoryId: catOut.id,
+          date: new Date()
+        }
+      });
+
+      // --- INTEGRACIÓN CON FINANZAS (RECEPTOR) ---
+      let catIn = await tx.financialCategory.findFirst({
+        where: { userId: toUserId, name: 'Transferencias', type: 'income' }
+      });
+      if (!catIn) {
+        catIn = await tx.financialCategory.create({
+          data: { userId: toUserId, name: 'Transferencias', type: 'income', color: '#10b981', icon: 'download' }
+        });
+      }
+      await tx.financialRecord.create({
+        data: {
+          userId: toUserId,
+          amount,
+          description: description || `Transferencia recibida de ${req.user!.userId}`,
+          type: 'income',
+          categoryId: catIn.id,
+          date: new Date()
+        }
+      });
+      // ------------------------------------------
 
       return { message: 'Transferencia realizada con éxito' };
     });

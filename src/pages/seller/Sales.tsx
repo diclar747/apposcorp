@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores';
+import { toast } from 'sonner';
 import { TrendingUp, DollarSign, ShoppingCart, Calendar, Loader2 } from 'lucide-react';
 import { ordersApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -6,6 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 export default function SellerSales() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && user.sellerProfile && user.sellerProfile.plan) {
+      const features = user.sellerProfile.plan.features || [];
+      if (!features.some(f => f.toLowerCase().includes('ventas'))) {
+        toast.error('Tu plan no incluye historial de ventas');
+        navigate('/vendedor');
+      }
+    }
+  }, [user, navigate]);
+
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

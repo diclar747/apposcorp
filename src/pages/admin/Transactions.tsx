@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2 } from 'lucide-react';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2, Check, X } from 'lucide-react';
 import { walletApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getTransactionTypeInfo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { toast } from 'sonner';
 
 const typeFilters = [
   { value: 'all', label: 'Todos' },
@@ -31,20 +32,40 @@ export default function AdminTransactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const data = await walletApi.getAllTransactions();
-        setTransactions(data);
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchTransactions = async () => {
+    try {
+      const data = await walletApi.getAllTransactions();
+      setTransactions(data);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchTransactions();
   }, []);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await walletApi.approveDeposit(id);
+      toast.success('Depósito aprobado correctamente');
+      fetchTransactions();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al aprobar depósito');
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      await walletApi.rejectDeposit(id);
+      toast.success('Depósito rechazado');
+      fetchTransactions();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al rechazar depósito');
+    }
+  };
 
   const filteredTransactions = transactions.filter(transaction => {
     const user = transaction.user;
@@ -102,9 +123,9 @@ export default function AdminTransactions() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Completadas</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {transactions.filter(t => t.status === 'completed').length}
+            <p className="text-sm text-gray-500">Pendientes</p>
+            <p className="text-2xl font-bold text-amber-600">
+              {transactions.filter(t => t.status === 'pending').length}
             </p>
           </CardContent>
         </Card>
@@ -153,6 +174,7 @@ export default function AdminTransactions() {
                   <TableHead>Monto</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,6 +220,28 @@ export default function AdminTransactions() {
                         <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'}>
                           {transaction.status === 'completed' ? 'Completada' : transaction.status === 'pending' ? 'Pendiente' : 'Fallida'}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {transaction.status === 'pending' && transaction.type === 'deposit' && (
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-green-600 hover:bg-green-50"
+                              onClick={() => handleApprove(transaction.id)}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-red-600 hover:bg-red-50"
+                              onClick={() => handleReject(transaction.id)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </motion.tr>
                   );

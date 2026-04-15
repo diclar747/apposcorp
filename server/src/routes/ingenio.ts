@@ -747,13 +747,23 @@ router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
                 return res.status(400).json({ error: 'Saldo insuficiente en Billetera' });
             }
 
-            // Descontar saldo y crear transacción
-            await prisma.$transaction([
-                prisma.wallet.update({
+            // Determine user roles to ensure 'ingenio' is included
+            const user = await prisma.user.findUnique({ where: { id: userId }, select: { roles: true } });
+            const currentRoles = Array.isArray(user?.roles) ? [...user?.roles] : [];
+            if (!currentRoles.includes('ingenio')) {
+                currentRoles.push('ingenio');
+            }
+
+            // Descontar saldo y crear registros
+            await prisma.$transaction(async (tx) => {
+                // 1. Descontar saldo
+                await tx.wallet.update({
                     where: { userId },
                     data: { balance: { decrement: totalToPay } }
-                }),
-                prisma.transaction.create({
+                });
+
+                // 2. Crear transacción de billetera
+                await tx.transaction.create({
                     data: {
                         userId,
                         walletId: wallet.id,
@@ -762,35 +772,73 @@ router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
                         description: `Pago suscripción Ingenio Millonario (Cuota ${currentQuota}/${isPayingQuota ? existingSub.installments : installments})`,
                         category: 'Education'
                     }
-                }),
-                prisma.ingenioSubscription.upsert({
+                });
+
+                // 3. Upsert suscripción
+                await tx.ingenioSubscription.upsert({
                     where: { userId },
                     update: {
-                        status: isRevoked ? 'ACTIVE' : (isPayingQuota ? existingSub.status : 'PENDING_APPROVAL'),
+                        status: 'ACTIVE',
                         totalAmount: isPayingQuota ? existingSub.totalAmount : realPrice,
                         installments: isPayingQuota ? existingSub.installments : installments,
                         paidAmount: { increment: totalToPay },
                         paymentMethod: 'WALLET',
-                        approvedAt: isRevoked ? new Date() : (isPayingQuota ? existingSub.approvedAt : null),
+                        approvedAt: existingSub?.approvedAt || new Date(),
                         updatedAt: new Date()
                     },
                     create: {
                         userId,
-                        status: 'PENDING_APPROVAL',
+                        status: 'ACTIVE',
                         totalAmount: realPrice,
                         installments,
                         paidAmount: totalToPay,
-                        paymentMethod: 'WALLET'
+                        paymentMethod: 'WALLET',
+                        approvedAt: new Date()
                     }
-                }),
-                // Si estaba revocado, devolver el acceso al usuario inmediatamente
-                ...(isRevoked ? [
-                    prisma.user.update({
-                        where: { id: userId },
-                        data: { ingenioAccess: true }
-                    })
-                ] : [])
-            ]);
+                });
+
+                // 4. Actualizar acceso y roles del usuario
+                await tx.user.update({
+                    where: { id: userId },
+                    data: { 
+                        ingenioAccess: true,
+                        roles: currentRoles
+                    }
+                });
+
+                // 5. INTEGRACIÓN CON FINANZAS
+                let category = await tx.financialCategory.findFirst({
+                    where: { userId, name: 'Educación', type: 'expense' }
+                });
+                if (!category) {
+                    category = await tx.financialCategory.create({
+                        data: { userId, name: 'Educación', type: 'expense', color: '#6366f1', icon: 'book' }
+                    });
+                }
+                await tx.financialRecord.create({
+                    data: {
+                        userId,
+                        amount: totalToPay,
+                        description: `Suscripción Ingenio Millonario (Cuota ${currentQuota})`,
+                        type: 'expense',
+                        categoryId: category.id,
+                        date: new Date()
+                    }
+                });
+            });
+
+            // Ensure student profile exists (some users might have access but no profile yet)
+            const existingStudent = await prisma.ingenioStudent.findUnique({ where: { userId } });
+            if (!existingStudent) {
+                await prisma.ingenioStudent.create({
+                    data: {
+                        userId,
+                        referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+                        isActive: true,
+                        joinedAt: new Date()
+                    }
+                });
+            }
 
             return res.json({ 
                 message: isRevoked 
@@ -872,6 +920,13 @@ router.put('/admin/subscriptions/:id/approve', requireAdmin, async (req: AuthReq
 
         const newPaidAmount = sub.paidAmount + incomingPayment;
 
+        // Ensure user has 'ingenio' role
+        const user = await prisma.user.findUnique({ where: { id: sub.userId }, select: { roles: true } });
+        const currentRoles = Array.isArray(user?.roles) ? [...user?.roles] : [];
+        if (!currentRoles.includes('ingenio')) {
+            currentRoles.push('ingenio');
+        }
+
         await prisma.$transaction([
             prisma.ingenioSubscription.update({
                 where: { id: subId },
@@ -884,9 +939,25 @@ router.put('/admin/subscriptions/:id/approve', requireAdmin, async (req: AuthReq
             }),
             prisma.user.update({
                 where: { id: sub.userId },
-                data: { ingenioAccess: true }
+                data: { 
+                    ingenioAccess: true,
+                    roles: currentRoles
+                }
             })
         ]);
+
+        // Ensure student profile exists
+        const existingStudent = await prisma.ingenioStudent.findUnique({ where: { userId: sub.userId } });
+        if (!existingStudent) {
+            await prisma.ingenioStudent.create({
+                data: {
+                    userId: sub.userId,
+                    referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+                    isActive: true,
+                    joinedAt: new Date()
+                }
+            });
+        }
 
         res.json({ message: 'Acceso concedido exitosamente' });
     } catch (error) {

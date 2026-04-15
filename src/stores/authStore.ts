@@ -35,6 +35,7 @@ interface AuthState {
   hasRole: (roles: UserRole[]) => boolean;
   addRole: (role: UserRole) => Promise<boolean>;
   fetchCurrentUser: () => Promise<void>;
+  changePassword: (current: string, newPass: string) => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -138,11 +139,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const bankData = await usersApi.updateBankData(data);
 
-          // Update user state with new bank data logic
           const { user } = get();
           if (user) {
-            // Create a deep copy or just spread? User type might not have bankData fully typed?
-            // Assuming User interface includes bankData as per schema inspection (it did in api.ts debugging)
             set({ user: { ...user, bankData } });
           }
 
@@ -173,7 +171,6 @@ export const useAuthStore = create<AuthState>()(
           });
         } catch (error: any) {
           const errorMessage = error.message || '';
-          // Limpiar todo y desloguear
           localStorage.removeItem('oscorp-token');
           set({
             user: null,
@@ -181,7 +178,6 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             error: errorMessage
           });
-          // Redirigir siempre que el token esté expirado o inválido
           if (window.location.pathname !== '/login') {
             window.location.href = '/login';
           }
@@ -224,6 +220,18 @@ export const useAuthStore = create<AuthState>()(
       hasRole: (roles: UserRole[]) => {
         const { user } = get();
         return user?.roles ? user.roles.some((r: UserRole) => roles.includes(r)) : false;
+      },
+
+      changePassword: async (current: string, newPass: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          await authApi.changePassword(current, newPass);
+          set({ isLoading: false });
+          return true;
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message || 'Error al cambiar contraseña' });
+          return false;
+        }
       },
     }),
     {

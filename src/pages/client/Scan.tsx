@@ -275,12 +275,14 @@ export default function ClientScan() {
                     Monto a enviar
                   </label>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    value={amount ? Number(amount).toLocaleString('es-PY') : ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setAmount(val);
+                    }}
                     className="text-center text-3xl font-black h-16 rounded-2xl glass-premium border-white/10 focus-visible:ring-blue-500/30"
-                    min="1"
                     autoFocus
                   />
                 </div>

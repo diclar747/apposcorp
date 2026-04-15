@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Upload, X, ImagePlus, Link2 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { productsApi, suppliersApi } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, formatNumber, parseFormattedNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -70,6 +70,9 @@ export default function SellerProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const plan = user?.sellerProfile?.plan;
+  const productLimit = plan?.maxProducts || 0;
+  const canAddMore = products.length < productLimit;
 
   // Fetch products
   const fetchProducts = async () => {
@@ -183,6 +186,16 @@ export default function SellerProducts() {
   });
 
   const handleOpenModal = (product?: Product) => {
+    if (!productLimit && !editingProduct) {
+      toast.error('No tienes un plan activo con límite de productos definido');
+      return;
+    }
+
+    if (!editingProduct && !canAddMore) {
+      toast.error(`Has alcanzado el límite de ${productLimit} productos de tu plan actual.`);
+      return;
+    }
+
     setImageUrl('');
     if (product) {
       setEditingProduct(product);
@@ -274,16 +287,24 @@ export default function SellerProducts() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Mis Productos</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona tus productos y servicios</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Mis Productos</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Gestiona tus productos ({products.length}/{productLimit || '∞'})
+            </p>
+          </div>
+          <Button 
+            className={cn(
+              "w-full sm:w-auto",
+              canAddMore ? "bg-green-600 hover:bg-green-700" : "bg-slate-400 cursor-not-allowed"
+            )} 
+            onClick={() => handleOpenModal()}
+          >
+            {canAddMore ? <Plus className="w-4 h-4 mr-2" /> : <ToggleLeft className="w-4 h-4 mr-2" />}
+            {canAddMore ? 'Nuevo Producto' : 'Límite Alcanzado'}
+          </Button>
         </div>
-        <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => handleOpenModal()}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Producto
-        </Button>
-      </div>
 
       {/* Filters */}
       <Card className="dark:bg-slate-900 dark:border-slate-800">
@@ -555,9 +576,10 @@ export default function SellerProducts() {
                 <Label htmlFor="stock">Stock Inicial</Label>
                 <Input
                   id="stock"
-                  type="number"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                  type="text"
+                  value={formatNumber(formData.stock || 0)}
+                  onWheel={(e) => (e.target as HTMLElement).blur()}
+                  onChange={(e) => setFormData({ ...formData, stock: parseFormattedNumber(e.target.value) })}
                 />
               </div>
             </div>
@@ -589,12 +611,14 @@ export default function SellerProducts() {
                   <Label htmlFor="cost">Costo (Compra)</Label>
                   <Input
                     id="cost"
-                    type="number"
-                    value={formData.cost}
+                    type="text"
+                    value={formatNumber(formData.cost || 0)}
+                    onWheel={(e) => (e.target as HTMLElement).blur()}
                     onChange={(e) => {
-                      const cost = parseFloat(e.target.value) || 0;
+                      const cost = parseFormattedNumber(e.target.value);
                       handleCalculatePrice(cost, formData.profitPercentage || 0);
                     }}
+                    placeholder="0"
                   />
                 </div>
                 <div className="space-y-2">
@@ -613,13 +637,15 @@ export default function SellerProducts() {
                   <Label htmlFor="price" className="text-green-600 dark:text-green-400 font-bold">Precio Total (Venta)</Label>
                   <Input
                     id="price"
-                    type="number"
+                    type="text"
                     className="border-green-200 focus-visible:ring-green-500 font-bold"
-                    value={formData.price}
+                    value={formatNumber(formData.price || 0)}
+                    onWheel={(e) => (e.target as HTMLElement).blur()}
                     onChange={(e) => {
-                      const price = parseFloat(e.target.value) || 0;
+                      const price = parseFormattedNumber(e.target.value);
                       handleCalculateMargin(formData.cost || 0, price);
                     }}
+                    placeholder="0"
                   />
                 </div>
               </div>

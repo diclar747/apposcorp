@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Store, MapPin, Phone, Mail, Globe, Instagram, Facebook, Edit, Camera, Check, Save, X, Loader2 } from 'lucide-react';
+import { Store, MapPin, Phone, Mail, Globe, Instagram, Facebook, Edit, Camera, Check, Save, X, Loader2, Clock } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,16 @@ export default function SellerStore() {
     logo: '',
     banner: '',
     facebook: '',
-    instagram: ''
+    instagram: '',
+    businessHours: {
+      monday: { isOpen: true, open: '08:00', close: '18:00' },
+      tuesday: { isOpen: true, open: '08:00', close: '18:00' },
+      wednesday: { isOpen: true, open: '08:00', close: '18:00' },
+      thursday: { isOpen: true, open: '08:00', close: '18:00' },
+      friday: { isOpen: true, open: '08:00', close: '18:00' },
+      saturday: { isOpen: true, open: '08:00', close: '13:00' },
+      sunday: { isOpen: false, open: '00:00', close: '00:00' },
+    }
   });
 
   // Load user data into form
@@ -55,6 +64,15 @@ export default function SellerStore() {
         banner: p.banner || '',
         facebook: (p.socialLinks as any)?.facebook || '',
         instagram: (p.socialLinks as any)?.instagram || '',
+        businessHours: (p.businessHours as any) || {
+          monday: { isOpen: true, open: '08:00', close: '18:00' },
+          tuesday: { isOpen: true, open: '08:00', close: '18:00' },
+          wednesday: { isOpen: true, open: '08:00', close: '18:00' },
+          thursday: { isOpen: true, open: '08:00', close: '18:00' },
+          friday: { isOpen: true, open: '08:00', close: '18:00' },
+          saturday: { isOpen: true, open: '08:00', close: '13:00' },
+          sunday: { isOpen: false, open: '00:00', close: '00:00' },
+        },
       });
     }
   }, [user]);
@@ -100,6 +118,7 @@ export default function SellerStore() {
         banner: p.banner || '',
         facebook: (p.socialLinks as any)?.facebook || '',
         instagram: (p.socialLinks as any)?.instagram || '',
+        businessHours: (p.businessHours as any) || formData.businessHours,
       });
     }
   };
@@ -389,7 +408,7 @@ export default function SellerStore() {
           </CardContent>
         </Card>
 
-        {/* Social and Config */}
+        {/* Social Meta */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -436,6 +455,93 @@ export default function SellerStore() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Business Hours */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-gray-400" />
+              Horarios de Atención
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                const hours = (formData.businessHours as any)[day];
+                if (!hours) return null;
+                
+                return (
+                  <div key={day} className="space-y-3 p-4 bg-gray-50 dark:bg-slate-900 border border-gray-100 rounded-2xl">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold capitalize text-sm">{
+                        day === 'monday' ? 'Lunes' :
+                        day === 'tuesday' ? 'Martes' :
+                        day === 'wednesday' ? 'Miércoles' :
+                        day === 'thursday' ? 'Jueves' :
+                        day === 'friday' ? 'Viernes' :
+                        day === 'saturday' ? 'Sábado' : 'Domingo'
+                      }</span>
+                      <Switch 
+                        disabled={!isEditing}
+                        checked={hours.isOpen}
+                        onCheckedChange={(checked) => {
+                          setFormData({
+                            ...formData,
+                            businessHours: {
+                              ...formData.businessHours,
+                              [day]: { ...hours, isOpen: checked }
+                            }
+                          });
+                        }}
+                      />
+                    </div>
+                    
+                    {hours.isOpen && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          disabled={!isEditing}
+                          value={hours.open}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              businessHours: {
+                                ...formData.businessHours,
+                                [day]: { ...hours, open: e.target.value }
+                              }
+                            });
+                          }}
+                          className="h-9 px-2 text-xs"
+                        />
+                        <span className="text-gray-400">-</span>
+                        <Input
+                          type="time"
+                          disabled={!isEditing}
+                          value={hours.close}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              businessHours: {
+                                ...formData.businessHours,
+                                [day]: { ...hours, close: e.target.value }
+                              }
+                            });
+                          }}
+                          className="h-9 px-2 text-xs"
+                        />
+                      </div>
+                    )}
+                    {!hours.isOpen && (
+                      <div className="h-9 flex items-center justify-center text-xs text-red-400 font-bold italic bg-white rounded-lg">
+                        Cerrado
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>

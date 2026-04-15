@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Shield, Bell, Palette, Lock, Eye, EyeOff,
-  Sun, Moon, Monitor, Check, AlertTriangle, KeyRound
+  Sun, Moon, Monitor, Check, AlertTriangle, KeyRound, AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
+import { cn } from '@/lib/utils';
 import { useThemeStore } from '@/stores/themeStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { authApi, usersApi, walletApi } from '@/lib/api';
+import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '@/lib/pushNotifications';
 
 // --- Security Tab ---
 function SecuritySection() {
@@ -37,24 +40,41 @@ function SecuritySection() {
       .finally(() => setPinLoading(false));
   }, []);
 
+  const { changePassword } = useAuthStore();
+
   const handleChangePassword = async () => {
-    if (!pwForm.currentPassword || !pwForm.newPassword) {
-      toast.error('Completa todos los campos');
+    if (!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword) {
+      toast.error('Todos los campos son obligatorios');
       return;
     }
-    if (pwForm.newPassword.length < 6) {
-      toast.error('La nueva contraseña debe tener al menos 6 caracteres');
+
+    // Requirements validation
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/;
+    if (pwForm.newPassword.length < 8 || !passwordRegex.test(pwForm.newPassword)) {
+      toast.error('La nueva contraseña debe tener al menos 8 caracteres, incluir una letra y un número');
       return;
     }
+
+    if (pwForm.newPassword === pwForm.currentPassword) {
+      toast.error('La nueva contraseña no puede ser igual a la contraseña actual');
+      return;
+    }
+
     if (pwForm.newPassword !== pwForm.confirmPassword) {
       toast.error('Las contraseñas no coinciden');
       return;
     }
+
     setPwLoading(true);
     try {
-      await authApi.changePassword(pwForm.currentPassword, pwForm.newPassword);
-      toast.success('Contraseña actualizada correctamente');
-      setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      const success = await changePassword(pwForm.currentPassword, pwForm.newPassword);
+      if (success) {
+        toast.success('Contraseña actualizada correctamente');
+        setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        const authError = useAuthStore.getState().error;
+        toast.error(authError || 'Error al cambiar contraseña');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Error al cambiar contraseña');
     } finally {
@@ -63,54 +83,7 @@ function SecuritySection() {
   };
 
   const handlePinAction = async () => {
-    if (!hasPin) {
-      // Set new PIN
-      if (pinForm.newPin.length !== 4 || !/^\d{4}$/.test(pinForm.newPin)) {
-        toast.error('El PIN debe ser de 4 dígitos');
-        return;
-      }
-      if (pinForm.newPin !== pinForm.confirmPin) {
-        toast.error('Los PINs no coinciden');
-        return;
-      }
-      setPinSaving(true);
-      try {
-        await walletApi.setPin(pinForm.newPin);
-        toast.success('PIN de transacción configurado');
-        setHasPin(true);
-        setShowPinForm(false);
-        setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
-      } catch (err: any) {
-        toast.error(err.message || 'Error al configurar PIN');
-      } finally {
-        setPinSaving(false);
-      }
-    } else {
-      // Change PIN
-      if (!pinForm.currentPin || pinForm.currentPin.length !== 4) {
-        toast.error('Ingresa tu PIN actual (4 dígitos)');
-        return;
-      }
-      if (pinForm.newPin.length !== 4 || !/^\d{4}$/.test(pinForm.newPin)) {
-        toast.error('El nuevo PIN debe ser de 4 dígitos');
-        return;
-      }
-      if (pinForm.newPin !== pinForm.confirmPin) {
-        toast.error('Los PINs no coinciden');
-        return;
-      }
-      setPinSaving(true);
-      try {
-        await walletApi.changePin(pinForm.currentPin, pinForm.newPin);
-        toast.success('PIN actualizado correctamente');
-        setShowPinForm(false);
-        setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
-      } catch (err: any) {
-        toast.error(err.message || 'Error al cambiar PIN');
-      } finally {
-        setPinSaving(false);
-      }
-    }
+    // This is now handled by the new Dialog flow
   };
 
   return (
@@ -155,7 +128,7 @@ function SecuritySection() {
                   type={showNewPw ? 'text' : 'password'}
                   value={pwForm.newPassword}
                   onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                 />
                 <button
                   type="button"
@@ -164,6 +137,28 @@ function SecuritySection() {
                 >
                   {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
+              </div>
+
+              {/* Requirements Hints */}
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-3 mt-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">Requisitos:</p>
+                  <ul className="text-[9px] font-medium text-gray-500 space-y-1">
+                    <li className="flex items-center gap-1.5">
+                      <div className={cn("w-1 h-1 rounded-full", pwForm.newPassword.length >= 8 ? "bg-emerald-500" : "bg-gray-300")} />
+                      Mínimo 8 caracteres
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <div className={cn("w-1 h-1 rounded-full", /[A-Za-z]/.test(pwForm.newPassword) ? "bg-emerald-500" : "bg-gray-300")} />
+                      Al menos una letra
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <div className={cn("w-1 h-1 rounded-full", /\d/.test(pwForm.newPassword) ? "bg-emerald-500" : "bg-gray-300")} />
+                      Al menos un número
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -231,55 +226,165 @@ function SecuritySection() {
           </div>
 
           {showPinForm && (
-            <div className="space-y-4 pt-2">
-              <Separator />
-              {hasPin && (
-                <div className="space-y-2">
-                  <Label>PIN actual</Label>
-                  <Input
-                    type="password"
-                    maxLength={4}
-                    value={pinForm.currentPin}
-                    onChange={(e) => setPinForm({ ...pinForm, currentPin: e.target.value.replace(/\D/g, '') })}
-                    placeholder="4 dígitos"
-                    className="max-w-[200px]"
-                  />
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{hasPin ? 'Nuevo PIN' : 'PIN'}</Label>
-                  <Input
-                    type="password"
-                    maxLength={4}
-                    value={pinForm.newPin}
-                    onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '') })}
-                    placeholder="4 dígitos"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Confirmar PIN</Label>
-                  <Input
-                    type="password"
-                    maxLength={4}
-                    value={pinForm.confirmPin}
-                    onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '') })}
-                    placeholder="4 dígitos"
-                  />
-                </div>
-              </div>
-              <Button
-                onClick={handlePinAction}
-                disabled={pinSaving}
-                className="bg-gradient-to-r from-purple-600 to-blue-600"
-              >
-                {pinSaving ? 'Guardando...' : hasPin ? 'Actualizar PIN' : 'Configurar PIN'}
-              </Button>
-            </div>
+            <PinManagementDialog 
+              isOpen={showPinForm} 
+              onClose={() => setShowPinForm(false)} 
+              hasPin={hasPin}
+              onSuccess={() => {
+                setHasPin(true);
+                setShowPinForm(false);
+              }}
+            />
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// --- PIN Components ---
+
+function PinInput({ value, onChange, length = 4, disabled = false }: { value: string, onChange: (val: string) => void, length?: number, disabled?: boolean }) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const newVal = e.target.value.replace(/\D/g, '');
+    if (!newVal && e.target.value !== '') return;
+
+    const currentPin = value.split('');
+    currentPin[index] = newVal.slice(-1);
+    const updatedValue = currentPin.join('');
+    onChange(updatedValue);
+
+    if (newVal && index < length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace' && !value[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  return (
+    <div className="flex justify-center gap-3">
+      {Array.from({ length }).map((_, i) => (
+        <div key={i} className="relative">
+          <input
+            ref={el => { inputRefs.current[i] = el; }}
+            type="password"
+            inputMode="numeric"
+            maxLength={1}
+            value={value[i] || ''}
+            onChange={(e) => handleChange(e, i)}
+            onKeyDown={(e) => handleKeyDown(e, i)}
+            disabled={disabled}
+            className={cn(
+              "w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 transition-all outline-none",
+              value[i] 
+                ? "bg-blue-500/10 border-blue-500 text-blue-600" 
+                : "bg-gray-50 dark:bg-slate-800 border-gray-100 dark:border-slate-800 focus:border-blue-400 dark:focus:border-blue-500"
+            )}
+          />
+          {!value[i] && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+              <div className="w-1.5 h-1.5 rounded-full bg-foreground" />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PinManagementDialog({ isOpen, onClose, hasPin, onSuccess }: { isOpen: boolean, onClose: () => void, hasPin: boolean, onSuccess: () => void }) {
+  const [step, setStep] = useState<'current' | 'new' | 'confirm'>(hasPin ? 'current' : 'new');
+  const [pins, setPins] = useState({ current: '', new: '', confirm: '' });
+  const [loading, setLoading] = useState(false);
+
+  const handleAction = async () => {
+    if (step === 'current') {
+      if (pins.current.length === 4) setStep('new');
+      else toast.error('Ingresa tu PIN actual');
+      return;
+    }
+
+    if (step === 'new') {
+      if (pins.new.length === 4) setStep('confirm');
+      else toast.error('Ingresa el nuevo PIN');
+      return;
+    }
+
+    if (step === 'confirm') {
+      if (pins.new !== pins.confirm) {
+        toast.error('Los PINs no coinciden');
+        setPins({ ...pins, confirm: '' });
+        return;
+      }
+
+      setLoading(true);
+      try {
+        if (hasPin) {
+          await walletApi.changePin(pins.current, pins.new);
+          toast.success('PIN actualizado correctamente');
+        } else {
+          await walletApi.setPin(pins.new);
+          toast.success('PIN configurado correctamente');
+        }
+        onSuccess();
+      } catch (err: any) {
+        toast.error(err.message || 'Error al procesar PIN');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const currentPinLength = step === 'current' ? pins.current.length : step === 'new' ? pins.new.length : pins.confirm.length;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-[400px] rounded-[2.5rem] p-8 border-none dark:bg-slate-900 shadow-3xl">
+        <div className="text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center">
+            <KeyRound className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-2xl font-black tracking-tight">
+              {step === 'current' ? 'Verificar PIN' : step === 'new' ? (hasPin ? 'Nuevo PIN' : 'Configurar PIN') : 'Confirmar PIN'}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {step === 'current' ? 'Por favor ingresa tu PIN de seguridad actual' : step === 'new' ? 'Ingresa los 4 dígitos para tu PIN de transacción' : 'Vuelve a ingresar el PIN para confirmar'}
+            </p>
+          </div>
+
+          <div className="py-2">
+            <PinInput 
+              value={step === 'current' ? pins.current : step === 'new' ? pins.new : pins.confirm}
+              onChange={(val) => setPins({ ...pins, [step]: val })}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 pt-4">
+            <Button 
+              className="h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+              disabled={currentPinLength < 4 || loading}
+              onClick={handleAction}
+            >
+              {loading ? 'Procesando...' : step === 'confirm' ? 'FINALIZAR' : 'CONTINUAR'}
+            </Button>
+            {step === 'confirm' && (
+              <Button variant="ghost" className="font-bold text-gray-400" onClick={() => setStep('new')}>
+                Volver a empezar
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -297,24 +402,62 @@ function NotificationsSection() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pushSupported] = useState(isPushSupported());
 
   useEffect(() => {
-    usersApi.getPreferences()
-      .then((data: any) => setPrefs(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    const init = async () => {
+      try {
+        const data = await usersApi.getPreferences();
+        
+        // Sync push status if supported
+        if (pushSupported) {
+          const isSubscribed = await isSubscribedToPush();
+          setPrefs({ ...data, pushNotifications: isSubscribed });
+        } else {
+          setPrefs(data);
+        }
+      } catch (err) {
+        console.error('Error loading preferences:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, [pushSupported]);
 
   const handleToggle = async (key: string, value: boolean) => {
-    const newPrefs = { ...prefs, [key]: value };
-    setPrefs(newPrefs);
     setSaving(true);
+    
+    // Special case for Push Notifications (Browser Integration)
+    if (key === 'pushNotifications' && pushSupported) {
+      try {
+        if (value) {
+          const success = await subscribeToPush();
+          if (!success) {
+            toast.error('No se pudo activar las notificaciones en este navegador');
+            setSaving(false);
+            return;
+          }
+        } else {
+          await unsubscribeFromPush();
+        }
+      } catch (err) {
+        toast.error('Error al configurar notificaciones en el navegador');
+        setSaving(false);
+        return;
+      }
+    }
+
+    const newPrefs = { ...prefs, [key]: value };
+    const oldPrefs = { ...prefs };
+    setPrefs(newPrefs);
+
     try {
       await usersApi.updatePreferences(newPrefs);
       toast.success('Preferencia actualizada');
     } catch {
-      setPrefs(prefs); // revert
-      toast.error('Error al guardar preferencia');
+      setPrefs(oldPrefs); // revert
+      toast.error('Error al guardar preferencia en el servidor');
     } finally {
       setSaving(false);
     }

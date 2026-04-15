@@ -62,6 +62,9 @@ export default function SellerDashboard() {
 
   const salesData = buildWeeklyData();
 
+  const features = user?.sellerProfile?.plan?.features || [];
+  const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -79,85 +82,96 @@ export default function SellerDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+        {hasFeature('Ventas') && (
+          <>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center shrink-0">
+                    <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ventas</p>
+                    <p className="text-base sm:text-xl font-bold dark:text-white truncate">{formatCurrency(totalSales)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ganancias</p>
+                    <p className="text-base sm:text-xl font-bold dark:text-white truncate">{formatCurrency(totalEarnings)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+        {hasFeature('Pedidos') && (
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center shrink-0">
+                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pedidos</p>
+                  <p className="text-base sm:text-xl font-bold dark:text-white">{orders.length}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ventas</p>
-                <p className="text-base sm:text-xl font-bold dark:text-white truncate">{formatCurrency(totalSales)}</p>
+            </CardContent>
+          </Card>
+        )}
+        {hasFeature('Productos') && (
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center shrink-0">
+                  <Package className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Productos</p>
+                  <p className="text-base sm:text-xl font-bold dark:text-white">{products.length}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ganancias</p>
-                <p className="text-base sm:text-xl font-bold dark:text-white truncate">{formatCurrency(totalEarnings)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center shrink-0">
-                <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pedidos</p>
-                <p className="text-base sm:text-xl font-bold dark:text-white">{orders.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center shrink-0">
-                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Productos</p>
-                <p className="text-base sm:text-xl font-bold dark:text-white">{products.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Chart */}
-      <Card className="dark:bg-slate-900 dark:border-slate-800">
-        <CardHeader>
-          <CardTitle className="dark:text-white">Ventas de la Semana</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-56 sm:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="name" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
-                />
-                <Bar dataKey="ventas" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {hasFeature('Ventas') && (
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <CardHeader>
+            <CardTitle className="dark:text-white">Ventas de la Semana</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-56 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${(value / 1000000).toFixed(1)}M`} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
+                  />
+                  <Bar dataKey="ventas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Orders */}
-      <Card className="dark:bg-slate-900 dark:border-slate-800">
+      {hasFeature('Pedidos') && (
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="dark:text-white">Pedidos Recientes</CardTitle>
           <Button variant="ghost" size="sm" onClick={() => navigate('/vendedor/pedidos')} className="dark:text-gray-300 dark:hover:bg-slate-800">Ver todos</Button>
@@ -199,6 +213,7 @@ export default function SellerDashboard() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

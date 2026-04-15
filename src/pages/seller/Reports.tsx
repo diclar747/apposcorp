@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, DollarSign, Wallet,
@@ -90,6 +92,19 @@ function matchesDateRange(dateStr: string, start: string, end: string): boolean 
 
 // ─── Component ───────────────────────────────────────────────────────
 export default function SellerReports() {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+
+  const features = user?.sellerProfile?.plan?.features || [];
+  const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
+
+  useEffect(() => {
+    if (user && user.sellerProfile && !user.sellerProfile.plan?.hasReports) {
+      toast.error('Tu plan no incluye acceso a reportes avanzados');
+      navigate('/vendedor');
+    }
+  }, [user, navigate]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -343,29 +358,91 @@ export default function SellerReports() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          { label: 'Total Ventas', value: formatCurrency(totalSales), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30' },
-          { label: 'Ganancias', value: formatCurrency(totalEarnings), icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-          { label: 'Pedidos', value: String(filteredOrders.length), icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-          { label: 'Productos', value: String(products.length), icon: Package, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-          { label: 'Clientes', value: String(customers.length), icon: UsersIcon, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-        ].map((kpi, i) => (
-          <motion.div key={kpi.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+        {hasFeature('Ventas') && (
+          <>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Total Ventas</p>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(totalSales)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Ganancias</p>
+                      <p className="text-lg font-bold text-emerald-600">{formatCurrency(totalEarnings)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </>
+        )}
+        {hasFeature('Pedidos') && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${kpi.bg} rounded-lg flex items-center justify-center`}>
-                    <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-blue-600" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{kpi.label}</p>
-                    <p className={`text-lg font-bold ${kpi.color}`}>{kpi.value}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Pedidos</p>
+                    <p className="text-lg font-bold text-blue-600">{filteredOrders.length}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
-        ))}
+        )}
+        {hasFeature('Productos') && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                    <Package className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Productos</p>
+                    <p className="text-lg font-bold text-purple-600">{products.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+        {hasFeature('Clientes') && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                    <UsersIcon className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Clientes</p>
+                    <p className="text-lg font-bold text-orange-600">{customers.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </div>
 
       {/* Filters */}
@@ -408,10 +485,10 @@ export default function SellerReports() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="ventas" className="gap-1.5"><ShoppingCart className="w-4 h-4" /> Ventas</TabsTrigger>
-          <TabsTrigger value="productos" className="gap-1.5"><Package className="w-4 h-4" /> Productos</TabsTrigger>
-          <TabsTrigger value="financiero" className="gap-1.5"><Wallet className="w-4 h-4" /> Financiero</TabsTrigger>
-          <TabsTrigger value="compras" className="gap-1.5"><Receipt className="w-4 h-4" /> Compras</TabsTrigger>
+          {hasFeature('Ventas') && <TabsTrigger value="ventas" className="gap-1.5"><ShoppingCart className="w-4 h-4" /> Ventas</TabsTrigger>}
+          {hasFeature('Productos') && <TabsTrigger value="productos" className="gap-1.5"><Package className="w-4 h-4" /> Productos</TabsTrigger>}
+          {hasFeature('Gestión de Caja') && <TabsTrigger value="financiero" className="gap-1.5"><Wallet className="w-4 h-4" /> Financiero</TabsTrigger>}
+          {hasFeature('Compras') && <TabsTrigger value="compras" className="gap-1.5"><Receipt className="w-4 h-4" /> Compras</TabsTrigger>}
           <TabsTrigger value="graficos" className="gap-1.5"><BarChart3 className="w-4 h-4" /> Gráficos</TabsTrigger>
         </TabsList>
 

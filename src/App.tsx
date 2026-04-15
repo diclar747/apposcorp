@@ -18,6 +18,8 @@ import ProductDetailPage from '@/pages/public/ProductDetailPage';
 import PricingPage from '@/pages/public/PricingPage';
 import PresentacionE1 from '@/pages/public/PresentacionE1';
 import PresentacionE2 from '@/pages/public/PresentacionE2';
+import ForgotPasswordPage from '@/pages/public/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/public/ResetPasswordPage';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/Dashboard';
@@ -64,6 +66,7 @@ import SellerPurchases from '@/pages/seller/Purchases';
 import SellerGestion from '@/pages/seller/Gestion';
 import SellerProfile from '@/pages/seller/Profile';
 import SellerSettings from '@/pages/seller/Settings';
+import SellerPlans from '@/pages/seller/SellerPlans';
 
 // Client Pages
 import ClientHome from '@/pages/client/Home';
@@ -85,6 +88,7 @@ import ClientCourses from '@/pages/client/Courses';
 import ClientCourseDetail from '@/pages/client/CourseDetail';
 import ClientNotifications from '@/pages/client/Notifications';
 import TransferMoney from '@/pages/client/TransferMoney';
+import DepositPage from '@/pages/client/Deposit';
 import { GlobalPaywall } from '@/components/ingenio/GlobalPaywall';
 
 // Protected Route Component
@@ -145,6 +149,8 @@ function App() {
         <Route path="/precios" element={<PricingPage />} />
         <Route path="/presentacion-e1" element={<PresentacionE1 />} />
         <Route path="/presentacion-e2" element={<PresentacionE2 />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Routes */}
         <Route
@@ -198,6 +204,7 @@ function App() {
           <Route path="perfil" element={<SellerProfile />} />
           <Route path="configuracion" element={<SellerSettings />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
+          <Route path="planes" element={<SellerPlans />} />
         </Route>
 
         {/* Client Routes */}
@@ -219,6 +226,7 @@ function App() {
           <Route path="escanear" element={<ClientScan />} />
           <Route path="wallet" element={<ClientWallet />} />
           <Route path="wallet/transferir" element={<TransferMoney />} />
+          <Route path="wallet/recargar" element={<DepositPage />} />
           <Route path="tarjeta" element={<ClientCard />} />
           <Route path="pedidos" element={<ClientOrders />} />
           <Route path="pedidos/:id" element={<ClientOrderDetail />} />
