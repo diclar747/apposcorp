@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { reportsApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -31,10 +32,38 @@ export default function AdminFinances() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const handleExport = async () => {
+  const handleExport = () => {
     try {
-      await reportsApi.exportCSV();
-      toast.success('Reporte exportado correctamente');
+      if (!report || !report.transactions.length) {
+        toast.error('No hay datos suficientes para exportar');
+        return;
+      }
+      
+      const txData = report.transactions.map((t: any) => ({
+        'Fecha': formatDate(t.createdAt),
+        'Tipo': t.type,
+        'Usuario': `${t.user?.firstName || ''} ${t.user?.lastName || ''}`,
+        'Descripción': t.description,
+        'Monto': t.amount,
+        'Estado': t.status
+      }));
+
+      const wsTransactions = XLSX.utils.json_to_sheet(txData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsTransactions, "Transacciones");
+      
+      if (report.dailyTrend && report.dailyTrend.length) {
+        const trendData = report.dailyTrend.map((d: any) => ({
+          'Fecha': d.date,
+          'Ingresos': d.income,
+          'Egresos': d.expenses
+        }));
+        const wsTrend = XLSX.utils.json_to_sheet(trendData);
+        XLSX.utils.book_append_sheet(wb, wsTrend, "Tendencia Diaria");
+      }
+
+      XLSX.writeFile(wb, `finanzas-oscorp-${new Date().getTime()}.xlsx`);
+      toast.success('Reporte exportado correctamente a Excel');
     } catch (error) {
       toast.error('Error al exportar reporte');
     }
@@ -105,7 +134,7 @@ export default function AdminFinances() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+            Exportar Excel
           </Button>
           <Button onClick={() => refetch()} variant="secondary">Actualizar</Button>
         </div>

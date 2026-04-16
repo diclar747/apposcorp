@@ -100,7 +100,9 @@ function ProtectedRoute({
   children: React.ReactNode;
   allowedRoles: UserRole[];
 }) {
-  const { isAuthenticated, user, activeRole } = useAuthStore();
+  const { isAuthenticated, user, activeRole, isHydrated } = useAuthStore();
+
+  if (!isHydrated) return null;
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
@@ -129,6 +131,16 @@ function ProtectedRoute({
 }
 
 function App() {
+  const { isHydrated, fetchCurrentUser } = useAuthStore();
+
+  // 1. Initial re-validation on mount
+  useEffect(() => {
+    if (localStorage.getItem('oscorp-token')) {
+      fetchCurrentUser();
+    }
+  }, [fetchCurrentUser]);
+
+  // 2. Theme and Splash Screen management
   useEffect(() => {
     // Theme initialization
     const { resolvedTheme } = useThemeStore.getState();
@@ -136,13 +148,17 @@ function App() {
     root.classList.remove('light', 'dark');
     root.classList.add(resolvedTheme);
 
-    // Hide splash screen after app mounts
-    const splash = document.getElementById('splash');
-    if (splash) {
-      splash.classList.add('hide');
-      setTimeout(() => splash.remove(), 500);
+    // Hide splash screen only when hydrated
+    if (isHydrated) {
+      const splash = document.getElementById('splash');
+      if (splash) {
+        splash.classList.add('hide');
+        setTimeout(() => splash.remove(), 500);
+      }
     }
-  }, []);
+  }, [isHydrated]);
+
+  if (!isHydrated) return null;
 
   return (
     <BrowserRouter>
@@ -262,6 +278,7 @@ function App() {
           <Route path="cursos/:id" element={<IngenioCourseDetail />} />
           <Route path="wallet" element={<Navigate to="/app/wallet" replace />} />
           <Route path="profile" element={<IngenioProfile />} />
+          <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 
         {/* Fallback */}

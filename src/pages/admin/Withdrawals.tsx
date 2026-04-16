@@ -4,6 +4,8 @@ import { Search, Filter, CheckCircle, XCircle, Clock, DollarSign, Download } fro
 import { mockTransactions, mockUsers } from '@/data/mockData';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +39,47 @@ export default function AdminWithdrawals() {
     return matchesSearch && matchesStatus;
   });
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42); 
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE RETIROS', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    const tableData = filteredWithdrawals.map(w => {
+      const user = mockUsers.find(u => u.id === w.userId);
+      return [
+        w.id,
+        `${user?.firstName || ''} ${user?.lastName || ''}`,
+        formatCurrency(Math.abs(w.amount)),
+        w.status === 'completed' ? 'Completado' : w.status === 'pending' ? 'Pendiente' : 'Rechazado',
+        formatDateTime(w.createdAt)
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['ID', 'Vendedor', 'Monto', 'Estado', 'Fecha']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`retiros-oscorp-${new Date().getTime()}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -44,9 +87,9 @@ export default function AdminWithdrawals() {
           <h1 className="text-2xl font-bold text-gray-900">Solicitudes de Retiro</h1>
           <p className="text-gray-500">Gestiona las solicitudes de retiro de vendedores</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={exportToPDF}>
           <Download className="w-4 h-4 mr-2" />
-          Exportar
+          Exportar PDF
         </Button>
       </div>
 

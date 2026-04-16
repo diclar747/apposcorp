@@ -87,7 +87,7 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
       });
       
       if (paymentMethod === 'BANK_TRANSFER') {
-        const adminPhone = config.contactPhone.replace(/\D/g, '') || "595981279526";
+        const adminPhone = config.contactPhone.replace(/\D/g, '') || "595975855585";
         const userName = `${user?.firstName} ${user?.lastName || ''}`;
         
         let message = '';

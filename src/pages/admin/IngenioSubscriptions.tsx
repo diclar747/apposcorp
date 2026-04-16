@@ -139,17 +139,25 @@ export default function IngenioSubscriptions() {
   };
 
   const exportToPDF = () => {
-    if (!subscriptions.length) return;
-    
     const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text('Suscripciones Ingenio - Oscorp', 15, 20);
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
     doc.setFontSize(10);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE SUSCRIPCIONES INGENIO', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
 
     const tableData = filtered.map(s => [
-      `${s.user.firstName} ${s.user.lastName}`,
-      s.status,
+      `${s.user?.firstName || ''} ${s.user?.lastName || 'Usuario'}`,
+      s.status === 'ACTIVE' ? 'Activo' : s.status === 'PENDING_APPROVAL' ? 'Pendiente' : s.status === 'REVOKED' ? 'Revocado' : s.status,
       `${s.installments} cuotas`,
       formatCurrency(s.paidAmount),
       formatCurrency(s.totalAmount),
@@ -157,9 +165,13 @@ export default function IngenioSubscriptions() {
     ]);
 
     autoTable(doc, {
-      startY: 35,
+      startY: 45,
       head: [['Usuario', 'Estado', 'Plan', 'Pagado', 'Total', 'Último Mov.']],
       body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
     doc.save(`suscripciones-ingenio-${new Date().getTime()}.pdf`);

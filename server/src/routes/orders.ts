@@ -124,7 +124,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       // 1. Get Seller Profile and Commission Rate
       const sellerProfile = await tx.sellerProfile.findUnique({
         where: { id: sellerId },
-        select: { userId: true, commissionRate: true, storeName: true },
+        select: { userId: true, commissionRate: true, storeName: true, planId: true },
       });
 
       if (!sellerProfile) {
@@ -132,7 +132,13 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       }
 
       const resolvedSellerUserId = sellerProfile.userId;
-      const commissionRate = sellerProfile.commissionRate || 0.05; // Fallback to 5% if not set
+      
+      // Determine commission rate based on whether they are using the "Por Comisión" model (no fixed plan)
+      let commissionRateMultiplier = 0;
+      if (!sellerProfile.planId) {
+        // If they are on the commission model, convert the whole number percentage (e.g., 5) to a decimal (0.05)
+        commissionRateMultiplier = sellerProfile.commissionRate ? (sellerProfile.commissionRate / 100) : 0.05;
+      }
 
       // 2. Load products and validate stock/prices inside transaction
       let subtotal = 0;
@@ -176,7 +182,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       const total = subtotal + tax + shippingCost;
       
       // Dynamic Commission Calculation
-      const commissionAmount = subtotal * commissionRate;
+      const commissionAmount = subtotal * commissionRateMultiplier;
       const sellerEarnings = subtotal - commissionAmount;
       const orderNumber = `ORD-${Date.now()}`;
 

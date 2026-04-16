@@ -11,6 +11,7 @@ import { getInitials } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { RoleSelector } from "@/components/shared/RoleSelector";
+import { NotificationDropdown } from "@/components/shared/NotificationDropdown";
 
 const baseMenuItems = [
   { icon: Target, label: "Finanzas Master", href: "/ingenio" },
@@ -74,10 +75,7 @@ export default function IngenioLayout() {
           <Link to="/ingenio/profile" className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white">
             <User className="w-6 h-6" />
           </Link>
-          <button className="text-slate-500 hover:text-slate-900 dark:hover:text-white relative p-2">
-            <Bell className="w-6 h-6" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <NotificationDropdown />
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -181,10 +179,7 @@ export default function IngenioLayout() {
           <Link to="/ingenio/profile" className="text-slate-400 hover:text-indigo-600 transition-colors p-2" title="Mi Perfil">
             <User className="w-5 h-5" />
           </Link>
-          <button className="text-slate-400 hover:text-indigo-600 transition-colors relative p-2" title="Notificaciones">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
-          </button>
+          <NotificationDropdown />
         </header>
 
         {/* Dynamic Route Content */}

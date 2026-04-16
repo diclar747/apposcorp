@@ -85,13 +85,21 @@ export default function AdminStores() {
   });
 
   const exportToPDF = () => {
-    if (!stores.length) return;
-    
     const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text('Listado de Tiendas - Oscorp', 15, 20);
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
     doc.setFontSize(10);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE TIENDAS', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
 
     const tableData = filteredStores.map(s => [
       s.name,
@@ -102,9 +110,13 @@ export default function AdminStores() {
     ]);
 
     autoTable(doc, {
-      startY: 35,
+      startY: 45,
       head: [['Tienda', 'Propietario', 'Email', 'Estado', 'Productos']],
       body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
     doc.save(`tiendas-oscorp-${new Date().getTime()}.pdf`);

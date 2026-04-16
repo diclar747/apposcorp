@@ -110,7 +110,7 @@ export default function AdminUsers() {
   const [planFormData, setPlanFormData] = useState({
     planId: '',
     billingCycle: 'monthly' as BillingCycle,
-    customCommission: 0,
+    customCommission: '' as number | string,
     isCommissionBased: false
   });
   
@@ -122,13 +122,21 @@ export default function AdminUsers() {
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
   const exportToPDF = () => {
-    if (!users.length) return;
-    
     const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text('Listado de Usuarios - Oscorp', 15, 20);
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
     doc.setFontSize(10);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE USUARIOS', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
 
     const tableData = filteredUsers.map(u => [
       `${u.firstName} ${u.lastName}`,
@@ -140,9 +148,13 @@ export default function AdminUsers() {
     ]);
 
     autoTable(doc, {
-      startY: 35,
+      startY: 45,
       head: [['Nombre', 'Email', 'Roles', 'Estado', 'Ingenio', 'Registro']],
       body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
     doc.save(`usuarios-oscorp-${new Date().getTime()}.pdf`);
@@ -275,7 +287,7 @@ export default function AdminUsers() {
     setPlanFormData({
       planId: '',
       billingCycle: 'monthly',
-      customCommission: 0,
+      customCommission: '',
       isCommissionBased: false
     });
     setIsPlanModalOpen(true);
@@ -284,7 +296,11 @@ export default function AdminUsers() {
   const handleSavePlanAssignment = async () => {
     if (!selectedUserForPlan) return;
     try {
-      await usersApi.assignPlan(selectedUserForPlan.id, planFormData);
+      const payload = {
+        ...planFormData,
+        customCommission: planFormData.customCommission === '' ? 0 : Number(planFormData.customCommission)
+      };
+      await usersApi.assignPlan(selectedUserForPlan.id, payload);
       toast.success(`Plan asignado a ${selectedUserForPlan.firstName}`);
       setIsPlanModalOpen(false);
       fetchUsers();
@@ -900,8 +916,21 @@ export default function AdminUsers() {
                       <Input
                         id="customComm"
                         type="number"
+                        min="0"
+                        max="100"
                         value={planFormData.customCommission}
-                        onChange={(e) => setPlanFormData({ ...planFormData, customCommission: Number(e.target.value) })}
+                        onChange={(e) => {
+                          const valStr = e.target.value;
+                          if (valStr === '') {
+                            setPlanFormData({ ...planFormData, customCommission: '' });
+                            return;
+                          }
+                          let val = Number(valStr);
+                          if (val < 0) val = 0;
+                          if (val > 100) val = 100;
+                          setPlanFormData({ ...planFormData, customCommission: val });
+                        }}
+                        onWheel={(e) => (e.target as HTMLInputElement).blur()}
                         placeholder="Ej: 5"
                         className="w-24"
                       />

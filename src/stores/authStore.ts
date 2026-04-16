@@ -23,6 +23,7 @@ interface AuthState {
   error: string | null;
   interfaceMode?: string;
   activeRole: UserRole | null;
+  isHydrated: boolean;
 
   setInterfaceMode: (mode: string) => void;
   setActiveRole: (role: UserRole) => void;
@@ -50,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
       error: null,
       interfaceMode: 'OSCORP',
       activeRole: null,
+      isHydrated: false,
 
       setInterfaceMode: (mode: string) => set({ interfaceMode: mode }),
       setActiveRole: (role: UserRole) => set({ activeRole: role }),
@@ -263,6 +265,11 @@ export const useAuthStore = create<AuthState>()(
         interfaceMode: state.interfaceMode,
         activeRole: state.activeRole
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isHydrated = true;
+        }
+      },
     }
   )
 );

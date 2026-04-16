@@ -86,27 +86,44 @@ export default function AdminCredits() {
   };
 
   const exportToPDF = () => {
-    if (!credits.length) return;
-    
     const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text('Reporte de Créditos - Oscorp', 15, 20);
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
     doc.setFontSize(10);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE CRÉDITOS', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    const statuses: Record<string, string> = {
+      pending: 'Pendiente', approved: 'Aprobado', active: 'Activo',
+      completed: 'Completado', defaulted: 'En Mora', rejected: 'Rechazado'
+    };
 
     const tableData = filteredCredits.map(c => [
-      `${c.user?.firstName} ${c.user?.lastName}`,
+      `${c.user?.firstName || ''} ${c.user?.lastName || ''}`,
       c.concept,
       formatCurrency(c.amount),
       `${c.payments?.length || 0}/${c.installments}`,
-      statusLabels[c.status] || c.status,
+      statuses[c.status] || c.status,
       new Date(c.createdAt).toLocaleDateString()
     ]);
 
     autoTable(doc, {
-      startY: 35,
+      startY: 45,
       head: [['Cliente', 'Concepto', 'Monto', 'Cuotas', 'Estado', 'Fecha']],
       body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
     doc.save(`creditos-oscorp-${new Date().getTime()}.pdf`);

@@ -49,7 +49,7 @@ export default function DepositPage() {
       toast.success('Solicitud enviada para validación');
       
       // WhatsApp Integration
-      const adminPhone = '595981279526'; 
+      const adminPhone = '595975855585'; 
       const message = `Hola, quisiera recargar saldo en mi billetera Oscorp.\n\n*Monto:* ₲ ${numAmount.toLocaleString('es-PY')}\n*Usuario:* ${user.firstName} ${user.lastName}\n*Email:* ${user.email}\n*ID:* ${user.id}`;
       const whatsappUrl = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
       
