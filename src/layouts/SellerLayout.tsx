@@ -147,22 +147,29 @@ export default function SellerLayout() {
 
             // Restricción por características del plan
             if (isPlanActive) {
-               const features = user?.sellerProfile?.plan?.features || [];
-               const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
-               
-               // Mapeo estricto basado en la captura del usuario
-               if (item.href === '/vendedor/pos' && !hasFeature('POS')) return null;
-               if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online')) return null;
-               if (item.href === '/vendedor/productos' && !hasFeature('Productos')) return null;
-               if (item.href === '/vendedor/ventas' && !hasFeature('Ventas')) return null;
-               
-               if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores')) return null;
-               if (item.href === '/vendedor/clientes' && !hasFeature('Clientes')) return null;
-               if (item.href === '/vendedor/compras' && !hasFeature('Compras')) return null;
-               if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos')) return null;
-               
-               if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes')) return null;
-               if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja')) return null;
+                const features = user?.sellerProfile?.plan?.features || [];
+                const tier = user?.sellerProfile?.plan?.tier?.toLowerCase() || 'basic';
+                const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
+                
+                // Tier-based permissions bypass
+                const isStandardOrBetter = tier === 'standard' || tier === 'premium';
+                const isPremium = tier === 'premium';
+
+                // Basic logic: If standard or premium, they get core modules.
+                // If premium, they get everything (Reports, Management).
+                
+                if (item.href === '/vendedor/pos' && !hasFeature('POS') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/productos' && !hasFeature('Productos') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/ventas' && !hasFeature('Ventas') && !isStandardOrBetter) return null;
+                
+                if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/clientes' && !hasFeature('Clientes') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/compras' && !hasFeature('Compras') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos') && !isStandardOrBetter) return null;
+                
+                if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes') && !isPremium) return null;
+                if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja') && !isPremium) return null;
             }
 
             return (
