@@ -91,7 +91,8 @@ router.get('/:slug', async (req, res) => {
         },
         store: {
           select: { category: true, isActive: true, isOnline: true }
-        }
+        },
+        plan: true
       },
     });
 
@@ -126,6 +127,7 @@ router.get('/:slug', async (req, res) => {
         lastName: store.user.lastName,
         avatar: store.user.avatar,
       },
+      plan: store.plan
     };
 
     res.json(storeData);

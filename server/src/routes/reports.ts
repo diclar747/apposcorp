@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { 
+  startOfMonth, 
+  endOfMonth, 
+  subMonths, 
+  startOfDay, 
+  endOfDay, 
+  subDays 
+} from 'date-fns';
 
 const router = Router();
 
@@ -307,6 +315,384 @@ router.get('/financial/export', authenticate, authorize('superadmin'), async (re
   } catch (error: any) {
     console.error('Export error:', error);
     res.status(500).json({ error: 'Error al exportar', details: error.message });
+  }
+});
+
+// GET /api/reports/seller-stats - Real data for the seller dashboard
+router.get('/seller-stats', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    // 1. Get Seller Profile and Wallet
+    const [sellerProfile, wallet] = await Promise.all([
+      prisma.sellerProfile.findUnique({
+        where: { userId },
+        select: { id: true, storeName: true }
+      }),
+      prisma.wallet.findUnique({
+        where: { userId },
+        select: { balance: true }
+      })
+    ]);
+
+    if (!sellerProfile) {
+      return res.status(403).json({ error: 'Perfil de vendedor no encontrado' });
+    }
+
+    // 2. Aggregate Metrics (Total Revenue, Sales Count)
+    const orders = await prisma.order.findMany({
+      where: { sellerId: userId }
+    });
+
+    const totalSales = orders.length;
+    const totalRevenue = orders
+      .filter(o => o.paymentStatus === 'paid')
+      .reduce((sum, o) => sum + o.total, 0);
+
+    const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
+
+    // 3. Last 5 Orders
+    const recentOrders = await prisma.order.findMany({
+      where: { sellerId: userId },
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        buyer: {
+          select: { firstName: true, lastName: true, email: true }
+        }
+      }
+    });
+
+    // 4. Sales Chart (Last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailySales = await prisma.order.findMany({
+      where: {
+        sellerId: userId,
+        paymentStatus: 'paid',
+        createdAt: { gte: thirtyDaysAgo }
+      },
+      select: {
+        total: true,
+        createdAt: true
+      }
+    });
+
+    // Process chart data
+    const chartData = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayTotal = dailySales
+        .filter(s => s.createdAt.toISOString().split('T')[0] === dateStr)
+        .reduce((sum, s) => sum + s.total, 0);
+      
+      chartData.push({
+        date: dateStr,
+        revenue: dayTotal
+      });
+    }
+
+    res.json({
+      stats: {
+        totalRevenue,
+        totalSales,
+        pendingOrders: pendingOrdersCount,
+        currentBalance: wallet?.balance || 0,
+        storeName: sellerProfile.storeName
+      },
+      recentOrders: recentOrders.map(o => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        buyer: `${o.buyer.firstName} ${o.buyer.lastName}`,
+        total: o.total,
+        status: o.status,
+        date: o.createdAt
+      })),
+      chartData
+    });
+
+  } catch (error: any) {
+    console.error('Seller stats error:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas del vendedor' });
+  }
+});
+
+// GET /api/reports/client-stats - Real data for the client dashboard (Home)
+router.get('/client-stats', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    // 1. Basic User info, Wallet and Ingenio Access
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        wallet: {
+          select: { balance: true, rewardPoints: true }
+        },
+        ingenioStudent: {
+          select: { 
+            isActive: true,
+            assignments: {
+              orderBy: { assignedAt: 'desc' },
+              take: 1,
+              select: { stage: true, progress: true, status: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // 2. Credits info
+    const lastCredit = await prisma.credit.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { status: true, amount: true, createdAt: true }
+    });
+
+    // 3. Orders info
+    const ordersCount = await prisma.order.count({
+      where: { buyerId: userId }
+    });
+
+    const lastOrder = await prisma.order.findFirst({
+      where: { buyerId: userId },
+      orderBy: { createdAt: 'desc' },
+      select: { orderNumber: true, status: true, total: true, createdAt: true }
+    });
+
+    // 4. Academy (Ingenio) Progress
+    let academyStats = null;
+    if (user.ingenioAccess || user.roles.includes('ingenio')) {
+      const courses = await prisma.userCourse.findMany({
+        where: { userId }
+      });
+      
+      const avgProgress = courses.length > 0 
+        ? courses.reduce((sum, c) => sum + c.progress, 0) / courses.length 
+        : 0;
+
+      const lastAssignment = user.ingenioStudent?.assignments[0] || null;
+
+      academyStats = {
+        hasAccess: true,
+        overallProgress: Math.round(avgProgress),
+        coursesCount: courses.length,
+        currentStage: lastAssignment?.stage || 'Fase Inicial',
+        wheelProgress: lastAssignment?.progress || 0
+      };
+    } else {
+      academyStats = { hasAccess: false };
+    }
+
+    res.json({
+      finances: {
+        balance: user.wallet?.balance || 0,
+        rewardPoints: user.wallet?.rewardPoints || 0,
+        lastCredit: lastCredit ? {
+          status: lastCredit.status,
+          amount: lastCredit.amount,
+          date: lastCredit.createdAt
+        } : null
+      },
+      orders: {
+        totalCount: ordersCount,
+        lastOrder: lastOrder ? {
+          orderNumber: lastOrder.orderNumber,
+          status: lastOrder.status,
+          total: lastOrder.total,
+          date: lastOrder.createdAt
+        } : null
+      },
+      academy: academyStats
+    });
+
+  } catch (error: any) {
+    console.error('Client stats error:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas del cliente' });
+  }
+});
+
+// GET /api/reports/admin-stats - Real-time global view for superadmins
+router.get('/admin-stats', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+    const thirtyDaysAgo = subDays(now, 30);
+
+    // Everything inside a transaction for data consistency
+    const stats = await prisma.$transaction(async (tx) => {
+      // 1. Comparative Metrics (Current vs End of Last Month)
+      const currentMetrics = await Promise.all([
+        tx.user.count(),
+        tx.sellerProfile.count({ where: { planActive: true } }),
+        tx.product.count({ where: { status: 'active' } }),
+        tx.credit.count({ where: { status: 'active' } }),
+      ]);
+
+      const prevMonthMetrics = await Promise.all([
+        tx.user.count({ where: { createdAt: { lte: lastMonthEnd } } }),
+        tx.sellerProfile.count({ 
+          where: { 
+            user: { createdAt: { lte: lastMonthEnd } }, 
+            planActive: true 
+          } 
+        }),
+        tx.product.count({ where: { createdAt: { lte: lastMonthEnd }, status: 'active' } }),
+        tx.credit.count({ where: { createdAt: { lte: lastMonthEnd }, status: 'active' } }),
+      ]);
+
+      // 2. Real-time Finances
+      const salesToday = await tx.order.aggregate({
+        _sum: { total: true },
+        where: {
+          paymentStatus: 'paid',
+          createdAt: { gte: todayStart, lte: todayEnd }
+        }
+      });
+
+      const income30Days = await tx.transaction.aggregate({
+        _sum: { amount: true },
+        where: {
+          status: 'completed',
+          type: { in: ['sale', 'deposit', 'transfer_in', 'income', 'credit'] },
+          createdAt: { gte: thirtyDaysAgo }
+        }
+      });
+
+      // 3. Order Distribution (Pie Chart)
+      const orderDistribution = await tx.order.groupBy({
+        by: ['status'],
+        _count: { id: true }
+      });
+
+      // 4. Historical Series (Last 6 Months)
+      const salesSeries = [];
+      const userSeries = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = startOfMonth(subMonths(now, i));
+        const monthEnd = endOfMonth(subMonths(now, i));
+        const monthLabel = monthStart.toLocaleString('es-ES', { month: 'short' });
+
+        // Sales and Commissions in current month
+        const monthlySales = await tx.order.aggregate({
+          _sum: { total: true, commissionAmount: true },
+          where: {
+            paymentStatus: 'paid',
+            createdAt: { gte: monthStart, lte: monthEnd }
+          }
+        });
+
+        // User Growth in current month (total count at that point in time)
+        const [monthClients, monthSellers] = await Promise.all([
+          tx.user.count({
+            where: {
+              createdAt: { lte: monthEnd },
+              roles: { has: 'client' }
+            }
+          }),
+          tx.sellerProfile.count({
+            where: {
+              user: { createdAt: { lte: monthEnd } },
+              planActive: true
+            }
+          })
+        ]);
+
+        salesSeries.push({
+          name: monthLabel,
+          ventas: monthlySales._sum.total || 0,
+          comisiones: monthlySales._sum.commissionAmount || 0
+        });
+
+        userSeries.push({
+          name: monthLabel,
+          clientes: monthClients,
+          vendedores: monthSellers
+        });
+      }
+
+      // 5. Recent Activity (10 Items)
+      const [recentOrders, recentTransactions] = await Promise.all([
+        tx.order.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            buyer: { select: { firstName: true, lastName: true } },
+            seller: { select: { sellerProfile: { select: { storeName: true } } } }
+          }
+        }),
+        tx.transaction.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: { select: { firstName: true, lastName: true, email: true } }
+          }
+        })
+      ]);
+
+      return {
+        metrics: {
+          users: { current: currentMetrics[0], previous: prevMonthMetrics[0] },
+          sellers: { current: currentMetrics[1], previous: prevMonthMetrics[1] },
+          products: { current: currentMetrics[2], previous: prevMonthMetrics[2] },
+          credits: { current: currentMetrics[3], previous: prevMonthMetrics[3] },
+        },
+        finances: {
+          salesToday: salesToday._sum.total || 0,
+          income30Days: income30Days._sum.amount || 0,
+        },
+        orderDistribution: orderDistribution.map(d => ({
+          status: d.status,
+          count: d._count.id
+        })),
+        salesSeries,
+        userSeries,
+        recentActivity: {
+          orders: recentOrders.map(o => ({
+            id: o.id,
+            orderNumber: o.orderNumber,
+            buyer: `${o.buyer.firstName} ${o.buyer.lastName}`,
+            store: o.seller.sellerProfile?.storeName || 'Tienda Oscorp',
+            total: o.total,
+            status: o.status,
+            date: o.createdAt
+          })),
+          transactions: recentTransactions.map(t => ({
+            id: t.id,
+            type: t.type,
+            user: `${t.user.firstName} ${t.user.lastName}`,
+            email: t.user.email,
+            amount: t.amount,
+            status: t.status,
+            date: t.createdAt
+          }))
+        }
+      };
+    }, {
+      maxWait: 5000,
+      timeout: 30000
+    });
+
+    res.json(stats);
+
+  } catch (error: any) {
+    console.error('Admin stats complex error:', error);
+    res.status(500).json({ 
+      error: 'Error al generar estadísticas maestras',
+      details: error.message 
+    });
   }
 });
 

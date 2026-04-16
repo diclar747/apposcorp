@@ -53,10 +53,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
         );
       } catch (error: any) {
         if (error.statusCode === 410 || error.statusCode === 404) {
-          await prisma.pushSubscription.update({
-            where: { id: sub.id },
-            data: { isActive: false },
-          });
+          // Silent cleanup of expired/gone subscriptions
+          await prisma.pushSubscription.delete({
+            where: { endpoint: sub.endpoint },
+          }).catch(() => {}); // Secondary catch to prevent errors if already deleted
         }
       }
     })

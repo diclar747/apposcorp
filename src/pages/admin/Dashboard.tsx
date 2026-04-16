@@ -1,25 +1,22 @@
-import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  TrendingUp,
-  TrendingDown,
   Users,
   Store,
   ShoppingCart,
   DollarSign,
-  Package,
+  TrendingUp,
+  GraduationCap,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  AlertCircle,
+  RefreshCcw,
+  Package,
+  FileText,
+  Download,
+  Activity,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
-import {
-  mockUsers,
-  mockStores,
-  mockProducts,
-  mockOrders,
-  mockTransactions,
-  mockCredits
-} from '@/data/mockData';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,329 +27,461 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Legend,
 } from 'recharts';
-
-const stats = [
-  {
-    title: 'Usuarios Totales',
-    value: mockUsers.length,
-    change: 12,
-    trend: 'up',
-    icon: Users,
-    color: 'bg-blue-500',
-  },
-  {
-    title: 'Tiendas Activas',
-    value: mockStores.filter(s => s.isActive).length,
-    change: 8,
-    trend: 'up',
-    icon: Store,
-    color: 'bg-green-500',
-  },
-  {
-    title: 'Productos',
-    value: mockProducts.length,
-    change: 15,
-    trend: 'up',
-    icon: Package,
-    color: 'bg-purple-500',
-  },
-  {
-    title: 'Ventas Hoy',
-    value: formatCurrency(12500000),
-    change: 23,
-    trend: 'up',
-    icon: ShoppingCart,
-    color: 'bg-orange-500',
-  },
-  {
-    title: 'Ingresos del Mes',
-    value: formatCurrency(158000000),
-    change: -5,
-    trend: 'down',
-    icon: DollarSign,
-    color: 'bg-pink-500',
-  },
-  {
-    title: 'Créditos Activos',
-    value: mockCredits.filter(c => c.status === 'active').length,
-    change: 3,
-    trend: 'up',
-    icon: TrendingUp,
-    color: 'bg-cyan-500',
-  },
-];
-
-const salesData = [
-  { name: 'Ene', ventas: 45000000, comisiones: 2250000 },
-  { name: 'Feb', ventas: 52000000, comisiones: 2600000 },
-  { name: 'Mar', ventas: 48000000, comisiones: 2400000 },
-  { name: 'Abr', ventas: 61000000, comisiones: 3050000 },
-  { name: 'May', ventas: 55000000, comisiones: 2750000 },
-  { name: 'Jun', ventas: 67000000, comisiones: 3350000 },
-];
-
-const userGrowthData = [
-  { name: 'Ene', clientes: 120, vendedores: 15 },
-  { name: 'Feb', clientes: 150, vendedores: 18 },
-  { name: 'Mar', clientes: 180, vendedores: 22 },
-  { name: 'Abr', clientes: 220, vendedores: 28 },
-  { name: 'May', clientes: 280, vendedores: 35 },
-  { name: 'Jun', clientes: 350, vendedores: 42 },
-];
-
-const orderStatusData = [
-  { name: 'Pendientes', value: 12, color: '#fbbf24' },
-  { name: 'En preparación', value: 8, color: '#a78bfa' },
-  { name: 'En camino', value: 15, color: '#60a5fa' },
-  { name: 'Entregados', value: 156, color: '#4ade80' },
-  { name: 'Cancelados', value: 5, color: '#f87171' },
-];
-
-const recentOrders = mockOrders.slice(0, 5);
-const recentTransactions = mockTransactions.slice(0, 5);
+import { useAdminStats } from '@/hooks/useAdminStats';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function AdminDashboard() {
+  const { data: stats, isLoading, isError, refetch } = useAdminStats();
+
+  const calculateGrowth = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const exportToPDF = () => {
+    if (!stats) return;
+
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Logo/Header
+      doc.setFillColor(15, 23, 42); // Slate 900
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('OSCORP PLATFORM', 15, 25);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('REPORTE EJECUTIVO MAESTRO', 15, 33);
+      doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+      // Main KPIs Section
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(14);
+      doc.text('Resumen de Rendimiento', 15, 55);
+
+      const kpiData = [
+        ['Usuarios Totales', stats.metrics.users.current.toString()],
+        ['Tiendas Activas', stats.metrics.sellers.current.toString()],
+        ['Ventas Hoy', formatCurrency(stats.finances.salesToday)],
+        ['Ingresos 30 Días', formatCurrency(stats.finances.income30Days)],
+        ['Productos Activos', stats.metrics.products.current.toString()],
+        ['Créditos Vigentes', stats.metrics.credits.current.toString()],
+      ];
+
+      autoTable(doc, {
+        startY: 60,
+        head: [['Métrica', 'Valor']],
+        body: kpiData,
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+
+      // Recent Orders Table
+      doc.text('Últimas Órdenes del Sistema', 15, (doc as any).lastAutoTable.finalY + 15);
+
+      const orderData = stats.recentActivity.orders.map(o => [
+        o.orderNumber,
+        o.buyer,
+        o.store,
+        formatCurrency(o.total),
+        o.status.toUpperCase(),
+        new Date(o.date).toLocaleDateString()
+      ]);
+
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [['Pedido', 'Cliente', 'Tienda', 'Total', 'Estado', 'Fecha']],
+        body: orderData,
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42] },
+        styles: { fontSize: 8 },
+      });
+
+      doc.save(`oscorp-reporte-master-${new Date().getTime()}.pdf`);
+      toast.success('Reporte PDF generado con éxito');
+    } catch (error) {
+      console.error('PDF Error:', error);
+      toast.error('Error al generar el PDF');
+    }
+  };
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <AlertCircle className="w-12 h-12 text-rose-500" />
+        <div className="text-center">
+          <h2 className="text-xl font-bold">Error de conexión</h2>
+          <p className="text-muted-foreground">No pudimos cargar las métricas globales.</p>
+        </div>
+        <Button onClick={() => refetch()} variant="outline" className="gap-2">
+          <RefreshCcw className="w-4 h-4" /> Reintentar
+        </Button>
+      </div>
+    );
+  }
+
+  const kpis = [
+    {
+      title: 'Usuarios Totales',
+      value: stats?.metrics.users.current || 0,
+      previous: stats?.metrics.users.previous || 0,
+      icon: Users,
+      color: 'bg-blue-600',
+      description: 'Crecimiento acumulado'
+    },
+    {
+      title: 'Tiendas Activas',
+      value: stats?.metrics.sellers.current || 0,
+      previous: stats?.metrics.sellers.previous || 0,
+      icon: Store,
+      color: 'bg-emerald-600',
+      description: 'Comercios verificados'
+    },
+    {
+      title: 'Productos Activos',
+      value: stats?.metrics.products.current || 0,
+      previous: stats?.metrics.products.previous || 0,
+      icon: Package,
+      color: 'bg-purple-600',
+      description: 'Stock global'
+    },
+    {
+      title: 'Ventas Hoy',
+      value: formatCurrency(stats?.finances.salesToday || 0),
+      isCurrency: true,
+      icon: DollarSign,
+      color: 'bg-amber-600',
+      description: 'Volumen 24hs'
+    },
+    {
+      title: 'Ingresos Mes',
+      value: formatCurrency(stats?.finances.income30Days || 0),
+      isCurrency: true,
+      icon: TrendingUp,
+      color: 'bg-rose-600',
+      description: 'Últimos 30 días'
+    },
+    {
+      title: 'Créditos Activos',
+      value: stats?.metrics.credits.current || 0,
+      previous: stats?.metrics.credits.previous || 0,
+      icon: GraduationCap,
+      color: 'bg-indigo-600',
+      description: 'Cartera vigente'
+    }
+  ];
+
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Resumen general del sistema</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Centro de Control Administrativo</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Inteligencia de negocio y monitoreo real-time</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" className="dark:text-gray-300 dark:hover:bg-slate-800 dark:border-slate-700">Exportar</Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">Detalles</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCcw className="w-4 h-4" /> Actualizar
+          </Button>
+          <Button size="sm" onClick={exportToPDF} className="bg-blue-600 hover:bg-blue-700 gap-2">
+            <Download className="w-4 h-4" /> Exportar PDF
+          </Button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
-                    <div className="flex items-center gap-1 mt-2">
-                      {stat.trend === 'up' ? (
-                        <ArrowUpRight className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4 text-red-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {isLoading ? (
+          [1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+          ))
+        ) : (
+          kpis.map((kpi, index) => {
+            const growth = kpi.isCurrency ? null : calculateGrowth(kpi.value as number, kpi.previous || 0);
+            return (
+              <motion.div
+                key={kpi.title}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="dark:bg-slate-900 dark:border-slate-800 h-full relative overflow-hidden group">
+                   <div className={cn("absolute top-0 right-0 w-16 h-16 opacity-5 -mr-4 -mt-4 transition-transform group-hover:scale-110", kpi.color)} />
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-2 rounded-lg flex items-center justify-center text-white", kpi.color)}>
+                        <kpi.icon className="w-4 h-4" />
+                      </div>
+                      {growth !== null && (
+                        <div className={cn(
+                          "flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                          growth >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+                        )}>
+                          {growth >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                          {Math.abs(Math.round(growth))}%
+                        </div>
                       )}
-                      <span className={`text-sm ${stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                        {stat.change > 0 ? '+' : ''}{stat.change}%
-                      </span>
-                      <span className="text-xs text-gray-400">vs mes anterior</span>
                     </div>
-                  </div>
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 ${stat.color} rounded-lg flex items-center justify-center shrink-0`}>
-                    <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+                    <div className="mt-4">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{kpi.title}</p>
+                      <p className={cn(
+                        "font-black mt-1 dark:text-white truncate",
+                        kpi.isCurrency ? "text-lg" : "text-2xl"
+                      )}>{kpi.value}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1 font-medium">{kpi.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })
+        )}
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Sales Chart */}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Sales vs Commissions Bar Chart */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle className="dark:text-white">Ventas y Comisiones</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-blue-500" />
+                Ventas y Comisiones (6 Meses)
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 sm:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="name" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" tickFormatter={(value) => `₲${value / 1000000}M`} />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
-                  />
-                  <Bar dataKey="ventas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="comisiones" fill="#10b981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-72 w-full mt-2">
+              {isLoading ? (
+                <Skeleton className="h-full w-full rounded-lg" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats?.salesSeries}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
+                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis 
+                      fontSize={10} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tickFormatter={(val) => `₲${val / 1000000}M`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff' }}
+                      formatter={(val: number) => [formatCurrency(val), '']}
+                    />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="ventas" name="Ventas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="comisiones" name="Comisión" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* User Growth Chart */}
+        {/* User Growth Area Chart */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle className="dark:text-white">Crecimiento de Usuarios</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Users className="w-4 h-4 text-purple-500" />
+                Crecimiento de Usuarios
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="h-64 sm:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={userGrowthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="name" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }}
-                  />
-                  <Line type="monotone" dataKey="clientes" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6' }} />
-                  <Line type="monotone" dataKey="vendedores" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="h-72 w-full mt-2">
+              {isLoading ? (
+                <Skeleton className="h-full w-full rounded-lg" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats?.userSeries}>
+                    <defs>
+                      <linearGradient id="colorClients" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
+                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff' }}
+                    />
+                    <Legend />
+                    <Area type="monotone" dataKey="clientes" name="Clientes" stroke="#8b5cf6" fill="url(#colorClients)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="vendedores" name="Vendedores" stroke="#10b981" fill="none" strokeWidth={2} strokeDasharray="5 5" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Order Status */}
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Order Status Pie Chart */}
+        <Card className="dark:bg-slate-900 dark:border-slate-800 lg:col-span-1">
           <CardHeader>
-            <CardTitle className="dark:text-white">Estado de Pedidos</CardTitle>
+             <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <PieChartIcon className="w-4 h-4 text-rose-500" />
+                Estado de Pedidos
+              </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-56 sm:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={orderStatusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {orderStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', color: '#fff' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-4">
-              {orderStatusData.map((item) => (
-                <div key={item.name} className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{item.name}</span>
-                </div>
-              ))}
-            </div>
+             <div className="h-64 w-full">
+                {isLoading ? (
+                  <Skeleton className="h-full w-full rounded-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stats?.orderDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="count"
+                        nameKey="status"
+                      >
+                        {stats?.orderDistribution.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+             </div>
           </CardContent>
         </Card>
 
-        {/* Recent Orders */}
-        <Card className="lg:col-span-2 dark:bg-slate-900 dark:border-slate-800">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <CardTitle className="text-base sm:text-lg dark:text-white">Pedidos Recientes</CardTitle>
-            <Button variant="ghost" size="sm" className="dark:text-gray-300 dark:hover:bg-slate-800 w-full sm:w-auto">Ver todos</Button>
+        {/* Recent Orders Table */}
+        <Card className="dark:bg-slate-900 dark:border-slate-800 lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+               <Package className="w-4 h-4 text-blue-500" />
+               Órdenes Recientes
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Ver Todas</Button>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-slate-800">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Pedido</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Cliente</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Tienda</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Total</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{order.orderNumber}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
-                        {mockUsers.find(u => u.id === order.buyerId)?.firstName} {mockUsers.find(u => u.id === order.buyerId)?.lastName}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
-                        {mockStores.find(s => s.id === order.storeId)?.name}
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(order.total)}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              order.status === 'in_transit' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                          }`}>
-                          {order.status === 'delivered' ? 'Entregado' :
-                            order.status === 'pending' ? 'Pendiente' :
-                              order.status === 'in_transit' ? 'En camino' : order.status}
-                        </span>
-                      </td>
+          <CardContent className="p-0">
+            {isLoading ? (
+               <div className="p-4 space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+               </div>
+            ) : !stats?.recentActivity.orders.length ? (
+              <div className="py-20 text-center">
+                 <p className="text-xs text-muted-foreground">No hay registro de órdenes.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50/50 dark:bg-slate-800/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">ID</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Cliente / Tienda</th>
+                      <th className="text-right py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Total</th>
+                      <th className="text-right py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Estado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {stats.recentActivity.orders.map((order) => (
+                      <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                        <td className="py-3 px-4">
+                          <span className="text-[10px] font-bold font-mono text-blue-500">{order.orderNumber}</span>
+                          <p className="text-[8px] text-muted-foreground">{new Date(order.date).toLocaleDateString()}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                           <p className="text-xs font-bold">{order.buyer}</p>
+                           <p className="text-[9px] text-muted-foreground uppercase">{order.store}</p>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-xs font-black">{formatCurrency(order.total)}</span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                           <Badge variant="outline" className="text-[8px] font-black h-5 border-blue-500/20 text-blue-500 bg-blue-500/5 uppercase">{order.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Transactions */}
-      <Card>
+      {/* Global Transactions Section */}
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Transacciones Recientes</CardTitle>
-          <Button variant="ghost" size="sm">Ver todas</Button>
+           <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-500" />
+              Últimas 10 Transacciones Globales
+           </CardTitle>
+           <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Auditoría Completa</Button>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Descripción</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Monto</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Fecha</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-sm font-mono text-gray-500">{transaction.id}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 capitalize">{transaction.type}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{transaction.description}</td>
-                    <td className={`py-3 px-4 text-sm font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {new Date(transaction.createdAt).toLocaleDateString('es-PY')}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${transaction.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                        {transaction.status === 'completed' ? 'Completado' :
-                          transaction.status === 'pending' ? 'Pendiente' : 'Fallido'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <CardContent className="p-0">
+           {isLoading ? (
+             <div className="p-4 space-y-4">
+                <Skeleton className="h-40 w-full" />
+             </div>
+           ) : (
+             <div className="overflow-x-auto">
+                <table className="w-full">
+                   <thead className="bg-slate-50/50 dark:bg-slate-800/50">
+                      <tr>
+                         <th className="text-left py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Tipo</th>
+                         <th className="text-left py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Usuario</th>
+                         <th className="text-left py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Email</th>
+                         <th className="text-right py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Monto</th>
+                         <th className="text-right py-3 px-4 text-[10px] font-bold uppercase text-muted-foreground">Estado</th>
+                      </tr>
+                   </thead>
+                   <tbody>
+                      {stats?.recentActivity.transactions.map((tx) => (
+                        <tr key={tx.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                           <td className="py-3 px-4 text-[10px] font-bold uppercase text-blue-500">{tx.type}</td>
+                           <td className="py-3 px-4 text-xs font-medium">{tx.user}</td>
+                           <td className="py-3 px-4 text-xs text-muted-foreground">{tx.email}</td>
+                           <td className={cn(
+                             "py-3 px-4 text-right text-xs font-bold",
+                             tx.amount >= 0 ? "text-emerald-500" : "text-rose-500"
+                           )}>
+                              {tx.amount >= 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                           </td>
+                           <td className="py-3 px-4 text-right">
+                              <Badge variant="outline" className={cn(
+                                "text-[9px] h-5",
+                                tx.status === 'completed' ? "border-emerald-500/20 text-emerald-500" : "border-rose-500/20 text-rose-500"
+                              )}>{tx.status}</Badge>
+                           </td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
+             </div>
+           )}
         </CardContent>
       </Card>
     </div>

@@ -84,7 +84,7 @@ export default function AdminProducts() {
   const fetchSellers = async () => {
     try {
       const allUsers = await usersApi.getAll();
-      setSellers(allUsers.filter((u: any) => u.role === 'seller'));
+      setSellers(allUsers.filter((u: any) => u.roles?.includes('seller')));
     } catch (error) {
       console.error('Error cargando vendedores:', error);
     }
@@ -203,8 +203,8 @@ export default function AdminProducts() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-gray-500">Gestiona todos los productos del marketplace</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Productos</h1>
+          <p className="text-gray-500 dark:text-gray-400">Gestiona todos los productos del marketplace</p>
         </div>
         <Button className="bg-blue-600" onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
@@ -292,7 +292,7 @@ export default function AdminProducts() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`text-sm font-medium ${product.stock < 5 ? 'text-red-600' : 'text-gray-900'}`}>
+                        <span className={`text-sm font-medium ${product.stock < 5 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>
                           {product.stock} unidades
                         </span>
                       </TableCell>

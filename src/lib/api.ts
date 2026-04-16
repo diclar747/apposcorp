@@ -639,6 +639,9 @@ export const reportsApi = {
     const qs = query.toString();
     return fetchWithAuth(`/reports/financial${qs ? `?${qs}` : ''}`);
   },
+  getSellerStats: () => fetchWithAuth('/reports/seller-stats'),
+  getClientStats: () => fetchWithAuth('/reports/client-stats'),
+  getAdminStats: () => fetchWithAuth('/reports/admin-stats'),
   exportCSV: (params?: {
     startDate?: string;
     endDate?: string;

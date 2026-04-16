@@ -22,8 +22,10 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   interfaceMode?: string;
+  activeRole: UserRole | null;
 
   setInterfaceMode: (mode: string) => void;
+  setActiveRole: (role: UserRole) => void;
 
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
@@ -47,8 +49,10 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
       interfaceMode: 'OSCORP',
+      activeRole: null,
 
       setInterfaceMode: (mode: string) => set({ interfaceMode: mode }),
+      setActiveRole: (role: UserRole) => set({ activeRole: role }),
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -59,10 +63,16 @@ export const useAuthStore = create<AuthState>()(
           // Save token
           localStorage.setItem('oscorp-token', response.token);
 
+          // Determine initial active role
+          const initialRole = response.user.roles.includes('superadmin') ? 'superadmin' :
+            response.user.roles.includes('seller') ? 'seller' :
+            response.user.roles.includes('ingenio') ? 'ingenio' : 'client';
+
           set({
             user: response.user,
             isAuthenticated: true,
             token: response.token,
+            activeRole: initialRole,
             isLoading: false,
             error: null
           });
@@ -85,10 +95,16 @@ export const useAuthStore = create<AuthState>()(
           // Save token
           localStorage.setItem('oscorp-token', response.token);
 
+          // Determine initial active role
+          const initialRole = response.user.roles.includes('superadmin') ? 'superadmin' :
+            response.user.roles.includes('seller') ? 'seller' :
+            response.user.roles.includes('ingenio') ? 'ingenio' : 'client';
+
           set({
             user: response.user,
             isAuthenticated: true,
             token: response.token,
+            activeRole: initialRole,
             isLoading: false,
             error: null
           });
@@ -108,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
           token: null,
+          activeRole: null,
           error: null
         });
       },
@@ -167,6 +184,9 @@ export const useAuthStore = create<AuthState>()(
           set({
             user,
             isAuthenticated: true,
+            activeRole: get().activeRole || (user.roles.includes('superadmin') ? 'superadmin' :
+              user.roles.includes('seller') ? 'seller' :
+              user.roles.includes('ingenio') ? 'ingenio' : 'client'),
             error: null
           });
         } catch (error: any) {
@@ -176,6 +196,7 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
             token: null,
+            activeRole: null,
             error: errorMessage
           });
           if (window.location.pathname !== '/login') {
@@ -239,7 +260,8 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        interfaceMode: state.interfaceMode
+        interfaceMode: state.interfaceMode,
+        activeRole: state.activeRole
       }),
     }
   )

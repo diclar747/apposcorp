@@ -116,4 +116,44 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Cron Job: Verify and deactivate expired plans
+// This endpoint should be called periodically (e.g., daily) by a Cron service
+router.post('/verify-expirations', async (req, res) => {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+    const providedSecret = req.headers['x-cron-secret'] || req.headers['authorization']?.replace('Bearer ', '');
+
+    if (!cronSecret || providedSecret !== cronSecret) {
+      console.warn('Unauthorized cron attempt blocked');
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+
+    const now = new Date();
+
+    // Deactivate all seller profiles where plan is active but expiration date has passed
+    const result = await prisma.sellerProfile.updateMany({
+      where: {
+        planActive: true,
+        planExpiryDate: {
+          lt: now
+        }
+      },
+      data: {
+        planActive: false
+      }
+    });
+
+    console.log(`Cron Subscription: ${result.count} planes de vendedores desactivados por expiración.`);
+    
+    res.json({ 
+      success: true, 
+      count: result.count,
+      message: `${result.count} planes expirados procesados correctamente.`
+    });
+  } catch (error) {
+    console.error('Error in verify-expirations cron:', error);
+    res.status(500).json({ error: 'Error interno al procesar expiraciones' });
+  }
+});
+
 export default router;

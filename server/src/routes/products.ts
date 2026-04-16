@@ -35,6 +35,7 @@ router.get('/', async (req, res) => {
       include: {
         seller: {
           include: {
+            plan: true,
             user: {
               select: {
                 firstName: true,
@@ -88,6 +89,7 @@ router.get('/:id', async (req, res) => {
         seller: {
           include: {
             store: true,
+            plan: true,
             user: {
               select: {
                 firstName: true,

@@ -33,6 +33,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface StoreData {
   id: string; // User ID
@@ -82,11 +84,38 @@ export default function AdminStores() {
     instagram: ''
   });
 
+  const exportToPDF = () => {
+    if (!stores.length) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Listado de Tiendas - Oscorp', 15, 20);
+    doc.setFontSize(10);
+    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+
+    const tableData = filteredStores.map(s => [
+      s.name,
+      `${s.firstName} ${s.lastName}`,
+      s.email,
+      s.isActive ? 'Activa' : 'Inactiva',
+      s.productCount.toString()
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Tienda', 'Propietario', 'Email', 'Estado', 'Productos']],
+      body: tableData,
+    });
+
+    doc.save(`tiendas-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
+
   const fetchStores = async () => {
     try {
       setLoading(true);
       const allUsers = await usersApi.getAll();
-      const sellers = allUsers.filter((u: any) => u.role === 'seller');
+      const sellers = allUsers.filter((u: any) => u.roles?.includes('seller'));
 
       const formattedSellers = sellers.map((u: any) => ({
         id: u.id,
@@ -254,18 +283,22 @@ export default function AdminStores() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Tiendas</h1>
-          <p className="text-sm text-gray-500">Gestiona las tiendas del marketplace</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Tiendas</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona las tiendas del marketplace</p>
         </div>
 
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Tienda
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={exportToPDF} className="flex-1 sm:flex-none">
+            Exportar
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 flex-1 sm:flex-none">
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Tienda
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Editar Tienda' : 'Crear Nueva Tienda'}</DialogTitle>
             </DialogHeader>
@@ -427,6 +460,7 @@ export default function AdminStores() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
       {/* Filters */}
       <Card>
@@ -523,9 +557,9 @@ export default function AdminStores() {
                         </div>
                       )}
                     </div>
-                    <div className="pt-8">
-                      <h3 className="font-semibold text-gray-900 leading-tight">{store.name}</h3>
-                      <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                    <div className="pt-8 text-left">
+                      <h3 className="font-semibold text-gray-900 dark:text-white leading-tight">{store.name}</h3>
+                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
                         <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                         <span>4.8</span>
                         <span>• {store.productCount} prods</span>
@@ -534,15 +568,15 @@ export default function AdminStores() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-4 h-10">{store.description || 'Sin descripción'}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 h-10">{store.description || 'Sin descripción'}</p>
 
                   {/* Info */}
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <MapPin className="w-4 h-4 text-blue-500" />
                       <span className="truncate">{store.address || 'Sin dirección'}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Phone className="w-4 h-4 text-green-500" />
                       <span>{store.phone || 'Sin teléfono'}</span>
                     </div>
@@ -570,9 +604,9 @@ export default function AdminStores() {
 
       {filteredStores.length === 0 && (
         <div className="text-center py-12">
-          <Store className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No se encontraron tiendas</h3>
-          <p className="text-gray-500">Intenta con otros filtros de búsqueda</p>
+          <Store className="w-12 h-12 text-gray-300 dark:text-slate-700 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">No se encontraron tiendas</h3>
+          <p className="text-gray-500 dark:text-gray-400">Intenta con otros filtros de búsqueda</p>
         </div>
       )}
 

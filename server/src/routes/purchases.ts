@@ -49,32 +49,61 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 // Create a new purchase
 router.post('/', authenticate, async (req: AuthRequest, res) => {
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: req.user!.userId },
-            include: { sellerProfile: true },
-        });
-
-        if (!user || (!user.roles.includes('seller') && !user.roles.includes('superadmin'))) {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
-
-        const sellerId = user.roles.includes('seller') ? user.sellerProfile?.id : req.body.sellerId;
-
-        if (!sellerId) {
-            return res.status(400).json({ error: 'ID de vendedor es obligatorio' });
-        }
-
-        const { supplierId, invoiceName, invoiceNumber, purchaseDate, notes, items } = req.body;
+        const { supplierId, invoiceName, invoiceNumber, purchaseDate, notes, items, sellerId: bodySellerId } = req.body;
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'Se requiere al menos un producto' });
         }
 
-        // Calculate total amount
-        const totalAmount = items.reduce((sum: number, item: any) => sum + (item.quantity * item.unitCost), 0);
-
-        // Use a transaction to create purchase and update stock
         const result = await prisma.$transaction(async (tx) => {
+            // 1. Identify Seller and validate access
+            const user = await tx.user.findUnique({
+                where: { id: req.user!.userId },
+                include: { sellerProfile: true },
+            });
+
+            if (!user || (!user.roles.includes('seller') && !user.roles.includes('superadmin'))) {
+                throw new Error('UNAUTHORIZED_ACCESS');
+            }
+
+            const sellerId = user.roles.includes('seller') ? user.sellerProfile?.id : bodySellerId;
+
+            if (!sellerId) {
+                throw new Error('SELLER_ID_REQUIRED');
+            }
+
+            // 2. Calculate totals and validate products
+            let totalAmount = 0;
+            const itemsToCreate = [];
+            const stockIncrements = [];
+
+            for (const item of items) {
+                const product = await tx.product.findUnique({
+                    where: { id: item.productId }
+                });
+
+                if (!product) {
+                    throw new Error(`PRODUCT_NOT_FOUND:${item.productId}`);
+                }
+
+                const itemTotal = item.quantity * item.unitCost;
+                totalAmount += itemTotal;
+
+                itemsToCreate.push({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitCost: item.unitCost,
+                    totalCost: itemTotal,
+                });
+
+                stockIncrements.push({
+                    id: item.productId,
+                    quantity: item.quantity,
+                    unitCost: item.unitCost
+                });
+            }
+
+            // 3. Create Purchase Record
             const purchase = await tx.purchase.create({
                 data: {
                     sellerId,
@@ -85,12 +114,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
                     totalAmount,
                     notes,
                     items: {
-                        create: items.map((item: any) => ({
-                            productId: item.productId,
-                            quantity: item.quantity,
-                            unitCost: item.unitCost,
-                            totalCost: item.quantity * item.unitCost,
-                        })),
+                        create: itemsToCreate,
                     },
                 },
                 include: {
@@ -98,21 +122,19 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
                 }
             });
 
-            // Update products stock and stock movements
-            for (const item of items) {
+            // 4. Update Stock and create Movements
+            for (const item of stockIncrements) {
                 await tx.product.update({
-                    where: { id: item.productId },
+                    where: { id: item.id },
                     data: {
-                        stock: {
-                            increment: item.quantity
-                        },
-                        cost: item.unitCost // Update last cost
+                        stock: { increment: item.quantity },
+                        cost: item.unitCost // Update cost to the latest purchase cost
                     }
                 });
 
                 await tx.stockMovement.create({
                     data: {
-                        productId: item.productId,
+                        productId: item.id,
                         type: 'purchase',
                         quantity: item.quantity,
                         reason: `Compra - Factura ${invoiceNumber}`,
@@ -127,9 +149,23 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         });
 
         res.status(201).json(result);
-    } catch (error) {
+    } catch (error: any) {
+        let status = 500;
+        let message = 'Error interno en el servidor';
+
+        if (error.message === 'UNAUTHORIZED_ACCESS') {
+            status = 403;
+            message = 'No tienes permisos para realizar esta operación.';
+        } else if (error.message === 'SELLER_ID_REQUIRED') {
+            status = 400;
+            message = 'El ID del vendedor es obligatorio.';
+        } else if (error.message.startsWith('PRODUCT_NOT_FOUND')) {
+            status = 404;
+            message = 'Uno de los productos especificados no fue encontrado.';
+        }
+
         console.error('Create purchase error:', error);
-        res.status(500).json({ error: 'Error en el servidor' });
+        res.status(status).json({ error: message });
     }
 });
 

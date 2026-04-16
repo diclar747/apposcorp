@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save, BookOpen, Check } from 'lucide-react';
+import { Search, Plus, UserPlus, Loader2, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save, BookOpen, Check } from 'lucide-react';
 import { cn, getRoleName, getRoleColor, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,11 +51,13 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
-import { usersApi, plansApi, coursesApi, ingenioApi } from '@/lib/api';
+import { usersApi, plansApi, coursesApi, ingenioApi, authApi } from '@/lib/api';
 import type { SubscriptionPlan, BillingCycle, Course, UserCourse } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Types
 interface UserData {
@@ -93,6 +95,18 @@ export default function AdminUsers() {
   // Plan Assignment State
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [selectedUserForPlan, setSelectedUserForPlan] = useState<UserData | null>(null);
+
+  // Modal state for creation
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createData, setCreateData] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    role: 'client' as any
+  });
+
   const [planFormData, setPlanFormData] = useState({
     planId: '',
     billingCycle: 'monthly' as BillingCycle,
@@ -106,6 +120,34 @@ export default function AdminUsers() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [userCoursesIds, setUserCoursesIds] = useState<string[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+
+  const exportToPDF = () => {
+    if (!users.length) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Listado de Usuarios - Oscorp', 15, 20);
+    doc.setFontSize(10);
+    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+
+    const tableData = filteredUsers.map(u => [
+      `${u.firstName} ${u.lastName}`,
+      u.email,
+      u.roles?.join(', ') || '-',
+      u.isActive ? 'Activo' : 'Inactivo',
+      u.ingenioAccess ? 'Si' : 'No',
+      new Date(u.createdAt).toLocaleDateString()
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Nombre', 'Email', 'Roles', 'Estado', 'Ingenio', 'Registro']],
+      body: tableData,
+    });
+
+    doc.save(`usuarios-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -298,6 +340,29 @@ export default function AdminUsers() {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!createData.email || !createData.password || !createData.firstName || !createData.lastName) {
+      toast.error('Por favor completa los campos obligatorios');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await authApi.register({
+        ...createData,
+        roles: [createData.role]
+      });
+      toast.success('Usuario creado correctamente');
+      setIsCreateModalOpen(false);
+      setCreateData({ email: '', password: '', firstName: '', lastName: '', phone: '', role: 'client' });
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al crear usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -326,11 +391,70 @@ export default function AdminUsers() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Usuarios</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona los usuarios del sistema</p>
         </div>
-        <Button className="bg-blue-600 w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Usuario
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={exportToPDF} className="flex-1 sm:flex-none">
+            Exportar
+          </Button>
+          <Button className="bg-blue-600 flex-1 sm:flex-none" onClick={() => setIsCreateModalOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </Button>
+        </div>
       </div>
+
+      {/* Create User Dialog */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nombre *</Label>
+                <Input value={createData.firstName} onChange={e => setCreateData({ ...createData, firstName: e.target.value })} placeholder="Ej: Juan" />
+              </div>
+              <div className="space-y-2">
+                <Label>Apellido *</Label>
+                <Input value={createData.lastName} onChange={e => setCreateData({ ...createData, lastName: e.target.value })} placeholder="Ej: Pérez" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={createData.email} onChange={e => setCreateData({ ...createData, email: e.target.value })} placeholder="email@ejemplo.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Contraseña *</Label>
+              <Input type="password" value={createData.password} onChange={e => setCreateData({ ...createData, password: e.target.value })} placeholder="••••••••" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Teléfono</Label>
+                <Input value={createData.phone} onChange={e => setCreateData({ ...createData, phone: e.target.value })} placeholder="0981..." />
+              </div>
+              <div className="space-y-2">
+                <Label>Rol Inicial</Label>
+                <Select value={createData.role} onValueChange={(val: any) => setCreateData({ ...createData, role: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">Cliente</SelectItem>
+                    <SelectItem value="seller">Vendedor</SelectItem>
+                    <SelectItem value="ingenio">Ingenio Millonario</SelectItem>
+                    <SelectItem value="superadmin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateUser} disabled={loading}>
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Crear Usuario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <Card>
@@ -629,8 +753,8 @@ export default function AdminUsers() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">{viewingUser.firstName} {viewingUser.lastName}</h3>
-                  <p className="text-gray-500">{viewingUser.email}</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{viewingUser.firstName} {viewingUser.lastName}</h3>
+                  <p className="text-gray-500 dark:text-gray-400">{viewingUser.email}</p>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {viewingUser.roles?.map(role => (
                       <Badge key={role} className={cn(getRoleColor(role))}>{getRoleName(role)}</Badge>
@@ -642,16 +766,16 @@ export default function AdminUsers() {
 
               <div className="grid grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border">
                 <div>
-                  <Label className="text-gray-500 text-xs uppercase tracking-wider">Teléfono</Label>
-                  <p className="font-medium text-gray-900 mt-1">{viewingUser.phone || 'No registrado'}</p>
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Teléfono</Label>
+                  <p className="font-medium text-gray-900 dark:text-white mt-1">{viewingUser.phone || 'No registrado'}</p>
                 </div>
                 <div>
-                  <Label className="text-gray-500 text-xs uppercase tracking-wider">Fecha Registro</Label>
-                  <p className="font-medium text-gray-900 mt-1">{formatDate(viewingUser.createdAt)}</p>
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Fecha Registro</Label>
+                  <p className="font-medium text-gray-900 dark:text-white mt-1">{formatDate(viewingUser.createdAt)}</p>
                 </div>
                 <div>
-                  <Label className="text-gray-500 text-xs uppercase tracking-wider">ID Usuario</Label>
-                  <p className="font-mono text-xs text-gray-700 mt-1">{viewingUser.id}</p>
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">ID Usuario</Label>
+                  <p className="font-mono text-xs text-gray-700 dark:text-gray-300 mt-1">{viewingUser.id}</p>
                 </div>
                 <div className="pt-4 border-t border-gray-100">
                   <div className="flex justify-between items-center mb-4">

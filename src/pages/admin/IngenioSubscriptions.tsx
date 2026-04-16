@@ -57,6 +57,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import type { IngenioSubscription } from '@/types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function IngenioSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -136,6 +138,34 @@ export default function IngenioSubscriptions() {
     }
   };
 
+  const exportToPDF = () => {
+    if (!subscriptions.length) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Suscripciones Ingenio - Oscorp', 15, 20);
+    doc.setFontSize(10);
+    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+
+    const tableData = filtered.map(s => [
+      `${s.user.firstName} ${s.user.lastName}`,
+      s.status,
+      `${s.installments} cuotas`,
+      formatCurrency(s.paidAmount),
+      formatCurrency(s.totalAmount),
+      new Date(s.updatedAt || s.createdAt).toLocaleDateString()
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Usuario', 'Estado', 'Plan', 'Pagado', 'Total', 'Último Mov.']],
+      body: tableData,
+    });
+
+    doc.save(`suscripciones-ingenio-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
+
   const filtered = subscriptions.filter(sub => {
     const matchesSearch = 
       sub.user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -162,10 +192,15 @@ export default function IngenioSubscriptions() {
           </h1>
           <p className="text-slate-500 dark:text-slate-400">Control de pagos y accesos al módulo Ingenio Millonario</p>
         </div>
-        <Button onClick={fetchSubscriptions} variant="outline" size="sm" className="gap-2">
-          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToPDF} size="sm">
+            Exportar PDF
+          </Button>
+          <Button onClick={fetchSubscriptions} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">

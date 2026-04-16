@@ -46,6 +46,7 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { FloatingSocialButtons } from '@/components/client/FloatingSocialButtons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { RoleSelector } from '@/components/shared/RoleSelector';
 
 interface MenuItem {
   icon: typeof Home;
@@ -99,7 +100,7 @@ export default function ClientLayout() {
   const [showIngenioAlert, setShowIngenioAlert] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, hasRole, addRole, isLoading } = useAuthStore();
+  const { user, logout, hasRole, addRole, isLoading, setActiveRole } = useAuthStore();
   const { wallet, fetchWallet } = useWalletStore();
   const { itemCount } = useCartStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
@@ -126,6 +127,7 @@ export default function ClientLayout() {
 
   const handleIngenioNavigation = async () => {
     if (hasRole(['ingenio'])) {
+      setActiveRole('ingenio');
       window.location.href = '/ingenio';
       return;
     }
@@ -137,6 +139,7 @@ export default function ClientLayout() {
     if (success) {
       toast.success('¡Registro exitoso! Bienvenido a Ingenio Millonario.');
       setShowIngenioAlert(false);
+      setActiveRole('ingenio');
       window.location.href = '/ingenio';
     }
   };
@@ -275,6 +278,7 @@ export default function ClientLayout() {
 
           {/* Right - Actions */}
           <div className="flex items-center gap-1">
+            <RoleSelector />
             <Button
               variant="ghost"
               size="icon"
@@ -361,9 +365,6 @@ export default function ClientLayout() {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
-
-      {/* Floating Social Buttons */}
-      <FloatingSocialButtons />
 
       <AlertDialog open={showIngenioAlert} onOpenChange={setShowIngenioAlert}>
         <AlertDialogContent>

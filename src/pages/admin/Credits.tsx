@@ -20,6 +20,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const statusFilters = [
   { value: 'all', label: 'Todos' },
@@ -83,6 +85,34 @@ export default function AdminCredits() {
     }
   };
 
+  const exportToPDF = () => {
+    if (!credits.length) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Reporte de Créditos - Oscorp', 15, 20);
+    doc.setFontSize(10);
+    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 15, 28);
+
+    const tableData = filteredCredits.map(c => [
+      `${c.user?.firstName} ${c.user?.lastName}`,
+      c.concept,
+      formatCurrency(c.amount),
+      `${c.payments?.length || 0}/${c.installments}`,
+      statusLabels[c.status] || c.status,
+      new Date(c.createdAt).toLocaleDateString()
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Cliente', 'Concepto', 'Monto', 'Cuotas', 'Estado', 'Fecha']],
+      body: tableData,
+    });
+
+    doc.save(`creditos-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
+
   useEffect(() => { fetchCredits(); }, []);
 
   const filteredCredits = credits.filter(credit => {
@@ -136,9 +166,14 @@ export default function AdminCredits() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Créditos</h1>
-        <p className="text-gray-500 dark:text-gray-400">Gestiona las solicitudes de crédito de clientes</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Créditos</h1>
+          <p className="text-gray-500 dark:text-gray-400">Gestiona las solicitudes de crédito de clientes</p>
+        </div>
+        <Button variant="outline" onClick={exportToPDF}>
+          Exportar PDF
+        </Button>
       </div>
 
       {/* Stats */}

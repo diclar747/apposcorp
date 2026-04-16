@@ -10,6 +10,7 @@ import { getInitials } from "@/lib/utils";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { RoleSelector } from "@/components/shared/RoleSelector";
 
 const baseMenuItems = [
   { icon: Target, label: "Finanzas Master", href: "/ingenio" },
@@ -24,7 +25,7 @@ export default function IngenioLayout() {
   const [showOscorpAlert, setShowOscorpAlert] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, hasRole, addRole, isLoading } = useAuthStore();
+  const { user, logout, hasRole, addRole, isLoading, setActiveRole } = useAuthStore();
   const { resolvedTheme, toggleTheme } = useThemeStore();
 
   const handleLogout = () => {
@@ -34,7 +35,8 @@ export default function IngenioLayout() {
 
   const handleOscorpWallet = () => {
     if (hasRole(['client'])) {
-      navigate("/app");
+      setActiveRole('client');
+      navigate("/app/wallet");
     } else {
       setShowOscorpAlert(true);
     }
@@ -45,6 +47,7 @@ export default function IngenioLayout() {
     if (success) {
       toast.success('¡Registro exitoso! Tu Billetera Oscorp ha sido activada.');
       setShowOscorpAlert(false);
+      setActiveRole('client');
       navigate("/app");
     }
   };
@@ -60,6 +63,7 @@ export default function IngenioLayout() {
           <span className="font-bold text-lg text-slate-900 dark:text-white">Ingenio</span>
         </Link>
         <div className="flex items-center gap-2">
+          <RoleSelector />
           <button 
             onClick={toggleTheme}
             className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -166,6 +170,7 @@ export default function IngenioLayout() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Desktop Header */}
         <header className="hidden md:flex items-center justify-end px-8 py-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 z-10 sticky top-0 gap-2">
+          <RoleSelector />
           <button 
             onClick={toggleTheme}
             className="text-slate-400 hover:text-indigo-600 transition-colors p-2"
