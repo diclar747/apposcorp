@@ -7,13 +7,14 @@ export function cn(...inputs: ClassValue[]) {
 
 // Formatear moneda (Guaraníes Paraguayos)
 export function formatCurrency(amount: number, currency: string = 'PYG'): string {
+  const validAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
   if (currency === 'PYG') {
-    return `₲ ${Math.round(amount).toLocaleString('es-PY')}`;
+    return `Gs. ${Math.round(validAmount).toLocaleString('es-PY')}`;
   }
   return new Intl.NumberFormat('es-PY', {
     style: 'currency',
     currency,
-  }).format(amount);
+  }).format(validAmount);
 }
 
 // Formatear fecha
@@ -188,6 +189,7 @@ export function getRoleName(role: string): string {
     client: 'Cliente',
     seller: 'Vendedor',
     superadmin: 'Administrador',
+    ingenio: 'Ingenio',
   };
   return roles[role] || role;
 }
@@ -195,11 +197,12 @@ export function getRoleName(role: string): string {
 // Obtener color de rol
 export function getRoleColor(role: string): string {
   const colors: Record<string, string> = {
-    client: 'bg-blue-100 text-blue-800',
-    seller: 'bg-green-100 text-green-800',
-    superadmin: 'bg-purple-100 text-purple-800',
+    client: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    seller: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    superadmin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+    ingenio: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   };
-  return colors[role] || 'bg-gray-100 text-gray-800';
+  return colors[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
 }
 
 // Delay helper

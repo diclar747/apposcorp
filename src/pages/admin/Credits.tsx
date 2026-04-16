@@ -20,6 +20,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const statusFilters = [
   { value: 'all', label: 'Todos' },
@@ -83,6 +85,51 @@ export default function AdminCredits() {
     }
   };
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE CRÉDITOS', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    const statuses: Record<string, string> = {
+      pending: 'Pendiente', approved: 'Aprobado', active: 'Activo',
+      completed: 'Completado', defaulted: 'En Mora', rejected: 'Rechazado'
+    };
+
+    const tableData = filteredCredits.map(c => [
+      `${c.user?.firstName || ''} ${c.user?.lastName || ''}`,
+      c.concept,
+      formatCurrency(c.amount),
+      `${c.payments?.length || 0}/${c.installments}`,
+      statuses[c.status] || c.status,
+      new Date(c.createdAt).toLocaleDateString()
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Cliente', 'Concepto', 'Monto', 'Cuotas', 'Estado', 'Fecha']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`creditos-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
+
   useEffect(() => { fetchCredits(); }, []);
 
   const filteredCredits = credits.filter(credit => {
@@ -136,9 +183,14 @@ export default function AdminCredits() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Créditos</h1>
-        <p className="text-gray-500 dark:text-gray-400">Gestiona las solicitudes de crédito de clientes</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Créditos</h1>
+          <p className="text-gray-500 dark:text-gray-400">Gestiona las solicitudes de crédito de clientes</p>
+        </div>
+        <Button variant="outline" onClick={exportToPDF}>
+          Exportar PDF
+        </Button>
       </div>
 
       {/* Stats */}

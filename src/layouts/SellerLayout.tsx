@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { RoleSelector } from '@/components/shared/RoleSelector';
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/vendedor' },
@@ -294,6 +295,7 @@ export default function SellerLayout() {
 
             {/* Right */}
             <div className="flex items-center gap-3">
+              <RoleSelector />
               {/* View Store */}
               <Button
                 variant="outline"

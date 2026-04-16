@@ -303,19 +303,19 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
   try {
     const { toUserId, amount, description, pin } = req.body;
 
-    if (amount <= 0) {
+    if (amount <= 0 || isNaN(amount)) {
       return res.status(400).json({ error: 'Valor inválido' });
     }
 
+    // 1. Check sender wallet and PIN
     const fromWallet = await prisma.wallet.findUnique({
       where: { userId: req.user!.userId },
     });
 
     if (!fromWallet) {
-      return res.status(404).json({ error: 'Billetera no encontrada' });
+      return res.status(404).json({ error: 'Tu billetera no fue encontrada' });
     }
 
-    // Verify transaction PIN if set
     if (fromWallet.transactionPin) {
       if (!pin) return res.status(400).json({ error: 'PIN de transacción requerido' });
       const bcrypt = await import('bcryptjs');
@@ -323,6 +323,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
       if (!pinValid) return res.status(401).json({ error: 'PIN incorrecto' });
     }
 
+    // 2. Check receiver wallet
     const toWallet = await prisma.wallet.findUnique({
       where: { userId: toUserId },
     });
@@ -331,18 +332,25 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Billetera del destinatario no encontrada' });
     }
 
-    if (fromWallet.balance < amount) {
-      return res.status(400).json({ error: 'Saldo insuficiente' });
+    if (toUserId === req.user!.userId) {
+      return res.status(400).json({ error: 'No puedes transferirte a ti mismo' });
     }
 
+    // 3. Execution in ACID Transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Deduct from sender
-      await tx.wallet.update({
-        where: { id: fromWallet.id },
+      // Atomic Balance Check & Deduction
+      // We use a where clause with balance gte amount to ensure consistency
+      const senderWallet = await tx.wallet.update({
+        where: { 
+          id: fromWallet.id,
+          balance: { gte: amount } 
+        },
         data: {
           balance: { decrement: amount },
           totalOut: { increment: amount },
         },
+      }).catch(() => {
+        throw new Error('INSUFFICIENT_BALANCE');
       });
 
       // Add to receiver
@@ -354,7 +362,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
         },
       });
 
-      // Create transaction for sender
+      // Create history for both
       await tx.transaction.create({
         data: {
           walletId: fromWallet.id,
@@ -367,7 +375,6 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
         },
       });
 
-      // Create transaction for receiver
       await tx.transaction.create({
         data: {
           walletId: toWallet.id,
@@ -380,65 +387,74 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
         },
       });
 
-      // --- INTEGRACIÓN CON FINANZAS (EMISOR) ---
+      // Financial Records Integration (For Budget/Reports)
+      // Categoría para Gasto (Emisor)
       let catOut = await tx.financialCategory.findFirst({
         where: { userId: req.user!.userId, name: 'Transferencias', type: 'expense' }
       });
+
       if (!catOut) {
         catOut = await tx.financialCategory.create({
           data: { userId: req.user!.userId, name: 'Transferencias', type: 'expense', color: '#ef4444', icon: 'send' }
         });
       }
+
       await tx.financialRecord.create({
         data: {
           userId: req.user!.userId,
           amount,
-          description: description || `Transferencia enviada a ${toUserId}`,
+          description: description || `Transferencia a usuario ${toUserId}`,
           type: 'expense',
           categoryId: catOut.id,
           date: new Date()
         }
       });
 
-      // --- INTEGRACIÓN CON FINANZAS (RECEPTOR) ---
+      // Categoría para Ingreso (Receptor)
       let catIn = await tx.financialCategory.findFirst({
         where: { userId: toUserId, name: 'Transferencias', type: 'income' }
       });
+
       if (!catIn) {
         catIn = await tx.financialCategory.create({
           data: { userId: toUserId, name: 'Transferencias', type: 'income', color: '#10b981', icon: 'download' }
         });
       }
+
       await tx.financialRecord.create({
         data: {
           userId: toUserId,
           amount,
-          description: description || `Transferencia recibida de ${req.user!.userId}`,
+          description: description || `Transferencia de usuario ${req.user!.userId}`,
           type: 'income',
           categoryId: catIn.id,
           date: new Date()
         }
       });
-      // ------------------------------------------
 
-      return { message: 'Transferencia realizada con éxito' };
+      return { success: true, message: 'Transferencia realizada con éxito' };
     });
 
-    // Push notification to receiver
+    // 4. Notifications (Post-transaction)
     const sender = await prisma.user.findUnique({
       where: { id: req.user!.userId },
       select: { firstName: true, lastName: true },
     });
+
     sendPushToUser(toUserId, {
       title: 'Transferencia recibida',
-      body: `${sender?.firstName} ${sender?.lastName} te envio ₲${amount.toLocaleString()}`,
+      body: `${sender?.firstName} te envió ₲ ${amount.toLocaleString()}`,
       url: '/app/wallet',
       tag: 'transfer-in',
     }).catch(() => {});
 
     res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Error del servidor' });
+  } catch (error: any) {
+    if (error.message === 'INSUFFICIENT_BALANCE') {
+      return res.status(400).json({ error: 'Saldo insuficiente para realizar la operación' });
+    }
+    console.error('Transfer error:', error);
+    res.status(500).json({ error: 'Error interno al procesar la transferencia' });
   }
 });
 
@@ -447,7 +463,7 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
   try {
     const { amount, description } = req.body;
 
-    if (amount <= 0) {
+    if (amount <= 0 || isNaN(amount)) {
       return res.status(400).json({ error: 'Valor inválido' });
     }
 
@@ -459,21 +475,22 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Billetera no encontrada' });
     }
 
-    if (wallet.balance < amount) {
-      return res.status(400).json({ error: 'Saldo insuficiente' });
-    }
-
     const result = await prisma.$transaction(async (tx) => {
-      // Deduct from wallet
+      // Atomic Balance Check & Deduction
       const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
+        where: { 
+          id: wallet.id,
+          balance: { gte: amount }
+        },
         data: {
           balance: { decrement: amount },
           totalOut: { increment: amount },
         },
+      }).catch(() => {
+        throw new Error('INSUFFICIENT_BALANCE');
       });
 
-      // Create transaction record
+      // Create transaction record as PENDING
       await tx.transaction.create({
         data: {
           walletId: wallet.id,
@@ -481,16 +498,20 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res) => {
           type: 'withdrawal',
           amount: -amount,
           description: description || 'Solicitud de retiro',
-          status: 'pending', // Withdrawals usually require approval
+          status: 'pending',
         },
       });
 
       return updatedWallet;
     });
 
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Error del servidor' });
+    res.json({ success: true, wallet: result });
+  } catch (error: any) {
+    if (error.message === 'INSUFFICIENT_BALANCE') {
+      return res.status(400).json({ error: 'Saldo insuficiente para el retiro' });
+    }
+    console.error('Withdraw search error:', error);
+    res.status(500).json({ error: 'Error del servidor al procesar el retiro' });
   }
 });
 

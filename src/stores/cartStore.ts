@@ -31,6 +31,16 @@ export const useCartStore = create<CartState>()(
       itemCount: 0,
 
       addItem: (product: Product, quantity: number) => {
+        // Validación global de Plan (Seguridad adicional)
+        const sellerProfile = (product as any).seller?.sellerProfile || (product as any).sellerProfile;
+        if (sellerProfile?.plan) {
+          const features = sellerProfile.plan.features || [];
+          const canPurchase = features.some((f: string) => f.toLowerCase().includes('tienda online'));
+          if (!canPurchase) {
+            return;
+          }
+        }
+
         const { items } = get();
         const existingItem = items.find(item => item.product.id === product.id);
 

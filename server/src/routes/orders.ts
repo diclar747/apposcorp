@@ -108,7 +108,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const {
-      sellerId,
+      sellerId, // This is expected to be the SellerProfile.id
       items,
       deliveryType,
       deliveryAddress,
@@ -116,72 +116,119 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       paymentMethod,
     } = req.body;
 
-    // Resolve actual seller userId from sellerProfile id
-    // Products store sellerId as SellerProfile.id, but Order.sellerId references User.id
-    let resolvedSellerId = sellerId;
-    if (sellerId) {
-      const sellerProfile = await prisma.sellerProfile.findUnique({
-        where: { id: sellerId },
-        select: { userId: true },
-      });
-      if (sellerProfile) {
-        resolvedSellerId = sellerProfile.userId;
-      }
-    }
-
-    // Calculate totals
-    let subtotal = 0;
-    const orderItems: { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; total: number; variant: string | null; }[] = [];
-
-    for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
-      });
-
-      if (!product) {
-        return res.status(404).json({ error: `Producto ${item.productId} no encontrado` });
-      }
-
-      const total = product.price * item.quantity;
-      subtotal += total;
-
-      orderItems.push({
-        productId: product.id,
-        productName: product.name,
-        productImage: product.images[0] || null,
-        quantity: item.quantity,
-        unitPrice: product.price,
-        total,
-        variant: item.variant || null,
-      });
-    }
-
-    const tax = 0; // Tax included in product price
-    const shippingCost = 0; // Free shipping for now
-    const total = subtotal + tax + shippingCost;
-    const commissionAmount = subtotal * 0.05; // 5% commission
-    const sellerEarnings = subtotal - commissionAmount;
-
-    const orderNumber = `ORD-${Date.now()}`;
-
-    // Check wallet balance if paying with wallet
-    if (paymentMethod === 'wallet') {
-      const wallet = await prisma.wallet.findUnique({
-        where: { userId: req.user!.userId },
-      });
-
-      if (!wallet || wallet.balance < total) {
-        return res.status(400).json({ error: 'Saldo insuficiente en la billetera' });
-      }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'El pedido debe tener al menos un producto' });
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create order
+      // 1. Get Seller Profile and Commission Rate
+      const sellerProfile = await tx.sellerProfile.findUnique({
+        where: { id: sellerId },
+        select: { userId: true, commissionRate: true, storeName: true, planId: true },
+      });
+
+      if (!sellerProfile) {
+        throw new Error('SELLER_NOT_FOUND');
+      }
+
+      const resolvedSellerUserId = sellerProfile.userId;
+      
+      // Determine commission rate based on whether they are using the "Por Comisión" model (no fixed plan)
+      let commissionRateMultiplier = 0;
+      if (!sellerProfile.planId) {
+        // If they are on the commission model, convert the whole number percentage (e.g., 5) to a decimal (0.05)
+        commissionRateMultiplier = sellerProfile.commissionRate ? (sellerProfile.commissionRate / 100) : 0.05;
+      }
+
+      // 2. Load products and validate stock/prices inside transaction
+      let subtotal = 0;
+      const orderItemsData = [];
+      const stockUpdates = [];
+
+      for (const item of items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+        });
+
+        if (!product) {
+          throw new Error(`PRODUCT_NOT_FOUND:${item.productId}`);
+        }
+
+        if (product.stock < item.quantity) {
+          throw new Error(`INSUFFICIENT_STOCK:${product.name}`);
+        }
+
+        const totalItemPrice = product.price * item.quantity;
+        subtotal += totalItemPrice;
+
+        orderItemsData.push({
+          productId: product.id,
+          productName: product.name,
+          productImage: product.images[0] || null,
+          quantity: item.quantity,
+          unitPrice: product.price,
+          total: totalItemPrice,
+          variant: item.variant || null,
+        });
+
+        stockUpdates.push({
+          id: product.id,
+          quantity: item.quantity
+        });
+      }
+
+      const tax = 0; 
+      const shippingCost = 0; 
+      const total = subtotal + tax + shippingCost;
+      
+      // Dynamic Commission Calculation
+      const commissionAmount = subtotal * commissionRateMultiplier;
+      const sellerEarnings = subtotal - commissionAmount;
+      const orderNumber = `ORD-${Date.now()}`;
+
+      // 3. Handle Wallet Payment
+      if (paymentMethod === 'wallet') {
+        const buyerWallet = await tx.wallet.findUnique({
+          where: { userId: req.user!.userId },
+        });
+
+        if (!buyerWallet || buyerWallet.balance < total) {
+          throw new Error('INSUFFICIENT_WALLET_BALANCE');
+        }
+
+        const sellerWallet = await tx.wallet.findUnique({
+          where: { userId: resolvedSellerUserId },
+        });
+
+        if (!sellerWallet) {
+          throw new Error('SELLER_WALLET_NOT_FOUND');
+        }
+
+        // Deduct from buyer
+        await tx.wallet.update({
+          where: { id: buyerWallet.id },
+          data: {
+            balance: { decrement: total },
+            totalOut: { increment: total },
+          },
+        });
+
+        // Add to seller (net)
+        await tx.wallet.update({
+          where: { id: sellerWallet.id },
+          data: {
+            balance: { increment: sellerEarnings },
+            totalIn: { increment: sellerEarnings },
+          },
+        });
+      }
+
+      // 4. Create Order
       const order = await tx.order.create({
         data: {
           orderNumber,
           buyerId: req.user!.userId,
-          sellerId: resolvedSellerId,
+          sellerId: resolvedSellerUserId,
           subtotal,
           tax,
           shippingCost,
@@ -192,124 +239,85 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           paymentMethod,
           commissionAmount,
           sellerEarnings,
+          paymentStatus: paymentMethod === 'wallet' ? 'paid' : 'pending',
           items: {
-            create: orderItems,
+            create: orderItemsData,
           },
           trackingHistory: {
             create: {
               status: 'pending',
-              description: 'Pedido creado',
+              description: 'Pedido creado exitosamente',
             },
           },
         },
         include: {
           items: true,
-          trackingHistory: true,
-        },
+        }
       });
 
-      // If paying with wallet, process payment
+      // 5. Create Transaction Records (if paid with wallet)
       if (paymentMethod === 'wallet') {
-        const buyerWallet = await tx.wallet.findUnique({
-          where: { userId: req.user!.userId },
-        });
+        const buyerWallet = await tx.wallet.findUnique({ where: { userId: req.user!.userId } });
+        const sellerWallet = await tx.wallet.findUnique({ where: { userId: resolvedSellerUserId } });
 
-        const sellerWallet = await tx.wallet.findUnique({
-          where: { userId: sellerId },
-        });
-
-        if (buyerWallet && sellerWallet) {
-          // Deduct from buyer
-          await tx.wallet.update({
-            where: { id: buyerWallet.id },
-            data: {
-              balance: { decrement: total },
-              totalOut: { increment: total },
-            },
-          });
-
-          // Add to seller (minus commission)
-          await tx.wallet.update({
-            where: { id: sellerWallet.id },
-            data: {
-              balance: { increment: sellerEarnings },
-              totalIn: { increment: sellerEarnings },
-            },
-          });
-
-          // Create transactions
-          await tx.transaction.create({
-            data: {
-              walletId: buyerWallet.id,
-              userId: req.user!.userId,
-              type: 'purchase',
-              amount: -total,
-              description: `Compra - ${orderNumber}`,
-              status: 'completed',
-              relatedOrderId: order.id,
-            },
-          });
-
-          await tx.transaction.create({
-            data: {
-              walletId: sellerWallet.id,
-              userId: sellerId,
-              type: 'sale',
-              amount: sellerEarnings,
-              description: `Venta - ${orderNumber}`,
-              status: 'completed',
-              relatedOrderId: order.id,
-            },
-          });
-
-          // Update order payment status
-          await tx.order.update({
-            where: { id: order.id },
-            data: { paymentStatus: 'paid' },
-          });
-        }
-      }
-
-      // Update product stock
-      for (const item of items) {
-        await tx.product.update({
-          where: { id: item.productId },
+        await tx.transaction.create({
           data: {
-            stock: { decrement: item.quantity },
+            walletId: buyerWallet!.id,
+            userId: req.user!.userId,
+            type: 'purchase',
+            amount: -total,
+            description: `Compra en ${sellerProfile.storeName} - ${orderNumber}`,
+            status: 'completed',
+            relatedOrderId: order.id,
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            walletId: sellerWallet!.id,
+            userId: resolvedSellerUserId,
+            type: 'sale',
+            amount: sellerEarnings,
+            description: `Venta - Pedido ${orderNumber}`,
+            status: 'completed',
+            relatedOrderId: order.id,
           },
         });
       }
 
-      return order;
+      // 6. Update Stocks
+      for (const update of stockUpdates) {
+        await tx.product.update({
+          where: { id: update.id },
+          data: {
+            stock: { decrement: update.quantity },
+          },
+        });
+      }
+
+      return { order, sellerProfile };
     });
 
-    res.status(201).json(result);
+    res.status(201).json(result.order);
 
-    // Create notifications + Web Push (after response, non-blocking)
-    const itemSummary = orderItems.length === 1
-      ? orderItems[0].productName
-      : `${orderItems[0].productName} y ${orderItems.length - 1} más`;
+    // 7. Post-Processing: Notifications (Non-blocking)
+    const { order, sellerProfile } = result;
+    const itemSummary = order.items.length === 1
+      ? order.items[0].productName
+      : `${order.items[0].productName} y ${order.items.length - 1} más`;
 
-    // Fetch store name and buyer info for rich notifications
-    Promise.all([
-      prisma.user.findUnique({
-        where: { id: req.user!.userId },
-        select: { firstName: true, lastName: true },
-      }),
-      prisma.sellerProfile.findFirst({
-        where: { userId: sellerId },
-        select: { storeName: true },
-      }),
-    ]).then(async ([buyer, sellerProfile]) => {
+    prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { firstName: true, lastName: true },
+    }).then(async (buyer) => {
       const buyerName = buyer ? `${buyer.firstName} ${buyer.lastName}` : 'Un cliente';
-      const storeName = sellerProfile?.storeName || 'una tienda';
-
-      // Notify buyer (DB + Push)
-      const buyerMsg = `Tu compra en ${storeName} por ₲ ${total.toLocaleString()} fue procesada exitosamente. Pedido ${orderNumber}.`;
-      prisma.notification.create({
+      
+      // Notify Buyer
+      const buyerMsg = `Tu compra en ${sellerProfile.storeName} por ₲ ${order.total.toLocaleString()} fue procesada. Pedido ${order.orderNumber}.`;
+      await prisma.notification.create({
         data: {
           userId: req.user!.userId,
-          title: `Compra en ${storeName}`,
+          title: `Pedido Confirmado`,
           message: buyerMsg,
           type: 'success',
           actionUrl: `/app/pedidos`,
@@ -317,34 +325,55 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       }).catch(() => {});
 
       sendPushToUser(req.user!.userId, {
-        title: `Compra en ${storeName}`,
+        title: `Compra exitosa`,
         body: buyerMsg,
         url: '/app/pedidos',
-        tag: `order-${orderNumber}`,
+        tag: `order-${order.orderNumber}`,
       }).catch(() => {});
 
-      // Notify seller (DB + Push)
-      const sellerMsg = `${buyerName} compró ${itemSummary} por ₲ ${total.toLocaleString()} en ${storeName}. Pedido ${orderNumber}.`;
-      prisma.notification.create({
+      // Notify Seller
+      const sellerMsg = `${buyerName} compró ${itemSummary} por ₲ ${order.total.toLocaleString()}. Pedido ${order.orderNumber}.`;
+      await prisma.notification.create({
         data: {
-          userId: sellerId,
-          title: 'Nueva venta',
+          userId: order.sellerId,
+          title: 'Nueva Venta Recibida',
           message: sellerMsg,
           type: 'success',
           actionUrl: `/vendedor/pedidos`,
         },
       }).catch(() => {});
 
-      sendPushToUser(sellerId, {
-        title: `Nueva venta - ${storeName}`,
+      sendPushToUser(order.sellerId, {
+        title: `Nueva Venta - ${sellerProfile.storeName}`,
         body: sellerMsg,
         url: '/vendedor/pedidos',
-        tag: `sale-${orderNumber}`,
+        tag: `sale-${order.orderNumber}`,
       }).catch(() => {});
-    }).catch(() => {});
-  } catch (error) {
-    console.error('Create order error:', error);
-    res.status(500).json({ error: 'Error del servidor', details: String(error) });
+    }).catch(console.error);
+
+  } catch (error: any) {
+    let status = 500;
+    let message = 'Error interno del servidor';
+
+    if (error.message === 'SELLER_NOT_FOUND') {
+      status = 404;
+      message = 'El vendedor no está disponible.';
+    } else if (error.message.startsWith('PRODUCT_NOT_FOUND')) {
+      status = 404;
+      message = 'Uno de los productos ya no está disponible.';
+    } else if (error.message.startsWith('INSUFFICIENT_STOCK')) {
+      status = 400;
+      message = `Stock insuficiente: ${error.message.split(':')[1]}`;
+    } else if (error.message === 'INSUFFICIENT_WALLET_BALANCE') {
+      status = 400;
+      message = 'No tienes saldo suficiente en tu billetera Oscorp.';
+    } else if (error.message === 'SELLER_WALLET_NOT_FOUND') {
+      status = 400;
+      message = 'La billetera del vendedor no está activa.';
+    }
+
+    console.error('Order creation error:', error);
+    res.status(status).json({ error: message });
   }
 });
 

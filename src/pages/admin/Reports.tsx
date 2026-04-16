@@ -22,6 +22,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 // ─── Labels / Maps ───────────────────────────────────────────────────
 const ORDER_STATUS: Record<string, string> = {
@@ -42,53 +45,20 @@ const CREDIT_STATUS: Record<string, string> = {
 const PIE_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────
-function downloadCSV(data: Record<string, any>[], filename: string) {
-  if (!data.length) return;
-  const headers = Object.keys(data[0]);
-  const rows = [
-    headers.join(','),
-    ...data.map(row =>
-      headers.map(h => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
-    ),
-  ];
-  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+function downloadExcel(data: Record<string, any>[], filename: string) {
+  if (!data.length) {
+    const ws = XLSX.utils.aoa_to_sheet([['Sin datos']]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+    XLSX.writeFile(wb, filename);
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+  XLSX.writeFile(wb, filename);
 }
 
-function generatePDF(title: string, statsHtml: string, tableHtml: string) {
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>${title}</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:24px;color:#333;font-size:12px}
-      h1{font-size:20px;margin-bottom:4px}
-      .date{color:#666;font-size:11px;margin-bottom:16px}
-      .stats{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
-      .stat{background:#f5f5f5;padding:10px 14px;border-radius:8px;min-width:120px}
-      .stat-label{font-size:10px;color:#666}
-      .stat-value{font-size:16px;font-weight:bold}
-      table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
-      th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #ddd}
-      td{padding:5px 8px;border-bottom:1px solid #eee}
-      tr:nth-child(even){background:#fafafa}
-      .text-right{text-align:right}
-      .text-green{color:#16a34a}
-      .text-red{color:#dc2626}
-      @media print{body{padding:0}.no-print{display:none}}
-    </style></head><body>
-    <h1>${title} - Oscorp</h1>
-    <p class="date">Generado: ${new Date().toLocaleDateString('es-PY')} ${new Date().toLocaleTimeString('es-PY')}</p>
-    ${statsHtml}
-    ${tableHtml}
-    <script>window.onload=function(){window.print()}<\/script>
-  </body></html>`;
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-  setTimeout(() => URL.revokeObjectURL(url), 15000);
-}
 
 function matchesDateRange(dateStr: string, start: string, end: string): boolean {
   if (!start && !end) return true;
@@ -236,8 +206,8 @@ export default function AdminReports() {
       'Método Pago': o.paymentMethod,
       'Tipo Entrega': o.deliveryType === 'delivery' ? 'Delivery' : 'Retiro',
     }));
-    downloadCSV(data, `reporte-ventas-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de ventas exportado');
+    downloadExcel(data, `reporte-ventas-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de ventas exportado a Excel');
   };
 
   const exportTransactionsCSV = () => {
@@ -250,8 +220,8 @@ export default function AdminReports() {
       'Monto': t.amount,
       'Estado': t.status,
     }));
-    downloadCSV(data, `reporte-transacciones-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de transacciones exportado');
+    downloadExcel(data, `reporte-transacciones-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de transacciones exportado a Excel');
   };
 
   const exportProductsCSV = () => {
@@ -267,8 +237,8 @@ export default function AdminReports() {
       'Tipo': p.type,
       'Visibilidad': p.visibility,
     }));
-    downloadCSV(data, `reporte-productos-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de productos exportado');
+    downloadExcel(data, `reporte-productos-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de productos exportado a Excel');
   };
 
   const exportCreditsCSV = () => {
@@ -283,51 +253,108 @@ export default function AdminReports() {
       'Tasa Interés': `${c.interestRate}%`,
       'Estado': CREDIT_STATUS[c.status] || c.status,
     }));
-    downloadCSV(data, `reporte-creditos-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de créditos exportado');
+    downloadExcel(data, `reporte-creditos-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de créditos exportado a Excel');
   };
 
   // PDF generators
   const exportOrdersPDF = () => {
-    const statsHtml = `<div class="stats">
-      <div class="stat"><div class="stat-label">Total Ventas</div><div class="stat-value">${formatCurrency(totalSales)}</div></div>
-      <div class="stat"><div class="stat-label">Comisiones</div><div class="stat-value">${formatCurrency(totalCommissions)}</div></div>
-      <div class="stat"><div class="stat-label">Ganancias Vendedores</div><div class="stat-value">${formatCurrency(totalSellerEarnings)}</div></div>
-      <div class="stat"><div class="stat-label">Órdenes</div><div class="stat-value">${filteredOrders.length}</div></div>
-    </div>`;
-    const rows = filteredOrders.map((o: any) => `<tr>
-      <td>${o.orderNumber || ''}</td>
-      <td>${formatDate(o.createdAt)}</td>
-      <td>${(o.buyer?.firstName || '') + ' ' + (o.buyer?.lastName || '')}</td>
-      <td>${(o.seller?.firstName || '') + ' ' + (o.seller?.lastName || '')}</td>
-      <td class="text-right">${formatCurrency(o.total)}</td>
-      <td class="text-right">${formatCurrency(o.commissionAmount)}</td>
-      <td>${ORDER_STATUS[o.status] || o.status}</td>
-    </tr>`).join('');
-    const tableHtml = `<table><thead><tr><th>Orden</th><th>Fecha</th><th>Comprador</th><th>Vendedor</th><th>Total</th><th>Comisión</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
-    generatePDF('Reporte de Ventas', statsHtml, tableHtml);
-    toast.success('PDF de ventas generado');
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42); 
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE VENTAS', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    // Render Stats
+    doc.setTextColor(51, 65, 85);
+    doc.setFontSize(9);
+    doc.text(`Total Ventas: ${formatCurrency(totalSales)}`, 15, 48);
+    doc.text(`Comisiones: ${formatCurrency(totalCommissions)}`, pageWidth / 2, 48);
+    doc.text(`Ganancias Vendedores: ${formatCurrency(totalSellerEarnings)}`, 15, 54);
+    doc.text(`Órdenes: ${filteredOrders.length}`, pageWidth / 2, 54);
+
+    const tableData = filteredOrders.map((o: any) => [
+      o.orderNumber || '',
+      formatDate(o.createdAt),
+      `${o.buyer?.firstName || ''} ${o.buyer?.lastName || ''}`,
+      `${o.seller?.firstName || ''} ${o.seller?.lastName || ''}`,
+      formatCurrency(o.total),
+      formatCurrency(o.commissionAmount),
+      ORDER_STATUS[o.status] || o.status
+    ]);
+
+    autoTable(doc, {
+      startY: 65,
+      head: [['Orden', 'Fecha', 'Comprador', 'Vendedor', 'Total', 'Comisión', 'Estado']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`ventas-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF de ventas generado y descargando');
   };
 
   const exportTransactionsPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42); 
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE TRANSACCIONES', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    // Stats
     const incomeTotal = filteredTx.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0);
     const expenseTotal = filteredTx.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
-    const statsHtml = `<div class="stats">
-      <div class="stat"><div class="stat-label">Total Ingresos</div><div class="stat-value text-green">${formatCurrency(incomeTotal)}</div></div>
-      <div class="stat"><div class="stat-label">Total Egresos</div><div class="stat-value text-red">${formatCurrency(expenseTotal)}</div></div>
-      <div class="stat"><div class="stat-label">Transacciones</div><div class="stat-value">${filteredTx.length}</div></div>
-    </div>`;
-    const rows = filteredTx.map((t: any) => `<tr>
-      <td>${formatDate(t.createdAt)}</td>
-      <td>${TX_TYPE[t.type] || t.type}</td>
-      <td>${(t.user?.firstName || '') + ' ' + (t.user?.lastName || '')}</td>
-      <td>${t.description || ''}</td>
-      <td class="text-right ${t.amount >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(t.amount)}</td>
-      <td>${t.status}</td>
-    </tr>`).join('');
-    const tableHtml = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Descripción</th><th>Monto</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
-    generatePDF('Reporte de Transacciones', statsHtml, tableHtml);
-    toast.success('PDF de transacciones generado');
+    
+    doc.setTextColor(51, 65, 85);
+    doc.setFontSize(9);
+    doc.text(`Total Ingresos: ${formatCurrency(incomeTotal)}`, 15, 48);
+    doc.text(`Total Egresos: ${formatCurrency(expenseTotal)}`, pageWidth / 2, 48);
+    doc.text(`Transacciones: ${filteredTx.length}`, 15, 54);
+
+    const tableData = filteredTx.map((t: any) => [
+      formatDate(t.createdAt),
+      TX_TYPE[t.type] || t.type,
+      `${t.user?.firstName || ''} ${t.user?.lastName || ''}`,
+      t.description || '',
+      formatCurrency(t.amount),
+      t.status
+    ]);
+
+    autoTable(doc, {
+      startY: 65,
+      head: [['Fecha', 'Tipo', 'Usuario', 'Descripción', 'Monto', 'Estado']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`transacciones-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF de transacciones generado y descargando');
   };
 
   // ─── Dynamic filter options based on active tab ────────────────────

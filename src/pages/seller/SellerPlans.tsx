@@ -41,7 +41,7 @@ export default function SellerPlans() {
             annual: 'Anual'
         };
         const message = `Hola Oscorp, me interesa adquirir el ${plan.name} (Plan ${cycleNames[cycle]}) para mi comercio. Mi usuario es ${user?.email}. ¿Podrían pasarme los datos para la transferencia bancaria?`;
-        const whatsappUrl = `https://wa.me/595981123456?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/595975855585?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
     };
 

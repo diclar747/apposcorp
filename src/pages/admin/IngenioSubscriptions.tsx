@@ -57,6 +57,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import type { IngenioSubscription } from '@/types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function IngenioSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -136,6 +138,46 @@ export default function IngenioSubscriptions() {
     }
   };
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE SUSCRIPCIONES INGENIO', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    const tableData = filtered.map(s => [
+      `${s.user?.firstName || ''} ${s.user?.lastName || 'Usuario'}`,
+      s.status === 'ACTIVE' ? 'Activo' : s.status === 'PENDING_APPROVAL' ? 'Pendiente' : s.status === 'REVOKED' ? 'Revocado' : s.status,
+      `${s.installments} cuotas`,
+      formatCurrency(s.paidAmount),
+      formatCurrency(s.totalAmount),
+      new Date(s.updatedAt || s.createdAt).toLocaleDateString()
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Usuario', 'Estado', 'Plan', 'Pagado', 'Total', 'Último Mov.']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`suscripciones-ingenio-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
+
   const filtered = subscriptions.filter(sub => {
     const matchesSearch = 
       sub.user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -162,10 +204,15 @@ export default function IngenioSubscriptions() {
           </h1>
           <p className="text-slate-500 dark:text-slate-400">Control de pagos y accesos al módulo Ingenio Millonario</p>
         </div>
-        <Button onClick={fetchSubscriptions} variant="outline" size="sm" className="gap-2">
-          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToPDF} size="sm">
+            Exportar PDF
+          </Button>
+          <Button onClick={fetchSubscriptions} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">

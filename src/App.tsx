@@ -20,6 +20,8 @@ import PresentacionE1 from '@/pages/public/PresentacionE1';
 import PresentacionE2 from '@/pages/public/PresentacionE2';
 import ForgotPasswordPage from '@/pages/public/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/public/ResetPasswordPage';
+import NotFoundPage from '@/pages/public/NotFoundPage';
+import type { UserRole } from '@/types';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/Dashboard';
@@ -33,7 +35,6 @@ import IngenioBudget from '@/pages/ingenio/Budget';
 import IngenioReports from '@/pages/ingenio/Reports';
 import IngenioAcademy from '@/pages/ingenio/Academy';
 import IngenioCourseDetail from '@/pages/ingenio/CourseDetail';
-import IngenioWallet from '@/pages/ingenio/Wallet';
 import IngenioProfile from '@/pages/ingenio/Profile';
 import AdminProducts from '@/pages/admin/Products';
 import AdminOrders from '@/pages/admin/Orders';
@@ -97,23 +98,31 @@ function ProtectedRoute({
   allowedRoles
 }: {
   children: React.ReactNode;
-  allowedRoles: ('client' | 'seller' | 'superadmin' | 'ingenio')[];
+  allowedRoles: UserRole[];
 }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, activeRole, isHydrated } = useAuthStore();
+
+  if (!isHydrated) return null;
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  const userRoles = Array.isArray(user.roles) ? user.roles : [];
-  const hasAccess = userRoles.some(role => allowedRoles.includes(role));
+  // Si por alguna razón no hay activeRole pero sí usuario, lo redirigimos 
+  // para que la lógica de inicialización en el store actúe o lo mande al login
+  if (!activeRole) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const hasAccess = allowedRoles.includes(activeRole);
 
   if (!hasAccess) {
-    // Redirect to their default interface based on role
-    if (userRoles.includes('superadmin')) return <Navigate to="/admin" replace />;
-    if (userRoles.includes('seller')) return <Navigate to="/vendedor" replace />;
-    if (userRoles.includes('ingenio')) return <Navigate to="/ingenio" replace />;
-    if (userRoles.includes('client')) return <Navigate to="/app" replace />;
+    // Si intenta entrar a una ruta fuera de su contexto actual, 
+    // lo devolvemos a su dashboard activo
+    if (activeRole === 'superadmin') return <Navigate to="/admin" replace />;
+    if (activeRole === 'seller') return <Navigate to="/vendedor" replace />;
+    if (activeRole === 'ingenio') return <Navigate to="/ingenio" replace />;
+    if (activeRole === 'client') return <Navigate to="/app" replace />;
     
     return <Navigate to="/" replace />;
   }
@@ -122,6 +131,16 @@ function ProtectedRoute({
 }
 
 function App() {
+  const { isHydrated, fetchCurrentUser } = useAuthStore();
+
+  // 1. Initial re-validation on mount
+  useEffect(() => {
+    if (localStorage.getItem('oscorp-token')) {
+      fetchCurrentUser();
+    }
+  }, [fetchCurrentUser]);
+
+  // 2. Theme and Splash Screen management
   useEffect(() => {
     // Theme initialization
     const { resolvedTheme } = useThemeStore.getState();
@@ -129,13 +148,17 @@ function App() {
     root.classList.remove('light', 'dark');
     root.classList.add(resolvedTheme);
 
-    // Hide splash screen after app mounts
-    const splash = document.getElementById('splash');
-    if (splash) {
-      splash.classList.add('hide');
-      setTimeout(() => splash.remove(), 500);
+    // Hide splash screen only when hydrated
+    if (isHydrated) {
+      const splash = document.getElementById('splash');
+      if (splash) {
+        splash.classList.add('hide');
+        setTimeout(() => splash.remove(), 500);
+      }
     }
-  }, []);
+  }, [isHydrated]);
+
+  if (!isHydrated) return null;
 
   return (
     <BrowserRouter>
@@ -239,11 +262,10 @@ function App() {
           <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 
-        {/* Ingenio Millonario Routes */}
         <Route
           path="/ingenio"
           element={
-            <ProtectedRoute allowedRoles={['ingenio']}>
+            <ProtectedRoute allowedRoles={['ingenio', 'client', 'seller', 'superadmin']}>
               <IngenioLayout />
             </ProtectedRoute>
           }
@@ -254,12 +276,13 @@ function App() {
           <Route path="academia" element={<IngenioAcademy />} />
           <Route path="materiales" element={<IngenioMaterials />} />
           <Route path="cursos/:id" element={<IngenioCourseDetail />} />
-          <Route path="wallet" element={<IngenioWallet />} />
+          <Route path="wallet" element={<Navigate to="/app/wallet" replace />} />
           <Route path="profile" element={<IngenioProfile />} />
+          <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toaster position="top-right" richColors />
       <GlobalPaywall />

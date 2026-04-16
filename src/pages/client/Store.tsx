@@ -22,15 +22,33 @@ export default function ClientStore() {
   const [products, setProducts] = useState<any[]>([]);
   const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [store, setStore] = useState<any>(null);
+
+  const canPurchaseItem = (p: any) => {
+    // Si estamos en una vista de tienda específica, usamos el estado de esa tienda
+    if (storeSlug && store) {
+      const planName = store.sellerProfile?.plan?.name?.toLowerCase() || '';
+      if (planName.includes('básico') || planName.includes('basic')) return false;
+      const features = store.sellerProfile?.plan?.features || [];
+      return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+    }
+    // Si es vista general, revisamos el plan del vendedor del producto
+    const planName = p.seller?.plan?.name?.toLowerCase() || '';
+    if (planName.includes('básico') || planName.includes('basic')) return false;
+    const features = p.seller?.plan?.features || [];
+    if (features.length === 0) return false; // Por defecto restrictivo si no hay info de plan
+    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         if (storeSlug) {
-          const store = await storesApi.getBySlug(storeSlug);
-          setStoreName(store.name);
-          setProducts(store.products || []);
+          const storeData = await storesApi.getBySlug(storeSlug);
+          setStore(storeData);
+          setStoreName(storeData.name);
+          setProducts(storeData.products || []);
         } else {
           const data = await productsApi.getAll();
           setProducts(data);
@@ -149,21 +167,40 @@ export default function ClientStore() {
                         <span className="text-xs text-muted-foreground line-through">{formatCurrency(product.comparePrice)}</span>
                       )}
                     </div>
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e) => handleQuickAdd(e, product)}
-                      className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
-                        isInCart(product.id)
-                          ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
-                          : 'bg-primary/10 text-primary hover:bg-primary/20'
-                      }`}
-                    >
-                      {isInCart(product.id) ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <ShoppingCart className="w-4 h-4" />
-                      )}
-                    </motion.button>
+                    {canPurchaseItem(product) ? (
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => handleQuickAdd(e, product)}
+                        className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
+                          isInCart(product.id)
+                            ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
+                      >
+                        {isInCart(product.id) ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <ShoppingCart className="w-4 h-4" />
+                        )}
+                      </motion.button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 text-[10px] border-green-200 text-green-600 font-bold"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const number = product.seller?.whatsappNumber || product.seller?.phone || '';
+                          const cleanNumber = number.replace(/\D/g, '');
+                          const sellerName = product.seller?.storeName || 'Vendedor';
+                          const message = `Hola ${sellerName}, me interesa el producto "${product.name}". ¿Sigue disponible?`;
+                          window.open(`https://wa.me/${cleanNumber.startsWith('595') ? cleanNumber : '595' + cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                        }}
+                      >
+                        Consultar
+                      </Button>
+                    )}
                   </div>
                 </div>
               </motion.div>

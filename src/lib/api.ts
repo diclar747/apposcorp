@@ -23,6 +23,13 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     headers,
   });
 
+  if (response.status === 401) {
+    localStorage.removeItem('oscorp-token');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.details || error.error || `HTTP ${response.status}`);
@@ -639,6 +646,9 @@ export const reportsApi = {
     const qs = query.toString();
     return fetchWithAuth(`/reports/financial${qs ? `?${qs}` : ''}`);
   },
+  getSellerStats: () => fetchWithAuth('/reports/seller-stats'),
+  getClientStats: () => fetchWithAuth('/reports/client-stats'),
+  getAdminStats: () => fetchWithAuth('/reports/admin-stats'),
   exportCSV: (params?: {
     startDate?: string;
     endDate?: string;

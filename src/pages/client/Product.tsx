@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Heart, Share2, Store, Star, Minus, Plus, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, Store, Star, Minus, Plus, Check, ArrowLeft, Loader2, MessageCircle } from 'lucide-react';
 import { useCartStore } from '@/stores';
 import { productsApi } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ export default function ClientProduct() {
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -35,6 +36,27 @@ export default function ClientProduct() {
 
     fetchProduct();
   }, [id]);
+
+  const store = useMemo(() => {
+    if (!product?.seller) return null;
+    const seller = product.seller;
+    return {
+      name: seller.storeName || `${seller.user?.firstName || ''} ${seller.user?.lastName || ''}`.trim() || 'Tienda',
+      slug: seller.storeSlug,
+      logo: seller.logo,
+      phone: seller.whatsappNumber || seller.phone || seller.user?.phone,
+      plan: seller.plan
+    };
+  }, [product]);
+
+  const canPurchase = useMemo(() => {
+    if (!store?.plan) return false;
+    const planName = store.plan.name.toLowerCase();
+    if (planName.includes('básico') || planName.includes('basic')) return false;
+    
+    const features = store.plan.features || [];
+    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+  }, [store]);
 
   if (loading) {
     return (
@@ -55,10 +77,6 @@ export default function ClientProduct() {
     );
   }
 
-  const store = product.seller ? {
-    name: `${product.seller.firstName} ${product.seller.lastName}`,
-    logo: null
-  } : null;
 
   const handleAddToCart = () => {
     addItem(product, quantity);
@@ -118,10 +136,27 @@ export default function ClientProduct() {
             <h2 className="text-xl font-bold text-foreground">{product.name}</h2>
           </div>
           <div className="flex gap-2">
-            <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-              <Heart className="w-5 h-5 text-muted-foreground" />
+            <button 
+              onClick={() => setIsFavorite(!isFavorite)}
+              className={cn("p-2 rounded-lg transition-colors", isFavorite ? "bg-rose-50 text-rose-500" : "hover:bg-muted")}
+            >
+              <Heart className={cn("w-5 h-5", isFavorite && "fill-current")} />
             </button>
-            <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <button 
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: product.name,
+                    text: product.description,
+                    url: window.location.href
+                  });
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast.success('¡Enlace copiado al portapapeles!');
+                }
+              }}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+            >
               <Share2 className="w-5 h-5 text-muted-foreground" />
             </button>
           </div>
@@ -139,7 +174,11 @@ export default function ClientProduct() {
         {store && (
           <div className="flex items-center gap-3 mt-4 p-3 bg-muted/50 rounded-xl">
             <div className="w-10 h-10 rounded-lg bg-background border border-border overflow-hidden flex items-center justify-center">
-              <Store className="w-5 h-5 text-muted-foreground" />
+              {store.logo ? (
+                <img src={store.logo} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Store className="w-5 h-5 text-muted-foreground" />
+              )}
             </div>
             <div className="flex-1">
               <p className="font-medium text-sm text-foreground">{store.name}</p>
@@ -148,7 +187,13 @@ export default function ClientProduct() {
                 <span className="text-sm text-foreground">4.8</span>
               </div>
             </div>
-            <Button variant="outline" size="sm">Ver tienda</Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate(`/app/tienda/${store.slug}`)}
+            >
+              Ver tienda
+            </Button>
           </div>
         )}
 
@@ -168,52 +213,72 @@ export default function ClientProduct() {
 
       {/* Add to Cart Bar */}
       <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 z-30">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          {/* Quantity */}
-          <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
-            <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 flex items-center justify-center hover:bg-background rounded-md transition-colors"
+        <div className="max-w-lg mx-auto flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            {canPurchase && (
+              <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-background rounded-md transition-colors"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="w-8 text-center font-medium">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-background rounded-md transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Add Button */}
+            <Button
+              className="flex-1"
+              onClick={handleAddToCart}
+              disabled={!canPurchase || inCart}
             >
-              <Minus className="w-4 h-4" />
-            </button>
-            <span className="w-8 text-center font-medium">{quantity}</span>
-            <button
-              onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-              className="w-8 h-8 flex items-center justify-center hover:bg-background rounded-md transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+              {!canPurchase ? (
+                'Visitar tienda para comprar'
+              ) : inCart ? (
+                <>
+                  <Check className="w-5 h-5 mr-2" />
+                  En carrito ({cartQuantity})
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  Agregar al carrito
+                </>
+              )}
+            </Button>
+
+            {/* Go to cart */}
+            {canPurchase && inCart && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => navigate('/app/carrito')}
+                title="Ver carrito"
+              >
+                <ShoppingCart className="w-5 h-5" />
+              </Button>
+            )}
           </div>
 
-          {/* Add Button */}
-          <Button
-            className="flex-1"
-            onClick={handleAddToCart}
-            disabled={inCart}
-          >
-            {inCart ? (
-              <>
-                <Check className="w-5 h-5 mr-2" />
-                En carrito ({cartQuantity})
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-5 h-5 mr-2" />
-                Agregar al carrito
-              </>
-            )}
-          </Button>
-
-          {/* Go to cart */}
-          {inCart && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate('/app/carrito')}
-              title="Ver carrito"
+          {!canPurchase && (
+            <Button 
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+              onClick={() => {
+                const number = store?.phone || '';
+                const cleanNumber = number.replace(/\D/g, '');
+                const message = `Hola ${store?.name}, me interesa el producto "${product.name}". ¿Sigue disponible?`;
+                window.open(`https://wa.me/${cleanNumber.startsWith('595') ? cleanNumber : '595' + cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+              }}
             >
-              <ShoppingCart className="w-5 h-5" />
+              <MessageCircle className="w-5 h-5 mr-2" />
+              Consultar por WhatsApp
             </Button>
           )}
         </div>

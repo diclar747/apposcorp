@@ -4,6 +4,8 @@ import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2, Check,
 import { walletApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getTransactionTypeInfo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +69,49 @@ export default function AdminTransactions() {
     }
   };
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Logo/Header
+    doc.setFillColor(15, 23, 42); 
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OSCORP PLATFORM', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('REPORTE DE TRANSACCIONES', 15, 33);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+
+    const tableData = filteredTransactions.map(t => {
+      const typeInfo = getTransactionTypeInfo(t.type);
+      return [
+        formatDateTime(t.createdAt),
+        typeInfo.label,
+        `${t.user?.firstName || ''} ${t.user?.lastName || ''}`,
+        t.description,
+        formatCurrency(t.amount),
+        t.status === 'completed' ? 'Completado' : t.status === 'pending' ? 'Pendiente' : 'Fallida'
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Fecha', 'Tipo', 'Usuario', 'Descripción', 'Monto', 'Estado']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(`transacciones-oscorp-${new Date().getTime()}.pdf`);
+    toast.success('PDF exportado correctamente');
+  };
+
   const filteredTransactions = transactions.filter(transaction => {
     const user = transaction.user;
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -91,9 +136,9 @@ export default function AdminTransactions() {
           <h1 className="text-2xl font-bold text-gray-900">Transacciones</h1>
           <p className="text-gray-500">Historial de todas las transacciones</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={exportToPDF}>
           <Download className="w-4 h-4 mr-2" />
-          Exportar
+          Exportar PDF
         </Button>
       </div>
 

@@ -69,9 +69,26 @@ export default function StorePage() {
     fetchStore();
   }, [slug]);
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success('¡Enlace copiado al portapapeles!');
+  const handleShare = async () => {
+    const shareData = {
+      title: store?.name || 'Tienda Oscorp',
+      text: store?.description || 'Visita esta tienda en Oscorp',
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('¡Enlace copiado al portapapeles!');
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('¡Enlace copiado al portapapeles!');
+      }
+    }
   };
 
   const handleLeaveReview = async () => {
@@ -85,10 +102,23 @@ export default function StorePage() {
       setIsReviewModalOpen(false);
       setReviewForm({ rating: 5, comment: '' });
       toast.success('¡Gracias por tu opinión!');
-    } catch (error) {
-      toast.error('Debes iniciar sesión para dejar una opinión');
+    } catch (error: any) {
+      if (error.message?.includes('401') || error.message?.includes('403')) {
+        toast.error('Debes iniciar sesión para dejar una opinión');
+      } else {
+        toast.error('Error al enviar la opinión. Por favor intenta de nuevo.');
+      }
     }
   };
+
+  const canPurchase = useMemo(() => {
+    if (!store?.plan) return false;
+    const planName = store.plan.name.toLowerCase();
+    if (planName.includes('básico') || planName.includes('basic')) return false;
+
+    const features = store.plan.features || [];
+    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+  }, [store]);
 
   const categories = useMemo((): string[] => {
     if (!store?.products) return [];
@@ -151,6 +181,7 @@ export default function StorePage() {
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : "5.0";
 
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 pb-20">
       {/* Premium Banner Section */}
@@ -177,28 +208,26 @@ export default function StorePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
         {/* Navigation Overlays */}
-        {!isInApp && (
-          <>
-            <div className="absolute top-6 left-6 md:left-12 flex gap-4">
-              <Link to="/app/tiendas">
-                <Button variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Volver
-                </Button>
-              </Link>
-            </div>
+        <div className="absolute top-6 right-6 md:right-12 flex gap-3 z-30">
+          <Button 
+            onClick={handleShare}
+            size="icon" 
+            variant="outline" 
+            className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 w-10 h-10 md:w-12 md:h-12"
+          >
+            <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+          </Button>
+        </div>
 
-            <div className="absolute top-6 right-6 md:right-12 flex gap-3">
-              <Button 
-                onClick={handleShare}
-                size="icon" 
-                variant="outline" 
-                className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
-              >
-                <Share2 className="w-4 h-4" />
+        {!isInApp && (
+          <div className="absolute top-6 left-6 md:left-12 flex gap-4 z-30">
+            <Link to="/app/tiendas">
+              <Button variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver
               </Button>
-            </div>
-          </>
+            </Link>
+          </div>
         )}
 
         {/* Floating Store Header Info */}
@@ -435,6 +464,13 @@ export default function StorePage() {
                             setActiveImageIndex(0);
                           }}
                           viewMode={viewMode}
+                          canPurchase={canPurchase}
+                          onConsult={() => {
+                            const number = store.whatsappNumber || store.phone || '';
+                            const cleanNumber = number.replace(/\D/g, '');
+                            const message = `Hola ${store.name}, me interesa el producto "${product.name}". ¿Sigue disponible?`;
+                            window.open(`https://wa.me/${cleanNumber.startsWith('595') ? cleanNumber : '595' + cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                          }}
                         />
                       ))}
                     </motion.div>
@@ -666,13 +702,15 @@ export default function StorePage() {
       </div>
 
       {/* Modern Cart Drawer with Vaul - Moved higher when in-app to avoid BottomNav overlap */}
-      <CartDrawer
-        items={items}
-        total={total}
-        removeItem={removeItem}
-        updateQuantity={updateQuantity}
-        bottomOffset={isInApp ? "bottom-24" : "bottom-10"}
-      />
+      {canPurchase && (
+        <CartDrawer
+          items={items}
+          total={total}
+          removeItem={removeItem}
+          updateQuantity={updateQuantity}
+          bottomOffset={isInApp ? "bottom-24" : "bottom-10"}
+        />
+      )}
 
       {/* Opinion Modal */}
       <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
@@ -800,17 +838,39 @@ export default function StorePage() {
                     <span>Disponibilidad: <span className="text-green-500">En Stock</span></span>
                     <span>SKU: {selectedProduct.sku || 'N/A'}</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col gap-3">
                     <Button 
+                      disabled={!canPurchase}
                       onClick={() => {
                         addItem(selectedProduct, 1);
                         setSelectedProduct(null);
                         toast.success('Producto añadido al carrito');
                       }}
-                      className="flex-1 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+                      className={cn(
+                        "flex-1 h-16 rounded-2xl font-black text-lg transition-all active:scale-95",
+                        canPurchase
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 dark:shadow-none"
+                          : "bg-gray-100 text-gray-400 border border-gray-200"
+                      )}
                     >
-                      Añadir al Carrito
+                      {canPurchase ? 'Añadir al Carrito' : 'Visitar tienda para comprar'}
                     </Button>
+                    
+                    {!canPurchase && (
+                      <Button 
+                        onClick={() => {
+                          const number = store.whatsappNumber || store.phone || '';
+                          const cleanNumber = number.replace(/\D/g, '');
+                          const message = `Hola ${store.name}, me interesa el producto "${selectedProduct.name}". ¿Sigue disponible?`;
+                          window.open(`https://wa.me/${cleanNumber.startsWith('595') ? cleanNumber : '595' + cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                        }}
+                        variant="outline" 
+                        className="h-14 rounded-2xl border-green-200 text-green-600 hover:bg-green-50 font-bold"
+                      >
+                        <MessageCircle className="w-5 h-5 mr-3" />
+                        Consultar por WhatsApp
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -824,7 +884,7 @@ export default function StorePage() {
 
 // --- Sub-components ---
 
-function ProductCard({ product, onAddToCart, onViewProduct, viewMode }: { product: any, onAddToCart: () => void, onViewProduct: () => void, viewMode: 'grid' | 'list' }) {
+function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchase, onConsult }: { product: any, onAddToCart: () => void, onViewProduct: () => void, viewMode: 'grid' | 'list', canPurchase: boolean, onConsult: () => void }) {
   if (viewMode === 'list') {
     return (
       <motion.div
@@ -867,20 +927,36 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode }: { produc
                 </p>
               )}
             </div>
-            <div className="flex gap-3">
-              <Button onClick={onViewProduct} size="icon" variant="outline" className="h-14 w-14 rounded-2xl border-gray-100 active:scale-95 shadow-sm">
-                <Search className="w-5 h-5" />
-              </Button>
-              <Button size="icon" variant="outline" className="h-14 w-14 rounded-2xl border-gray-100 active:scale-95 shadow-sm">
-                <Share2 className="w-5 h-5" />
-              </Button>
+            <div className="flex flex-col gap-2">
               <Button
+                disabled={!canPurchase}
                 onClick={onAddToCart}
-                className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black text-lg shadow-lg shadow-blue-100 dark:shadow-none min-w-[200px]"
+                className={cn(
+                  "h-14 px-8 rounded-2xl font-black text-lg min-w-[200px]",
+                  canPurchase 
+                    ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none" 
+                    : "bg-gray-100 text-gray-400 border border-gray-200"
+                )}
               >
-                <Plus className="w-5 h-5 mr-3 stroke-[3]" />
-                Agregar al Carrito
+                {canPurchase ? (
+                  <>
+                    <Plus className="w-5 h-5 mr-3 stroke-[3]" />
+                    Agregar al Carrito
+                  </>
+                ) : (
+                  'Visitar tienda para comprar'
+                )}
               </Button>
+              {!canPurchase && (
+                <Button 
+                  onClick={onConsult}
+                  variant="outline" 
+                  className="h-12 rounded-xl border-green-200 text-green-600 hover:bg-green-50 font-bold"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Consultar por WhatsApp
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -918,13 +994,31 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode }: { produc
           </div>
         )}
 
-        <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-          <Button
-            onClick={onAddToCart}
-            className="w-full h-14 bg-white/95 backdrop-blur-xl text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl font-black shadow-2xl border-0"
-          >
-            Añadir al carrito
-          </Button>
+        <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2">
+          {canPurchase ? (
+            <Button
+              onClick={onAddToCart}
+              className="w-full h-14 bg-white/95 backdrop-blur-xl text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl font-black shadow-2xl border-0"
+            >
+              Añadir al carrito
+            </Button>
+          ) : (
+            <>
+              <Button
+                disabled
+                className="w-full h-12 bg-white/95 backdrop-blur-xl text-gray-400 rounded-2xl font-bold border-0 text-xs"
+              >
+                Visitar tienda para comprar
+              </Button>
+              <Button
+                onClick={onConsult}
+                className="w-full h-12 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black shadow-lg border-0"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Consultar
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -952,12 +1046,14 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode }: { produc
               {formatCurrency(product.price)}
             </span>
           </div>
-          <button
-            onClick={onAddToCart}
-            className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"
-          >
-            <Plus className="w-6 h-6 stroke-[3]" />
-          </button>
+          {canPurchase && (
+            <button
+              onClick={onAddToCart}
+              className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"
+            >
+              <Plus className="w-6 h-6 stroke-[3]" />
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

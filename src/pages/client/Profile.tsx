@@ -16,7 +16,11 @@ import {
   Sparkles,
   Eye,
   EyeOff,
-  AlertCircle
+  AlertCircle,
+  Instagram,
+  Facebook,
+  MessageCircle,
+  X
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { getInitials, cn } from '@/lib/utils';
@@ -41,11 +45,33 @@ const menuItems = [
   { icon: FileText, label: 'Términos y condiciones', action: 'terms', color: 'text-rose-500', bg: 'bg-rose-500/10' },
 ];
 
+const socialSupport = [
+  { 
+    icon: Instagram, 
+    label: 'Instagram', 
+    href: "https://www.instagram.com/oscorp_py?igsh=OGpxZnI4cTcxZWtw&utm_source=ig_contact_invite", 
+    color: 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]' 
+  },
+  { 
+    icon: Facebook, 
+    label: 'Facebook', 
+    href: "https://www.facebook.com/share/1BfdPwqaZN/", 
+    color: 'bg-[#1877F2]' 
+  },
+  { 
+    icon: MessageCircle, 
+    label: 'WhatsApp', 
+    href: "https://wa.me/595975855585", 
+    color: 'bg-[#25D366]' 
+  }
+];
+
 export default function ClientProfile() {
   const { user, logout, updateUser, updateBankData, changePassword } = useAuthStore();
   const { wallet, fetchWallet } = useWalletStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
   const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
 
@@ -212,7 +238,7 @@ export default function ClientProfile() {
         initBankData();
         break;
       case 'support':
-        window.open('https://wa.me/595981279526', '_blank');
+        setIsSupportOpen(true);
         break;
       case 'terms':
         toast.info('Términos y condiciones actualizados', { description: 'Disponibles en el panel administrativo.' });
@@ -580,6 +606,50 @@ export default function ClientProfile() {
             </div>
             <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.15em] mt-4 shadow-lg shadow-indigo-500/20" onClick={handleChangePassword}>
               Actualizar Contraseña
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Support Dialog */}
+      <Dialog open={isSupportOpen} onOpenChange={setIsSupportOpen}>
+        <DialogContent className="glass-premium border-white/10 rounded-[2rem] p-0 overflow-hidden">
+          <div className="p-8">
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="w-16 h-16 rounded-[1.5rem] bg-purple-500/10 flex items-center justify-center mb-4">
+                <HelpCircle className="w-8 h-8 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-black tracking-tight mb-2">Ayuda y Soporte</h2>
+              <p className="text-sm text-muted-foreground font-medium">Contáctanos a través de nuestras redes oficiales</p>
+            </div>
+            
+            <div className="space-y-3">
+              {socialSupport.map((btn) => (
+                <a 
+                  key={btn.label}
+                  href={btn.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg", btn.color)}>
+                      <btn.icon className="w-6 h-6" />
+                    </div>
+                    <span className="font-bold text-base">{btn.label}</span>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-all group-hover:bg-white/10">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
+                  </div>
+                </a>
+              ))}
+            </div>
+            
+            <Button 
+              className="w-full mt-8 h-14 rounded-2xl font-black text-xs uppercase tracking-widest bg-white/5 hover:bg-white/10 text-foreground"
+              onClick={() => setIsSupportOpen(false)}
+            >
+              Cerrar
             </Button>
           </div>
         </DialogContent>
