@@ -110,10 +110,14 @@ export default function SellerPOS() {
 
   // Plan Restriction Check
   useEffect(() => {
-    if (user && user.sellerProfile && user.sellerProfile.plan) {
-      const features = user.sellerProfile.plan.features || [];
-      const hasPOS = features.some(f => f.toLowerCase().includes('pos'));
-      if (!hasPOS) {
+    if (user && user.sellerProfile && user.sellerProfile.planActive) {
+      const plan = user.sellerProfile.plan;
+      const tier = plan?.tier?.toLowerCase() || 'basic';
+      const features = plan?.features || [];
+      const isComercial = !user.sellerProfile.planId;
+      const isStandardOrBetter = tier === 'standard' || tier === 'premium' || isComercial;
+
+      if (!features.some(f => f.toLowerCase().includes('pos')) && !isStandardOrBetter) {
         toast.error('Tu plan no incluye acceso al Punto de Venta (POS)');
         navigate('/vendedor');
       }

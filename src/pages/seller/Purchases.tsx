@@ -77,9 +77,14 @@ export default function Purchases() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (user && user.sellerProfile && user.sellerProfile.plan) {
-            const features = user.sellerProfile.plan.features || [];
-            if (!features.some(f => f.toLowerCase().includes('compras'))) {
+        if (user && user.sellerProfile && user.sellerProfile.planActive) {
+            const plan = user.sellerProfile.plan;
+            const tier = plan?.tier?.toLowerCase() || 'basic';
+            const features = plan?.features || [];
+            const isComercial = !user.sellerProfile.planId;
+            const isStandardOrBetter = tier === 'standard' || tier === 'premium' || isComercial;
+
+            if (!features.some(f => f.toLowerCase().includes('compras')) && !isStandardOrBetter) {
                 toast.error('Tu plan no incluye gestión de compras');
                 navigate('/vendedor');
             }

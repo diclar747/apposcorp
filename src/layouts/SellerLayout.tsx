@@ -152,10 +152,12 @@ export default function SellerLayout() {
                 const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
                 
                 // Tier-based permissions bypass
-                const isStandardOrBetter = tier === 'standard' || tier === 'premium';
+                // Un usuario "Comercial" es aquel que tiene el perfil activo pero NO tiene un plan (usa comisión)
+                const isComercial = !user?.sellerProfile?.planId && user?.sellerProfile?.planActive;
+                const isStandardOrBetter = tier === 'standard' || tier === 'premium' || isComercial;
                 const isPremium = tier === 'premium';
 
-                // Basic logic: If standard or premium, they get core modules.
+                // Basic logic: If standard, premium or comercial, they get core modules.
                 // If premium, they get everything (Reports, Management).
                 
                 if (item.href === '/vendedor/pos' && !hasFeature('POS') && !isStandardOrBetter) return null;
