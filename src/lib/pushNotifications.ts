@@ -23,9 +23,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 async function getVapidPublicKey(): Promise<string> {
-  const response = await fetch('/api/push/vapid-public-key');
-  const data = await response.json();
-  return data.publicKey;
+  try {
+    const response = await fetch('/api/push/vapid-public-key');
+    if (!response.ok) throw new Error('Failed to fetch VAPID key');
+    const data = await response.json();
+    if (!data.publicKey) throw new Error('VAPID key is empty');
+    return data.publicKey.trim().replace(/['"]+/g, '');
+  } catch (error) {
+    console.error('Error getting VAPID key:', error);
+    throw error;
+  }
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {

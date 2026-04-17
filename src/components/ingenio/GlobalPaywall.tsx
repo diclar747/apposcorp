@@ -17,7 +17,8 @@ export function GlobalPaywall() {
     }
   }, [isIngenioRoute, isActive, openPaywall]);
 
-  if (!isIngenioRoute || isActive) return null;
+  if (!isIngenioRoute && !isOpen) return null;
+  if (isActive && !isOpen) return null;
 
   return (
     <SubscriptionModal 

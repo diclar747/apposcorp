@@ -199,6 +199,14 @@ export default function Purchases() {
         setSelectedItems([]);
     };
 
+    const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    const handleViewDetail = (purchase: Purchase) => {
+        setSelectedPurchase(purchase);
+        setIsDetailOpen(true);
+    };
+
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.sku.toLowerCase().includes(searchTerm.toLowerCase())
@@ -269,7 +277,13 @@ export default function Purchases() {
                                         ₲ {purchase.totalAmount.toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm">Ver Detalle</Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={() => handleViewDetail(purchase)}
+                                        >
+                                            Ver Detalle
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -277,6 +291,50 @@ export default function Purchases() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Modal de Detalle de Compra */}
+            <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Detalle de Compra - {selectedPurchase?.invoiceNumber}</DialogTitle>
+                        <DialogDescription>
+                            Proveedor: {selectedPurchase?.supplier.name} | Fecha: {selectedPurchase && format(new Date(selectedPurchase.purchaseDate), 'dd/MM/yyyy')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Producto</TableHead>
+                                        <TableHead className="text-center">Cant.</TableHead>
+                                        <TableHead className="text-right">Costo Unit.</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {selectedPurchase?.items.map((item: any) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">{item.product?.name || 'Producto eliminado'}</TableCell>
+                                            <TableCell className="text-center">{item.quantity}</TableCell>
+                                            <TableCell className="text-right">₲ {item.unitCost.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right font-bold">₲ {item.totalCost.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <div className="mt-6 flex justify-end items-center gap-4 text-xl font-black">
+                            <span>TOTAL:</span>
+                            <span className="text-green-600 font-black">₲ {selectedPurchase?.totalAmount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsDetailOpen(false)}>Cerrar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

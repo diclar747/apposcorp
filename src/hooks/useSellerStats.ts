@@ -5,6 +5,7 @@ export interface SellerStats {
   stats: {
     totalRevenue: number;
     totalSales: number;
+    totalPurchases: number;
     pendingOrders: number;
     currentBalance: number;
     storeName: string;

@@ -75,7 +75,7 @@ export default function SellerDashboard() {
       {/* Stats Cards */}
       <div className={cn(
         "grid gap-4",
-        hasFeature('Pedidos') ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3"
+        hasFeature('Pedidos') ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-2 md:grid-cols-4"
       )}>
         <Card className="border-none shadow-lg bg-white dark:bg-slate-900 overflow-hidden relative">
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
@@ -105,6 +105,23 @@ export default function SellerDashboard() {
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Billetera</p>
                 <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white truncate">
                   {formatCurrency(stats.currentBalance)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-white dark:bg-slate-900 overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center">
+                <ShoppingCart className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Compras</p>
+                <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white truncate">
+                  {formatCurrency(stats.totalPurchases || 0)}
                 </p>
               </div>
             </div>
