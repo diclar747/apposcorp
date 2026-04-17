@@ -74,6 +74,12 @@ interface UserData {
   avatar: string;
   createdAt: string;
   permissions?: any;
+  sellerProfile?: {
+    planActive: boolean;
+    plan?: {
+      name: string;
+    };
+  };
 }
 
 export default function AdminUsers() {
@@ -584,17 +590,24 @@ export default function AdminUsers() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {user.roles?.map(role => {
-                            const RIcon = getRoleIcon(role);
-                            return (
-                              <Badge key={role} className={cn(getRoleColor(role), "text-xs")}>
-                                <RIcon className="w-3 h-3 mr-1 shrink-0" />
-                                <span className="hidden sm:inline">{getRoleName(role)}</span>
-                                <span className="sm:hidden">{getRoleName(role).substring(0, 4)}</span>
-                              </Badge>
-                            );
-                          })}
+                        <div className="flex flex-col gap-1">
+                          <div className="flex gap-1 flex-wrap">
+                            {user.roles?.map(role => {
+                              const RIcon = getRoleIcon(role);
+                              return (
+                                <Badge key={role} className={cn(getRoleColor(role), "text-xs")}>
+                                  <RIcon className="w-3 h-3 mr-1 shrink-0" />
+                                  <span className="hidden sm:inline">{getRoleName(role)}</span>
+                                  <span className="sm:hidden">{getRoleName(role).substring(0, 4)}</span>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                          {user.roles?.includes('seller') && user.sellerProfile?.planActive && (
+                            <Badge variant="outline" className="text-[10px] w-fit border-blue-200 text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 font-bold uppercase tracking-wider">
+                              Plan: {user.sellerProfile.plan?.name || 'Cargando...'}
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">

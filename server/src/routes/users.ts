@@ -78,7 +78,11 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
     const users = await prisma.user.findMany({
       include: {
         wallet: true,
-        sellerProfile: true,
+        sellerProfile: {
+          include: {
+            plan: true
+          }
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

@@ -41,9 +41,16 @@ export default function SellerOrders() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && user.sellerProfile && user.sellerProfile.plan) {
-      const features = user.sellerProfile.plan.features || [];
-      if (!features.some(f => f.toLowerCase().includes('pedidos'))) {
+    if (user && user.sellerProfile && user.sellerProfile.planActive) {
+      const plan = user.sellerProfile.plan;
+      const tier = (plan?.tier || 'basic').toLowerCase();
+      const features = plan?.features || [];
+      
+      const isPremium = tier.includes('premium') || tier.includes('pro');
+      const isStandard = tier.includes('standard') || tier.includes('estandar') || tier.includes('comercial') || tier.includes('comisión') || !user.sellerProfile.planId;
+      const hasStandardAccess = isStandard || isPremium;
+
+      if (!features.some(f => f.toLowerCase().includes('pedidos')) && !hasStandardAccess) {
         toast.error('Tu plan no incluye gestión de pedidos');
         navigate('/vendedor');
       }

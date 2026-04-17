@@ -868,8 +868,8 @@ const Footer = () => (
           <ul className="space-y-4 text-slate-600 dark:text-slate-400">
             <li><Link to="/app/tiendas" className="hover:text-blue-600 transition-colors">Ecommerce OSCORP-e</Link></li>
             <li><Link to="/ingenio" className="hover:text-blue-600 transition-colors">Ingenio Millonario</Link></li>
-            <li><Link to="/wallet" className="hover:text-blue-600 transition-colors">Fintech Crowdfunding</Link></li>
-            <li><Link to="/app/productos" className="hover:text-blue-600 transition-colors">Marketplace</Link></li>
+            <li><Link to="/app/wallet" className="hover:text-blue-600 transition-colors">Fintech Crowdfunding</Link></li>
+            <li><Link to="/app" className="hover:text-blue-600 transition-colors">Marketplace</Link></li>
           </ul>
         </div>
         <div>

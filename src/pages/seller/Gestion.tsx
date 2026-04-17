@@ -40,9 +40,14 @@ export default function Gestion() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && user.sellerProfile && user.sellerProfile.plan) {
-      const features = user.sellerProfile.plan.features || [];
-      if (!features.some(f => f.toLowerCase().includes('gestión de caja'))) {
+    if (user && user.sellerProfile && user.sellerProfile.planActive) {
+      const plan = user.sellerProfile.plan;
+      const tier = plan?.tier?.toLowerCase() || 'basic';
+      const features = plan?.features || [];
+      const isComercial = !user.sellerProfile.planId;
+      const isPremium = tier === 'premium'; // Gestion usually requires Premium
+
+      if (!features.some(f => f.toLowerCase().includes('gestión de caja')) && !isPremium) {
         toast.error('Tu plan no incluye gestión de caja');
         navigate('/vendedor');
       }

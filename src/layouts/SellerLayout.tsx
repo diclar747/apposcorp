@@ -147,22 +147,33 @@ export default function SellerLayout() {
 
             // Restricción por características del plan
             if (isPlanActive) {
-               const features = user?.sellerProfile?.plan?.features || [];
-               const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
-               
-               // Mapeo estricto basado en la captura del usuario
-               if (item.href === '/vendedor/pos' && !hasFeature('POS')) return null;
-               if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online')) return null;
-               if (item.href === '/vendedor/productos' && !hasFeature('Productos')) return null;
-               if (item.href === '/vendedor/ventas' && !hasFeature('Ventas')) return null;
-               
-               if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores')) return null;
-               if (item.href === '/vendedor/clientes' && !hasFeature('Clientes')) return null;
-               if (item.href === '/vendedor/compras' && !hasFeature('Compras')) return null;
-               if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos')) return null;
-               
-               if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes')) return null;
-               if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja')) return null;
+                const features = user?.sellerProfile?.plan?.features || [];
+                const tier = user?.sellerProfile?.plan?.tier?.toLowerCase() || 'basic';
+                const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
+                
+                // Tier-based permissions hierarchy
+                const isComercial = (tier.includes('comercial') || tier.includes('comisión')) || (!user?.sellerProfile?.planId && user?.sellerProfile?.planActive);
+                const isPremium = tier.includes('premium') || tier.includes('pro') || tier.includes('vip');
+                const isStandard = tier.includes('standard') || tier.includes('estandar') || tier.includes('plus') || isComercial;
+                
+                // Hierarchy: Premium inherits everything, Standard inherits core.
+                const hasStandardAccess = isStandard || isPremium;
+                const hasPremiumAccess = isPremium;
+
+                // Core modules for anyone who is Standard or Premium or has the feature
+                if (item.href === '/vendedor/pos' && !hasFeature('POS') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/productos' && !hasFeature('Productos') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/ventas' && !hasFeature('Ventas') && !hasStandardAccess) return null;
+                
+                if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/clientes' && !hasFeature('Clientes') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/compras' && !hasFeature('Compras') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos') && !hasStandardAccess) return null;
+                
+                // Advanced modules only for Premium or specific feature
+                if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes') && !hasPremiumAccess) return null;
+                if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja') && !hasPremiumAccess) return null;
             }
 
             return (
