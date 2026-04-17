@@ -151,27 +151,29 @@ export default function SellerLayout() {
                 const tier = user?.sellerProfile?.plan?.tier?.toLowerCase() || 'basic';
                 const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
                 
-                // Tier-based permissions bypass
-                // Un usuario "Comercial" es aquel que tiene el perfil activo pero NO tiene un plan (usa comisión)
-                const isComercial = !user?.sellerProfile?.planId && user?.sellerProfile?.planActive;
-                const isStandardOrBetter = tier === 'standard' || tier === 'premium' || isComercial;
-                const isPremium = tier === 'premium';
+                // Tier-based permissions hierarchy
+                const isComercial = (tier.includes('comercial') || tier.includes('comisión')) || (!user?.sellerProfile?.planId && user?.sellerProfile?.planActive);
+                const isPremium = tier.includes('premium') || tier.includes('pro') || tier.includes('vip');
+                const isStandard = tier.includes('standard') || tier.includes('estandar') || tier.includes('plus') || isComercial;
+                
+                // Hierarchy: Premium inherits everything, Standard inherits core.
+                const hasStandardAccess = isStandard || isPremium;
+                const hasPremiumAccess = isPremium;
 
-                // Basic logic: If standard, premium or comercial, they get core modules.
-                // If premium, they get everything (Reports, Management).
+                // Core modules for anyone who is Standard or Premium or has the feature
+                if (item.href === '/vendedor/pos' && !hasFeature('POS') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/productos' && !hasFeature('Productos') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/ventas' && !hasFeature('Ventas') && !hasStandardAccess) return null;
                 
-                if (item.href === '/vendedor/pos' && !hasFeature('POS') && !isStandardOrBetter) return null;
-                if (item.href === '/vendedor/tienda' && !hasFeature('Tienda Online') && !isStandardOrBetter) return null;
-                if (item.href === '/vendedor/productos' && !hasFeature('Productos') && !isStandardOrBetter) return null;
-                if (item.href === '/vendedor/ventas' && !hasFeature('Ventas') && !isStandardOrBetter) return null;
+                if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/clientes' && !hasFeature('Clientes') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/compras' && !hasFeature('Compras') && !hasStandardAccess) return null;
+                if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos') && !hasStandardAccess) return null;
                 
-                if (item.href === '/vendedor/proveedores' && !hasFeature('Proveedores') && !isStandardOrBetter) return null;
-                if (item.href === '/vendedor/clientes' && !hasFeature('Clientes') && !isStandardOrBetter) return null;
-                if (item.href === '/vendedor/compras' && !hasFeature('Compras') && !isStandardOrBetter) return null;
-                if (item.href === '/vendedor/pedidos' && !hasFeature('Pedidos') && !isStandardOrBetter) return null;
-                
-                if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes') && !isPremium) return null;
-                if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja') && !isPremium) return null;
+                // Advanced modules only for Premium or specific feature
+                if (item.href === '/vendedor/reportes' && !user?.sellerProfile?.plan?.hasReports && !hasFeature('Reportes') && !hasPremiumAccess) return null;
+                if (item.href === '/vendedor/gestion' && !hasFeature('Gestión de Caja') && !hasPremiumAccess) return null;
             }
 
             return (
