@@ -107,7 +107,7 @@ export default function ClientWallet() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="glass-premium p-5 rounded-[2rem] border border-white/5 shadow-xl">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-2 font-bold">Ingresos</p>
           <p className="text-lg font-black text-emerald-500 font-mono tracking-tight">+₲ {totalIncome.toLocaleString()}</p>
@@ -146,7 +146,7 @@ export default function ClientWallet() {
       </div>
 
       {/* Finance Chart */}
-      <div className="px-4">
+      <div className="px-4 w-full min-w-0 overflow-hidden">
         <FinanceChart
           transactions={transactions}
           type="area"

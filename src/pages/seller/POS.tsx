@@ -560,21 +560,21 @@ export default function SellerPOS() {
               <p className="text-xs text-blue-600 dark:text-blue-400 font-bold mt-0.5">{formatCurrency(item.price)}</p>
             </div>
             <div className="flex flex-col items-end justify-between gap-1">
-              <div className="flex items-center gap-1.5 bg-muted rounded-lg p-0.5">
-                <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-background rounded transition-all">
-                  <Minus className="w-3 h-3 text-muted-foreground" />
+              <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+                <button onClick={() => updateQuantity(item.id, -1)} className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-background rounded-lg transition-all">
+                  <Minus className="w-4 h-4 sm:w-3 sm:h-3 text-muted-foreground" />
                 </button>
-                <span className="text-xs font-bold w-5 text-center text-foreground">{item.quantity}</span>
+                <span className="text-sm font-bold w-6 text-center text-foreground">{item.quantity}</span>
                 <button 
                   onClick={() => updateQuantity(item.id, 1)} 
-                  className="p-1 hover:bg-background rounded transition-all disabled:opacity-20"
+                  className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-background rounded-lg transition-all disabled:opacity-20"
                   disabled={item.quantity >= item.stock}
                 >
-                  <Plus className="w-3 h-3 text-muted-foreground" />
+                  <Plus className="w-4 h-4 sm:w-3 sm:h-3 text-muted-foreground" />
                 </button>
               </div>
-              <button onClick={() => removeFromCart(item.id)} className="text-muted-foreground hover:text-red-500 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
+              <button onClick={() => removeFromCart(item.id)} className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               </button>
             </div>
           </motion.div>
@@ -675,7 +675,7 @@ export default function SellerPOS() {
 
         {/* ── Products Grid ── */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-5">
             {isLoadingProducts ? (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center text-muted-foreground">
@@ -740,7 +740,7 @@ export default function SellerPOS() {
                           </div>
                         )}
                       </div>
-                      <h3 className="font-medium text-foreground text-xs sm:text-sm line-clamp-2 leading-tight min-h-[2rem] sm:min-h-[2.5rem]">{product.name}</h3>
+                      <h3 className="font-medium text-foreground text-xs sm:text-sm truncate w-full mt-1">{product.name}</h3>
                       <div className="flex items-center justify-between mt-1.5">
                         <p className={cn(
                           "font-bold text-xs sm:text-sm",
@@ -957,7 +957,7 @@ export default function SellerPOS() {
 
       {/* ═══ Checkout Dialog ═══ */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] mx-auto sm:w-full sm:max-w-md max-h-[90dvh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Finalizar Venta</DialogTitle>
           </DialogHeader>
@@ -1206,7 +1206,7 @@ export default function SellerPOS() {
       </Dialog>
 
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="sm:max-w-[350px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-0 shadow-2xl flex flex-col rounded-[1.5rem]">
+        <DialogContent className="w-[calc(100%-2rem)] mx-auto sm:max-w-[350px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-0 shadow-2xl flex flex-col rounded-[1.5rem]">
           <div className="overflow-y-auto flex-1 max-h-[75dvh]">
             <div className="p-6 font-mono text-sm text-slate-800 dark:text-slate-100" id="receipt-content">
               <div className="text-center mb-5">
@@ -1333,7 +1333,7 @@ export default function SellerPOS() {
 
       {/* ═══ Customer Modal ═══ */}
       <Dialog open={isCustomerModalOpen} onOpenChange={setIsCustomerModalOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] mx-auto sm:max-w-md max-h-[90dvh] overflow-y-auto rounded-xl sm:rounded-lg">
           <DialogHeader>
             <DialogTitle>Cliente</DialogTitle>
           </DialogHeader>

@@ -117,7 +117,7 @@ export default function ClientStore() {
 
       {/* Categories */}
       <div className="px-4">
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {categories.map((category) => (
             <Button
               key={category}
@@ -134,7 +134,7 @@ export default function ClientStore() {
 
       {/* Products Grid */}
       <div className="px-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {filteredProducts.map((product, index) => {
             const isOutOfStock = product.stock <= 0;
             return (
@@ -169,7 +169,7 @@ export default function ClientStore() {
                     </div>
                   )}
                 </div>
-                <div className="p-3 flex-1 flex flex-col">
+                <div className="p-2 sm:p-4 flex-1 flex flex-col">
                   <p className="text-xs text-primary font-medium mb-1">{product.category}</p>
                   <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2 flex-1">{product.name}</h3>
                   <div className="flex items-center justify-between mt-auto">
@@ -183,7 +183,7 @@ export default function ClientStore() {
                       <motion.button
                         whileTap={{ scale: 0.9 }}
                         onClick={(e) => handleQuickAdd(e, product)}
-                        className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
+                        className={`h-10 w-10 sm:h-8 sm:w-8 rounded-full flex items-center justify-center transition-colors ${
                           isInCart(product.id)
                             ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
                             : 'bg-primary/10 text-primary hover:bg-primary/20'

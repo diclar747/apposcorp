@@ -236,7 +236,7 @@ export default function IngenioAcademy() {
         {['IM E1', 'IM E2'].map(cat => (
           <TabsContent key={cat} value={cat}>
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {[1, 2, 3].map(i => <div key={i} className="h-72 rounded-[2rem] bg-slate-100 animate-pulse" />)}
               </div>
             ) : filteredCourses.filter(c => c.category === cat).length === 0 ? (
@@ -244,7 +244,7 @@ export default function IngenioAcademy() {
                 <p className="text-slate-400 font-bold uppercase tracking-widest">Próximamente más contenido</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {filteredCourses.filter(c => c.category === cat).map((course) => (
                   <CourseCard key={course.id} course={course} />
                 ))}

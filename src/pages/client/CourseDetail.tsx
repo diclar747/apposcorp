@@ -316,7 +316,7 @@ export default function ClientCourseDetail() {
                               {isEnrolled && isExpanded && (
                                 <div className="px-4 pb-4 space-y-4">
                                   {embedUrl && (
-                                    <div className="aspect-video rounded-2xl overflow-hidden bg-black shadow-lg ring-1 ring-white/10">
+                                    <div className="w-full aspect-video rounded-md overflow-hidden bg-black shadow-lg ring-1 ring-white/10">
                                       <iframe
                                         src={embedUrl}
                                         title={lesson.title}
@@ -342,8 +342,10 @@ export default function ClientCourseDetail() {
                                             <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center shadow-sm">
                                               {getResourceIcon(res.type)}
                                             </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 flex-1 truncate">{res.title}</span>
-                                            <ExternalLink className="w-3 h-3 text-muted-foreground group-hover/res:text-amber-500" />
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300 block truncate">{res.title}</span>
+                                            </div>
+                                            <ExternalLink className="w-3 h-3 text-muted-foreground group-hover/res:text-amber-500 shrink-0" />
                                           </a>
                                         ))}
                                       </div>
