@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store, MapPin, Phone, Clock, Star, ShoppingBag,
@@ -25,7 +25,10 @@ import { Slider } from '@/components/ui/slider';
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const isInApp = location.pathname.startsWith('/app');
+  const from = searchParams.get('from');
+  const backUrl = from === 'vendedor' ? '/vendedor' : '/app/tiendas';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -221,7 +224,7 @@ export default function StorePage() {
 
         {!isInApp && (
           <div className="absolute top-6 left-6 md:left-12 flex gap-4 z-30">
-            <Link to="/app/tiendas">
+            <Link to={backUrl}>
               <Button variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Volver
@@ -835,12 +838,19 @@ export default function StorePage() {
 
                 <div className="mt-auto space-y-4 pt-6 border-t dark:border-slate-800">
                   <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-                    <span>Disponibilidad: <span className="text-green-500">En Stock</span></span>
+                    <span>
+                      Disponibilidad: 
+                      {selectedProduct.stock <= 0 ? (
+                        <span className="text-red-500 ml-1">Agotado</span>
+                      ) : (
+                        <span className="text-green-500 ml-1">En Stock ({selectedProduct.stock})</span>
+                      )}
+                    </span>
                     <span>SKU: {selectedProduct.sku || 'N/A'}</span>
                   </div>
                   <div className="flex flex-col gap-3">
                     <Button 
-                      disabled={!canPurchase}
+                      disabled={!canPurchase || selectedProduct.stock <= 0}
                       onClick={() => {
                         addItem(selectedProduct, 1);
                         setSelectedProduct(null);
@@ -848,12 +858,12 @@ export default function StorePage() {
                       }}
                       className={cn(
                         "flex-1 h-16 rounded-2xl font-black text-lg transition-all active:scale-95",
-                        canPurchase
+                        canPurchase && selectedProduct.stock > 0
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 dark:shadow-none"
                           : "bg-gray-100 text-gray-400 border border-gray-200"
                       )}
                     >
-                      {canPurchase ? 'Añadir al Carrito' : 'Visitar tienda para comprar'}
+                      {selectedProduct.stock <= 0 ? 'SIN STOCK' : canPurchase ? 'Añadir al Carrito' : 'Visitar tienda para comprar'}
                     </Button>
                     
                     {!canPurchase && (
@@ -885,17 +895,29 @@ export default function StorePage() {
 // --- Sub-components ---
 
 function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchase, onConsult }: { product: any, onAddToCart: () => void, onViewProduct: () => void, viewMode: 'grid' | 'list', canPurchase: boolean, onConsult: () => void }) {
+  const isOutOfStock = product.stock <= 0;
+  
   if (viewMode === 'list') {
     return (
       <motion.div
         layout
-        className="group bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-gray-100 dark:border-slate-800 flex flex-col md:flex-row gap-8 hover:shadow-2xl transition-all duration-500"
+        className={cn(
+          "group bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-gray-100 dark:border-slate-800 flex flex-col md:flex-row gap-8 hover:shadow-2xl transition-all duration-500",
+          isOutOfStock && "opacity-60 grayscale"
+        )}
       >
         <div className="w-full md:w-60 h-60 rounded-3xl overflow-hidden relative bg-gray-50 dark:bg-slate-800">
           <img src={product.images[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
           {product.comparePrice && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
               -{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
+            </div>
+          )}
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4">
+              <div className="bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-lg border-2 border-white/20">
+                SIN STOCK
+              </div>
             </div>
           )}
         </div>
@@ -929,16 +951,16 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
             </div>
             <div className="flex flex-col gap-2">
               <Button
-                disabled={!canPurchase}
+                disabled={!canPurchase || isOutOfStock}
                 onClick={onAddToCart}
                 className={cn(
                   "h-14 px-8 rounded-2xl font-black text-lg min-w-[200px]",
-                  canPurchase 
+                  canPurchase && !isOutOfStock
                     ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none" 
                     : "bg-gray-100 text-gray-400 border border-gray-200"
                 )}
               >
-                {canPurchase ? (
+                {isOutOfStock ? 'SIN STOCK' : canPurchase ? (
                   <>
                     <Plus className="w-5 h-5 mr-3 stroke-[3]" />
                     Agregar al Carrito
@@ -947,7 +969,7 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
                   'Visitar tienda para comprar'
                 )}
               </Button>
-              {!canPurchase && (
+              {(!canPurchase || isOutOfStock) && (
                 <Button 
                   onClick={onConsult}
                   variant="outline" 
@@ -967,7 +989,10 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
   return (
     <motion.div
       layout
-      className="group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 h-full flex flex-col transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] group"
+      className={cn(
+        "group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 h-full flex flex-col transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] group",
+        isOutOfStock && "opacity-60 grayscale"
+      )}
     >
       <div className="aspect-[4/5] overflow-hidden relative rounded-[2.3rem] m-2.5 bg-gray-50 dark:bg-slate-800">
         <img
@@ -994,8 +1019,23 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
           </div>
         )}
 
-        <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2">
-          {canPurchase ? (
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4 z-10">
+            <div className="bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-lg border-2 border-white/20">
+              SIN STOCK
+            </div>
+          </div>
+        )}
+
+        <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2 z-20">
+          {isOutOfStock ? (
+             <Button
+               disabled
+               className="w-full h-14 bg-red-600 text-white rounded-2xl font-black shadow-2xl border-0"
+             >
+               SIN STOCK
+             </Button>
+          ) : canPurchase ? (
             <Button
               onClick={onAddToCart}
               className="w-full h-14 bg-white/95 backdrop-blur-xl text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl font-black shadow-2xl border-0"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, Phone, MapPin, Store, Lock, Eye, EyeOff, Save, Loader2, MessageCircle, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, MapPin, Store, Lock, Eye, EyeOff, Save, Loader2, MessageCircle, Link as LinkIcon, ExternalLink, Banknote, CreditCard, FileText } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { getInitials } from '@/lib/utils';
 import { authApi, usersApi } from '@/lib/api';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 
 export default function SellerProfile() {
-  const { user, updateUser, fetchCurrentUser } = useAuthStore();
+  const { user, updateUser, updateBankData, fetchCurrentUser } = useAuthStore();
 
   // Personal info form
   const [personalData, setPersonalData] = useState({
@@ -24,6 +24,13 @@ export default function SellerProfile() {
     city: '',
     avatar: '',
   });
+  const [bankData, setBankData] = useState({
+    bankName: '',
+    accountNumber: '',
+    accountType: '',
+    holderName: '',
+    documentId: '',
+  });
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [savingPersonal, setSavingPersonal] = useState(false);
 
@@ -31,6 +38,7 @@ export default function SellerProfile() {
   const [storeData, setStoreData] = useState({
     storeName: '',
     storeSlug: '',
+    ruc: '',
     description: '',
     phone: '',
     email: '',
@@ -66,6 +74,16 @@ export default function SellerProfile() {
         city: user.city || '',
         avatar: user.avatar || '',
       });
+      
+      if (user.bankData) {
+        setBankData({
+          bankName: user.bankData.bankName || '',
+          accountNumber: user.bankData.accountNumber || '',
+          accountType: user.bankData.accountType || '',
+          holderName: user.bankData.holderName || '',
+          documentId: user.bankData.documentId || '', // Correct property name
+        });
+      }
 
       if (user.sellerProfile) {
         const sp = user.sellerProfile;
@@ -73,6 +91,7 @@ export default function SellerProfile() {
         setStoreData({
           storeName: sp.storeName || '',
           storeSlug: sp.storeSlug || '',
+          ruc: sp.ruc || '',
           description: sp.description || '',
           phone: sp.phone || '',
           email: sp.email || '',
@@ -96,13 +115,24 @@ export default function SellerProfile() {
     }
     setSavingPersonal(true);
     try {
-      const success = await updateUser(personalData);
-      if (success) {
-        toast.success('Datos personales actualizados');
-        setEditingPersonal(false);
-      } else {
-        toast.error('Error al actualizar datos personales');
-      }
+      // Update basic info
+      await updateUser({
+        firstName: personalData.firstName,
+        lastName: personalData.lastName,
+        phone: personalData.phone,
+        address: personalData.address,
+        city: personalData.city,
+        avatar: personalData.avatar
+      });
+
+      // Update bank data separately using its dedicated method
+      await updateBankData(bankData);
+
+      toast.success('Perfil actualizado correctamente');
+      setEditingPersonal(false);
+      await fetchCurrentUser();
+    } catch (error) {
+      toast.error('Error al actualizar el perfil');
     } finally {
       setSavingPersonal(false);
     }
@@ -119,6 +149,7 @@ export default function SellerProfile() {
       await usersApi.updateSellerProfile({
         storeName: storeData.storeName,
         storeSlug: storeData.storeSlug,
+        ruc: storeData.ruc,
         description: storeData.description,
         phone: storeData.phone,
         email: storeData.email,
@@ -179,6 +210,15 @@ export default function SellerProfile() {
         city: user.city || '',
         avatar: user.avatar || '',
       });
+      if (user.bankData) {
+        setBankData({
+          bankName: user.bankData.bankName || '',
+          accountNumber: user.bankData.accountNumber || '',
+          accountType: user.bankData.accountType || '',
+          holderName: user.bankData.holderName || '',
+          documentId: user.bankData.documentId || '', // Correct property name
+        });
+      }
     }
     setEditingPersonal(false);
   };
@@ -190,6 +230,7 @@ export default function SellerProfile() {
       setStoreData({
         storeName: sp.storeName || '',
         storeSlug: sp.storeSlug || '',
+        ruc: sp.ruc || '',
         description: sp.description || '',
         phone: sp.phone || '',
         email: sp.email || '',
@@ -336,13 +377,57 @@ export default function SellerProfile() {
                 />
               </div>
 
+              <Separator />
+              <div className="flex items-center gap-2 mb-2">
+                <Banknote className="w-5 h-5 text-green-600" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Datos Bancarios (Para Retiros)</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Banco *</Label>
+                  <Input
+                    value={bankData.bankName}
+                    onChange={(e) => setBankData({ ...bankData, bankName: e.target.value })}
+                    placeholder="Ej: Banco Nacional"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Número de Cuenta *</Label>
+                  <Input
+                    value={bankData.accountNumber}
+                    onChange={(e) => setBankData({ ...bankData, accountNumber: e.target.value })}
+                    placeholder="0000000000"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Titular de la Cuenta *</Label>
+                  <Input
+                    value={bankData.holderName}
+                    onChange={(e) => setBankData({ ...bankData, holderName: e.target.value })}
+                    placeholder="Nombre completo"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Documento de Identidad (Titular)</Label>
+                  <Input
+                    value={bankData.documentId}
+                    onChange={(e) => setBankData({ ...bankData, documentId: e.target.value })}
+                    placeholder="C.I. / RUC"
+                  />
+                </div>
+              </div>
+
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1" onClick={cancelPersonal} disabled={savingPersonal}>
                   Cancelar
                 </Button>
                 <Button className="flex-1" onClick={handleSavePersonal} disabled={savingPersonal}>
                   {savingPersonal ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                  Guardar
+                  Guardar Perfil
                 </Button>
               </div>
             </div>
@@ -352,6 +437,16 @@ export default function SellerProfile() {
               <InfoRow icon={<Phone className="w-4 h-4" />} label="Teléfono" value={user?.phone} />
               <InfoRow icon={<MapPin className="w-4 h-4" />} label="Dirección" value={user?.address} />
               <InfoRow icon={<MapPin className="w-4 h-4" />} label="Ciudad" value={user?.city} />
+              
+              <Separator className="my-2" />
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Información de Retiro</p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <InfoRow icon={<Banknote className="w-4 h-4" />} label="Banco" value={user?.bankData?.bankName} />
+                  <InfoRow icon={<CreditCard className="w-4 h-4" />} label="Cuenta" value={user?.bankData?.accountNumber} />
+                  <InfoRow icon={<UserIcon className="w-4 h-4" />} label="Titular" value={user?.bankData?.holderName} />
+                  <InfoRow icon={<FileText className="w-4 h-4" />} label="Doc. Identidad" value={user?.bankData?.documentId} />
+              </div>
             </div>
           )}
         </CardContent>
@@ -407,6 +502,15 @@ export default function SellerProfile() {
                     value={storeData.storeName}
                     onChange={(e) => setStoreData({ ...storeData, storeName: e.target.value })}
                     placeholder="Nombre de tu tienda"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>RUC de la tienda</Label>
+                  <Input
+                    value={storeData.ruc}
+                    onChange={(e) => setStoreData({ ...storeData, ruc: e.target.value })}
+                    placeholder="80000000-0"
                   />
                 </div>
 
@@ -517,11 +621,20 @@ export default function SellerProfile() {
                 <InfoRow icon={<Store className="w-4 h-4" />} label="Nombre de la tienda" value={user.sellerProfile.storeName} />
                 <div className="flex items-center gap-3 py-1.5">
                   <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center text-muted-foreground shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">RUC</p>
+                    <p className="text-sm font-medium truncate">{user.sellerProfile.ruc || 'No especificado'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 py-1.5">
+                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center text-muted-foreground shrink-0">
                     <LinkIcon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground">URL de la tienda</p>
-                    <a href={`/tienda/${user.sellerProfile.storeSlug}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1">
+                    <a href={`/tienda/${user.sellerProfile.storeSlug}?from=vendedor`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1">
                       /tienda/{user.sellerProfile.storeSlug} <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -558,77 +671,7 @@ export default function SellerProfile() {
         </Card>
       )}
 
-      {/* Change Password */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Lock className="w-5 h-5 text-orange-600" />
-            <h3 className="text-lg font-semibold">Cambiar Contraseña</h3>
-          </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Contraseña actual</Label>
-              <div className="relative">
-                <Input
-                  type={showCurrentPass ? 'text' : 'password'}
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  placeholder="Tu contraseña actual"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPass(!showCurrentPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Nueva contraseña</Label>
-              <div className="relative">
-                <Input
-                  type={showNewPass ? 'text' : 'password'}
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  placeholder="Mínimo 6 caracteres"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPass(!showNewPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Confirmar nueva contraseña</Label>
-              <Input
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                placeholder="Repite la nueva contraseña"
-              />
-              {passwordData.newPassword && passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
-                <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-              )}
-            </div>
-
-            <Button
-              onClick={handleChangePassword}
-              disabled={savingPassword || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
-              className="w-full sm:w-auto"
-            >
-              {savingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
-              Cambiar Contraseña
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

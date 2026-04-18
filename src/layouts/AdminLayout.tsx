@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -24,9 +24,12 @@ import {
   Send,
   Sun,
   Moon,
-  Sparkles
+  Sparkles,
+  CheckCircle,
+  XCircle,
+  Clock
 } from 'lucide-react';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -41,6 +44,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { RoleSelector } from '@/components/shared/RoleSelector';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
@@ -68,6 +74,14 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
+
+  useEffect(() => {
+    fetchNotifications();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -267,10 +281,108 @@ export default function AdminLayout() {
               </button>
 
               {/* Notifications */}
-              <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors group">
+                    <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300 group-hover:text-blue-500 transition-colors" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 p-0 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 shadow-2xl rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-slate-800/50">
+                    <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      Notificaciones
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0">
+                        {unreadCount} nuevas
+                      </Badge>
+                    </h3>
+                    {unreadCount > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => markAllAsRead()}
+                        className="text-[10px] h-7 px-2 font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                      >
+                        Leer todas
+                      </Button>
+                    )}
+                  </div>
+                  <ScrollArea className="h-[350px]">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className="w-12 h-12 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Bell className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium">No tienes notificaciones</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                        {notifications.map((notif) => (
+                          <DropdownMenuItem asChild key={notif.id}>
+                            <div 
+                              onClick={() => !notif.isRead && markAsRead(notif.id)}
+                              className={cn(
+                                "p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50 relative group outline-none focus:bg-gray-50 dark:focus:bg-slate-800/50 block w-full",
+                                !notif.isRead && "bg-blue-50/30 dark:bg-blue-900/5"
+                              )}
+                            >
+                            {!notif.isRead && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+                            )}
+                            <div className="flex gap-3">
+                              <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                                notif.type === 'success' ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" :
+                                notif.type === 'error' ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
+                                notif.type === 'warning' ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" :
+                                "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                              )}>
+                                {notif.type === 'success' ? <CheckCircle className="w-5 h-5" /> : 
+                                 notif.type === 'error' ? <XCircle className="w-5 h-5" /> :
+                                 notif.type === 'warning' ? <Bell className="w-5 h-5" /> :
+                                 <Bell className="w-5 h-5" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-sm font-bold truncate pr-4",
+                                  notif.isRead ? "text-gray-700 dark:text-gray-300" : "text-gray-900 dark:text-white"
+                                )}>
+                                  {notif.title}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5 leading-relaxed">
+                                  {notif.message}
+                                </p>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 font-medium flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true, locale: es })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                  <DropdownMenuItem asChild>
+                    <div 
+                      className="p-3 bg-gray-50 dark:bg-slate-800/30 border-t border-gray-100 dark:border-slate-800 text-center cursor-pointer focus:bg-gray-100 dark:focus:bg-slate-800 outline-none w-full block"
+                      onClick={() => navigate('/admin/notificaciones')}
+                    >
+                      <Button 
+                        variant="link" 
+                        className="text-xs font-bold text-blue-600 dark:text-blue-400 h-auto p-0"
+                      >
+                        Ver todo el historial
+                      </Button>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* User Menu */}
               <DropdownMenu>
@@ -314,7 +426,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-hidden">
+        <main className="flex-1 p-2 sm:p-3 lg:p-4 overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

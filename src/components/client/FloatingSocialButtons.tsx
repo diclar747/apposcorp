@@ -45,7 +45,7 @@ export function FloatingSocialButtons() {
                         initial={{ opacity: 0, y: 10, scale: 0.8 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
-                        className="bg-white dark:bg-slate-900 px-4 py-2 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 mb-2"
+                        className="pointer-events-none bg-white dark:bg-slate-900 px-4 py-2 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 mb-2 relative"
                     >
                         <p className="text-xs font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">
                             ¿Necesitas ayuda? 👋

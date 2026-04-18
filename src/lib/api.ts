@@ -250,6 +250,10 @@ export const walletApi = {
       body: JSON.stringify({ amount, description }),
     }),
   getAllTransactions: () => fetchWithAuth('/wallet/all-transactions'),
+  approveWithdrawal: (id: string) =>
+    fetchWithAuth(`/wallet/approve-withdrawal/${id}`, { method: 'POST' }),
+  rejectWithdrawal: (id: string) =>
+    fetchWithAuth(`/wallet/reject-withdrawal/${id}`, { method: 'POST' }),
 };
 
 
@@ -442,6 +446,10 @@ export const purchasesApi = {
     fetchWithAuth('/purchases', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/purchases/${id}`, {
+      method: 'DELETE',
     }),
 };
 

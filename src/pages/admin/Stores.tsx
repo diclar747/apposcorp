@@ -33,8 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateReportPDF } from '@/lib/utils';
 
 interface StoreData {
   id: string; // User ID
@@ -85,42 +84,59 @@ export default function AdminStores() {
   });
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const statsHtml = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">TOTAL TIENDAS</div>
+          <div class="stat-value">${stores.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">ACTIVAS</div>
+          <div class="text-green stat-value">${stores.filter(s => s.isActive).length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">INACTIVAS</div>
+          <div class="text-red stat-value">${stores.filter(s => !s.isActive).length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">TOTAL PRODUCTOS</div>
+          <div class="stat-value">${stores.reduce((sum, s) => sum + s.productCount, 0)}</div>
+        </div>
+      </div>
+    `;
 
-    // Logo/Header
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE TIENDAS', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+    const rows = filteredStores.map(s => {
+      const statusClass = s.isActive ? 'badge-green' : 'badge-red';
+      return `
+        <tr>
+          <td>${s.name}</td>
+          <td>${s.firstName} ${s.lastName}</td>
+          <td>${s.email}</td>
+          <td><span class="badge ${statusClass}">${s.isActive ? 'Activa' : 'Inactiva'}</span></td>
+          <td class="text-right">${s.productCount}</td>
+        </tr>
+      `;
+    }).join('');
 
-    const tableData = filteredStores.map(s => [
-      s.name,
-      `${s.firstName} ${s.lastName}`,
-      s.email,
-      s.isActive ? 'Activa' : 'Inactiva',
-      s.productCount.toString()
-    ]);
+    const tableHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>Tienda</th>
+            <th>Propietario</th>
+            <th>Email</th>
+            <th>Estado</th>
+            <th class="text-right">Productos</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
 
-    autoTable(doc, {
-      startY: 45,
-      head: [['Tienda', 'Propietario', 'Email', 'Estado', 'Productos']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
-
-    doc.save(`tiendas-oscorp-${new Date().getTime()}.pdf`);
-    toast.success('PDF exportado correctamente');
+    generateReportPDF('Reporte de Tiendas', statsHtml, tableHtml);
+    toast.success('Reporte de tiendas generado');
   };
 
   const fetchStores = async () => {

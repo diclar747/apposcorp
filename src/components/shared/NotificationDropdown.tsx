@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { cn, translateStatusInText } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '@/lib/api';
@@ -62,10 +62,19 @@ export function NotificationDropdown({ className, align = 'end' }: NotificationD
     setIsOpen(false);
     
     if (actionUrl) {
-      if (actionUrl.startsWith('http')) {
-        window.open(actionUrl, '_blank');
+      // Si el usuario es vendedor y está en el panel de vendedor, redirigir pedidos a la vista de vendedor
+      let finalUrl = actionUrl;
+      const isSellerView = window.location.pathname.startsWith('/vendedor');
+      const isOrderUrl = actionUrl.startsWith('/app/pedidos');
+      
+      if (isSellerView && isOrderUrl) {
+        finalUrl = '/vendedor/pedidos';
+      }
+
+      if (finalUrl.startsWith('http')) {
+        window.open(finalUrl, '_blank');
       } else {
-        navigate(actionUrl);
+        navigate(finalUrl);
       }
     }
   };
@@ -164,7 +173,7 @@ export function NotificationDropdown({ className, align = 'end' }: NotificationD
                             "text-sm font-bold truncate pr-2",
                             !notification.isRead ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"
                           )}>
-                            {notification.title}
+                            {translateStatusInText(notification.title)}
                           </h4>
                           <span className="text-[10px] text-slate-400 whitespace-nowrap font-medium">
                             {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: false, locale: es })}
@@ -174,7 +183,7 @@ export function NotificationDropdown({ className, align = 'end' }: NotificationD
                           "text-xs leading-relaxed line-clamp-2",
                           !notification.isRead ? "text-slate-700 dark:text-slate-300 font-medium" : "text-slate-500 dark:text-slate-500"
                         )}>
-                          {notification.message}
+                          {translateStatusInText(notification.message)}
                         </p>
                         {notification.actionUrl && (
                           <div className="mt-2 flex items-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider group-hover:translate-x-1 transition-transform">

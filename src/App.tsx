@@ -201,6 +201,7 @@ function App() {
           <Route path="planes" element={<AdminPlans />} />
           <Route path="configuracion" element={<AdminSettings />} />
           <Route path="perfil" element={<AdminProfile />} />
+          <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 
         {/* Seller Routes */}

@@ -220,6 +220,92 @@ router.post('/reject-deposit/:id', authenticate, authorize('superadmin'), async 
   }
 });
 
+// Approve withdrawal (Admin only)
+router.post('/approve-withdrawal/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: id as string },
+    });
+
+    if (!transaction || transaction.type !== 'withdrawal' || transaction.status !== 'pending') {
+      return res.status(404).json({ error: 'Solicitud de retiro no encontrada o ya procesada' });
+    }
+
+    await prisma.transaction.update({
+      where: { id: id as string },
+      data: { status: 'completed' }
+    });
+
+    // Notify user
+    sendPushToUser(transaction.userId, {
+      title: 'Retiro Procesado',
+      body: `Tu solicitud de retiro por ₲ ${Math.abs(transaction.amount).toLocaleString()} ha sido aprobada y procesada.`,
+      url: '/app/wallet',
+      tag: 'withdrawal-approved'
+    }).catch(console.error);
+
+    res.json({ success: true, message: 'Retiro aprobado con éxito' });
+  } catch (error) {
+    console.error('Error approving withdrawal:', error);
+    res.status(500).json({ error: 'Error al aprobar retiro' });
+  }
+});
+
+// Reject withdrawal (Admin only) - Refunds the amount to user
+router.post('/reject-withdrawal/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.findUnique({
+        where: { id: id as string },
+        include: { wallet: true }
+      });
+
+      if (!transaction || transaction.type !== 'withdrawal' || transaction.status !== 'pending') {
+        throw new Error('NOT_PENDING');
+      }
+
+      const amount = Math.abs(transaction.amount);
+
+      // 1. Mark transaction as failed
+      await tx.transaction.update({
+        where: { id: id as string },
+        data: { status: 'failed', description: `${transaction.description} (Rechazado - Reembolsado)` }
+      });
+
+      // 2. Refund wallet
+      await tx.wallet.update({
+        where: { id: transaction.walletId },
+        data: { 
+          balance: { increment: amount },
+          totalOut: { decrement: amount }
+        }
+      });
+
+      return transaction;
+    });
+
+    // Notify user
+    sendPushToUser(result.userId, {
+      title: 'Retiro Rechazado',
+      body: `Tu solicitud de retiro por ₲ ${Math.abs(result.amount).toLocaleString()} ha sido rechazada y reembolsada a tu billetera.`,
+      url: '/app/wallet',
+      tag: 'withdrawal-rejected'
+    }).catch(console.error);
+
+    res.json({ success: true, message: 'Retiro rechazado y reembolsado' });
+  } catch (error: any) {
+    if (error.message === 'NOT_PENDING') {
+      return res.status(404).json({ error: 'Solicitud no encontrada o ya procesada' });
+    }
+    console.error('Error rejecting withdrawal:', error);
+    res.status(500).json({ error: 'Error al rechazar retiro' });
+  }
+});
+
 // Check if user has PIN set
 router.get('/pin-status', authenticate, async (req: AuthRequest, res) => {
   try {

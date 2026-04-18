@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Search, CheckCircle, XCircle, Eye, Clock, FileText, DollarSign, Loader2
-} from 'lucide-react';
+import { Search, CheckCircle, XCircle, Eye, Clock, FileText, DollarSign, Loader2 } from 'lucide-react';
 import { creditsApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getCreditStatusInfo, generateReportPDF } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,8 +18,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 const statusFilters = [
   { value: 'all', label: 'Todos' },
@@ -31,26 +27,6 @@ const statusFilters = [
   { value: 'rejected', label: 'Rechazados' },
   { value: 'cancelled', label: 'Cancelados' },
 ];
-
-const statusStyles: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  approved: 'bg-blue-100 text-blue-700',
-  active: 'bg-green-100 text-green-700',
-  completed: 'bg-gray-100 text-gray-700',
-  rejected: 'bg-red-100 text-red-700',
-  defaulted: 'bg-red-100 text-red-700',
-  cancelled: 'bg-orange-100 text-orange-700',
-};
-
-const statusLabels: Record<string, string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobado',
-  active: 'Activo',
-  completed: 'Completado',
-  rejected: 'Rechazado',
-  defaulted: 'En mora',
-  cancelled: 'Cancelado',
-};
 
 const docLabels: Record<string, string> = {
   id_front: 'Cédula - Frente',
@@ -86,48 +62,67 @@ export default function AdminCredits() {
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const statsHtml = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">PENDIENTES</div>
+          <div class="stat-value">${credits.filter(c => c.status === 'pending').length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">ACTIVOS</div>
+          <div class="text-blue stat-value">${credits.filter(c => c.status === 'active').length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">MONTO ACTIVO</div>
+          <div class="text-green stat-value">${formatCurrency(totalActive)}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">COMPLETADOS</div>
+          <div class="stat-value">${credits.filter(c => c.status === 'completed').length}</div>
+        </div>
+      </div>
+    `;
 
-    // Logo/Header
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE CRÉDITOS', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+    const rows = filteredCredits.map(c => {
+      const statusInfo = getCreditStatusInfo(c.status);
+      let statusClass = 'badge-gray';
+      if (c.status === 'active') statusClass = 'badge-blue';
+      if (c.status === 'completed') statusClass = 'badge-green';
+      if (c.status === 'pending') statusClass = 'badge-yellow';
+      if (c.status === 'rejected' || c.status === 'cancelled') statusClass = 'badge-red';
 
-    const statuses: Record<string, string> = {
-      pending: 'Pendiente', approved: 'Aprobado', active: 'Activo',
-      completed: 'Completado', defaulted: 'En Mora', rejected: 'Rechazado'
-    };
+      return `
+        <tr>
+          <td>${c.user?.firstName || ''} ${c.user?.lastName || ''}</td>
+          <td>${c.concept}</td>
+          <td class="font-bold">${formatCurrency(c.amount)}</td>
+          <td>${c.payments?.length || 0}/${c.installments}</td>
+          <td><span class="badge ${statusClass}">${statusInfo.label}</span></td>
+          <td>${new Date(c.createdAt).toLocaleDateString('es-PY')}</td>
+        </tr>
+      `;
+    }).join('');
 
-    const tableData = filteredCredits.map(c => [
-      `${c.user?.firstName || ''} ${c.user?.lastName || ''}`,
-      c.concept,
-      formatCurrency(c.amount),
-      `${c.payments?.length || 0}/${c.installments}`,
-      statuses[c.status] || c.status,
-      new Date(c.createdAt).toLocaleDateString()
-    ]);
+    const tableHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Concepto</th>
+            <th>Monto</th>
+            <th>Cuotas</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
 
-    autoTable(doc, {
-      startY: 45,
-      head: [['Cliente', 'Concepto', 'Monto', 'Cuotas', 'Estado', 'Fecha']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
-
-    doc.save(`creditos-oscorp-${new Date().getTime()}.pdf`);
-    toast.success('PDF exportado correctamente');
+    generateReportPDF('Reporte de Créditos', statsHtml, tableHtml);
+    toast.success('Reporte de créditos generado');
   };
 
   useEffect(() => { fetchCredits(); }, []);
@@ -314,7 +309,11 @@ export default function AdminCredits() {
                         <Badge variant="secondary" className="text-gray-500">Sin docs</Badge>
                       )}
                     </TableCell>
-                    <TableCell><Badge className={statusStyles[credit.status] || 'bg-gray-100'}>{statusLabels[credit.status] || credit.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge className={`${getCreditStatusInfo(credit.status).bgColor} ${getCreditStatusInfo(credit.status).color} border-0`}>
+                        {getCreditStatusInfo(credit.status).label}
+                      </Badge>
+                    </TableCell>
                     <TableCell><span className="text-sm text-gray-600 dark:text-gray-400">{formatDate(credit.createdAt)}</span></TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => { setSelectedCredit(credit); setShowDetail(true); }}>
@@ -337,7 +336,9 @@ export default function AdminCredits() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   Detalle del Crédito
-                  <Badge className={statusStyles[selectedCredit.status] || 'bg-gray-100'}>{statusLabels[selectedCredit.status] || selectedCredit.status}</Badge>
+                  <Badge className={`${getCreditStatusInfo(selectedCredit.status).bgColor} ${getCreditStatusInfo(selectedCredit.status).color} border-0`}>
+                    {getCreditStatusInfo(selectedCredit.status).label}
+                  </Badge>
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-5">

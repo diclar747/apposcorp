@@ -61,71 +61,57 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 router.get('/summary', authenticate, async (req: AuthRequest, res) => {
     try {
         const userId = req.user!.userId;
-        const month = req.query.month as string;
-        const year = req.query.year as string;
 
-        // Default to current month if not specified
-        const currentYear = year ? Number(year) : new Date().getFullYear();
-        const currentMonth = month ? Number(month) : new Date().getMonth() + 1;
-
-        const startDate = new Date(currentYear, currentMonth - 1, 1);
-        const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59);
-
-        // Get all records for Net Worth calculation (all time)
+        // Get all records for historical calculation
         const allRecords = await prisma.financialRecord.findMany({
             where: { userId },
         });
 
-        const assets = allRecords
-            .filter(r => r.type === 'asset')
-            .reduce((sum, r) => sum + r.amount, 0);
+        // 1. Total (All Time)
+        const totalIncome = allRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+        const totalExpenses = allRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+        const totalAssets = allRecords.filter(r => r.type === 'asset').reduce((sum, r) => sum + r.amount, 0);
+        const totalLiabilities = allRecords.filter(r => r.type === 'liability').reduce((sum, r) => sum + r.amount, 0);
+        
+        // Balance is Income - Expenses
+        const balance = totalIncome - totalExpenses;
+        const netWorth = totalAssets - totalLiabilities;
 
-        const liabilities = allRecords
-            .filter(r => r.type === 'liability')
-            .reduce((sum, r) => sum + r.amount, 0);
+        // 2. Today's stats
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const netWorth = assets - liabilities;
-
-        // Get monthly records for Income/Expense flow
-        const monthlyRecords = allRecords.filter(r => {
+        const todayRecords = allRecords.filter(r => {
             const d = new Date(r.date);
-            return d >= startDate && d <= endDate;
+            return d >= today && d < tomorrow;
         });
 
-        const income = monthlyRecords
-            .filter(r => r.type === 'income')
-            .reduce((sum, r) => sum + r.amount, 0);
+        const todayIncome = todayRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+        const todayExpenses = todayRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
 
-        const expenses = monthlyRecords
-            .filter(r => r.type === 'expense')
-            .reduce((sum, r) => sum + r.amount, 0);
+        // 3. Current Month Stats (for growth calculation)
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
 
-        // Get previous month for comparison
-        const prevMonthDate = new Date(startDate);
-        prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-        const prevMonthEnd = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0);
-
-        const prevMonthRecords = allRecords.filter(r => {
-            const d = new Date(r.date);
-            return d >= prevMonthDate && d <= prevMonthEnd;
-        });
-
-        const prevNetWorth =
-            prevMonthRecords.filter(r => r.type === 'asset').reduce((sum, r) => sum + r.amount, 0) -
-            prevMonthRecords.filter(r => r.type === 'liability').reduce((sum, r) => sum + r.amount, 0);
-
-        const netWorthGrowth = prevNetWorth !== 0
-            ? ((netWorth - prevNetWorth) / Math.abs(prevNetWorth)) * 100
-            : 0;
+        const monthlyRecords = allRecords.filter(r => new Date(r.date) >= startOfMonth);
+        const monthIncome = monthlyRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+        const monthExpenses = monthlyRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
 
         res.json({
-            income,
-            expenses,
-            assets,
-            liabilities,
+            totalIncome,
+            totalExpenses,
+            totalAssets,
+            totalLiabilities,
+            balance,
             netWorth,
-            netWorthGrowth,
-            savingsRate: income > 0 ? ((income - expenses) / income) * 100 : 0
+            todayIncome,
+            todayExpenses,
+            monthIncome,
+            monthExpenses,
+            savingsRate: totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0
         });
 
     } catch (error) {

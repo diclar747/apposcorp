@@ -12,7 +12,15 @@ import {
   LineChart, Line,
 } from 'recharts';
 import { ordersApi, productsApi, usersApi, walletApi, creditsApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { 
+  cn, 
+  formatCurrency, 
+  formatDate, 
+  formatDateTime, 
+  getOrderStatusInfo, 
+  getPaymentStatusInfo,
+  generateReportPDF 
+} from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +30,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 // ─── Labels / Maps ───────────────────────────────────────────────────
@@ -259,102 +265,78 @@ export default function AdminReports() {
 
   // PDF generators
   const exportOrdersPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // Logo/Header
-    doc.setFillColor(15, 23, 42); 
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE VENTAS', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
-
-    // Render Stats
-    doc.setTextColor(51, 65, 85);
-    doc.setFontSize(9);
-    doc.text(`Total Ventas: ${formatCurrency(totalSales)}`, 15, 48);
-    doc.text(`Comisiones: ${formatCurrency(totalCommissions)}`, pageWidth / 2, 48);
-    doc.text(`Ganancias Vendedores: ${formatCurrency(totalSellerEarnings)}`, 15, 54);
-    doc.text(`Órdenes: ${filteredOrders.length}`, pageWidth / 2, 54);
-
-    const tableData = filteredOrders.map((o: any) => [
-      o.orderNumber || '',
-      formatDate(o.createdAt),
-      `${o.buyer?.firstName || ''} ${o.buyer?.lastName || ''}`,
-      `${o.seller?.firstName || ''} ${o.seller?.lastName || ''}`,
-      formatCurrency(o.total),
-      formatCurrency(o.commissionAmount),
-      ORDER_STATUS[o.status] || o.status
-    ]);
-
-    autoTable(doc, {
-      startY: 65,
-      head: [['Orden', 'Fecha', 'Comprador', 'Vendedor', 'Total', 'Comisión', 'Estado']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
-
-    doc.save(`ventas-oscorp-${new Date().getTime()}.pdf`);
-    toast.success('PDF de ventas generado y descargando');
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Ventas</div><div class="stat-value">${formatCurrency(totalSales)}</div></div>
+      <div class="stat"><div class="stat-label">Comisiones</div><div class="stat-value text-green">${formatCurrency(totalCommissions)}</div></div>
+      <div class="stat"><div class="stat-label">Pedidos</div><div class="stat-value">${filteredOrders.length}</div></div>
+    </div>`;
+    const rows = filteredOrders.map((o: any) => `<tr>
+      <td>${o.orderNumber || ''}</td>
+      <td>${formatDate(o.createdAt)}</td>
+      <td>${(o.buyer?.firstName || '') + ' ' + (o.buyer?.lastName || '')}</td>
+      <td>${(o.seller?.firstName || '') + ' ' + (o.seller?.lastName || '')}</td>
+      <td class="text-right">${formatCurrency(o.total)}</td>
+      <td>${ORDER_STATUS[o.status] || o.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Orden</th><th>Fecha</th><th>Comprador</th><th>Vendedor</th><th>Total</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generateReportPDF('Reporte de Ventas Global', statsHtml, tableHtml);
+    toast.success('PDF de ventas generado');
   };
 
   const exportTransactionsPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // Logo/Header
-    doc.setFillColor(15, 23, 42); 
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE TRANSACCIONES', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
-
-    // Stats
     const incomeTotal = filteredTx.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0);
     const expenseTotal = filteredTx.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
-    
-    doc.setTextColor(51, 65, 85);
-    doc.setFontSize(9);
-    doc.text(`Total Ingresos: ${formatCurrency(incomeTotal)}`, 15, 48);
-    doc.text(`Total Egresos: ${formatCurrency(expenseTotal)}`, pageWidth / 2, 48);
-    doc.text(`Transacciones: ${filteredTx.length}`, 15, 54);
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Ingresos</div><div class="stat-value text-green">${formatCurrency(incomeTotal)}</div></div>
+      <div class="stat"><div class="stat-label">Egresos</div><div class="stat-value text-red">${formatCurrency(expenseTotal)}</div></div>
+      <div class="stat"><div class="stat-label">Balance</div><div class="stat-value">${formatCurrency(incomeTotal - expenseTotal)}</div></div>
+    </div>`;
+    const rows = filteredTx.map((t: any) => `<tr>
+      <td>${formatDate(t.createdAt)}</td>
+      <td>${TX_TYPE[t.type] || t.type}</td>
+      <td>${(t.user?.firstName || '') + ' ' + (t.user?.lastName || '')}</td>
+      <td>${t.description || ''}</td>
+      <td class="text-right ${t.amount >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(t.amount)}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Descripción</th><th>Monto</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generateReportPDF('Reporte de Transacciones', statsHtml, tableHtml);
+    toast.success('PDF de transacciones generado');
+  };
 
-    const tableData = filteredTx.map((t: any) => [
-      formatDate(t.createdAt),
-      TX_TYPE[t.type] || t.type,
-      `${t.user?.firstName || ''} ${t.user?.lastName || ''}`,
-      t.description || '',
-      formatCurrency(t.amount),
-      t.status
-    ]);
+  const exportProductsPDF = () => {
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Productos</div><div class="stat-value">${products.length}</div></div>
+      <div class="stat"><div class="stat-label">Stock Bajo</div><div class="stat-value text-red">${products.filter((p: any) => p.stock < 5).length}</div></div>
+      <div class="stat"><div class="stat-label">Valor Inv.</div><div class="stat-value">${formatCurrency(products.reduce((s: number, p: any) => s + ((p.cost || p.price) * p.stock), 0))}</div></div>
+    </div>`;
+    const rows = products.map((p: any) => `<tr>
+      <td>${p.sku || ''}</td>
+      <td>${p.name || ''}</td>
+      <td>${p.category || ''}</td>
+      <td class="text-right">${formatCurrency(p.price)}</td>
+      <td class="text-right">${p.stock}</td>
+      <td>${p.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generateReportPDF('Reporte de Productos Global', statsHtml, tableHtml);
+    toast.success('PDF de productos generado');
+  };
 
-    autoTable(doc, {
-      startY: 65,
-      head: [['Fecha', 'Tipo', 'Usuario', 'Descripción', 'Monto', 'Estado']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
-
-    doc.save(`transacciones-oscorp-${new Date().getTime()}.pdf`);
-    toast.success('PDF de transacciones generado y descargando');
+  const exportCreditsPDF = () => {
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Créditos</div><div class="stat-value">${filteredCredits.length}</div></div>
+      <div class="stat"><div class="stat-label">Monto Activo</div><div class="stat-value text-green">${formatCurrency(totalCreditAmount)}</div></div>
+    </div>`;
+    const rows = filteredCredits.map((c: any) => `<tr>
+      <td>${formatDate(c.createdAt)}</td>
+      <td>${(c.user?.firstName || '') + ' ' + (c.user?.lastName || '')}</td>
+      <td>${c.concept || ''}</td>
+      <td class="text-right">${formatCurrency(c.amount)}</td>
+      <td>${CREDIT_STATUS[c.status] || c.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Fecha</th><th>Usuario</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generateReportPDF('Reporte de Créditos', statsHtml, tableHtml);
+    toast.success('PDF de créditos generado');
   };
 
   // ─── Dynamic filter options based on active tab ────────────────────
@@ -627,6 +609,9 @@ export default function AdminReports() {
               <Button size="sm" variant="outline" onClick={exportProductsCSV}>
                 <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
               </Button>
+              <Button size="sm" variant="outline" onClick={exportProductsPDF}>
+                <FileText className="w-4 h-4 mr-1" /> PDF
+              </Button>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -697,6 +682,9 @@ export default function AdminReports() {
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={exportCreditsCSV}>
                 <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportCreditsPDF}>
+                <FileText className="w-4 h-4 mr-1" /> PDF
               </Button>
             </div>
 

@@ -9,11 +9,13 @@ import {
     X,
     Save,
     ChevronRight,
-    ShoppingCart
+    ShoppingCart,
+    Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { productsApi, suppliersApi, purchasesApi } from '@/lib/api';
+import { productsApi, suppliersApi, purchasesApi, managementApi } from '@/lib/api';
+import { getSafeDate } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -33,6 +35,16 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -96,6 +108,7 @@ export default function Purchases() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [purchaseToDelete, setPurchaseToDelete] = useState<Purchase | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -129,6 +142,20 @@ export default function Purchases() {
             toast.error('Error al cargar datos');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!purchaseToDelete) return;
+
+        try {
+            await purchasesApi.delete(purchaseToDelete.id);
+            toast.success('Compra eliminada correctamente');
+            setPurchaseToDelete(null);
+            fetchData();
+        } catch (error: any) {
+            console.error('Delete error:', error);
+            toast.error(error.message || 'Error al eliminar compra');
         }
     };
 
@@ -174,10 +201,41 @@ export default function Purchases() {
         }
 
         try {
-            await purchasesApi.create({
+            const newPurchase = await purchasesApi.create({
                 ...formData,
                 items: selectedItems
             });
+
+            // Registrar movimiento en Gestión
+            try {
+                const categories = await managementApi.getCategories();
+                let category = categories.find((c: any) => 
+                    c.type === 'expense' && 
+                    (c.name.toLowerCase() === 'compras / mercadería' || c.name.toLowerCase().includes('compra'))
+                );
+
+                if (!category) {
+                    category = await managementApi.createCategory({
+                        name: 'Compras / Mercadería',
+                        type: 'expense',
+                        color: '#ef4444'
+                    });
+                }
+
+                await managementApi.createMovement({
+                    type: 'expense',
+                    categoryId: category.id,
+                    amount: calculateTotal(),
+                    description: `Compra - Factura: ${formData.invoiceNumber}${formData.notes ? ` (${formData.notes})` : ''}`,
+                    voucherNumber: formData.invoiceNumber,
+                    date: formData.purchaseDate,
+                    relatedId: newPurchase.id,
+                    relatedType: 'purchase'
+                });
+            } catch (err) {
+                console.error('Error registering in management:', err);
+                toast.warning('Compra registrada pero hubo un error al crear el movimiento en gestión');
+            }
 
             toast.success('Compra registrada correctamente');
             setIsDialogOpen(false);
@@ -254,7 +312,7 @@ export default function Purchases() {
                             purchases.map((purchase) => (
                                 <TableRow key={purchase.id}>
                                     <TableCell className="font-medium">
-                                        {format(new Date(purchase.purchaseDate), 'dd/MM/yyyy')}
+                                        {format(getSafeDate(purchase.purchaseDate), 'dd/MM/yyyy')}
                                     </TableCell>
                                     <TableCell>
                                         <div>
@@ -277,13 +335,23 @@ export default function Purchases() {
                                         ₲ {purchase.totalAmount.toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm"
-                                            onClick={() => handleViewDetail(purchase)}
-                                        >
-                                            Ver Detalle
-                                        </Button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={() => handleViewDetail(purchase)}
+                                            >
+                                                Detalles
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
+                                                onClick={() => setPurchaseToDelete(purchase)}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -298,7 +366,7 @@ export default function Purchases() {
                     <DialogHeader>
                         <DialogTitle>Detalle de Compra - {selectedPurchase?.invoiceNumber}</DialogTitle>
                         <DialogDescription>
-                            Proveedor: {selectedPurchase?.supplier.name} | Fecha: {selectedPurchase && format(new Date(selectedPurchase.purchaseDate), 'dd/MM/yyyy')}
+                            Proveedor: {selectedPurchase?.supplier.name} | Fecha: {selectedPurchase && format(getSafeDate(selectedPurchase.purchaseDate), 'dd/MM/yyyy')}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -458,18 +526,26 @@ export default function Purchases() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input
-                                                        type="number"
-                                                        className="h-8"
-                                                        value={item.quantity}
-                                                        onChange={(e) => updateItem(item.productId, 'quantity', parseInt(e.target.value) || 0)}
+                                                        type="text"
+                                                        className="h-8 font-mono text-center"
+                                                        value={item.quantity.toLocaleString('es-PY')}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                                                            updateItem(item.productId, 'quantity', val);
+                                                        }}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input
-                                                        type="number"
-                                                        className="h-8"
-                                                        value={item.unitCost}
-                                                        onChange={(e) => updateItem(item.productId, 'unitCost', parseFloat(e.target.value) || 0)}
+                                                        type="text"
+                                                        className="h-8 font-mono text-right"
+                                                        value={item.unitCost.toLocaleString('es-PY')}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                                                            updateItem(item.productId, 'unitCost', val);
+                                                        }}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-sm font-medium">
@@ -513,6 +589,30 @@ export default function Purchases() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* ═══ Confirm Delete Dialog ═══ */}
+            <AlertDialog open={!!purchaseToDelete} onOpenChange={(open) => !open && setPurchaseToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="w-5 h-5" />
+                            ¿Eliminar Registro de Compra?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción eliminará el registro de la compra. 
+                            <span className="block mt-2 font-bold text-gray-900 dark:text-white">
+                                Nota: El stock de los productos adquiridos debería revertirse automáticamente.
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
+                            Confirmar Eliminación
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

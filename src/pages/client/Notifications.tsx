@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Check, ExternalLink, Info, AlertTriangle, XCircle, CheckCircle, Megaphone, Trash2 } from 'lucide-react';
 import { useNotificationStore, useAuthStore } from '@/stores';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, translateStatusInText } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '@/lib/api';
@@ -36,10 +36,19 @@ export default function ClientNotifications() {
 
         await markAsRead(id);
         if (actionUrl) {
-            if (actionUrl.startsWith('http')) {
-                window.open(actionUrl, '_blank');
+            // Si el usuario es vendedor y está en el panel de vendedor, redirigir pedidos a la vista de vendedor
+            let finalUrl = actionUrl;
+            const isSellerView = window.location.pathname.startsWith('/vendedor');
+            const isOrderUrl = actionUrl.startsWith('/app/pedidos');
+            
+            if (isSellerView && isOrderUrl) {
+                finalUrl = '/vendedor/pedidos';
+            }
+
+            if (finalUrl.startsWith('http')) {
+                window.open(finalUrl, '_blank');
             } else {
-                navigate(actionUrl);
+                navigate(finalUrl);
             }
         }
     };
@@ -123,10 +132,10 @@ export default function ClientNotifications() {
                                             "text-sm font-semibold mb-1 pr-4",
                                             !notification.isRead ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"
                                         )}>
-                                            {notification.title}
+                                            {translateStatusInText(notification.title)}
                                         </h4>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">
-                                            {notification.message}
+                                            {translateStatusInText(notification.message)}
                                         </p>
 
                                         {notification.imageUrl && (

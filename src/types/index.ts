@@ -100,6 +100,7 @@ export interface SellerProfile {
   userId: string;
   storeName: string;
   storeSlug: string;
+  ruc?: string;
   description: string;
   logo?: string;
   banner?: string;
