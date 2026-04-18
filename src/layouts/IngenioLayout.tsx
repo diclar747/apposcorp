@@ -82,6 +82,19 @@ export default function IngenioLayout() {
         </div>
       </div>
 
+      {/* Mobile Menu Backdrop */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar Navigation */}
       <AnimatePresence>
         {(isMobileMenuOpen || window.innerWidth >= 768) && (
@@ -96,14 +109,22 @@ export default function IngenioLayout() {
               ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
             `}
           >
-            <div className="p-6 hidden md:flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
-                <Target className="w-6 h-6 text-white" />
+            <div className="p-5 flex items-center justify-between border-b md:border-none border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+                  <Target className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-bold text-xl text-slate-900 dark:text-white leading-none tracking-tight">Ingenio</h1>
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold tracking-widest uppercase mt-0.5">Millonario</p>
+                </div>
               </div>
-              <div>
-                <h1 className="font-bold text-xl text-slate-900 dark:text-white leading-none tracking-tight">Ingenio</h1>
-                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold tracking-widest uppercase mt-0.5">Millonario</p>
-              </div>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)} 
+                className="md:hidden p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="flex-1 px-4 py-6 md:py-2 overflow-y-auto space-y-1">
