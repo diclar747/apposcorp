@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { useAuthStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { MaintenanceOverlay } from '@/components/shared/MaintenanceOverlay';
 
 // Layouts
 import AdminLayout from '@/layouts/AdminLayout';
@@ -132,13 +134,15 @@ function ProtectedRoute({
 
 function App() {
   const { isHydrated, fetchCurrentUser } = useAuthStore();
+  const { fetchSettings } = useSettingsStore();
 
-  // 1. Initial re-validation on mount
+  // 1. Initial re-validation and settings fetch on mount
   useEffect(() => {
+    fetchSettings();
     if (localStorage.getItem('oscorp-token')) {
       fetchCurrentUser();
     }
-  }, [fetchCurrentUser]);
+  }, [fetchCurrentUser, fetchSettings]);
 
   // 2. Theme and Splash Screen management
   useEffect(() => {
@@ -158,7 +162,18 @@ function App() {
     }
   }, [isHydrated]);
 
+  // 3. Maintenance Check
+  const { settings } = useSettingsStore();
+  const { activeRole } = useAuthStore();
+  const isMaintenanceActive = settings.maintenance_mode === 'true';
+  const isAdmin = activeRole === 'superadmin';
+
   if (!isHydrated) return null;
+
+  // 3. Maintenance Check
+  if (isMaintenanceActive && !isAdmin) {
+    return <MaintenanceOverlay />;
+  }
 
   return (
     <BrowserRouter>

@@ -305,8 +305,21 @@ function PinManagementDialog({ isOpen, onClose, hasPin, onSuccess }: { isOpen: b
 
   const handleAction = async () => {
     if (step === 'current') {
-      if (pins.current.length === 4) setStep('new');
-      else toast.error('Ingresa tu PIN actual');
+      if (pins.current.length !== 4) {
+        toast.error('Ingresa tu PIN actual');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await walletApi.verifyPin(pins.current);
+        setStep('new');
+      } catch (err: any) {
+        toast.error(err.message || 'PIN incorrecto');
+        setPins({ ...pins, current: '' });
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 

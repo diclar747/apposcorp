@@ -30,6 +30,7 @@ export default function SellerStore() {
   const [formData, setFormData] = useState({
     storeName: '',
     description: '',
+    ruc: '',
     address: '',
     phone: '',
     email: '',
@@ -56,6 +57,7 @@ export default function SellerStore() {
       setFormData({
         storeName: p.storeName || '',
         description: p.description || '',
+        ruc: p.ruc || '',
         address: p.address || '',
         phone: p.phone || '',
         email: p.email || '',
@@ -110,6 +112,7 @@ export default function SellerStore() {
       setFormData({
         storeName: p.storeName || '',
         description: p.description || '',
+        ruc: p.ruc || '',
         address: p.address || '',
         phone: p.phone || '',
         email: p.email || '',
@@ -167,9 +170,21 @@ export default function SellerStore() {
                 <Input id="email" name="email" value={formData.email} onChange={handleChange} placeholder="tienda@email.com" />
               </div>
             </div>
-            <div>
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea id="description" name="description" value={formData.description} onChange={handleChange} placeholder="Describe tu negocio..." rows={3} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="description">Descripción</Label>
+                <Textarea id="description" name="description" value={formData.description} onChange={handleChange} placeholder="Describe tu negocio..." rows={3} />
+              </div>
+              <div className="flex flex-col justify-between">
+                <div>
+                  <Label htmlFor="ruc">RUC de la Tienda</Label>
+                  <Input id="ruc" name="ruc" value={formData.ruc} onChange={handleChange} placeholder="80000000-0" />
+                </div>
+                <div className="mt-4">
+                   <Label htmlFor="whatsappNumber">WhatsApp Business</Label>
+                   <Input id="whatsappNumber" name="whatsappNumber" value={formData.whatsappNumber} onChange={handleChange} placeholder="+595 ..." />
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -180,10 +195,6 @@ export default function SellerStore() {
                 <Label htmlFor="phone">Teléfono</Label>
                 <Input id="phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="+595 ..." />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="whatsappNumber">WhatsApp Business</Label>
-              <Input id="whatsappNumber" name="whatsappNumber" value={formData.whatsappNumber} onChange={handleChange} placeholder="+595 ..." />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -331,21 +342,37 @@ export default function SellerStore() {
                   </div>
                   <div>
                     <Label>Descripción Corta</Label>
-                    <Textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      rows={2}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        rows={2}
+                      />
+                      <div className="space-y-1">
+                        <Label className="text-xs">RUC de la Tienda</Label>
+                        <Input
+                          name="ruc"
+                          value={formData.ruc}
+                          onChange={handleChange}
+                          placeholder="80000000-0"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <h2 className="text-3xl font-bold text-gray-900">{formData.storeName || 'Nombre de Tienda'}</h2>
                     <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">
                       <Check className="w-3 h-3 mr-1" /> Verificada
                     </Badge>
+                    {formData.ruc && (
+                      <Badge variant="outline" className="border-gray-200 text-gray-500 font-mono">
+                        RUC: {formData.ruc}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-gray-600 text-lg leading-relaxed">{formData.description || 'Sin descripción'}</p>
                 </div>

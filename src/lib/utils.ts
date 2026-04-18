@@ -281,13 +281,15 @@ export function getCreditStatusInfo(status: string): { label: string; color: str
 export function getSubscriptionStatusInfo(status: string): { label: string; color: string; bgColor: string } {
   const s = status?.toLowerCase() || 'pending';
   const statuses: Record<string, { label: string; color: string; bgColor: string }> = {
-    pending: { label: 'Solicitado', color: 'text-amber-700', bgColor: 'bg-amber-100' },
-    active: { label: 'Activo', color: 'text-green-700', bgColor: 'bg-green-100' },
-    revoked: { label: 'Revocado', color: 'text-red-700', bgColor: 'bg-red-100' },
-    expired: { label: 'Vencido', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-    cancelled: { label: 'Cancelado', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+    pending: { label: 'Solicitado', color: 'text-amber-700 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
+    pending_payment: { label: 'Pendiente de Pago', color: 'text-orange-700 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-900/30' },
+    pending_approval: { label: 'Pendiente de Aprobación', color: 'text-blue-700 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
+    active: { label: 'Activo', color: 'text-green-700 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30' },
+    revoked: { label: 'Revocado', color: 'text-red-700 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30' },
+    expired: { label: 'Vencido', color: 'text-gray-700 dark:text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-800/50' },
+    cancelled: { label: 'Cancelado', color: 'text-rose-700 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-900/30' },
   };
-  return statuses[s] || { label: status, color: 'text-gray-700', bgColor: 'bg-gray-100' };
+  return statuses[s] || { label: status, color: 'text-gray-700 dark:text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-800/50' };
 }
 
 // Obtener nombre de rol

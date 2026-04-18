@@ -84,10 +84,16 @@ router.put('/', authenticate, authorize('superadmin'), async (req, res) => {
 router.post('/init', authenticate, authorize('superadmin'), async (req, res) => {
     try {
         const defaultSettings = [
-            { key: 'site_name', value: 'Oscorp System', group: 'general', isPublic: true, description: 'Nome do Sistema' },
-            { key: 'site_description', value: 'Sistema de Gestão Completo', group: 'general', isPublic: true, description: 'Descrição do Sistema' },
-            { key: 'contact_email', value: 'admin@oscorp.com', group: 'general', isPublic: true, description: 'Email de Contato' },
-            { key: 'maintenance_mode', value: 'false', group: 'maintenance', isPublic: true, description: 'Modo Manutenção' },
+            { key: 'site_name', value: 'Oscorp System', group: 'general', isPublic: true, description: 'Nombre del Sistema' },
+            { key: 'site_description', value: 'Sistema de Gestión Integrado', group: 'general', isPublic: true, description: 'Descripción del Sistema' },
+            { key: 'contact_email', value: 'soporte@oscorp.com', group: 'contact', isPublic: true, description: 'Email de Soporte' },
+            { key: 'contact_phone', value: '+595 900 000 000', group: 'contact', isPublic: true, description: 'Teléfono / WhatsApp' },
+            { key: 'contact_address', value: 'Asunción, Paraguay', group: 'contact', isPublic: true, description: 'Dirección Física' },
+            { key: 'allow_registration', value: 'true', group: 'security', isPublic: true, description: 'Permitir Registro' },
+            { key: 'require_email_verification', value: 'false', group: 'security', isPublic: true, description: 'Requerir Verificación de Email' },
+            { key: 'maintenance_mode', value: 'false', group: 'maintenance', isPublic: true, description: 'Modo Mantenimiento' },
+            { key: 'ingenio_price', value: '700000', group: 'general', isPublic: true, description: 'Costo Ingenio Millonario' },
+            { key: 'ingenio_max_installments', value: '3', group: 'general', isPublic: true, description: 'Máximo de Cuotas' },
         ];
 
         const result = await prisma.$transaction(
@@ -101,7 +107,8 @@ router.post('/init', authenticate, authorize('superadmin'), async (req, res) => 
         );
         res.json(result);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao inicializar configurações' });
+        console.error('Error initializing settings:', error);
+        res.status(500).json({ error: 'Error al inicializar configuraciones' });
     }
 });
 

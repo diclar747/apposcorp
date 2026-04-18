@@ -211,14 +211,18 @@ export default function SellerPOS() {
   // Filter
   const filteredProducts = useMemo(() => {
     return products.filter(p =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase())
+      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.sku.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (p.visibility !== 'online')
     );
   }, [products, searchTerm]);
 
   // Barcode auto-detect
   useEffect(() => {
-    const exactMatch = products.find(p => p.sku.toLowerCase() === searchTerm.toLowerCase());
+    const exactMatch = products.find(p => 
+      p.sku.toLowerCase() === searchTerm.toLowerCase() && 
+      p.visibility !== 'online'
+    );
     if (exactMatch && searchTerm.length > 2) {
       addToCart(exactMatch);
       setSearchTerm('');

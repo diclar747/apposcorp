@@ -19,6 +19,7 @@ import { storesApi } from '@/lib/api';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { FloatingSocialButtons } from '@/components/client/FloatingSocialButtons';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 // ─── Logo ───────────────────────────────────────────────────────────
 const OscorpLogo = ({ className = '', size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' }) => {
@@ -197,6 +198,7 @@ const HeroSection = () => {
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 100]);
   const y2 = useTransform(scrollY, [0, 500], [0, -100]);
+  const { settings } = useSettingsStore();
 
   return (
     <section id="inicio" className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-500">
@@ -219,11 +221,11 @@ const HeroSection = () => {
               Empresa Paraguaya de Economía Colaborativa
             </Badge>
             <h1 className="text-5xl lg:text-7xl xl:text-8xl font-black text-slate-900 dark:text-white leading-tight mb-8">
-              Te conectamos <br />
+              {settings.site_name.split(' ')[0]} <br />
               con tu <span className="gradient-text italic">Éxito Financiero</span>
             </h1>
             <p className="text-xl text-slate-600 dark:text-slate-400 mb-10 leading-relaxed max-w-xl font-light">
-              Entregamos beneficios y soluciones en Educación Financiera, Empresarial e Inversiones. Ayudamos a las personas a generar riqueza con una actitud diferente.
+              {settings.site_description || 'Entregamos beneficios y soluciones en Educación Financiera, Empresarial e Inversiones. Ayudamos a las personas a generar riqueza con una actitud diferente.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/register">
@@ -813,141 +815,149 @@ const TestimonialsSection = () => {
 };
 
 // ─── Contact ────────────────────────────────────────────────────────
-const ContactSection = () => (
-  <section id="contacto" className="py-16 sm:py-24 lg:py-32 bg-white dark:bg-slate-900 transition-colors duration-500 overflow-hidden relative">
-    <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-600/5 dark:bg-blue-600/10 rounded-full blur-[120px]" />
-    <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-purple-600/5 dark:bg-purple-600/10 rounded-full blur-[120px]" />
+const ContactSection = () => {
+  const { settings } = useSettingsStore();
 
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-        >
-          <Badge className="mb-4 sm:mb-6 py-1 px-3 bg-blue-100 dark:bg-white/5 text-blue-600 dark:text-white border-blue-200 dark:border-white/10 font-bold text-xs uppercase tracking-widest">
-            CONEXIÓN GLOBAL
-          </Badge>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white mb-4 sm:mb-6 leading-tight">
-            Liderazgo en <span className="italic">Acción</span>
-          </h2>
-          <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-400 mb-8 sm:mb-10 font-light leading-relaxed">
-            Estamos listos para potenciar tu visión corporativa. Contacta con nuestro equipo de expertos.
-          </p>
+  return (
+    <section id="contacto" className="py-16 sm:py-24 lg:py-32 bg-white dark:bg-slate-900 transition-colors duration-500 overflow-hidden relative">
+      <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-600/5 dark:bg-blue-600/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-purple-600/5 dark:bg-purple-600/10 rounded-full blur-[120px]" />
 
-          <div className="space-y-5 sm:space-y-6">
-            {[
-              { icon: Phone, label: 'Línea Directa', value: '+595 975 855 585', hoverColor: 'group-hover:bg-blue-600' },
-              { icon: Mail, label: 'Consultas', value: 'info@oscorp.com.py', hoverColor: 'group-hover:bg-blue-700' },
-              { icon: MapPin, label: 'Sede Central', value: 'Coronel Bogado, Itapúa', hoverColor: 'group-hover:bg-blue-800' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-4 group">
-                <div className={cn('w-11 h-11 sm:w-12 sm:h-12 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center border border-slate-200 dark:border-white/10 transition-colors duration-300 shrink-0', item.hoverColor)}>
-                  <item.icon className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:text-white transition-colors" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <Badge className="mb-4 sm:mb-6 py-1 px-3 bg-blue-100 dark:bg-white/5 text-blue-600 dark:text-white border-blue-200 dark:border-white/10 font-bold text-xs uppercase tracking-widest">
+              CONEXIÓN GLOBAL
+            </Badge>
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white mb-4 sm:mb-6 leading-tight">
+              Liderazgo en <span className="italic">Acción</span>
+            </h2>
+            <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-400 mb-8 sm:mb-10 font-light leading-relaxed">
+              Estamos listos para potenciar tu visión corporativa. Contacta con nuestro equipo de expertos.
+            </p>
+
+            <div className="space-y-5 sm:space-y-6">
+              {[
+                { icon: Phone, label: 'Línea Directa', value: settings.contact_phone || '+595 975 855 585', hoverColor: 'group-hover:bg-blue-600' },
+                { icon: Mail, label: 'Consultas', value: settings.contact_email || 'info@oscorp.com.py', hoverColor: 'group-hover:bg-blue-700' },
+                { icon: MapPin, label: 'Sede Central', value: settings.contact_address || 'Coronel Bogado, Itapúa', hoverColor: 'group-hover:bg-blue-800' },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-4 group">
+                  <div className={cn('w-11 h-11 sm:w-12 sm:h-12 bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center border border-slate-200 dark:border-white/10 transition-colors duration-300 shrink-0', item.hoverColor)}>
+                    <item.icon className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:text-white transition-colors" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">{item.label}</p>
+                    <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">{item.value}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">{item.label}</p>
-                  <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">{item.value}</p>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-white dark:bg-white/5 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 border border-slate-200 dark:border-white/10 shadow-2xl"
+          >
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mb-5 sm:mb-6">Envíanos un mensaje</h3>
+            <form className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">NOMBRE</label>
+                  <input type="text" placeholder="Tu nombre" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">EMAIL</label>
+                  <input type="email" placeholder="tu@email.com" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
                 </div>
               </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          className="bg-white dark:bg-white/5 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 border border-slate-200 dark:border-white/10 shadow-2xl"
-        >
-          <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mb-5 sm:mb-6">Envíanos un mensaje</h3>
-          <form className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">NOMBRE</label>
-                <input type="text" placeholder="Tu nombre" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">ASUNTO</label>
+                <input type="text" placeholder="Propósito de tu mensaje" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">EMAIL</label>
-                <input type="email" placeholder="tu@email.com" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">MENSAJE</label>
+                <textarea placeholder="Describe tu consulta..." rows={3} className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors resize-none text-sm" />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">ASUNTO</label>
-              <input type="text" placeholder="Propósito de tu mensaje" className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-[8px]">MENSAJE</label>
-              <textarea placeholder="Describe tu consulta..." rows={3} className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-colors resize-none text-sm" />
-            </div>
-            <Button className="w-full h-12 bg-blue-600 dark:bg-white text-white dark:text-slate-950 hover:bg-blue-700 dark:hover:bg-slate-200 rounded-full font-black text-sm sm:text-base shadow-xl">
-              ENVIAR MENSAJE
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </form>
-        </motion.div>
+              <Button className="w-full h-12 bg-blue-600 dark:bg-white text-white dark:text-slate-950 hover:bg-blue-700 dark:hover:bg-slate-200 rounded-full font-black text-sm sm:text-base shadow-xl">
+                ENVIAR MENSAJE
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </form>
+          </motion.div>
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 // ─── Footer ─────────────────────────────────────────────────────────
-const Footer = () => (
-  <footer className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white py-20 border-t border-slate-200 dark:border-white/5 transition-colors duration-500">
-    <div className="max-w-7xl mx-auto px-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-        <div className="space-y-6">
-          <OscorpLogo size="sm" className="-ml-1" />
-          <p className="text-slate-600 dark:text-slate-500 leading-relaxed font-light">
-            Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones en Paraguay.
+const Footer = () => {
+  const { settings } = useSettingsStore();
+
+  return (
+    <footer className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white py-20 border-t border-slate-200 dark:border-white/5 transition-colors duration-500">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          <div className="space-y-6">
+            <OscorpLogo size="sm" className="-ml-1" />
+            <p className="text-slate-600 dark:text-slate-500 leading-relaxed font-light">
+              {settings.site_description || 'Entregamos Beneficios y Soluciones en Educación Financiera, Empresarial e Inversiones en Paraguay.'}
+            </p>
+          </div>
+          <div>
+            <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Plataforma</h4>
+            <ul className="space-y-4 text-slate-600 dark:text-slate-400">
+              <li><Link to="/app/tiendas" className="hover:text-blue-600 transition-colors">Ecommerce OSCORP-e</Link></li>
+              <li><Link to="/ingenio" className="hover:text-blue-600 transition-colors">Ingenio Millonario</Link></li>
+              <li><Link to="/app/wallet" className="hover:text-blue-600 transition-colors">Fintech Crowdfunding</Link></li>
+              <li><Link to="/app" className="hover:text-blue-600 transition-colors">Marketplace</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Compañía</h4>
+            <ul className="space-y-4 text-slate-600 dark:text-slate-400">
+              <li><a href="#nosotros" className="hover:text-blue-600 transition-colors">Propósito</a></li>
+              <li><a href="#servicios" className="hover:text-blue-600 transition-colors">Nuestros Pilares</a></li>
+              <li><a href="#marketplace" className="hover:text-blue-600 transition-colors">Tiendas Premium</a></li>
+              <li><a href="#contacto" className="hover:text-blue-600 transition-colors">Contacto</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Contacto</h4>
+            <ul className="space-y-4 text-slate-600 dark:text-slate-400">
+              <li className="flex items-center gap-3"><MapPin className="w-4 h-4 text-blue-600" /> {settings.contact_address || 'Coronel Bogado, Itapúa'}</li>
+              <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> <a href={`tel:${settings.contact_phone}`} className="hover:text-blue-600 transition-colors">{settings.contact_phone || '+595 975 855 585'}</a></li>
+              <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-blue-600" /> {settings.contact_email || 'info@oscorp.com.py'}</li>
+            </ul>
+          </div>
+        </div>
+        <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <p className="text-slate-500 dark:text-slate-600 text-xs font-bold uppercase tracking-widest">
+            © {new Date().getFullYear()} Oscorp - Ingenio Empresarial. Todos los derechos reservados.
           </p>
-        </div>
-        <div>
-          <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Plataforma</h4>
-          <ul className="space-y-4 text-slate-600 dark:text-slate-400">
-            <li><Link to="/app/tiendas" className="hover:text-blue-600 transition-colors">Ecommerce OSCORP-e</Link></li>
-            <li><Link to="/ingenio" className="hover:text-blue-600 transition-colors">Ingenio Millonario</Link></li>
-            <li><Link to="/app/wallet" className="hover:text-blue-600 transition-colors">Fintech Crowdfunding</Link></li>
-            <li><Link to="/app" className="hover:text-blue-600 transition-colors">Marketplace</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Compañía</h4>
-          <ul className="space-y-4 text-slate-600 dark:text-slate-400">
-            <li><a href="#nosotros" className="hover:text-blue-600 transition-colors">Propósito</a></li>
-            <li><a href="#servicios" className="hover:text-blue-600 transition-colors">Nuestros Pilares</a></li>
-            <li><a href="#marketplace" className="hover:text-blue-600 transition-colors">Tiendas Premium</a></li>
-            <li><a href="#contacto" className="hover:text-blue-600 transition-colors">Contacto</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-black mb-6 text-sm uppercase tracking-widest text-slate-900 dark:text-white">Contacto</h4>
-          <ul className="space-y-4 text-slate-600 dark:text-slate-400">
-            <li className="flex items-center gap-3"><MapPin className="w-4 h-4 text-blue-600" /> Coronel Bogado, Itapúa</li>
-            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-blue-600" /> <a href="tel:+595975855585" className="hover:text-blue-600 transition-colors">+595 975 855 585</a></li>
-            <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-blue-600" /> info@oscorp.com.py</li>
-          </ul>
+          <div className="flex gap-4">
+            {[
+              { Icon: Facebook, href: "https://www.facebook.com/share/1BfdPwqaZN/" },
+              { Icon: Instagram, href: "https://www.instagram.com/oscorp_py?igsh=OGpxZnI4cTcxZWtw&utm_source=ig_contact_invite" },
+              { Icon: Twitter, href: "#" }
+            ].map(({ Icon, href }, i) => (
+              <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-600 dark:text-white">
+                <Icon className="w-4 h-4" />
+              </a>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
-        <p className="text-slate-500 dark:text-slate-600 text-xs font-bold uppercase tracking-widest">
-          © {new Date().getFullYear()} Oscorp - Ingenio Empresarial. Todos los derechos reservados.
-        </p>
-        <div className="flex gap-4">
-          {[
-            { Icon: Facebook, href: "https://www.facebook.com/share/1BfdPwqaZN/" },
-            { Icon: Instagram, href: "https://www.instagram.com/oscorp_py?igsh=OGpxZnI4cTcxZWtw&utm_source=ig_contact_invite" },
-            { Icon: Twitter, href: "#" }
-          ].map(({ Icon, href }, i) => (
-            <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all text-slate-600 dark:text-white">
-              <Icon className="w-4 h-4" />
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};
 
 // ─── Main ───────────────────────────────────────────────────────────
 export default function LandingPage() {

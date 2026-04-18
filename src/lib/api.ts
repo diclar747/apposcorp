@@ -233,6 +233,11 @@ export const walletApi = {
       method: 'POST',
       body: JSON.stringify({ pin }),
     }),
+  verifyPin: (pin: string) =>
+    fetchWithAuth('/wallet/pin/verify', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    }),
   changePin: (currentPin: string, newPin: string) =>
     fetchWithAuth('/wallet/pin/change', {
       method: 'POST',
@@ -547,6 +552,7 @@ export const settingsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  getPublic: () => fetchWithAuth('/settings/public'),
   init: () =>
     fetchWithAuth('/settings/init', {
       method: 'POST',

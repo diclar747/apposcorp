@@ -75,7 +75,14 @@ export default function IngenioDashboard() {
     try {
       setLoading(true);
       const data = await financesApi.getSummary();
-      setSummary(data);
+      setSummary({
+        income: data.monthIncome || 0,
+        expenses: data.monthExpenses || 0,
+        assets: data.totalAssets || 0,
+        liabilities: data.totalLiabilities || 0,
+        netWorth: data.netWorth || 0,
+        netWorthGrowth: data.savingsRate || 0
+      });
     } catch (error) {
       console.error(error);
     } finally {

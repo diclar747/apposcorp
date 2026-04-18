@@ -103,6 +103,22 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'El email ya está registrado' });
     }
 
+    // Check if registration is allowed
+    const allowRegistration = await prisma.systemSetting.findUnique({
+      where: { key: 'allow_registration' }
+    });
+
+    if (allowRegistration?.value === 'false') {
+      return res.status(403).json({ error: 'El registro de nuevos usuarios está temporalmente deshabilitado.' });
+    }
+
+    // Check if email verification is required
+    const requireEmailVerification = await prisma.systemSetting.findUnique({
+      where: { key: 'require_email_verification' }
+    });
+
+    const isVerifiedInitially = requireEmailVerification?.value === 'false';
+
     const bcrypt = await import('bcryptjs');
     const crypto = await import('crypto');
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -130,9 +146,9 @@ router.post('/register', async (req, res) => {
         initialInterface: initialInterface || 'OSCORP',
         ingenioAccess: false,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        isVerified: false,
-        verificationToken,
-        verificationTokenExpires,
+        isVerified: isVerifiedInitially,
+        verificationToken: isVerifiedInitially ? null : verificationToken,
+        verificationTokenExpires: isVerifiedInitially ? null : verificationTokenExpires,
         ...(includesWallet ? {
           wallet: {
             create: {
@@ -197,7 +213,7 @@ router.post('/register', async (req, res) => {
     // 6. Real Email Sending via Nodemailer or Demo Mode
     const isDemoMode = !process.env.SMTP_USER || !process.env.SMTP_PASS;
 
-    if (!isDemoMode) {
+    if (!isVerifiedInitially && !isDemoMode) {
       const nodemailer = await import('nodemailer');
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -236,7 +252,7 @@ router.post('/register', async (req, res) => {
         console.error('[EMAIL ERROR] Error enviando correo de verificación:', mailError);
         // Opcional: Podrías decidir revertir el registro o continuar pero advirtiendo
       }
-    } else {
+    } else if (!isVerifiedInitially) {
       console.log('MODO DEMO: Token de verificación ->', verificationToken);
     }
 
@@ -249,12 +265,14 @@ router.post('/register', async (req, res) => {
     const { password: _, ...userWithoutPassword } = fullUser!;
 
     res.status(201).json({
-      message: isDemoMode 
-        ? 'Registro exitoso (Modo Demo). Use el demoToken para verificar.' 
-        : 'Registro exitoso. Se ha enviado un correo de verificación.',
+      message: isVerifiedInitially 
+        ? 'Registro exitoso.' 
+        : (isDemoMode 
+          ? 'Registro exitoso (Modo Demo). Use el demoToken para verificar.' 
+          : 'Registro exitoso. Se ha enviado un correo de verificación.'),
       token,
       user: userWithoutPassword,
-      ...(isDemoMode && { demoToken: verificationToken })
+      ...((!isVerifiedInitially && isDemoMode) && { demoToken: verificationToken })
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -357,7 +375,7 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
     const isValid = await bcrypt.compare(currentPassword, user.password);
 
     if (!isValid) {
-      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+      return res.status(400).json({ error: 'Contraseña actual incorrecta' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
