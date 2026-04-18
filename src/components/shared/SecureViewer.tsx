@@ -62,12 +62,12 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
           <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
             <Lock className="w-4 h-4 text-violet-400" />
           </div>
-          <span className="text-sm font-black text-white tracking-tight truncate max-w-[150px] md:max-w-xs">{title}</span>
+          <span className="text-xs sm:text-sm font-black text-white tracking-tight truncate max-w-[100px] xs:max-w-[150px] md:max-w-xs">{title}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md hidden md:inline">VISTA SEGURA</span>
            
-           <Button variant="ghost" size="icon" onClick={handleFullscreen} className="rounded-full text-slate-400 hover:text-white" title="Pantalla Completa">
+           <Button variant="ghost" size="icon" onClick={handleFullscreen} className="rounded-full text-white bg-white/10 sm:bg-transparent sm:text-slate-400 hover:text-white shrink-0" title="Pantalla Completa">
              <Maximize2 className="w-5 h-5" />
            </Button>
 
