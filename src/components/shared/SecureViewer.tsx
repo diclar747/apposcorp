@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, FileText, Video, Music, Loader2, X, Maximize2, ArrowLeft } from 'lucide-react';
 import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 interface SecureViewerProps {
   url: string;
@@ -12,22 +13,43 @@ interface SecureViewerProps {
 
 export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Prevent context menu (right click)
-  const preventContextMenu = (e: any) => {
-    e.preventDefault();
-  };
+  // Detect fullscreen changes to keep state in sync
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   const handleFullscreen = () => {
     if (!containerRef.current) return;
+    
+    // On mobile, we prefer pseudo-fullscreen (fixed inset-0) because 
+    // real Fullscreen API is buggy or unsupported on iOS Safari
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile) {
+      setIsFullscreen(!isFullscreen);
+      return;
+    }
+
     if (!document.fullscreenElement) {
       containerRef.current.requestFullscreen().catch(err => {
         console.error(`Error: ${err.message}`);
+        // Fallback to pseudo-fullscreen if real one fails
+        setIsFullscreen(true);
       });
     } else {
       document.exitFullscreen();
     }
+  };
+
+  const preventContextMenu = (e: any) => {
+    e.preventDefault();
   };
 
   useEffect(() => {
@@ -46,7 +68,12 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
   return (
     <div 
         ref={containerRef}
-        className="flex flex-col h-full bg-slate-950 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl relative"
+        className={cn(
+          "flex flex-col bg-slate-950 overflow-hidden border border-white/10 shadow-2xl relative transition-all duration-300",
+          isFullscreen 
+            ? "fixed inset-0 z-[9999] rounded-none border-none" 
+            : "h-full rounded-[2.5rem]"
+        )}
         onContextMenu={preventContextMenu}
     >
       {/* Header Bar */}
@@ -67,7 +94,7 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
         <div className="flex items-center gap-1 sm:gap-2">
            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md hidden md:inline">VISTA SEGURA</span>
            
-           <Button variant="ghost" size="icon" onClick={handleFullscreen} className="rounded-full text-white bg-white/10 sm:bg-transparent sm:text-slate-400 hover:text-white shrink-0" title="Pantalla Completa">
+           <Button variant="ghost" size="icon" onClick={handleFullscreen} className={cn("rounded-full transition-all shrink-0", isFullscreen ? "bg-violet-600 text-white" : "text-white bg-white/10 sm:bg-transparent sm:text-slate-400 hover:text-white")} title="Pantalla Completa">
              <Maximize2 className="w-5 h-5" />
            </Button>
 
@@ -80,7 +107,10 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
       </div>
 
       {/* Viewer Content */}
-      <div className="flex-1 relative overflow-auto scrollbar-hide">
+      <div className={cn(
+        "flex-1 relative overflow-auto scrollbar-hide touch-auto",
+        type === 'pdf' && "overflow-y-scroll -webkit-overflow-scrolling-touch cursor-auto"
+      )}>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-slate-950">
             <Loader2 className="w-10 h-10 text-violet-500 animate-spin" />
@@ -88,12 +118,15 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
         )}
 
         {type === 'pdf' && (
-          <iframe
-            src={`${url}#toolbar=0&navpanes=0&scrollbar=0`}
-            className="w-full h-full border-none"
-            onLoad={() => setLoading(false)}
-            title={title}
-          />
+          <div className="w-full h-full bg-slate-800 flex flex-col">
+            <iframe
+              src={`${url}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+              className="w-full flex-1 border-none"
+              onLoad={() => setLoading(false)}
+              title={title}
+              key={isFullscreen ? 'fs' : 'normal'} // Force reload on transition to fix mobile rendering
+            />
+          </div>
         )}
 
         {type === 'video' && (
