@@ -293,16 +293,16 @@ export default function StorePage() {
       <div className="max-w-7xl mx-auto px-6 mt-12">
         <Tabs defaultValue="productos" className="w-full">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-12">
-            <TabsList className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-1 rounded-2xl border border-white/20">
-              <TabsTrigger value="productos" className="rounded-xl px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold">
+            <TabsList className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-1 rounded-2xl border border-white/20 w-full lg:w-auto overflow-x-auto no-scrollbar justify-start sm:justify-center">
+              <TabsTrigger value="productos" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
                 <LayoutGrid className="w-4 h-4 mr-2" />
                 Catálogo
               </TabsTrigger>
-              <TabsTrigger value="info" className="rounded-xl px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold">
+              <TabsTrigger value="info" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
                 <Info className="w-4 h-4 mr-2" />
-                Información
+                Info
               </TabsTrigger>
-              <TabsTrigger value="opiniones" className="rounded-xl px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold">
+              <TabsTrigger value="opiniones" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Opiniones
               </TabsTrigger>
