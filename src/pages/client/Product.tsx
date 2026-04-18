@@ -87,18 +87,19 @@ export default function ClientProduct() {
   const cartQuantity = getItemQuantity(product.id);
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="pb-32 sm:pb-24 bg-background">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 pt-2">
+      <div className="flex items-center gap-2 px-4 pt-2 md:max-w-5xl md:mx-auto w-full">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-muted rounded-lg transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-lg font-semibold line-clamp-1">{product.name}</h1>
       </div>
 
-      {/* Images */}
-      <div className="px-4">
-        <div className="aspect-square bg-muted rounded-2xl overflow-hidden">
+      <div className="md:max-w-5xl md:mx-auto w-full mt-4 flex flex-col md:flex-row gap-0 md:gap-8">
+        {/* Images Column */}
+        <div className="w-full md:w-1/2 sm:px-4">
+        <div className="w-full aspect-square md:aspect-auto md:min-h-[400px] bg-muted rounded-none sm:rounded-2xl overflow-hidden relative">
           {product.images && product.images[selectedImage] ? (
             <img
               src={product.images[selectedImage]}
@@ -128,8 +129,8 @@ export default function ClientProduct() {
         )}
       </div>
 
-      {/* Info */}
-      <div className="px-4">
+      {/* Info Column */}
+      <div className="w-full md:w-1/2 px-4 mt-6 md:mt-0">
         <div className="flex items-start justify-between">
           <div>
             <Badge className="mb-2">{product.category}</Badge>
@@ -200,7 +201,7 @@ export default function ClientProduct() {
         {/* Description */}
         <div className="mt-4">
           <h3 className="font-semibold text-foreground">Descripción</h3>
-          <p className="text-muted-foreground mt-2">{product.description}</p>
+          <p className="text-muted-foreground mt-2 break-words whitespace-normal leading-relaxed">{product.description}</p>
         </div>
 
         {/* Stock */}
@@ -215,9 +216,10 @@ export default function ClientProduct() {
           </p>
         </div>
       </div>
+      </div>
 
       {/* Add to Cart Bar */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 z-30">
+      <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border p-4 pb-safe z-30">
         <div className="max-w-lg mx-auto flex flex-col gap-3">
           <div className="flex items-center gap-3">
             {canPurchase && product.stock > 0 && (

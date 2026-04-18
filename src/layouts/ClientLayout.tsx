@@ -159,7 +159,7 @@ export default function ClientLayout() {
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 p-0">
+            <SheetContent side="left" className="w-[85vw] sm:w-80 p-0">
               <div className="h-full flex flex-col">
                 {/* User Info Header */}
                 <div className="relative overflow-hidden">
@@ -334,7 +334,7 @@ export default function ClientLayout() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pt-16">
+      <main className="flex-1 pt-16 pb-24 lg:pb-0 pb-safe">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -342,6 +342,7 @@ export default function ClientLayout() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            className="w-full max-w-full overflow-x-hidden min-h-screen"
           >
             <Outlet />
           </motion.div>
@@ -367,7 +368,7 @@ export default function ClientLayout() {
       <InstallPrompt />
 
       <AlertDialog open={showIngenioAlert} onOpenChange={setShowIngenioAlert}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100%-2rem)] sm:w-full mx-auto rounded-xl sm:rounded-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Quieres registrarte en Ingenio Millonario?</AlertDialogTitle>
             <AlertDialogDescription>

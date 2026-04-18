@@ -212,7 +212,7 @@ export default function IngenioLayout() {
       </main>
 
       <AlertDialog open={showOscorpAlert} onOpenChange={setShowOscorpAlert}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100%-2rem)] sm:w-full mx-auto rounded-xl sm:rounded-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Habilita tu Billetera Oscorp</AlertDialogTitle>
             <AlertDialogDescription>

@@ -228,14 +228,14 @@ const HeroSection = () => {
               {settings.site_description || 'Entregamos beneficios y soluciones en Educación Financiera, Empresarial e Inversiones. Ayudamos a las personas a generar riqueza con una actitud diferente.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/register">
-                <Button size="lg" className="h-16 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-2xl shadow-blue-500/20 group">
+              <Link to="/register" className="w-full sm:w-auto mt-2 sm:mt-0">
+                <Button size="lg" className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-2xl shadow-blue-500/20 group">
                   Saber Más
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <a href="#marketplace">
-                <Button size="lg" variant="outline" className="h-16 px-10 rounded-2xl border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 backdrop-blur-md text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 text-lg font-bold">
+              <a href="#marketplace" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 rounded-2xl border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 backdrop-blur-md text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 text-lg font-bold">
                   Ver Marketplace
                 </Button>
               </a>
@@ -543,12 +543,12 @@ const MarketplaceSection = () => {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white dark:bg-slate-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center cursor-pointer border border-slate-100 dark:border-white/5 hover:border-blue-500/30 dark:hover:border-blue-400/20 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
+              className="min-w-0 bg-white dark:bg-slate-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center cursor-pointer border border-slate-100 dark:border-white/5 hover:border-blue-500/30 dark:hover:border-blue-400/20 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
             >
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 dark:bg-blue-400/10 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
                 <cat.icon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="font-bold text-slate-900 dark:text-white mb-0.5 text-xs sm:text-sm">{cat.name}</p>
+              <p className="font-bold text-slate-900 dark:text-white mb-0.5 text-xs sm:text-sm truncate w-full">{cat.name}</p>
               <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">{cat.count}</p>
             </motion.div>
           ))}

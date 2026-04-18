@@ -194,19 +194,19 @@ export default function Suppliers() {
                 </Button>
             </div>
 
-            <div className="flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
-                <div className="relative flex-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
+                <div className="relative flex-1 w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                         placeholder="Buscar por nombre, RUC o contacto..."
-                        className="pl-10 h-10"
+                        className="pl-10 h-10 w-full dark:bg-slate-800 dark:border-slate-700 dark:text-gray-200"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="w-full overflow-x-auto no-scrollbar bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -227,8 +227,11 @@ export default function Suppliers() {
                             </TableRow>
                         ) : filteredSuppliers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                    {search ? 'No se encontraron proveedores para tu búsqueda.' : 'Aún no tienes proveedores registrados.'}
+                                <TableCell colSpan={6} className="text-center py-16">
+                                    <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center">
+                                       <Truck className="w-12 h-12 text-muted-foreground opacity-30 mb-4" />
+                                        <p className="font-medium text-foreground">{search ? 'No se encontraron proveedores' : 'Aún no tienes proveedores registrados'}</p>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -302,7 +305,7 @@ export default function Suppliers() {
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="w-[calc(100%-2rem)] mx-auto sm:max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800 rounded-xl sm:rounded-lg">
                     <DialogHeader>
                         <DialogTitle>{editingSupplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}</DialogTitle>
                         <DialogDescription>

@@ -309,17 +309,17 @@ export default function SellerProducts() {
       {/* Filters */}
       <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col gap-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Buscar productos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <Button variant={visibilityFilter === 'all' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('all')} size="sm" className="flex-1 sm:flex-none">Todos</Button>
               <Button variant={visibilityFilter === 'online' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('online')} size="sm" className="flex-1 sm:flex-none">En línea</Button>
               <Button variant={visibilityFilter === 'local' ? 'default' : 'outline'} onClick={() => setVisibilityFilter('local')} size="sm" className="flex-1 sm:flex-none">Local</Button>
@@ -329,9 +329,9 @@ export default function SellerProducts() {
       </Card>
 
       {/* Products Table */}
-      <Card className="dark:bg-slate-900 dark:border-slate-800">
+      <Card className="dark:bg-slate-900 dark:border-slate-800 border-0 sm:border">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-x-auto no-scrollbar rounded-md border lg:border-0 shadow-sm sm:shadow-none bg-white dark:bg-slate-900">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -345,6 +345,17 @@ export default function SellerProducts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {filteredProducts.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-16">
+                      <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center">
+                        <Package className="w-12 h-12 text-muted-foreground opacity-30 mb-4" />
+                        <p className="font-medium text-foreground">No se encontraron productos</p>
+                        <p className="text-xs text-muted-foreground mt-1 text-center">Ajusta los filtros de búsqueda o agrega un nuevo producto.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
                 {filteredProducts.map((product, index) => (
                   <motion.tr
                     key={product.id}

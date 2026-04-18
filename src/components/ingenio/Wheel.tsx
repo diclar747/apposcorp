@@ -156,8 +156,7 @@ export function Wheel({
     <div className="flex flex-col items-center gap-6">
       {/* Wheel Container */}
       <div 
-        className="relative rounded-full bg-white shadow-2xl border-8 border-slate-100"
-        style={{ width: wheelSize, height: wheelSize }}
+        className="relative rounded-full bg-white shadow-2xl border-8 border-slate-100 w-full max-w-[280px] sm:max-w-sm md:max-w-md mx-auto aspect-square overflow-hidden"
       >
         {/* Pointer */}
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30">
@@ -169,10 +168,10 @@ export function Wheel({
         
         {/* Rotating Wheel */}
         <motion.div
-          className="absolute inset-2 rounded-full overflow-hidden"
+          className="absolute w-[calc(100%-1rem)] h-[calc(100%-1rem)] top-2 left-2 rounded-full overflow-hidden"
           style={{ rotate: rotation }}
         >
-          <svg width={wheelSize - 16} height={wheelSize - 16} viewBox={`0 0 ${wheelSize} ${wheelSize}`}>
+          <svg width="100%" height="100%" viewBox={`0 0 ${wheelSize} ${wheelSize}`}>
             {segments.map((seg, i) => {
               const pos = getTextPosition(i);
               return (

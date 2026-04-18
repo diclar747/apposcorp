@@ -132,17 +132,17 @@ export default function SellerOrders() {
       {/* Filters */}
       <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Buscar por número de orden..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <Button variant={statusFilter === 'all' ? 'default' : 'outline'} onClick={() => setStatusFilter('all')} size="sm">Todos</Button>
               {statusOptions.map((status) => (
                 <Button
@@ -160,9 +160,9 @@ export default function SellerOrders() {
       </Card>
 
       {/* Orders Table */}
-      <Card className="dark:bg-slate-900 dark:border-slate-800">
+      <Card className="dark:bg-slate-900 dark:border-slate-800 border-0 sm:border">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-x-auto no-scrollbar rounded-md border lg:border-0 shadow-sm sm:shadow-none bg-white dark:bg-slate-900">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -178,8 +178,12 @@ export default function SellerOrders() {
               <TableBody>
                 {filteredOrders.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No hay pedidos
+                    <TableCell colSpan={7} className="text-center py-16">
+                      <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center">
+                        <Search className="w-12 h-12 text-muted-foreground opacity-30 mb-4" />
+                        <p className="font-medium text-foreground">No se encontraron pedidos</p>
+                        <p className="text-xs text-muted-foreground mt-1 text-center">Ajusta los filtros de búsqueda para ver más resultados.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
@@ -221,31 +225,33 @@ export default function SellerOrders() {
                         <span className="text-sm text-gray-600 dark:text-gray-400">{formatDateTime(order.createdAt)}</span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-1.5 justify-end">
                           {nextStatus && (
                             <Button
                               size="sm"
+                              className="px-2.5 sm:px-3 h-8"
                               onClick={() => updateStatus(order.id, nextStatus.value)}
                               disabled={updatingOrderId === order.id}
+                              title={nextStatus.label}
                             >
                               {updatingOrderId === order.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <>
-                                  {nextStatus.label}
-                                  <ArrowRight className="w-4 h-4 ml-1" />
+                                  <span className="hidden sm:inline">{nextStatus.label}</span>
+                                  <ArrowRight className="w-4 h-4 sm:ml-1" />
                                 </>
                               )}
                             </Button>
                           )}
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="w-4 h-4 mr-1" />
-                                Ver
+                              <Button variant="ghost" size="sm" className="px-2.5 sm:px-3 h-8" title="Ver">
+                                <Eye className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Ver</span>
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl dark:bg-slate-900 dark:border-slate-800">
+                            <DialogContent className="w-[calc(100%-2rem)] mx-auto sm:max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800 rounded-xl sm:rounded-lg">
                               <DialogHeader>
                                 <DialogTitle className="dark:text-white">Pedido {order.orderNumber}</DialogTitle>
                               </DialogHeader>
