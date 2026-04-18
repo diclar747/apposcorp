@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Wallet, ArrowRight, Clock, CheckCircle, History, Banknote, Loader2, XCircle } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { walletApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,23 +40,49 @@ export default function SellerWithdrawals() {
   }, [user]);
 
   const handleWithdrawal = async () => {
-    const withdrawalAmount = parseFloat(amount);
+    // Parse formatted string back to number
+    const numericAmount = parseFloat(amount.replace(/\./g, ''));
 
-    if (!withdrawalAmount || withdrawalAmount <= 0) {
+    if (!numericAmount || numericAmount <= 0) {
       toast.error('Ingresa un monto válido');
       return;
     }
 
-    if (wallet && withdrawalAmount > wallet.balance) {
+    if (wallet && numericAmount > wallet.balance) {
       toast.error('Saldo insuficiente');
+      return;
+    }
+
+    if (!user?.bankData) {
+      toast.error('Debes registrar una cuenta bancaria en tu perfil antes de solicitar un retiro');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await walletApi.withdraw(withdrawalAmount, 'Retiro de ganancias');
-      toast.success('Solicitud de retiro enviada');
+      await walletApi.withdraw(numericAmount, 'Retiro de ganancias');
+      
+      // WhatsApp message generation
+      const storeName = user?.sellerProfile?.storeName || 'Mi Tienda';
+      const userName = `${user?.firstName} ${user?.lastName}`;
+      const bankInfo = `Banco: ${user.bankData.bankName}\nCuenta: ${user.bankData.accountNumber}\nTitular: ${user.bankData.holderName}\nDocumento: ${user.bankData.documentId}`;
+      
+      const message = `Hola Oscorp, solicito un retiro de ${formatCurrency(numericAmount)}.\n\n` +
+                      `Tienda: ${storeName}\n` +
+                      `Usuario: ${userName} (${user?.email})\n\n` +
+                      `*Datos Bancarios*:\n${bankInfo}`;
+      
+      const whatsappNumber = '595975855585'; // Admin phone from the codebase
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      
+      toast.success('Solicitud registrada. Abriendo WhatsApp para confirmar...');
+      
+      // Small delay before opening WhatsApp to allow the user to see the success message
+      setTimeout(() => {
+        window.open(whatsappUrl, '_blank');
+      }, 1000);
+
       setAmount('');
       // Refresh data
       if (user) await fetchWallet(user.id);
@@ -109,31 +135,42 @@ export default function SellerWithdrawals() {
           <div>
             <Label htmlFor="amount">Monto a retirar</Label>
             <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₲</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold px-0.5">₲</span>
               <Input
                 id="amount"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="0"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="pl-8"
+                onChange={(e) => setAmount(formatNumber(e.target.value))}
+                onWheel={(e) => (e.target as HTMLElement).blur()}
+                className="pl-8 font-bold text-lg"
               />
             </div>
           </div>
 
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Cuenta bancaria registrada:</p>
+          <div className="p-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl transition-colors">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Cuenta bancaria registrada:</p>
             {user?.bankData ? (
-              <>
-                <div className="flex items-center gap-2 mt-2">
-                  <Banknote className="w-5 h-5 text-gray-400" />
-                  <span className="font-medium">{user.bankData.bankName}</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-500/10 flex items-center justify-center text-green-600 dark:text-green-400">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="block font-bold text-slate-700 dark:text-slate-200">{user.bankData.bankName}</span>
+                    <span className="block text-sm text-slate-500 font-medium">{user.bankData.accountNumber}</span>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">{user.bankData.accountNumber}</p>
-                <p className="text-sm text-gray-500">{user.bankData.holderName}</p>
-              </>
+                <div className="pt-2 border-t border-gray-200/50 dark:border-slate-700/50">
+                   <p className="text-xs text-slate-400 font-medium">Titular: <span className="text-slate-600 dark:text-slate-300 font-bold">{user.bankData.holderName}</span></p>
+                </div>
+              </div>
             ) : (
-              <p className="text-sm text-yellow-600 mt-2">No tienes cuenta bancaria registrada. Ve a tu perfil para agregarla.</p>
+              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                <XCircle className="w-5 h-5" />
+                <p className="text-sm font-medium">No tienes cuenta bancaria registrada. Ve a tu perfil para agregarla.</p>
+              </div>
             )}
           </div>
 
@@ -173,29 +210,32 @@ export default function SellerWithdrawals() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-transparent dark:border-slate-800"
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    withdrawal.status === 'completed' ? 'bg-green-100' :
-                    withdrawal.status === 'failed' ? 'bg-red-100' : 'bg-yellow-100'
+                    withdrawal.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30' :
+                    withdrawal.status === 'failed' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'
                   }`}>
                     {withdrawal.status === 'completed' ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
                     ) : withdrawal.status === 'failed' ? (
-                      <XCircle className="w-5 h-5 text-red-600" />
+                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                     ) : (
-                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                     )}
                   </div>
                   <div>
-                    <p className="font-medium">{withdrawal.description || 'Retiro'}</p>
-                    <p className="text-sm text-gray-500">{formatDate(withdrawal.createdAt)}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{withdrawal.description || 'Retiro'}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(withdrawal.createdAt)}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold">{formatCurrency(Math.abs(withdrawal.amount))}</p>
-                  <Badge variant={withdrawal.status === 'completed' ? 'default' : 'secondary'}>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(Math.abs(withdrawal.amount))}</p>
+                  <Badge 
+                    variant={withdrawal.status === 'completed' ? 'default' : 'secondary'}
+                    className={withdrawal.status === 'completed' ? 'bg-green-600' : ''}
+                  >
                     {withdrawal.status === 'completed' ? 'Completado' :
                      withdrawal.status === 'failed' ? 'Fallido' : 'Pendiente'}
                   </Badge>

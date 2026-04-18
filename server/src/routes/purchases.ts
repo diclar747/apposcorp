@@ -169,4 +169,80 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     }
 });
 
+// Delete a purchase and reverse stock
+router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
+    try {
+        const id = req.params.id as string;
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Find the purchase and check owner
+            const purchase = await tx.purchase.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+
+            if (!purchase) {
+                throw new Error('PURCHASE_NOT_FOUND');
+            }
+
+            // Verify seller owns the purchase
+            const user = await tx.user.findUnique({
+                where: { id: req.user!.userId },
+                include: { sellerProfile: true },
+            });
+
+            if (!user || (!user.roles.includes('seller') && !user.roles.includes('superadmin'))) {
+                throw new Error('UNAUTHORIZED_ACCESS');
+            }
+
+            if (user.roles.includes('seller') && purchase.sellerId !== user.sellerProfile?.id) {
+                throw new Error('UNAUTHORIZED_ACCESS');
+            }
+
+            // 2. Reverse stock for each item
+            for (const item of purchase.items) {
+                // Decrement stock
+                await tx.product.update({
+                    where: { id: item.productId },
+                    data: {
+                        stock: { decrement: item.quantity }
+                    }
+                });
+
+                // Record stock correction movement
+                await tx.stockMovement.deleteMany({
+                    where: {
+                        reference: purchase.id,
+                        productId: item.productId,
+                        type: 'purchase'
+                    }
+                });
+            }
+
+            // 3. Delete the purchase (items will cascade delete due to schema relation)
+            await tx.purchase.delete({
+                where: { id }
+            });
+
+            return { success: true, message: 'Registro de compra eliminado y stock revertido' };
+        }, { timeout: 30000 });
+
+        res.json(result);
+    } catch (error: any) {
+        let status = 500;
+        let message = 'Error en el servidor al eliminar la compra';
+
+        if (error.message === 'PURCHASE_NOT_FOUND') {
+            status = 404;
+            message = 'La compra no fue encontrada.';
+        } else if (error.message === 'UNAUTHORIZED_ACCESS') {
+            status = 403;
+            message = 'No tienes permisos para realizar esta operación.';
+        }
+
+        console.error('Delete purchase error:', error);
+        res.status(status).json({ error: message });
+    }
+});
+
 export default router;

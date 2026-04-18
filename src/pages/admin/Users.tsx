@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, UserPlus, Loader2, Filter, MoreHorizontal, User, Mail, Phone, Shield, Store, UserCircle, CheckCircle, XCircle, Pencil, Save, BookOpen, Check } from 'lucide-react';
-import { cn, getRoleName, getRoleColor, formatDate } from '@/lib/utils';
+import { cn, getRoleName, getRoleColor, formatDate, getAccountStatusInfo, generateReportPDF } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,8 +56,6 @@ import type { SubscriptionPlan, BillingCycle, Course, UserCourse } from '@/types
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 // Types
 interface UserData {
@@ -128,43 +126,63 @@ export default function AdminUsers() {
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const statsHtml = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">TOTAL USUARIOS</div>
+          <div class="stat-value">${users.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">CLIENTES</div>
+          <div class="stat-value">${users.filter(u => u.roles.includes('client')).length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">VENDEDORES</div>
+          <div class="stat-value">${users.filter(u => u.roles.includes('seller')).length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">INGENIO</div>
+          <div class="stat-value">${users.filter(u => u.ingenioAccess).length}</div>
+        </div>
+      </div>
+    `;
 
-    // Logo/Header
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE USUARIOS', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+    const rows = filteredUsers.map(u => {
+      const statusInfo = getAccountStatusInfo(u.isActive);
+      const statusClass = u.isActive ? 'badge-green' : 'badge-red';
 
-    const tableData = filteredUsers.map(u => [
-      `${u.firstName} ${u.lastName}`,
-      u.email,
-      u.roles?.join(', ') || '-',
-      u.isActive ? 'Activo' : 'Inactivo',
-      u.ingenioAccess ? 'Si' : 'No',
-      new Date(u.createdAt).toLocaleDateString()
-    ]);
+      return `
+        <tr>
+          <td>${u.firstName} ${u.lastName}</td>
+          <td>${u.email}</td>
+          <td>${u.roles?.map(r => getRoleName(r)).join(', ') || '-'}</td>
+          <td><span class="badge ${statusClass}">${statusInfo.label}</span></td>
+          <td>${u.ingenioAccess ? '<span class="badge badge-blue">SÍ</span>' : '<span class="badge badge-gray">NO</span>'}</td>
+          <td>${new Date(u.createdAt).toLocaleDateString('es-PY')}</td>
+        </tr>
+      `;
+    }).join('');
 
-    autoTable(doc, {
-      startY: 45,
-      head: [['Nombre', 'Email', 'Roles', 'Estado', 'Ingenio', 'Registro']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+    const tableHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Roles</th>
+            <th>Estado</th>
+            <th>Ingenio</th>
+            <th>Registro</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
 
-    doc.save(`usuarios-oscorp-${new Date().getTime()}.pdf`);
-    toast.success('PDF exportado correctamente');
+    generateReportPDF('Reporte de Usuarios', statsHtml, tableHtml);
+    toast.success('Reporte de usuarios generado correctamente');
   };
 
   useEffect(() => {
@@ -611,8 +629,8 @@ export default function AdminUsers() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
-                          {user.isActive ? 'Activo' : 'Inactivo'}
+                        <Badge className={`${getAccountStatusInfo(user.isActive).bgColor} ${getAccountStatusInfo(user.isActive).color} border-0 text-xs`}>
+                          {getAccountStatusInfo(user.isActive).label}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">

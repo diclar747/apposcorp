@@ -21,7 +21,8 @@ import {
   FileText,
   Users,
   Sun,
-  Moon
+  Moon,
+  Wallet
 } from 'lucide-react';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
@@ -48,6 +49,7 @@ const sidebarItems = [
   { icon: FileText, label: 'Compras', href: '/vendedor/compras' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/vendedor/pedidos' },
   { icon: TrendingUp, label: 'Ventas', href: '/vendedor/ventas' },
+  { icon: Wallet, label: 'Retiros', href: '/vendedor/retiros' },
   { icon: DollarSign, label: 'Gestión', href: '/vendedor/gestion' },
   { icon: BarChart3, label: 'Reportes', href: '/vendedor/reportes' },
   { icon: Settings, label: 'Configuración', href: '/vendedor/configuracion' },
@@ -89,7 +91,7 @@ export default function SellerLayout() {
 
   const viewStore = () => {
     if (user?.sellerProfile?.storeSlug) {
-      window.open(`/tienda/${user.sellerProfile.storeSlug}`, '_blank');
+      window.open(`/tienda/${user.sellerProfile.storeSlug}?from=vendedor`, '_blank');
     }
   };
 

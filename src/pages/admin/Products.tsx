@@ -57,6 +57,17 @@ const PRODUCT_CATEGORIES = [
   'Otros'
 ];
 
+// Helper to format currency display with dots
+const formatInputCurrency = (value: number | undefined) => {
+  if (value === undefined || value === null) return '';
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+// Helper to parse currency input back to number
+const parseInputCurrency = (value: string) => {
+  return parseInt(value.replace(/\./g, '')) || 0;
+};
+
 export default function AdminProducts() {
   const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,9 +143,9 @@ export default function AdminProducts() {
         name: '',
         sku: '',
         description: '',
-        price: 0,
-        cost: 0,
-        profitPercentage: 0,
+        price: undefined,
+        cost: undefined,
+        profitPercentage: undefined,
         stock: 0,
         category: '',
         type: 'physical',
@@ -260,7 +271,7 @@ export default function AdminProducts() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
-                      className="border-b border-gray-100 hover:bg-gray-50"
+                      className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -272,28 +283,28 @@ export default function AdminProducts() {
                             </div>
                           )}
                           <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
-                            <p className="text-sm text-gray-500">{product.category}</p>
+                            <p className="font-bold text-sm text-slate-900 dark:text-white leading-tight">{product.name}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{product.category}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-mono text-gray-600">{product.sku}</span>
+                      <TableCell className="py-2.5 px-4 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                        {product.sku}
                       </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600">{storeName}</span>
+                      <TableCell className="py-2.5 px-4 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        {storeName}
                       </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-gray-900">{formatCurrency(product.price)}</p>
+                      <TableCell className="py-2.5 px-4">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white leading-none">{formatCurrency(product.price)}</span>
                           {product.comparePrice && (
-                            <p className="text-sm text-gray-400 line-through">{formatCurrency(product.comparePrice)}</p>
+                            <span className="text-[10px] text-slate-400 line-through mt-0.5">{formatCurrency(product.comparePrice)}</span>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <span className={`text-sm font-medium ${product.stock < 5 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>
-                          {product.stock} unidades
+                      <TableCell className="py-2.5 px-4">
+                        <span className={`text-[11px] font-bold ${product.stock < 5 ? 'text-red-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                          {product.stock} un.
                         </span>
                       </TableCell>
                       <TableCell>
@@ -309,9 +320,8 @@ export default function AdminProducts() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenModal(product)}><Eye className="w-4 h-4 mr-2" /> Ver/Editar</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOpenModal(product)}><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="w-4 h-4 mr-2" /> Eliminar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenModal(product)} className="cursor-pointer"><Eye className="w-4 h-4 mr-2" /> Ver/Editar</DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="w-4 h-4 mr-2" /> Eliminar</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -410,8 +420,14 @@ export default function AdminProducts() {
                 <Input
                   id="stock"
                   type="number"
+                  min="0"
+                  onWheel={(e) => (e.target as HTMLElement).blur()}
                   value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setFormData({ ...formData, stock: Math.max(0, val) });
+                  }}
+                  className="rounded-lg h-9 text-sm"
                 />
               </div>
             </div>
@@ -425,12 +441,19 @@ export default function AdminProducts() {
                   <Label htmlFor="cost">Costo (Compra)</Label>
                   <Input
                     id="cost"
-                    type="number"
-                    value={formData.cost}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatInputCurrency(formData.cost)}
                     onChange={(e) => {
-                      const cost = parseFloat(e.target.value) || 0;
+                      const rawValue = e.target.value;
+                      if (rawValue === '') {
+                        setFormData(prev => ({ ...prev, cost: undefined, price: undefined, profitPercentage: undefined }));
+                        return;
+                      }
+                      const cost = parseInputCurrency(rawValue);
                       handleCalculatePrice(cost, formData.profitPercentage || 0);
                     }}
+                    className="rounded-lg h-9 text-sm font-medium"
                   />
                 </div>
                 <div className="space-y-2">
@@ -438,23 +461,51 @@ export default function AdminProducts() {
                   <Input
                     id="profit"
                     type="number"
-                    value={formData.profitPercentage}
+                    min="0"
+                    max="100"
+                    onWheel={(e) => (e.target as HTMLElement).blur()}
+                    value={formData.profitPercentage ?? ''}
                     onChange={(e) => {
-                      const margin = parseFloat(e.target.value) || 0;
+                      const rawValue = e.target.value;
+                      if (rawValue === '') {
+                        setFormData(prev => ({ ...prev, profitPercentage: undefined }));
+                        return;
+                      }
+                      let margin = parseFloat(rawValue) || 0;
+                      margin = Math.min(100, Math.max(0, margin));
                       handleCalculatePrice(formData.cost || 0, margin);
                     }}
+                    className="rounded-lg h-9 text-sm font-medium"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="price" className="text-green-600 font-bold">Precio Total (Venta)</Label>
+                  <Label htmlFor="price" className="text-emerald-500 font-bold">Precio Total (Venta)</Label>
                   <Input
                     id="price"
-                    type="number"
-                    className="border-green-200 focus-visible:ring-green-500 font-bold"
-                    value={formData.price}
+                    type="text"
+                    inputMode="numeric"
+                    className="border-emerald-200 focus-visible:ring-emerald-500 font-bold rounded-lg h-9 text-sm bg-emerald-50/10"
+                    value={formatInputCurrency(formData.price)}
                     onChange={(e) => {
-                      const price = parseFloat(e.target.value) || 0;
-                      handleCalculateMargin(formData.cost || 0, price);
+                      const rawValue = e.target.value;
+                      if (rawValue === '') {
+                        setFormData(prev => ({ ...prev, price: undefined, profitPercentage: undefined }));
+                        return;
+                      }
+                      let price = parseInputCurrency(rawValue);
+                      
+                      // Prevent price from being lower than cost or exceeding 100% profit
+                      const currentCost = formData.cost || 0;
+                      if (price < currentCost) {
+                        price = currentCost;
+                      }
+                      
+                      const maxPrice = currentCost * 2;
+                      if (currentCost > 0 && price > maxPrice) {
+                        price = maxPrice;
+                      }
+                      
+                      handleCalculateMargin(currentCost, price);
                     }}
                   />
                 </div>

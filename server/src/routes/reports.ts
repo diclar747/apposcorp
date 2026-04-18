@@ -340,14 +340,21 @@ router.get('/seller-stats', authenticate, async (req: AuthRequest, res) => {
     }
 
     // 2. Aggregate Metrics (Total Revenue, Sales Count)
-    const orders = await prisma.order.findMany({
-      where: { sellerId: userId }
-    });
+    const [orders, purchases] = await Promise.all([
+      prisma.order.findMany({
+        where: { sellerId: userId }
+      }),
+      prisma.purchase.findMany({
+        where: { sellerId: sellerProfile.id }
+      })
+    ]);
 
     const totalSales = orders.length;
     const totalRevenue = orders
       .filter(o => o.paymentStatus === 'paid')
       .reduce((sum, o) => sum + o.total, 0);
+
+    const totalPurchases = purchases.reduce((sum, p) => sum + p.totalAmount, 0);
 
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
 
@@ -401,6 +408,7 @@ router.get('/seller-stats', authenticate, async (req: AuthRequest, res) => {
       stats: {
         totalRevenue,
         totalSales,
+        totalPurchases,
         pendingOrders: pendingOrdersCount,
         currentBalance: wallet?.balance || 0,
         storeName: sellerProfile.storeName

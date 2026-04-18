@@ -14,7 +14,7 @@ import {
   LineChart, Line,
 } from 'recharts';
 import { ordersApi, productsApi, customersApi, purchasesApi, managementApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getSafeDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 // ─── Labels ──────────────────────────────────────────────────────────
 const ORDER_STATUS: Record<string, string> = {
@@ -31,23 +32,23 @@ const ORDER_STATUS: Record<string, string> = {
   ready: 'Listo', in_transit: 'En camino', delivered: 'Entregado',
   cancelled: 'Cancelado', refunded: 'Reembolsado',
 };
+const PAYMENT_METHODS: Record<string, string> = {
+  cash: 'Efectivo',
+  wallet: 'Billetera',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+};
 const PIE_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────
-function downloadCSV(data: Record<string, any>[], filename: string) {
+function downloadExcel(data: Record<string, any>[], filename: string) {
   if (!data.length) return;
-  const headers = Object.keys(data[0]);
-  const rows = [
-    headers.join(','),
-    ...data.map(row =>
-      headers.map(h => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
-    ),
-  ];
-  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte');
+  // Use .xlsx as default if not provided
+  const finalFilename = filename.endsWith('.xlsx') ? filename : filename.replace(/\.(csv|xlsx)$/, '') + '.xlsx';
+  XLSX.writeFile(workbook, finalFilename);
 }
 
 function generatePDF(title: string, statsHtml: string, tableHtml: string) {
@@ -84,9 +85,9 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
 
 function matchesDateRange(dateStr: string, start: string, end: string): boolean {
   if (!start && !end) return true;
-  const d = new Date(dateStr).getTime();
-  if (start && d < new Date(start).getTime()) return false;
-  if (end && d > new Date(end + 'T23:59:59').getTime()) return false;
+  const d = getSafeDate(dateStr).getTime();
+  if (start && d < getSafeDate(start).getTime()) return false;
+  if (end && d > getSafeDate(end).getTime() + (24 * 60 * 60 * 1000 - 1)) return false;
   return true;
 }
 
@@ -127,18 +128,18 @@ export default function SellerReports() {
     const load = async () => {
       try {
         setIsLoading(true);
-        const [ord, prod, cust, purch, mov] = await Promise.all([
+        const [ord, prod, cust, purch, movData] = await Promise.all([
           ordersApi.getAll('seller').catch(() => []),
           productsApi.getAll().catch(() => []),
           customersApi.getAll().catch(() => []),
           purchasesApi.getAll().catch(() => []),
-          managementApi.getMovements().catch(() => []),
+          managementApi.getMovements({ limit: 1000 }).catch(() => ({ movements: [] })),
         ]);
         setOrders(Array.isArray(ord) ? ord : []);
         setProducts(Array.isArray(prod) ? prod : []);
         setCustomers(Array.isArray(cust) ? cust : []);
         setPurchases(Array.isArray(purch) ? purch : []);
-        setMovements(Array.isArray(mov) ? mov : []);
+        setMovements(movData?.movements || []);
       } catch (err) {
         toast.error('Error al cargar datos');
       } finally {
@@ -224,11 +225,11 @@ export default function SellerReports() {
       'Ganancia': o.sellerEarnings,
       'Total': o.total,
       'Estado': ORDER_STATUS[o.status] || o.status,
-      'Método Pago': o.paymentMethod,
+      'Método Pago': PAYMENT_METHODS[o.paymentMethod] || o.paymentMethod,
       'Tipo Entrega': o.deliveryType === 'delivery' ? 'Delivery' : 'Retiro',
     }));
-    downloadCSV(data, `reporte-ventas-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de ventas exportado');
+    downloadExcel(data, `reporte-ventas-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de ventas exportado a Excel');
   };
 
   const exportProductsCSV = () => {
@@ -244,8 +245,8 @@ export default function SellerReports() {
       'Tipo': p.type,
       'Visibilidad': p.visibility,
     }));
-    downloadCSV(data, `reporte-productos-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de productos exportado');
+    downloadExcel(data, `reporte-productos-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de productos exportado a Excel');
   };
 
   const exportFinancialCSV = () => {
@@ -257,8 +258,8 @@ export default function SellerReports() {
       'Monto': m.amount,
       'Comprobante': m.voucherNumber || '',
     }));
-    downloadCSV(data, `reporte-financiero-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte financiero exportado');
+    downloadExcel(data, `reporte-financiero-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte financiero exportado a Excel');
   };
 
   const exportCustomersCSV = () => {
@@ -271,8 +272,8 @@ export default function SellerReports() {
       'Notas': c.notes || '',
       'Estado': c.isActive ? 'Activo' : 'Inactivo',
     }));
-    downloadCSV(data, `reporte-clientes-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de clientes exportado');
+    downloadExcel(data, `reporte-clientes-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de clientes exportado a Excel');
   };
 
   const exportPurchasesCSV = () => {
@@ -285,11 +286,63 @@ export default function SellerReports() {
       'Estado': p.status,
       'Notas': p.notes || '',
     }));
-    downloadCSV(data, `reporte-compras-${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte de compras exportado');
+    downloadExcel(data, `reporte-compras-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de compras exportado a Excel');
   };
 
-  // PDF
+  const exportProductsPDF = () => {
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Productos</div><div class="stat-value">${products.length}</div></div>
+      <div class="stat"><div class="stat-label">Activos</div><div class="stat-value text-green">${products.filter((p: any) => p.status === 'active').length}</div></div>
+      <div class="stat"><div class="stat-label">Stock Bajo</div><div class="stat-value text-red">${products.filter((p: any) => p.stock < 5).length}</div></div>
+      <div class="stat"><div class="stat-label">Valor Inv.</div><div class="stat-value">${formatCurrency(products.reduce((s: number, p: any) => s + ((p.cost || p.price) * p.stock), 0))}</div></div>
+    </div>`;
+    const rows = products.map((p: any) => `<tr>
+      <td>${p.sku || ''}</td>
+      <td>${p.name || ''}</td>
+      <td>${p.category || ''}</td>
+      <td class="text-right">${formatCurrency(p.price)}</td>
+      <td class="text-right">${p.stock}</td>
+      <td>${p.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generatePDF('Reporte de Productos', statsHtml, tableHtml);
+    toast.success('PDF de productos generado');
+  };
+
+  const exportCustomersPDF = () => {
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Clientes</div><div class="stat-value">${customers.length}</div></div>
+      <div class="stat"><div class="stat-label">Activos</div><div class="stat-value text-green">${customers.filter((c: any) => c.isActive).length}</div></div>
+    </div>`;
+    const rows = customers.map((c: any) => `<tr>
+      <td>${c.fullName || ''}</td>
+      <td>${c.phone || ''}</td>
+      <td>${c.ruc || ''}</td>
+      <td>${c.city || ''}</td>
+      <td>${c.isActive ? 'Activo' : 'Inactivo'}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Nombre</th><th>Teléfono</th><th>RUC</th><th>Ciudad</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generatePDF('Reporte de Clientes', statsHtml, tableHtml);
+    toast.success('PDF de clientes generado');
+  };
+
+  const exportPurchasesPDF = () => {
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Compras</div><div class="stat-value">${purchases.length}</div></div>
+      <div class="stat"><div class="stat-label">Monto Total</div><div class="stat-value text-red">${formatCurrency(purchases.reduce((s: number, p: any) => s + (p.totalAmount || 0), 0))}</div></div>
+    </div>`;
+    const rows = purchases.map((p: any) => `<tr>
+      <td>${p.invoiceNumber || ''}</td>
+      <td>${formatDate(p.purchaseDate)}</td>
+      <td>${p.supplier?.name || ''}</td>
+      <td class="text-right font-bold">${formatCurrency(p.totalAmount)}</td>
+      <td>${p.status}</td>
+    </tr>`).join('');
+    const tableHtml = `<table><thead><tr><th>Factura</th><th>Fecha</th><th>Proveedor</th><th>Total</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    generatePDF('Reporte de Compras', statsHtml, tableHtml);
+    toast.success('PDF de compras generado');
+  };
   const exportOrdersPDF = () => {
     const statsHtml = `<div class="stats">
       <div class="stat"><div class="stat-label">Total Ventas</div><div class="stat-value">${formatCurrency(totalSales)}</div></div>
@@ -302,10 +355,10 @@ export default function SellerReports() {
       <td>${formatDate(o.createdAt)}</td>
       <td>${(o.buyer?.firstName || '') + ' ' + (o.buyer?.lastName || '')}</td>
       <td class="text-right">${formatCurrency(o.total)}</td>
-      <td class="text-right">${formatCurrency(o.sellerEarnings || 0)}</td>
+      <td>${PAYMENT_METHODS[o.paymentMethod] || o.paymentMethod || ''}</td>
       <td>${ORDER_STATUS[o.status] || o.status}</td>
     </tr>`).join('');
-    const tableHtml = `<table><thead><tr><th>Orden</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Ganancia</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const tableHtml = `<table><thead><tr><th>Orden</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
     generatePDF('Reporte de Ventas', statsHtml, tableHtml);
     toast.success('PDF de ventas generado');
   };
@@ -561,7 +614,9 @@ export default function SellerReports() {
                               'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                             }`}>{ORDER_STATUS[o.status] || o.status}</Badge>
                           </td>
-                          <td className="p-3 text-center text-xs">{o.paymentMethod}</td>
+                          <td className="p-3 text-center text-xs uppercase font-medium text-gray-500">
+                            {PAYMENT_METHODS[o.paymentMethod] || o.paymentMethod}
+                          </td>
                         </tr>
                       )) : (
                         <tr><td colSpan={8} className="p-8 text-center text-gray-400">No se encontraron ventas</td></tr>
@@ -581,6 +636,9 @@ export default function SellerReports() {
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={exportProductsCSV}>
                 <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportProductsPDF}>
+                <FileText className="w-4 h-4 mr-1" /> PDF
               </Button>
             </div>
 
@@ -725,10 +783,16 @@ export default function SellerReports() {
           <div className="space-y-4">
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={exportPurchasesCSV}>
-                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel/CSV
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Compras CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportPurchasesPDF}>
+                <FileText className="w-4 h-4 mr-1" /> Compras PDF
               </Button>
               <Button size="sm" variant="outline" onClick={exportCustomersCSV}>
                 <FileSpreadsheet className="w-4 h-4 mr-1" /> Clientes CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportCustomersPDF}>
+                <FileText className="w-4 h-4 mr-1" /> Clientes PDF
               </Button>
             </div>
 

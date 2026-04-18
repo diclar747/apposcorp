@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Plus, BookOpen, Trash2, Edit,
@@ -45,91 +45,92 @@ import Wheel from '@/components/ingenio/Wheel';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
+function getSafeDate(dateStr: string | Date): Date {
+    if (!dateStr) return new Date();
+    // If it's a string (likely YYYY-MM-DD or ISO), ignore the time/timezone part
+    // and treat it as local midday to avoid any shift.
+    const datePart = typeof dateStr === 'string' ? dateStr.split('T')[0] : dateStr.toISOString().split('T')[0];
+    return new Date(`${datePart}T12:00:00`);
+}
+
 function exportToCSV(records: any[], type: string) {
     const headers = ['Fecha', 'Nombre / Descripción', 'Monto', 'Categoría'];
     const rows = records.map(r => [
-        new Date(r.date || r.createdAt).toLocaleDateString('es-PY'),
+        getSafeDate(r.date || r.createdAt).toLocaleDateString('es-PY'),
         `"${(r.description || '').replace(/"/g, '""')}"`,
         r.amount,
         r.category?.name || 'Varios'
     ]);
-    const csv = '\uFEFF' + [headers, ...rows].map(row => row.join(',')).join('\n');
+    // Use semicolon (;) for better compatibility with Excel in Latin America/Spain
+    const csv = '\uFEFF' + [headers, ...rows].map(row => row.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${type}s_${new Date().toISOString().split('T')[0]}.csv`;
+    const typeLabel = type === 'income' ? 'Ingresos' : type === 'expense' ? 'Egresos' : type === 'asset' ? 'Activos' : 'Pasivos';
+    a.download = `Ingenio_${typeLabel}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+function generatePDF(title: string, statsHtml: string, tableHtml: string) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${title}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#333;font-size:12px}
+      h1{font-size:20px;margin-bottom:4px}
+      .date{color:#666;font-size:11px;margin-bottom:16px}
+      .stats{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+      .stat{background:#f5f5f5;padding:10px 14px;border-radius:8px;min-width:120px}
+      .stat-label{font-size:10px;color:#666}
+      .stat-value{font-size:16px;font-weight:bold}
+      table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
+      th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #ddd}
+      td{padding:5px 8px;border-bottom:1px solid #eee}
+      tr:nth-child(even){background:#fafafa}
+      .text-right{text-align:right}
+      .text-green{color:#16a34a}
+      .text-red{color:#dc2626}
+      @media print{body{padding:0}.no-print{display:none}}
+    </style></head><body>
+    <h1>${title} - Ingenio Millonario</h1>
+    <p class="date">Generado: ${new Date().toLocaleDateString('es-PY')} ${new Date().toLocaleTimeString('es-PY')}</p>
+    ${statsHtml}
+    ${tableHtml}
+    <script>window.onload=function(){window.print()}<\/script>
+  </body></html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
 }
 
 function exportToPDF(records: any[], type: string, total: number) {
     const typeLabels: Record<string, string> = {
         income: 'Ingresos', expense: 'Egresos', asset: 'Activos', liability: 'Pasivos'
     };
-    const typeColors: Record<string, string> = {
-        income: '#059669', expense: '#e11d48', asset: '#2563eb', liability: '#64748b'
-    };
-    const rows = records.map(r => `
-        <tr>
-            <td>${new Date(r.date || r.createdAt).toLocaleDateString('es-PY')}</td>
-            <td><strong>${r.description || '—'}</strong></td>
-            <td style="text-align:right;font-weight:700;color:${typeColors[type]}">${formatCurrency(r.amount)}</td>
-            <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:11px">${r.category?.name || 'Varios'}</span></td>
-        </tr>`).join('');
-
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head>
-        <meta charset="utf-8">
-        <title>Reporte de ${typeLabels[type]} – Ingenio Millonario</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a; background: #fff; padding: 40px; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid ${typeColors[type]}; }
-            .brand { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a; }
-            .brand span { color: ${typeColors[type]}; }
-            .meta { text-align: right; font-size: 12px; color: #64748b; }
-            .title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
-            .summary { display: flex; gap: 16px; margin-bottom: 28px; }
-            .kpi { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 24px; flex: 1; }
-            .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 4px; }
-            .kpi-value { font-size: 20px; font-weight: 900; color: ${typeColors[type]}; }
-            table { width: 100%; border-collapse: collapse; font-size: 13px; }
-            th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; border-bottom: 2px solid #e2e8f0; }
-            td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-            tr:hover td { background: #f8fafc; }
-            .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; }
-            @media print { body { padding: 20px; } .no-print { display: none; } }
-        </style>
-    </head><body>
-        <div class="header">
-            <div>
-                <div class="brand">Ingenio <span>Millonario</span></div>
-                <div style="font-size:13px;color:#64748b;margin-top:4px">Sistema de Gestión Financiera</div>
-            </div>
-            <div class="meta">
-                <div class="title">Reporte de ${typeLabels[type]}</div>
-                <div>Generado el ${new Date().toLocaleDateString('es-PY', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            </div>
-        </div>
-        <div class="summary">
-            <div class="kpi"><div class="kpi-label">Total Registros</div><div class="kpi-value">${records.length}</div></div>
-            <div class="kpi"><div class="kpi-label">Monto Total</div><div class="kpi-value">${formatCurrency(total)}</div></div>
-        </div>
-        <table>
-            <thead><tr><th>Fecha</th><th>Nombre / Descripción</th><th style="text-align:right">Monto</th><th>Categoría</th></tr></thead>
-            <tbody>${rows}</tbody>
-        </table>
-        <div class="footer">Ingenio Millonario · Reporte confidencial · ${new Date().getFullYear()}</div>
-        <script>window.onload = () => { window.print(); }<\/script>
-    </body></html>`);
-    win.document.close();
+    
+    const title = `Reporte de ${typeLabels[type] || 'Finanzas'}`;
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total ${typeLabels[type]}</div><div class="stat-value ${type === 'expense' || type === 'liability' ? 'text-red' : 'text-green'}">${formatCurrency(total)}</div></div>
+      <div class="stat"><div class="stat-label">Registros</div><div class="stat-value">${records.length}</div></div>
+    </div>`;
+    
+    const rows = records.map(r => `<tr>
+      <td>${getSafeDate(r.date || r.createdAt).toLocaleDateString('es-PY')}</td>
+      <td>${r.description || ''}</td>
+      <td class="text-right">${formatCurrency(r.amount)}</td>
+      <td>${r.category?.name || 'Varios'}</td>
+    </tr>`).join('');
+    
+    const tableHtml = `<table><thead><tr><th>Fecha</th><th>Descripción</th><th>Monto</th><th>Categoría</th></tr></thead><tbody>${rows}</tbody></table>`;
+    
+    generatePDF(title, statsHtml, tableHtml);
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 
-function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
+function DashboardView({ onNavigate, visible }: { onNavigate: (tab: string) => void, visible: boolean }) {
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -279,8 +280,8 @@ function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
                     </CardHeader>
                     <CardContent>
                         <div className="h-52">
-                            {chartData.length > 0 && (
-                                <ResponsiveContainer width="100%" height="100%">
+                            {visible && chartData.length > 0 && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                     <BarChart data={chartData} barSize={42}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
@@ -309,8 +310,8 @@ function DashboardView({ onNavigate }: { onNavigate: (tab: string) => void }) {
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center">
                         <div className="h-44 w-full relative">
-                            {pieData.length > 0 && (
-                                <ResponsiveContainer width="100%" height="100%">
+                            {visible && pieData.length > 0 && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                     <PieChart>
                                         <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={76} paddingAngle={4} dataKey="value">
                                             {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} strokeWidth={0} />)}
@@ -1187,6 +1188,9 @@ function BudgetView() {
     const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const seedingRef = useRef(false);
 
     const cfg = TYPE_CONFIG[activeType];
 
@@ -1246,9 +1250,11 @@ function BudgetView() {
     ];
 
     const fetchCategories = async () => {
+        if (seedingRef.current) return;
         try {
             const data = await financesApi.getCategories();
             if (data.length === 0) {
+                seedingRef.current = true;
                 // Auto-seed default categories on first use
                 toast.info('Cargando categorías predeterminadas...', { duration: 2000 });
                 await Promise.all(DEFAULT_CATEGORIES.map(cat => financesApi.createCategory(cat)));
@@ -1258,6 +1264,7 @@ function BudgetView() {
                 setCategories(data);
             }
         } catch { }
+        finally { seedingRef.current = false; }
     };
 
     useEffect(() => {
@@ -1273,7 +1280,7 @@ function BudgetView() {
         try {
             const payload = {
                 description: form.description,
-                amount: parseFloat(form.amount),
+                amount: parseFormattedNumber(form.amount),
                 type: activeType,
                 categoryId: form.categoryId || undefined,
                 date: form.date,
@@ -1291,10 +1298,15 @@ function BudgetView() {
     };
 
     const handleEdit = (record: any) => {
+        // Fix for date shifting: Ensure the date string from the database is treated correctly
+        const recordDate = record.date || record.createdAt;
+        const safeDate = getSafeDate(recordDate);
+        const formattedDate = safeDate.toISOString().split('T')[0];
+        
         setForm({
-            date: new Date(record.date || record.createdAt).toISOString().split('T')[0],
+            date: formattedDate,
             description: record.description || '',
-            amount: record.amount.toString(),
+            amount: formatNumber(record.amount.toString()),
             categoryId: record.categoryId || ''
         });
         setIsEditing(true);
@@ -1302,13 +1314,19 @@ function BudgetView() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Eliminar este registro?')) return;
+    const handleDelete = async () => {
+        if (!recordToDelete) return;
         try {
-            await financesApi.delete(id);
+            setIsDeleting(true);
+            await financesApi.delete(recordToDelete);
             toast.success('Registro eliminado');
             fetchRecords();
-        } catch { toast.error('Error al eliminar'); }
+        } catch { 
+            toast.error('Error al eliminar'); 
+        } finally {
+            setIsDeleting(false);
+            setRecordToDelete(null);
+        }
     };
 
     const resetForm = () => {
@@ -1369,7 +1387,15 @@ function BudgetView() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monto (₲)</Label>
-                                <Input type="number" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="rounded-xl h-10 font-bold" />
+                                <Input 
+                                    type="text" 
+                                    inputMode="numeric"
+                                    placeholder="0" 
+                                    value={form.amount} 
+                                    onChange={e => setForm({ ...form, amount: formatNumber(e.target.value) })} 
+                                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                    className="rounded-xl h-10 font-bold" 
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría</Label>
@@ -1378,9 +1404,13 @@ function BudgetView() {
                                         <SelectValue placeholder="Seleccionar categoría" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {categories.filter(c => c.type === activeType).map(cat => (
-                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                        ))}
+                                        {categories
+                                            .filter(c => c.type === activeType)
+                                            // Ensure uniqueness by name in the UI
+                                            .filter((cat, idx, self) => self.findIndex(c => c.name === cat.name) === idx)
+                                            .map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                            ))}
                                         {categories.filter(c => c.type === activeType).length === 0 && (
                                             <SelectItem value="none" disabled>Cargando categorías...</SelectItem>
                                         )}
@@ -1497,7 +1527,7 @@ function BudgetView() {
                                                     className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
                                                 >
                                                     <TableCell className="pl-4 text-xs text-slate-500 font-medium whitespace-nowrap">
-                                                        {new Date(r.date || r.createdAt).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        {getSafeDate(r.date || r.createdAt).toLocaleDateString('es-PY', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </TableCell>
                                                     <TableCell className="font-bold text-slate-800 dark:text-white text-sm max-w-[220px] truncate" colSpan={2}>{r.description || '—'}</TableCell>
                                                     <TableCell className="text-right">
@@ -1513,7 +1543,7 @@ function BudgetView() {
                                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg">
                                                                 <Edit className="w-3.5 h-3.5" />
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg">
+                                                            <Button variant="ghost" size="icon" onClick={() => setRecordToDelete(r.id)} className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg">
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </Button>
                                                         </div>
@@ -1534,6 +1564,32 @@ function BudgetView() {
                     </Card>
                 </div>
             </div>
+
+            {/* Financial Record Delete Confirmation */}
+            <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+                <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800 rounded-[2.5rem]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black uppercase tracking-tighter dark:text-white text-center mb-2">
+                           ¿Eliminar registro?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="dark:text-slate-400 text-center text-sm font-medium">
+                            Esta acción eliminará permanentemente este {cfg.label.toLowerCase()} de tu historial financiero. No se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-6 sm:justify-center gap-3">
+                        <AlertDialogCancel className="rounded-xl border-slate-200 dark:border-slate-800 dark:text-slate-400 min-w-[120px] font-bold">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-600/20 min-w-[120px] font-bold"
+                        >
+                            {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -1591,7 +1647,7 @@ export default function AdminIngenio() {
                         transition={{ duration: 0.25 }}
                     >
                         <TabsContent value="dashboard" forceMount className={activeTab !== 'dashboard' ? 'hidden' : ''}>
-                            <DashboardView onNavigate={setActiveTab} />
+                            <DashboardView onNavigate={setActiveTab} visible={activeTab === 'dashboard'} />
                         </TabsContent>
                         <TabsContent value="budget" forceMount className={activeTab !== 'budget' ? 'hidden' : ''}>
                             <BudgetView />

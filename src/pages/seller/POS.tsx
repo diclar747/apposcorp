@@ -9,6 +9,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
 import { productsApi, walletApi, customersApi, managementApi, ordersApi } from '@/lib/api';
+import { getSafeDate, formatDate } from '@/lib/utils';
 import { generateQRValue } from '@/lib/qr';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -87,28 +88,71 @@ export default function SellerPOS() {
   const [showInsufficientError, setShowInsufficientError] = useState(false);
   // Sales history toggle (mobile)
   const [showHistory, setShowHistory] = useState(false);
-
+  const [customerSearch, setCustomerSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch products
+  // Fetch products and recent history
   useEffect(() => {
-    const fetchProducts = async () => {
-      if (!sellerProfile?.id) return;
+    const initPOS = async () => {
+      if (!user?.id) return; // Use user.id for synchronization
       try {
         setIsLoadingProducts(true);
-        const data = await productsApi.getAll({ sellerId: sellerProfile.id });
-        setProducts(data);
+        // Load products and customers
+        const [productsData, customersData] = await Promise.all([
+          productsApi.getAll({ sellerId: user.sellerProfile?.id }),
+          customersApi.getAll()
+        ]);
+        setProducts(productsData);
+        setCustomers(customersData);
+
+        // Load recent POS history from server
+        const orders = await ordersApi.getAll('seller');
+        const recentPos = orders
+          .filter((o: any) => o.isPosSale || o.deliveryType === 'presencial')
+          .slice(0, 25) // Show a bit more
+          .map((o: any) => ({
+            id: o.orderNumber || o.id.substring(0, 8),
+            realId: o.id,
+            date: getSafeDate(o.createdAt),
+            items: (o.items || []).map((i: any) => ({
+              id: i.productId,
+              name: i.productName,
+              price: i.unitPrice,
+              quantity: i.quantity
+            })),
+            subtotal: o.subtotal,
+            tax: o.tax,
+            total: o.total,
+            paymentMethod: o.paymentMethod,
+            customerName: o.customerName || 'Consumidor Final',
+            saleType: o.paymentMethod === 'credito' ? 'credito' : 'contado', 
+          }));
+        setSalesHistory(recentPos);
+
       } catch (error) {
-        console.error('Error fetching POS products:', error);
-        toast.error('Error al cargar productos');
+        console.error('Error initializing POS:', error);
       } finally {
         setIsLoadingProducts(false);
       }
     };
-    fetchProducts();
-  }, [sellerProfile?.id]);
+    initPOS();
+  }, [user?.id]);
 
-  // Plan Restriction Check
+  const filteredPosCustomers = useMemo(() => {
+    if (!customerName || customerName === 'Consumidor Final' || customerName.length < 1) return [];
+    const q = customerName.toLowerCase();
+    return customers.filter((c: any) => 
+      c.fullName.toLowerCase().includes(q) || (c.ruc && c.ruc.includes(q))
+    ).slice(0, 5);
+  }, [customers, customerName]);
+
+  const filteredCreditCustomers = useMemo(() => {
+    if (!customerSearch) return customers.slice(0, 5);
+    const q = customerSearch.toLowerCase();
+    return customers.filter((c: any) => 
+      c.fullName.toLowerCase().includes(q) || (c.ruc && c.ruc.includes(q))
+    ).slice(0, 5);
+  }, [customers, customerSearch]);
   useEffect(() => {
     if (user && user.sellerProfile && user.sellerProfile.planActive) {
       const plan = user.sellerProfile.plan;
@@ -122,9 +166,9 @@ export default function SellerPOS() {
         navigate('/vendedor');
       }
     }
-  }, [user, navigate]);
+  }, [user, navigate, sellerProfile]);
 
-  // Fetch customers for crédito sales + POS category for Gestión integration
+  // Fetch customers + seed categories
   useEffect(() => {
     customersApi.getAll().then(setCustomers).catch(() => {});
     managementApi.seedCategories().catch(() => {});
@@ -151,7 +195,18 @@ export default function SellerPOS() {
 
   const storeName = sellerProfile?.storeName || 'Mi Tienda';
   const storeAddress = sellerProfile?.address || '';
-  const storePhone = sellerProfile?.phone || '';
+  const storePhone = sellerProfile?.whatsappNumber || sellerProfile?.phone || '';
+  const storeRuc = sellerProfile?.ruc || '80000000-0';
+
+  const translatePaymentMethod = (method: string) => {
+    switch (method?.toLowerCase()) {
+      case 'cash': return 'Efectivo';
+      case 'card': return 'Tarjeta';
+      case 'wallet': return 'Billetera';
+      case 'transfer': return 'Transferencia';
+      default: return method || 'Contado';
+    }
+  };
 
   // Filter
   const filteredProducts = useMemo(() => {
@@ -265,10 +320,10 @@ export default function SellerPOS() {
     };
   }, [isCheckoutOpen, paymentMethod, cart.length > 0]);
 
-  // Cart calculations
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.10;
-  const total = subtotal + tax;
+  // Cart calculations (IVA 10% incluido - Vista especial solicitada)
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = total; // El subtotal muestra el monto real de los productos
+  const tax = Math.round(subtotal * 0.10); // El IVA se muestra como el 10% del monto
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const addToCart = useCallback((product: Product) => {
@@ -321,30 +376,41 @@ export default function SellerPOS() {
   };
 
   const handleCheckout = async () => {
-    // Validate Cash amount if method is cash
+    // Validate Cash amount
+    let initialPayment = 0;
     if (paymentMethod === 'cash') {
-      const received = Number(String(amountReceived).replace(/\./g, ''));
-      if (amountReceived === '' || received < total) {
+      const received = Number(String(amountReceived).replace(/\./g, '') || 0);
+      
+      // If payment is Contado, it MUST be >= total
+      if (saleType === 'contado' && (amountReceived === '' || received < total)) {
         setShowInsufficientError(true);
-        toast.error('Monto insuficiente');
+        toast.error('Monto insuficiente para venta al contado');
         return;
       }
+      
+      initialPayment = received;
+    } else if (paymentMethod === 'card' || paymentMethod === 'wallet') {
+      // Non-cash payments are usually for the full amount in this POS version
+      initialPayment = total;
     }
+
     setShowInsufficientError(false);
     setProcessing(true);
     try {
+      const isFullPayment = initialPayment >= total;
       const saleData = {
         id: `V-${Math.floor(1000 + Math.random() * 9000).toString().padStart(4, '0')}`,
         date: new Date(),
         items: [...cart],
         subtotal, tax, total,
-        paymentMethod,
+        paymentMethod: saleType === 'credito' ? 'credito' : paymentMethod,
         customerName: saleType === 'credito' && selectedCustomer ? selectedCustomer.fullName : customerName,
         saleType,
         customer: saleType === 'credito' ? selectedCustomer : null,
+        initialPayment,
       };
 
-      // 1. Create real order to update Dashboard sales & earnings
+      // 1. Create real order
       const orderData = {
         items: cart.map(item => ({
           productId: item.id,
@@ -352,38 +418,51 @@ export default function SellerPOS() {
           price: item.price
         })),
         total,
-        paymentMethod: paymentMethod,
+        paymentStatus: isFullPayment ? 'paid' : 'pending',
+        paymentMethod: saleData.paymentMethod,
         customerName: saleData.customerName,
-        status: 'delivered', // Match OrderStatus enum
-        paymentStatus: 'paid', // POS sales are paid immediately
+        status: 'delivered', 
         isPosSale: true,
+        orderNumber: saleData.id, 
         deliveryType: 'presencial',
         sellerId: sellerProfile?.id
       };
       
       const createdOrder = await ordersApi.create(orderData);
 
-      // 2. Update local state only (Backend already updated DB stock)
+      // 2. Update local state
       for (const item of cart) {
-        const product = products.find(p => p.id === item.id);
-        if (product) {
-          const newStock = Math.max(0, product.stock - item.quantity);
-          setProducts(prev => prev.map(p => 
-            p.id === item.id ? { ...p, stock: newStock } : p
-          ));
-        }
+        setProducts(prev => prev.map(p => {
+          if (p.id === item.id) {
+            return { ...p, stock: Math.max(0, p.stock - item.quantity) };
+          }
+          return p;
+        }));
       }
 
-      // 3. Register in Gestión as income movement
+      // 3. Register in Gestión
       if (posCategoryId) {
-        await managementApi.createMovement({
-          categoryId: posCategoryId,
-          type: 'income',
-          amount: total,
-          description: `Venta POS ${saleData.id} - ${saleData.customerName}`,
-          voucherNumber: saleData.id,
-          reference: createdOrder.id || saleData.id,
-        });
+        if (saleType === 'contado') {
+          // Full income
+          await managementApi.createMovement({
+            categoryId: posCategoryId,
+            type: 'income',
+            amount: total,
+            description: `Venta POS ${saleData.id} - ${saleData.customerName}`,
+            voucherNumber: saleData.id,
+            reference: createdOrder.id || saleData.id,
+          });
+        } else if (initialPayment > 0) {
+          // Partial income (Entrega inicial)
+          await managementApi.createMovement({
+            categoryId: posCategoryId,
+            type: 'income',
+            amount: initialPayment,
+            description: `Entrega inicial Venta POS ${saleData.id} - ${saleData.customerName}`,
+            voucherNumber: saleData.id,
+            reference: createdOrder.id || saleData.id,
+          });
+        }
       }
 
       // 3. Finalize UI
@@ -579,7 +658,7 @@ export default function SellerPOS() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 text-xs shrink-0 hidden lg:flex"
+          className="h-8 text-xs shrink-0"
           onClick={() => setShowHistory(!showHistory)}
         >
           <History className="w-3.5 h-3.5 mr-1.5" />
@@ -604,18 +683,25 @@ export default function SellerPOS() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3">
                 {filteredProducts.map((product) => {
                   const inCart = cart.find(c => c.id === product.id);
+                  const isOutOfStock = product.stock <= 0;
+
                   return (
                     <motion.div
                       key={product.id}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => addToCart(product)}
+                      whileTap={!isOutOfStock ? { scale: 0.95 } : {}}
+                      onClick={() => !isOutOfStock && addToCart(product)}
                       className={cn(
-                        "group cursor-pointer bg-card p-2 sm:p-3 rounded-xl border transition-all active:ring-2 active:ring-blue-500",
-                        inCart
-                          ? "border-blue-400 dark:border-blue-500/50 ring-1 ring-blue-200 dark:ring-blue-500/20"
-                          : "hover:border-blue-300 dark:hover:border-blue-500/30 hover:shadow-md"
+                        "group bg-card p-2 sm:p-3 rounded-xl border transition-all",
+                        isOutOfStock 
+                          ? "opacity-60 grayscale cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+                          : cn(
+                              "cursor-pointer active:ring-2 active:ring-blue-500",
+                              inCart
+                                ? "border-blue-400 dark:border-blue-500/50 ring-1 ring-blue-200 dark:ring-blue-500/20"
+                                : "hover:border-blue-300 dark:hover:border-blue-500/30 hover:shadow-md"
+                            )
                       )}
                     >
                       <div className="aspect-square rounded-lg bg-muted mb-2 overflow-hidden relative">
@@ -633,7 +719,7 @@ export default function SellerPOS() {
                             <Plus className="w-3.5 h-3.5" />
                           </div>
                         </div>
-                        {/* In cart badge */}
+                         {/* In cart badge */}
                         {inCart && (
                           <div className="absolute top-1.5 left-1.5">
                             <div className="bg-blue-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow">
@@ -641,12 +727,30 @@ export default function SellerPOS() {
                             </div>
                           </div>
                         )}
+                        {/* Out of stock overlay */}
+                        {isOutOfStock && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-2">
+                             <div className="bg-red-600 text-white text-[10px] sm:text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-white/20 whitespace-nowrap">
+                                SIN STOCK
+                             </div>
+                          </div>
+                        )}
                       </div>
                       <h3 className="font-medium text-foreground text-xs sm:text-sm line-clamp-2 leading-tight min-h-[2rem] sm:min-h-[2.5rem]">{product.name}</h3>
                       <div className="flex items-center justify-between mt-1.5">
-                        <p className="font-bold text-blue-600 dark:text-blue-400 text-xs sm:text-sm">{formatCurrency(product.price)}</p>
+                        <p className={cn(
+                          "font-bold text-xs sm:text-sm",
+                          isOutOfStock ? "text-slate-400" : "text-blue-600 dark:text-blue-400"
+                        )}>
+                          {formatCurrency(product.price)}
+                        </p>
                         <div className="flex flex-col items-end">
-                            <p className="text-[10px] font-black uppercase text-slate-500">{product.stock} <span className="text-[8px] opacity-70">DISP.</span></p>
+                            <p className={cn(
+                              "text-[10px] font-black uppercase",
+                              isOutOfStock ? "text-red-500" : "text-slate-500"
+                            )}>
+                              {product.stock} <span className="text-[8px] opacity-70">DISP.</span>
+                            </p>
                             <p className="text-[9px] text-muted-foreground bg-muted px-1 py-0.5 rounded font-mono hidden sm:block mt-0.5">{product.sku}</p>
                         </div>
                       </div>
@@ -672,9 +776,9 @@ export default function SellerPOS() {
             {showHistory && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 200, opacity: 1 }}
+                animate={{ height: 320, opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="hidden lg:block shrink-0 border-t bg-card overflow-hidden"
+                className="shrink-0 border-t bg-card overflow-hidden"
               >
                 <div className="h-full flex flex-col">
                   <div className="px-4 py-2 border-b flex items-center justify-between">
@@ -714,7 +818,7 @@ export default function SellerPOS() {
                             </td>
                             <td className="px-4 py-2 text-center">
                               <span className="text-[10px] font-bold uppercase bg-muted text-muted-foreground px-2 py-0.5 rounded">
-                                {sale.paymentMethod}
+                                {translatePaymentMethod(sale.paymentMethod)}
                               </span>
                             </td>
                             <td className="px-4 py-2 text-right">
@@ -899,28 +1003,75 @@ export default function SellerPOS() {
               </div>
             </div>
 
-              {saleType === 'credito' && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Cliente</Label>
-                  {customers.length > 0 ? (
-                    <Select
-                      value={selectedCustomer?.id || ''}
-                      onValueChange={(id) => setSelectedCustomer(customers.find((c: any) => c.id === id) || null)}
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Seleccionar cliente..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            <span className="flex items-center gap-2">
-                              <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                              {c.fullName} {c.ruc ? `(${c.ruc})` : ''}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {saleType === 'credito' && (
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Cliente a Crédito</Label>
+                {customers.length > 0 ? (
+                  <div className="relative">
+                    {selectedCustomer ? (
+                      <div className="flex items-center justify-between p-3 rounded-xl border bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{selectedCustomer.fullName}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{selectedCustomer.ruc || 'Sin RUC'}</p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); }} className="h-8 w-8 p-0 border">
+                          <X className="w-4 h-4" />
+                        </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Buscar cliente por nombre o RUC..."
+                              className="pl-10 h-11 font-medium"
+                              value={customerSearch}
+                              onChange={(e) => setCustomerSearch(e.target.value)}
+                            />
+                          </div>
+                          <AnimatePresence>
+                            {customerSearch && (
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="absolute z-[60] left-0 right-0 mt-1 bg-card border rounded-xl shadow-2xl max-h-48 overflow-y-auto"
+                              >
+                                {filteredCreditCustomers.length > 0 ? (
+                                  filteredCreditCustomers.map((c: any) => (
+                                    <button
+                                      key={c.id}
+                                      onClick={() => {
+                                        setSelectedCustomer(c);
+                                        setCustomerSearch('');
+                                      }}
+                                      className="w-full p-3 text-left hover:bg-muted border-b last:border-0 flex items-center gap-3 group"
+                                    >
+                                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <Users className="w-3.5 h-3.5" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold truncate">{c.fullName}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase">{c.ruc || 'Sin RUC'}</p>
+                                      </div>
+                                    </button>
+                                  ))
+                                ) : (
+                                  <div className="p-4 text-center text-xs text-muted-foreground">
+                                    No se encontraron coincidencias
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-200 dark:border-amber-500/20 text-sm text-amber-700 dark:text-amber-400">
                       No tienes clientes registrados.{' '}
@@ -1059,7 +1210,7 @@ export default function SellerPOS() {
                 <h2 className="text-xl font-black uppercase tracking-tighter mb-0.5">{storeName}</h2>
                 <p className="text-[8px] text-slate-400 uppercase font-black tracking-[0.2em] mb-3">Oscorp POS System</p>
                 <div className="space-y-0.5 text-[10px] text-slate-500 font-bold uppercase">
-                  <p>RUC: 80012345-0</p>
+                  <p>RUC: {storeRuc}</p>
                   <p className="truncate px-2">{storeAddress}</p>
                   <p>TEL: {storePhone}</p>
                 </div>
@@ -1113,7 +1264,7 @@ export default function SellerPOS() {
               </div>
 
               <div className="mt-8 text-center space-y-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pago: {lastSale?.paymentMethod?.toUpperCase()}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pago: {translatePaymentMethod(lastSale?.paymentMethod)}</p>
                 <div className="flex justify-center flex-col items-center gap-1">
                   <div className="w-48 h-10 border-2 border-black/10 dark:border-white/10 flex items-center justify-center p-1 rounded">
                     <Barcode className="w-full h-full opacity-60" />
@@ -1191,9 +1342,47 @@ export default function SellerPOS() {
                   placeholder="Nombre del cliente o CI..."
                   className="pl-10 h-12 font-bold"
                   value={customerName === 'Consumidor Final' ? '' : customerName}
-                  onChange={(e) => setCustomerName(e.target.value || 'Consumidor Final')}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    if (!e.target.value) setCustomerName('Consumidor Final');
+                  }}
                 />
               </div>
+
+              {/* Autocomplete results */}
+              <AnimatePresence>
+                {filteredPosCustomers.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute z-50 w-full bg-card border rounded-xl shadow-xl mt-1 overflow-hidden"
+                  >
+                    {filteredPosCustomers.map((c: any) => (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          setCustomerName(c.fullName);
+                          setSelectedCustomer(c);
+                          // We don't close automatically so they can see the selection
+                        }}
+                        className="w-full p-3 text-left hover:bg-muted flex items-center justify-between group border-b last:border-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold truncate">{c.fullName}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{c.ruc || 'Sin RUC'}</p>
+                          </div>
+                        </div>
+                        <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="space-y-2">

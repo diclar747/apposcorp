@@ -5,6 +5,7 @@ export interface SellerStats {
   stats: {
     totalRevenue: number;
     totalSales: number;
+    totalPurchases: number;
     pendingOrders: number;
     currentBalance: number;
     storeName: string;
@@ -27,7 +28,8 @@ export function useSellerStats() {
   return useQuery<SellerStats>({
     queryKey: ['seller-stats'],
     queryFn: () => reportsApi.getSellerStats(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0, // Always consider data stale to force refresh on mount
+    refetchInterval: 1000 * 30, // Polling each 30 seconds
     retry: 2
   });
 }

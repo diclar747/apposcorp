@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, Wallet, ArrowUpRight, ArrowDownRight, Loader2, Download, Table as TableIcon, BarChart3 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getTransactionStatusInfo, getTransactionTypeInfo, formatCompactNumber } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
@@ -211,10 +211,13 @@ export default function AdminFinances() {
               <CardContent>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={Object.entries(report.typeBreakdown).map(([name, data]: any) => ({ name, total: data.total }))}>
+                    <BarChart data={Object.entries(report.typeBreakdown).map(([name, data]: any) => ({ 
+                      name: getTransactionTypeInfo(name).label, 
+                      total: data.total 
+                    }))}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                       <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickFormatter={(value) => `₲${value / 1000000}M`} />
+                      <YAxis stroke="#94a3b8" fontSize={10} tickFormatter={(value) => `₲${formatCompactNumber(value)}`} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
                       <Bar dataKey="total" name="Monto Total" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -255,8 +258,8 @@ export default function AdminFinances() {
                         {formatCurrency(tx.amount)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={tx.status === 'completed' ? 'default' : 'secondary'}>
-                          {tx.status}
+                        <Badge className={`${getTransactionStatusInfo(tx.status).bgColor} ${getTransactionStatusInfo(tx.status).color} border-0`}>
+                          {getTransactionStatusInfo(tx.status).label}
                         </Badge>
                       </TableCell>
                     </TableRow>

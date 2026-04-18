@@ -205,8 +205,13 @@ export default function ClientProduct() {
 
         {/* Stock */}
         <div className="mt-4">
-          <p className="text-sm text-muted-foreground">
-            Stock disponible: <span className="font-medium text-foreground">{product.stock} unidades</span>
+          <p className={cn(
+            "text-sm font-medium",
+            product.stock <= 0 ? "text-red-500" : "text-muted-foreground"
+          )}>
+            {product.stock <= 0 
+              ? "Agotado: No hay unidades disponibles" 
+              : `Stock disponible: ${product.stock} unidades`}
           </p>
         </div>
       </div>
@@ -215,7 +220,7 @@ export default function ClientProduct() {
       <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 z-30">
         <div className="max-w-lg mx-auto flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            {canPurchase && (
+            {canPurchase && product.stock > 0 && (
               <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -237,10 +242,12 @@ export default function ClientProduct() {
             <Button
               className="flex-1"
               onClick={handleAddToCart}
-              disabled={!canPurchase || inCart}
+              disabled={!canPurchase || inCart || product.stock <= 0}
             >
               {!canPurchase ? (
                 'Visitar tienda para comprar'
+              ) : product.stock <= 0 ? (
+                'SIN STOCK'
               ) : inCart ? (
                 <>
                   <Check className="w-5 h-5 mr-2" />

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Search, ShoppingBag, ShoppingCart, Loader2, Check } from 'lucide-react';
 import { productsApi, storesApi } from '@/lib/api';
 import { useCartStore } from '@/stores';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -135,14 +135,19 @@ export default function ClientStore() {
       {/* Products Grid */}
       <div className="px-4">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filteredProducts.map((product, index) => (
-            <Link key={product.id} to={`/app/producto/${product.id}`}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.03 }}
-                className="bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow group h-full flex flex-col"
-              >
+          {filteredProducts.map((product, index) => {
+            const isOutOfStock = product.stock <= 0;
+            return (
+              <Link key={product.id} to={`/app/producto/${product.id}`} className={cn(isOutOfStock && "pointer-events-none")}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.03 }}
+                  className={cn(
+                    "bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow group h-full flex flex-col",
+                    isOutOfStock && "opacity-60 grayscale"
+                  )}
+                >
                 <div className="aspect-square bg-muted relative overflow-hidden">
                   {product.images && product.images[0] ? (
                     <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -154,6 +159,13 @@ export default function ClientStore() {
                   {product.comparePrice && (
                     <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">
                       OFERTA
+                    </div>
+                  )}
+                  {isOutOfStock && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-2 z-10">
+                      <div className="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg border border-white/20">
+                        SIN STOCK
+                      </div>
                     </div>
                   )}
                 </div>
@@ -183,6 +195,8 @@ export default function ClientStore() {
                           <ShoppingCart className="w-4 h-4" />
                         )}
                       </motion.button>
+                    ) : isOutOfStock ? (
+                      <span className="text-[10px] font-bold text-red-500 uppercase">Sin Stock</span>
                     ) : (
                       <Button
                         size="sm"
@@ -205,7 +219,8 @@ export default function ClientStore() {
                 </div>
               </motion.div>
             </Link>
-          ))}
+          );
+        })}
           {filteredProducts.length === 0 && (
             <div className="col-span-full text-center py-20">
               <ShoppingBag className="w-12 h-12 mx-auto mb-3 text-muted-foreground/20" />

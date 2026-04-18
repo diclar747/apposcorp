@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2, Check, X } from 'lucide-react';
 import { walletApi } from '@/lib/api';
-import { formatCurrency, formatDateTime, getTransactionTypeInfo } from '@/lib/utils';
+import { formatCurrency, formatDateTime, getTransactionTypeInfo, getTransactionStatusInfo, generateReportPDF } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -70,46 +68,67 @@ export default function AdminTransactions() {
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const statsHtml = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">TOTAL TRANSACCIONES</div>
+          <div class="stat-value">${transactions.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">INGRESOS</div>
+          <div class="text-green stat-value">${formatCurrency(transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0))}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">EGRESOS</div>
+          <div class="text-red stat-value">${formatCurrency(Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)))}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">PENDIENTES</div>
+          <div class="stat-value">${transactions.filter(t => t.status === 'pending').length}</div>
+        </div>
+      </div>
+    `;
 
-    // Logo/Header
-    doc.setFillColor(15, 23, 42); 
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE TRANSACCIONES', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
-
-    const tableData = filteredTransactions.map(t => {
+    const rows = filteredTransactions.map(t => {
       const typeInfo = getTransactionTypeInfo(t.type);
-      return [
-        formatDateTime(t.createdAt),
-        typeInfo.label,
-        `${t.user?.firstName || ''} ${t.user?.lastName || ''}`,
-        t.description,
-        formatCurrency(t.amount),
-        t.status === 'completed' ? 'Completado' : t.status === 'pending' ? 'Pendiente' : 'Fallida'
-      ];
-    });
+      const statusInfo = getTransactionStatusInfo(t.status);
+      let statusClass = 'badge-gray';
+      if (t.status === 'completed') statusClass = 'badge-green';
+      if (t.status === 'pending') statusClass = 'badge-yellow';
+      if (t.status === 'failed' || t.status === 'rejected') statusClass = 'badge-red';
 
-    autoTable(doc, {
-      startY: 45,
-      head: [['Fecha', 'Tipo', 'Usuario', 'Descripción', 'Monto', 'Estado']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+      return `
+        <tr>
+          <td>${formatDateTime(t.createdAt)}</td>
+          <td>${typeInfo.label}</td>
+          <td>${t.user?.firstName || ''} ${t.user?.lastName || ''}</td>
+          <td>${t.description}</td>
+          <td class="${t.amount > 0 ? 'text-green' : 'text-red'} font-bold">${formatCurrency(t.amount)}</td>
+          <td><span class="badge ${statusClass}">${statusInfo.label}</span></td>
+        </tr>
+      `;
+    }).join('');
 
-    doc.save(`transacciones-oscorp-${new Date().getTime()}.pdf`);
-    toast.success('PDF exportado correctamente');
+    const tableHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Usuario</th>
+            <th>Descripción</th>
+            <th>Monto</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+
+    generateReportPDF('Reporte de Transacciones', statsHtml, tableHtml);
+    toast.success('Reporte de transacciones generado');
   };
 
   const filteredTransactions = transactions.filter(transaction => {
@@ -262,8 +281,8 @@ export default function AdminTransactions() {
                         <span className="text-sm text-gray-600">{formatDateTime(transaction.createdAt)}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'}>
-                          {transaction.status === 'completed' ? 'Completada' : transaction.status === 'pending' ? 'Pendiente' : 'Fallida'}
+                        <Badge className={`${getTransactionStatusInfo(transaction.status).bgColor} ${getTransactionStatusInfo(transaction.status).color} border-0`}>
+                          {getTransactionStatusInfo(transaction.status).label}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

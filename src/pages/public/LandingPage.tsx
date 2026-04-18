@@ -664,6 +664,45 @@ const MarketplaceSection = () => {
   );
 };
 
+// ─── Infographic Section ────────────────────────────────────────────
+const InfographicSection = () => {
+  return (
+    <section className="py-24 bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="container mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <Badge variant="outline" className="mb-4 border-violet-500/20 text-violet-600 dark:text-violet-400 uppercase tracking-widest font-black text-[10px]">HERRAMIENTA EDUCATIVA</Badge>
+          <h2 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white mb-6">Matriz <span className="gradient-text italic">Ingenio Millonario</span></h2>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-light">
+            Visualiza el camino hacia tu libertad financiera con nuestro sistema integral de educación y herramientas.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="relative max-w-5xl mx-auto rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-2xl border border-slate-100 dark:border-white/10 group"
+        >
+          <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/0 transition-colors duration-700 pointer-events-none" />
+          <img 
+            src="/images/brand/ingenio-infographic.png" 
+            alt="Ingenio Millonario Infographic" 
+            className="w-full h-auto object-contain bg-slate-900"
+          />
+          {/* Decorative elements */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 blur-3xl rounded-full" />
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500/10 blur-3xl rounded-full" />
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
 // ─── About ──────────────────────────────────────────────────────────
 const AboutSection = () => (
   <section id="nosotros" className="py-32 bg-white dark:bg-slate-950 transition-colors duration-500 overflow-hidden relative">
@@ -712,7 +751,7 @@ const AboutSection = () => (
 // ─── Testimonials ───────────────────────────────────────────────────
 const TestimonialsSection = () => {
   const testimonials = [
-    { name: 'María González', roles: ['Emprendedora'], content: 'Oscorp transformó mi negocio. Ahora vendo a todo el país y mis ingresos crecieron un 300%. La plataforma es increíblemente fácil de usar.', rating: 5 },
+    { name: 'María González', role: 'Emprendedora', content: 'Oscorp transformó mi negocio. Ahora vendo a todo el país y mis ingresos crecieron un 300%. La plataforma es increíblemente fácil de usar.', rating: 5 },
     { name: 'Carlos Martínez', role: 'Vendedor Profesional', content: 'La billetera digital es increíble. Puedo pagar en cualquier tienda con solo escanear mi QR. Las transferencias son instantáneas.', rating: 5 },
     { name: 'Ana Rodríguez', role: 'Estudiante de Finanzas', content: 'Los cursos de Ingenio Millonario cambiaron mi vida. Ahora tengo control total de mis finanzas y estoy construyendo mi patrimonio.', rating: 5 },
   ];
@@ -917,6 +956,7 @@ export default function LandingPage() {
       <Navbar />
       <HeroSection />
       <PillarSection />
+      <InfographicSection />
       <EcosistemaSection />
       <MarketplaceSection />
       <AboutSection />

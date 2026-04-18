@@ -3,15 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight,
   Plus, Search, Trash2, Edit2, MoreVertical, Receipt, Tag,
-  Calendar, FileText, BarChart3, PieChart as PieChartIcon, Loader2,
+  Calendar, FileText, BarChart3, PieChart as PieChartIcon, Loader2, Wallet, X, CheckCircle
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
   AreaChart, Area,
 } from 'recharts';
-import { managementApi } from '@/lib/api';
-import { formatCurrency, cn } from '@/lib/utils';
+import { managementApi, purchasesApi, ordersApi } from '@/lib/api';
+import { formatCurrency, cn, getSafeDate, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,16 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const CHART_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6b7280'];
 
@@ -70,6 +80,7 @@ export default function Gestion() {
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [movementToDelete, setMovementToDelete] = useState<any>(null);
 
   // Form state
   const [movementForm, setMovementForm] = useState({
@@ -86,6 +97,80 @@ export default function Gestion() {
     type: 'income' as 'income' | 'expense',
     color: '#3B82F6',
   });
+
+  // Credit Payment States
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [selectedOrderForPay, setSelectedOrderForPay] = useState<any>(null);
+  const [remainingBalance, setRemainingBalance] = useState(0);
+  const [payAmount, setPayAmount] = useState('');
+  const [activeMovementForPay, setActiveMovementForPay] = useState<any>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  const handleOpenPayModal = async (m: any) => {
+    if (!m.reference) {
+      toast.error('Este movimiento no tiene una orden/referencia para pago');
+      return;
+    }
+
+    try {
+      const order = await ordersApi.getById(m.reference);
+      
+      // Calculate how much was already paid to this order by looking at all movements
+      // that reference the same order ID
+      const totalPaid = movements
+        .filter(mov => mov.reference === m.reference && mov.type === 'income')
+        .reduce((sum, mov) => sum + mov.amount, 0);
+      
+      const balance = Math.max(0, order.total - totalPaid);
+
+      if (balance <= 0) {
+        toast.info('Esta venta ya figura como totalmente pagada en caja');
+        return;
+      }
+
+      setSelectedOrderForPay(order);
+      setRemainingBalance(balance);
+      setPayAmount('');
+      setActiveMovementForPay(m);
+      setIsPayModalOpen(true);
+    } catch (error) {
+      console.error('Error loading order for payment:', error);
+      toast.error('No se pudo obtener la información de la venta');
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    const amount = Number(payAmount.replace(/\D/g, ''));
+    if (!amount || amount <= 0) {
+      toast.error('Ingresa un monto válido');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    try {
+      await managementApi.createMovement({
+        categoryId: activeMovementForPay.categoryId,
+        type: 'income',
+        amount,
+        description: `Cobro parcial/total Venta POS ${selectedOrderForPay.orderNumber} - ${selectedOrderForPay.customerName || 'Cliente'}`,
+        voucherNumber: activeMovementForPay.voucherNumber,
+        reference: selectedOrderForPay.id,
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      toast.success('Pago registrado y cargado a caja');
+      setIsPayModalOpen(false);
+      // Refresh
+      const mData = await managementApi.getMovements();
+      setMovements(mData.movements || []);
+      const sData = await managementApi.getSummary();
+      setSummary(sData);
+    } catch (error) {
+      toast.error('Error al registrar el pago');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   // ─── Data Fetching ──────────────────────────────────
   const fetchAll = async () => {
@@ -172,14 +257,15 @@ export default function Gestion() {
     }
   };
 
-  const handleDeleteMovement = async (id: string) => {
-    if (!confirm('¿Eliminar este movimiento?')) return;
+  const handleConfirmDelete = async () => {
+    if (!movementToDelete) return;
     try {
-      await managementApi.deleteMovement(id);
-      toast.success('Movimiento eliminado');
+      await managementApi.deleteMovement(movementToDelete.id);
+      toast.success('Movimiento eliminado correctamente');
+      setMovementToDelete(null);
       fetchAll();
-    } catch {
-      toast.error('Error al eliminar');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar');
     }
   };
 
@@ -559,7 +645,7 @@ export default function Gestion() {
                   filteredMovements.map((m) => (
                     <TableRow key={m.id} className="group">
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(m.date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {formatDate(m.date, { day: '2-digit', month: 'short', year: 'numeric' })}
                       </TableCell>
                       <TableCell>
                         <Badge className={cn(
@@ -597,13 +683,26 @@ export default function Gestion() {
                           {m.type === 'income' ? '+' : '-'}{formatCurrency(m.amount)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <button
-                          onClick={() => handleDeleteMovement(m.id)}
-                          className="p-1 hover:bg-red-100 dark:hover:bg-red-500/20 rounded text-muted-foreground hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                          {m.type === 'income' && m.description?.includes('Venta POS') && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleOpenPayModal(m)}
+                              className="h-8 w-8 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                              title="Procesar Pago de Crédito"
+                            >
+                              <Wallet className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <button
+                            onClick={() => setMovementToDelete(m)}
+                            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-500/20 rounded text-muted-foreground hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -905,6 +1004,99 @@ export default function Gestion() {
             <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveCategory} disabled={!categoryForm.name} className="bg-green-600 hover:bg-green-700">
               Guardar Categoría
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ═══ Confirm Delete Dialog ═══ */}
+      <AlertDialog open={!!movementToDelete} onOpenChange={(open) => !open && setMovementToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              ¿Confirmar eliminación?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El movimiento será eliminado permanentemente de tus registros financieros.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
+              Eliminar Permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* ═══ Credit Payment Dialog ═══ */}
+      <Dialog open={isPayModalOpen} onOpenChange={setIsPayModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-blue-600" />
+              Procesar Pago de Crédito
+            </DialogTitle>
+            <DialogDescription>
+              Registra un nuevo abono para la venta <strong>{selectedOrderForPay?.orderNumber}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-6">
+            <div className="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground uppercase font-bold tracking-wider">Total de Venta:</span>
+                <span className="font-bold text-foreground">{formatCurrency(selectedOrderForPay?.total || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm border-t border-blue-100 dark:border-blue-500/20 pt-2">
+                <span className="text-blue-700 dark:text-blue-400 font-bold">Saldo Pendiente:</span>
+                <span className="font-black text-blue-800 dark:text-blue-200">{formatCurrency(remainingBalance)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-xs font-black uppercase text-muted-foreground tracking-widest">Monto del Abono</Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-lg text-muted-foreground">Gs.</span>
+                <Input
+                  type="text"
+                  value={payAmount}
+                  onChange={(e) => {
+                    const rawValue = e.target.value.replace(/\D/g, '');
+                    if (rawValue === '') { setPayAmount(''); return; }
+                    const num = Number(rawValue);
+                    // Prevent entering more than the balance
+                    if (num > remainingBalance) {
+                      setPayAmount(new Intl.NumberFormat('de-DE').format(remainingBalance));
+                    } else {
+                      setPayAmount(new Intl.NumberFormat('de-DE').format(num));
+                    }
+                  }}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                  placeholder="0"
+                  className="pl-14 h-14 text-2xl font-black border-2 focus:border-blue-500 focus:ring-blue-500 transition-all rounded-xl"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground font-medium italic">
+                * El monto ingresado se sumará al balance de caja como un ingreso.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsPayModalOpen(false)} className="font-bold text-muted-foreground">
+              CANCELAR
+            </Button>
+            <Button 
+              onClick={handleConfirmPayment}
+              disabled={isProcessingPayment || !payAmount || payAmount === '0'}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 h-11 shadow-lg shadow-blue-500/20"
+            >
+              {isProcessingPayment ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle className="w-4 h-4 mr-2" />
+              )}
+              {isProcessingPayment ? 'PROCESANDO...' : 'CONFIRMAR ABONO'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Store,
@@ -16,7 +17,7 @@ import {
   Activity,
   PieChart as PieChartIcon,
 } from 'lucide-react';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, getOrderStatusInfo, getTransactionStatusInfo, formatCompactNumber, generateReportPDF } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,10 +39,9 @@ import { useAdminStats } from '@/hooks/useAdminStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const { data: stats, isLoading, isError, refetch } = useAdminStats();
 
   const calculateGrowth = (current: number, previous: number) => {
@@ -52,73 +52,103 @@ export default function AdminDashboard() {
   const exportToPDF = () => {
     if (!stats) return;
 
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
+    const statsHtml = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">USUARIOS TOTALES</div>
+          <div class="stat-value">${stats.metrics.users.current}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">TIENDAS ACTIVAS</div>
+          <div class="stat-value">${stats.metrics.sellers.current}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">VENTAS HOY</div>
+          <div class="stat-value text-green">${formatCurrency(stats.finances.salesToday)}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">INGRESOS (30 DÍAS)</div>
+          <div class="stat-value text-green">${formatCurrency(stats.finances.income30Days)}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">PRODUCTOS ACTIVOS</div>
+          <div class="stat-value">${stats.metrics.products.current}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">CRÉDITOS VIGENTES</div>
+          <div class="stat-value">${stats.metrics.credits.current}</div>
+        </div>
+      </div>
+    `;
 
-      // Logo/Header
-      doc.setFillColor(15, 23, 42); // Slate 900
-      doc.rect(0, 0, pageWidth, 40, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('OSCORP PLATFORM', 15, 25);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('REPORTE EJECUTIVO MAESTRO', 15, 33);
-      doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+    const orderRows = stats.recentActivity.orders.map(o => {
+      const statusInfo = getOrderStatusInfo(o.status);
+      let statusClass = 'badge-gray';
+      if (o.status === 'delivered') statusClass = 'badge-green';
+      if (o.status === 'pending') statusClass = 'badge-yellow';
 
-      // Main KPIs Section
-      doc.setTextColor(30, 41, 59);
-      doc.setFontSize(14);
-      doc.text('Resumen de Rendimiento', 15, 55);
+      return `
+        <tr>
+          <td>${o.orderNumber}</td>
+          <td>${o.buyer}</td>
+          <td>${o.store}</td>
+          <td class="font-bold">${formatCurrency(o.total)}</td>
+          <td><span class="badge ${statusClass}">${statusInfo.label}</span></td>
+          <td>${new Date(o.date).toLocaleDateString('es-PY')}</td>
+        </tr>
+      `;
+    }).join('');
 
-      const kpiData = [
-        ['Usuarios Totales', stats.metrics.users.current.toString()],
-        ['Tiendas Activas', stats.metrics.sellers.current.toString()],
-        ['Ventas Hoy', formatCurrency(stats.finances.salesToday)],
-        ['Ingresos 30 Días', formatCurrency(stats.finances.income30Days)],
-        ['Productos Activos', stats.metrics.products.current.toString()],
-        ['Créditos Vigentes', stats.metrics.credits.current.toString()],
-      ];
+    const txRows = stats.recentActivity.transactions.map(tx => {
+      const statusInfo = getTransactionStatusInfo(tx.status);
+      return `
+        <tr>
+          <td>${tx.type.toUpperCase()}</td>
+          <td>${tx.user}</td>
+          <td>${tx.email}</td>
+          <td class="${tx.amount >= 0 ? 'text-green' : 'text-red'} font-bold">${formatCurrency(tx.amount)}</td>
+          <td><span class="badge badge-gray">${statusInfo.label}</span></td>
+        </tr>
+      `;
+    }).join('');
 
-      autoTable(doc, {
-        startY: 60,
-        head: [['Métrica', 'Valor']],
-        body: kpiData,
-        theme: 'striped',
-        headStyles: { fillColor: [59, 130, 246] },
-      });
+    const tableHtml = `
+      <h3>Últimas Órdenes</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Tienda</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orderRows}
+        </tbody>
+      </table>
 
-      // Recent Orders Table
-      doc.text('Últimas Órdenes del Sistema', 15, (doc as any).lastAutoTable.finalY + 15);
+      <h3 style="margin-top:24px">Últimas Transacciones</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Monto</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${txRows}
+        </tbody>
+      </table>
+    `;
 
-      const orderData = stats.recentActivity.orders.map(o => [
-        o.orderNumber,
-        o.buyer,
-        o.store,
-        formatCurrency(o.total),
-        o.status.toUpperCase(),
-        new Date(o.date).toLocaleDateString()
-      ]);
-
-      autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 20,
-        head: [['Pedido', 'Cliente', 'Tienda', 'Total', 'Estado', 'Fecha']],
-        body: orderData,
-        theme: 'grid',
-        headStyles: { fillColor: [15, 23, 42] },
-        styles: { fontSize: 8 },
-      });
-
-      doc.save(`oscorp-reporte-master-${new Date().getTime()}.pdf`);
-      toast.success('Reporte PDF generado con éxito');
-    } catch (error) {
-      console.error('PDF Error:', error);
-      toast.error('Error al generar el PDF');
-    }
+    generateReportPDF('Reporte Maestro Ejecutivo', statsHtml, tableHtml);
+    toast.success('Reporte maestro generado correctamente');
   };
 
   if (isError) {
@@ -208,7 +238,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
         {isLoading ? (
           [1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-32 w-full rounded-xl" />
@@ -221,18 +251,19 @@ export default function AdminDashboard() {
                 key={kpi.title}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ y: -4 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="dark:bg-slate-900 dark:border-slate-800 h-full relative overflow-hidden group">
-                   <div className={cn("absolute top-0 right-0 w-16 h-16 opacity-5 -mr-4 -mt-4 transition-transform group-hover:scale-110", kpi.color)} />
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("p-2 rounded-lg flex items-center justify-center text-white", kpi.color)}>
-                        <kpi.icon className="w-4 h-4" />
+                <Card className="dark:bg-slate-900/50 dark:border-slate-800 h-full relative overflow-hidden group hover:shadow-lg transition-all border-slate-200">
+                   <div className={cn("absolute top-0 right-0 w-24 h-24 opacity-5 -mr-8 -mt-8 transition-transform group-hover:scale-125 rounded-full blur-2xl", kpi.color)} />
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg", kpi.color)}>
+                        <kpi.icon className="w-5 h-5" />
                       </div>
                       {growth !== null && (
                         <div className={cn(
-                          "flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                          "flex items-center text-[11px] font-bold px-2 py-1 rounded-lg",
                           growth >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
                         )}>
                           {growth >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
@@ -240,13 +271,18 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </div>
-                    <div className="mt-4">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{kpi.title}</p>
-                      <p className={cn(
-                        "font-black mt-1 dark:text-white truncate",
-                        kpi.isCurrency ? "text-lg" : "text-2xl"
-                      )}>{kpi.value}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-1 font-medium">{kpi.description}</p>
+                    <div className="mt-5">
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{kpi.title}</p>
+                      <h2 className={cn(
+                        "font-black mt-1 dark:text-white tracking-tight",
+                        kpi.isCurrency ? "text-xl sm:text-2xl" : "text-3xl"
+                      )}>
+                        {kpi.value}
+                      </h2>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 font-medium flex items-center gap-1.5 uppercase tracking-wide">
+                        <span className={cn("w-1 h-1 rounded-full", kpi.color)} />
+                        {kpi.description}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -281,7 +317,7 @@ export default function AdminDashboard() {
                       fontSize={10} 
                       axisLine={false} 
                       tickLine={false} 
-                      tickFormatter={(val) => `₲${val / 1000000}M`}
+                      tickFormatter={(val) => `₲${formatCompactNumber(val)}`}
                     />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff' }}
@@ -354,21 +390,33 @@ export default function AdminDashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={stats?.orderDistribution}
+                        data={stats?.orderDistribution.map(item => ({
+                          ...item,
+                          statusLabel: getOrderStatusInfo(item.status).label
+                        }))}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
                         outerRadius={80}
                         paddingAngle={5}
                         dataKey="count"
-                        nameKey="status"
+                        nameKey="statusLabel"
                       >
                         {stats?.orderDistribution.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
-                      <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Legend 
+                        layout="vertical" 
+                        align="right" 
+                        verticalAlign="middle" 
+                        iconType="circle"
+                        formatter={(value) => <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{value}</span>}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 )}
@@ -383,7 +431,14 @@ export default function AdminDashboard() {
                <Package className="w-4 h-4 text-blue-500" />
                Órdenes Recientes
             </CardTitle>
-            <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Ver Todas</Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/admin/pedidos')}
+              className="text-[10px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            >
+              Ver Todas
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
@@ -420,7 +475,9 @@ export default function AdminDashboard() {
                           <span className="text-xs font-black">{formatCurrency(order.total)}</span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                           <Badge variant="outline" className="text-[8px] font-black h-5 border-blue-500/20 text-blue-500 bg-blue-500/5 uppercase">{order.status}</Badge>
+                          <Badge className={`${getOrderStatusInfo(order.status).bgColor} ${getOrderStatusInfo(order.status).color} border-0 text-[8px] h-5 uppercase`}>
+                            {getOrderStatusInfo(order.status).label}
+                          </Badge>
                         </td>
                       </tr>
                     ))}
@@ -471,10 +528,9 @@ export default function AdminDashboard() {
                               {tx.amount >= 0 ? '+' : ''}{formatCurrency(tx.amount)}
                            </td>
                            <td className="py-3 px-4 text-right">
-                              <Badge variant="outline" className={cn(
-                                "text-[9px] h-5",
-                                tx.status === 'completed' ? "border-emerald-500/20 text-emerald-500" : "border-rose-500/20 text-rose-500"
-                              )}>{tx.status}</Badge>
+                              <Badge className={`${getTransactionStatusInfo(tx.status).bgColor} ${getTransactionStatusInfo(tx.status).color} border-0 text-[9px] h-5`}>
+                                {getTransactionStatusInfo(tx.status).label}
+                              </Badge>
                            </td>
                         </tr>
                       ))}

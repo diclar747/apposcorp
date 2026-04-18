@@ -43,7 +43,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ingenioApi } from '@/lib/api';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, getSubscriptionStatusInfo } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,8 +57,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import type { IngenioSubscription } from '@/types';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { getSafeDate, formatDate } from '@/lib/utils';
 
 export default function IngenioSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -137,44 +136,56 @@ export default function IngenioSubscriptions() {
       toast.error(error.message || 'Error al eliminar');
     }
   };
+function generatePDF(title: string, statsHtml: string, tableHtml: string) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${title}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#333;font-size:12px}
+      h1{font-size:20px;margin-bottom:4px}
+      .date{color:#666;font-size:11px;margin-bottom:16px}
+      .stats{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+      .stat{background:#f5f5f5;padding:10px 14px;border-radius:8px;min-width:120px}
+      .stat-label{font-size:10px;color:#666}
+      .stat-value{font-size:16px;font-weight:bold}
+      table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
+      th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #ddd}
+      td{padding:5px 8px;border-bottom:1px solid #eee}
+      tr:nth-child(even){background:#fafafa}
+      .text-right{text-align:right}
+      .text-green{color:#16a34a}
+      .text-red{color:#dc2626}
+      @media print{body{padding:0}.no-print{display:none}}
+    </style></head><body>
+    <h1>${title} - Ingenio Millonario</h1>
+    <p class="date">Generado: ${new Date().toLocaleDateString('es-PY')} ${new Date().toLocaleTimeString('es-PY')}</p>
+    ${statsHtml}
+    ${tableHtml}
+    <script>window.onload=function(){window.print()}<\/script>
+  </body></html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // Logo/Header
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
+    const statsHtml = `<div class="stats">
+      <div class="stat"><div class="stat-label">Total Suscripciones</div><div class="stat-value">${filtered.length}</div></div>
+      <div class="stat"><div class="stat-label">Recaudado</div><div class="stat-value text-green">${formatCurrency(filtered.reduce((acc, curr) => acc + curr.paidAmount, 0))}</div></div>
+    </div>`;
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE SUSCRIPCIONES INGENIO', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
-
-    const tableData = filtered.map(s => [
-      `${s.user?.firstName || ''} ${s.user?.lastName || 'Usuario'}`,
-      s.status === 'ACTIVE' ? 'Activo' : s.status === 'PENDING_APPROVAL' ? 'Pendiente' : s.status === 'REVOKED' ? 'Revocado' : s.status,
-      `${s.installments} cuotas`,
-      formatCurrency(s.paidAmount),
-      formatCurrency(s.totalAmount),
-      new Date(s.updatedAt || s.createdAt).toLocaleDateString()
-    ]);
-
-    autoTable(doc, {
-      startY: 45,
-      head: [['Usuario', 'Estado', 'Plan', 'Pagado', 'Total', 'Último Mov.']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
-
-    doc.save(`suscripciones-ingenio-${new Date().getTime()}.pdf`);
+    const rows = filtered.map(s => `<tr>
+      <td>${s.user?.firstName || ''} ${s.user?.lastName || 'Usuario'}</td>
+      <td>${getSubscriptionStatusInfo(s.status).label}</td>
+      <td>${s.installments} cuotas</td>
+      <td class="text-right">${formatCurrency(s.paidAmount)}</td>
+      <td class="text-right">${formatCurrency(s.totalAmount)}</td>
+      <td>${formatDate(getSafeDate(s.updatedAt || s.createdAt))}</td>
+    </tr>`).join('');
+    
+    const tableHtml = `<table><thead><tr><th>Usuario</th><th>Estado</th><th>Plan</th><th>Pagado</th><th>Total</th><th>Último Mov.</th></tr></thead><tbody>${rows}</tbody></table>`;
+    
+    generatePDF('Reporte de Suscripciones', statsHtml, tableHtml);
     toast.success('PDF exportado correctamente');
   };
 
@@ -340,13 +351,8 @@ export default function IngenioSubscriptions() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={cn(
-                      "capitalize border-none",
-                      sub.status === 'ACTIVE' && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                      sub.status === 'PENDING_APPROVAL' && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                      sub.status === 'REVOKED' && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                    )}>
-                      {sub.status === 'PENDING_APPROVAL' ? 'Pendiente' : sub.status}
+                    <Badge className={`${getSubscriptionStatusInfo(sub.status).bgColor} ${getSubscriptionStatusInfo(sub.status).color} border-0`}>
+                      {getSubscriptionStatusInfo(sub.status).label}
                     </Badge>
                   </TableCell>
                   <TableCell>

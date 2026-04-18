@@ -1,11 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, CheckCircle, XCircle, Clock, DollarSign, Download } from 'lucide-react';
-import { mockTransactions, mockUsers } from '@/data/mockData';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { Search, Filter, CheckCircle, XCircle, Clock, DollarSign, Download, Loader2, Wallet } from 'lucide-react';
+import { walletApi } from '@/lib/api';
+import { formatCurrency, formatDateTime, getTransactionStatusInfo, cn, generateReportPDF } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,200 +16,316 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
 
 export default function AdminWithdrawals() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'failed'>('all');
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const withdrawals = mockTransactions.filter(t => t.type === 'withdrawal');
-  
+  const fetchWithdrawals = async () => {
+    try {
+      setIsLoading(true);
+      const data = await walletApi.getAllTransactions();
+      const onlyWithdrawals = data.filter((t: any) => t.type === 'withdrawal');
+      setWithdrawals(onlyWithdrawals);
+    } catch (error) {
+      toast.error('Error al cargar solicitudes de retiro');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWithdrawals();
+  }, []);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await walletApi.approveWithdrawal(id);
+      toast.success('Retiro aprobado con éxito');
+      fetchWithdrawals();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al aprobar retiro');
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (!confirm('¿Estás seguro de rechazar este retiro? El monto será reembolsado al vendedor.')) return;
+    try {
+      await walletApi.rejectWithdrawal(id);
+      toast.success('Retiro rechazado y reembolsado');
+      fetchWithdrawals();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al rechazar retiro');
+    }
+  };
+
   const filteredWithdrawals = withdrawals.filter(w => {
-    const user = mockUsers.find(u => u.id === w.userId);
+    const user = w.user;
     const matchesSearch = user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
+                         user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         w.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || w.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const statsHtml = `
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">PENDIENTES</div>
+          <div class="stat-value">${withdrawals.filter(w => w.status === 'pending').length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">COMPLETADOS</div>
+          <div class="stat-value">${withdrawals.filter(w => w.status === 'completed').length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">MONTO TOTAL</div>
+          <div class="stat-value">${formatCurrency(Math.abs(withdrawals.filter(w => w.status === 'completed').reduce((sum, w) => sum + w.amount, 0)))}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">TOTAL HISTÓRICO</div>
+          <div class="stat-value">${withdrawals.length}</div>
+        </div>
+      </div>
+    `;
 
-    // Logo/Header
-    doc.setFillColor(15, 23, 42); 
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('OSCORP PLATFORM', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('REPORTE DE RETIROS', 15, 33);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-PY')}`, pageWidth - 50, 25);
+    const rows = filteredWithdrawals.map(w => {
+      const statusInfo = getTransactionStatusInfo(w.status);
+      let statusClass = 'badge-gray';
+      if (w.status === 'completed') statusClass = 'badge-green';
+      if (w.status === 'pending') statusClass = 'badge-yellow';
+      if (w.status === 'failed' || w.status === 'rejected') statusClass = 'badge-red';
 
-    const tableData = filteredWithdrawals.map(w => {
-      const user = mockUsers.find(u => u.id === w.userId);
-      return [
-        w.id,
-        `${user?.firstName || ''} ${user?.lastName || ''}`,
-        formatCurrency(Math.abs(w.amount)),
-        w.status === 'completed' ? 'Completado' : w.status === 'pending' ? 'Pendiente' : 'Rechazado',
-        formatDateTime(w.createdAt)
-      ];
-    });
+      return `
+        <tr>
+          <td>${w.id.slice(-8).toUpperCase()}</td>
+          <td>${w.user?.firstName || ''} ${w.user?.lastName || ''}</td>
+          <td class="text-red font-bold">${formatCurrency(Math.abs(w.amount))}</td>
+          <td><span class="badge ${statusClass}">${statusInfo.label}</span></td>
+          <td>${formatDateTime(w.createdAt)}</td>
+        </tr>
+      `;
+    }).join('');
 
-    autoTable(doc, {
-      startY: 45,
-      head: [['ID', 'Vendedor', 'Monto', 'Estado', 'Fecha']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 4, textColor: [51, 65, 85] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+    const tableHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Vendedor</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
 
-    doc.save(`retiros-oscorp-${new Date().getTime()}.pdf`);
+    generateReportPDF('Reporte de Solicitudes de Retiro', statsHtml, tableHtml);
+    toast.success('Reporte generado correctamente');
   };
 
+  const stats = [
+    { label: 'Pendientes', value: withdrawals.filter(w => w.status === 'pending').length, icon: Clock, color: 'text-amber-500' },
+    { label: 'Completados', value: withdrawals.filter(w => w.status === 'completed').length, icon: CheckCircle, color: 'text-emerald-500' },
+    { label: 'Monto Total', value: formatCurrency(Math.abs(withdrawals.filter(w => w.status === 'completed').reduce((sum, w) => sum + w.amount, 0))), icon: DollarSign, color: 'text-blue-500' },
+    { label: 'Total Histórico', value: withdrawals.length, icon: Wallet, color: 'text-purple-500' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-2 max-w-full overflow-hidden">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Solicitudes de Retiro</h1>
-          <p className="text-gray-500">Gestiona las solicitudes de retiro de vendedores</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Retiros</h1>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Gestión financiera de vendedores</p>
         </div>
-        <Button variant="outline" onClick={exportToPDF}>
-          <Download className="w-4 h-4 mr-2" />
-          Exportar PDF
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchWithdrawals} disabled={isLoading} className="h-8 text-xs rounded-lg">
+            {isLoading && <Loader2 className="w-3 h-3 mr-2 animate-spin" />}
+            Actualizar
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToPDF} className="h-8 text-xs rounded-lg border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+            <Download className="w-3.5 h-3.5 mr-2" />
+            Reporte PDF
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Pendientes</p>
-            <p className="text-2xl font-bold text-yellow-600">{withdrawals.filter(w => w.status === 'pending').length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Completados</p>
-            <p className="text-2xl font-bold text-green-600">{withdrawals.filter(w => w.status === 'completed').length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Monto Total</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {formatCurrency(Math.abs(withdrawals.reduce((sum, w) => sum + w.amount, 0)))}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Este Mes</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(12500000)}</p>
-          </CardContent>
-        </Card>
+      {/* Stats Area */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {stats.map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <Card className="dark:bg-[#0f172a] dark:border-slate-800/50 border-slate-200 shadow-sm overflow-hidden relative group">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-500/10 shrink-0", stat.color.replace('text-', 'text-'))}>
+                    <stat.icon className={cn("w-5 h-5", stat.color)} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none mb-0.5 truncate">{stat.value}</span>
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none outline-none">{stat.label}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por vendedor..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant={statusFilter === 'all' ? 'default' : 'outline'} onClick={() => setStatusFilter('all')} size="sm">Todos</Button>
-              <Button variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')} size="sm">Pendientes</Button>
-              <Button variant={statusFilter === 'completed' ? 'default' : 'outline'} onClick={() => setStatusFilter('completed')} size="sm">Completados</Button>
+      {/* Filters Area */}
+      <Card className="dark:bg-slate-900/50 dark:border-slate-800 border-slate-200 shadow-sm">
+        <CardContent className="p-2">
+          <div className="flex flex-col lg:flex-row gap-2 lg:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <div className="relative flex-1 lg:max-w-xs">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Input
+                  placeholder="Buscar por vendedor o ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-8 text-[11px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-blue-500 rounded-md"
+                />
+              </div>
+              <div className="w-full sm:w-48">
+                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                  <SelectTrigger className="h-8 text-[11px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-3 h-3 text-slate-400" />
+                      <SelectValue placeholder="Estado" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-800 rounded-md">
+                    <SelectItem value="all" className="text-[11px]">Todos los estados</SelectItem>
+                    <SelectItem value="pending" className="text-[11px]">Pendientes</SelectItem>
+                    <SelectItem value="completed" className="text-[11px]">Completados</SelectItem>
+                    <SelectItem value="failed" className="text-[11px]">Fallidos/Rechazados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Withdrawals Table */}
-      <Card>
+      <Card className="dark:bg-slate-900/50 dark:border-slate-800 border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+              <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
+                <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-800">
+                  <TableHead className="py-2.5 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none">ID</TableHead>
+                  <TableHead className="py-2.5 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none">Vendedor</TableHead>
+                  <TableHead className="py-2.5 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none">Monto</TableHead>
+                  <TableHead className="py-2.5 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none text-center">Estado</TableHead>
+                  <TableHead className="py-2.5 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none">Fecha</TableHead>
+                  <TableHead className="py-2.5 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredWithdrawals.map((withdrawal, index) => {
-                  const user = mockUsers.find(u => u.id === withdrawal.userId);
-                  
-                  return (
-                    <motion.tr
-                      key={withdrawal.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      <TableCell>
-                        <span className="text-sm font-mono text-gray-500">{withdrawal.id}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <img src={user?.avatar} alt="" className="w-8 h-8 rounded-full" />
-                          <div>
-                            <p className="font-medium text-sm">{user?.firstName} {user?.lastName}</p>
-                            <p className="text-xs text-gray-500">{user?.email}</p>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-40 text-center">
+                      <Loader2 className="w-8 h-8 mx-auto animate-spin text-blue-500" />
+                      <p className="mt-2 text-xs text-slate-500">Cargando datos reales...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredWithdrawals.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-40 text-center">
+                      <div className="flex flex-col items-center justify-center text-slate-400">
+                        <Filter className="w-10 h-10 mb-2 opacity-20" />
+                        <p className="text-sm font-medium">No se encontraron solicitudes</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredWithdrawals.map((withdrawal, index) => {
+                    const user = withdrawal.user;
+                    const statusInfo = getTransactionStatusInfo(withdrawal.status);
+                    
+                    return (
+                      <motion.tr
+                        key={withdrawal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <TableCell className="py-2 px-4">
+                          <span className="text-[10px] font-mono text-slate-500 uppercase">{withdrawal.id.slice(-8)}</span>
+                        </TableCell>
+                        <TableCell className="py-2 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                              {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : <div className="font-bold text-[10px] text-blue-600">{user?.firstName?.charAt(0)}</div>}
+                            </div>
+                            <div className="flex flex-col leading-tight">
+                              <span className="text-[11px] font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{user?.firstName} {user?.lastName}</span>
+                              <span className="text-[9px] text-slate-500 truncate max-w-[120px]">{user?.email}</span>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-bold text-red-600">{formatCurrency(Math.abs(withdrawal.amount))}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={withdrawal.status === 'completed' ? 'default' : withdrawal.status === 'pending' ? 'secondary' : 'destructive'}>
-                          {withdrawal.status === 'completed' ? 'Completado' : withdrawal.status === 'pending' ? 'Pendiente' : 'Rechazado'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600">{formatDateTime(withdrawal.createdAt)}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {withdrawal.status === 'pending' && (
-                          <div className="flex gap-2 justify-end">
-                            <Button size="sm" className="bg-green-600">
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Aprobar
-                            </Button>
-                            <Button size="sm" variant="destructive">
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Rechazar
-                            </Button>
+                        </TableCell>
+                        <TableCell className="py-2 px-4">
+                          <span className="font-bold text-sm text-red-600 dark:text-red-400">{formatCurrency(Math.abs(withdrawal.amount))}</span>
+                        </TableCell>
+                        <TableCell className="py-2 px-4 text-center">
+                          <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border-0 text-[9px] font-bold px-2 py-0 h-4`}>
+                            {statusInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2 px-4 leading-tight">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">{formatDateTime(withdrawal.createdAt).split(' ')[0]}</span>
+                            <span className="text-[9px] text-slate-500">{formatDateTime(withdrawal.createdAt).split(' ')[1]}</span>
                           </div>
-                        )}
-                      </TableCell>
-                    </motion.tr>
-                  );
-                })}
+                        </TableCell>
+                        <TableCell className="py-2 px-4 text-right">
+                          {withdrawal.status === 'pending' && (
+                            <div className="flex gap-1 justify-end">
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleApprove(withdrawal.id)}
+                                className="h-7 px-2 text-[10px] bg-emerald-600 hover:bg-emerald-700 font-bold"
+                              >
+                                Aprobar
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => handleReject(withdrawal.id)}
+                                className="h-7 px-2 text-[10px] font-bold"
+                              >
+                                Rechazar
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </motion.tr>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>

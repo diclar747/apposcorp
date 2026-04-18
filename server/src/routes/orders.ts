@@ -114,6 +114,9 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       deliveryAddress,
       deliveryNotes,
       paymentMethod,
+      paymentStatus, 
+      orderNumber: customOrderNumber,
+      isPosSale,
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -184,7 +187,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       // Dynamic Commission Calculation
       const commissionAmount = subtotal * commissionRateMultiplier;
       const sellerEarnings = subtotal - commissionAmount;
-      const orderNumber = `ORD-${Date.now()}`;
+      const orderNumber = customOrderNumber || `ORD-${Date.now()}`;
 
       // 3. Handle Wallet Payment
       if (paymentMethod === 'wallet') {
@@ -239,7 +242,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
           paymentMethod,
           commissionAmount,
           sellerEarnings,
-          paymentStatus: paymentMethod === 'wallet' ? 'paid' : 'pending',
+          paymentStatus: paymentStatus || (paymentMethod === 'wallet' || isPosSale ? 'paid' : 'pending'),
+          isPosSale: !!isPosSale,
           items: {
             create: orderItemsData,
           },
