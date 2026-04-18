@@ -156,32 +156,7 @@ export default function LoginPage() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Inicia sesión para continuar</p>
         </div>
 
-        {/* Quick Logins */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-4"
-        >
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Acceso rápido para demo</p>
-          <div className="grid grid-cols-2 gap-2">
-            {quickLogins.map((login) => (
-              <button
-                key={login.email}
-                onClick={() => handleQuickLogin(login.email, login.password)}
-                disabled={isLoading}
-                type="button"
-                className={cn(
-                  'flex flex-col items-center gap-1 p-2 rounded-lg transition-all hover:scale-105',
-                  login.color
-                )}
-              >
-                <login.icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{login.label}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
+
 
         {/* Login Form */}
         <motion.div

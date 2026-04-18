@@ -282,7 +282,7 @@ export default function ClientLayout() {
             <Button
               variant="ghost"
               size="icon"
-              className="w-9 h-9 rounded-full"
+              className="hidden sm:inline-flex w-9 h-9 rounded-full"
               onClick={() => navigate('/app/tiendas')}
             >
               <Search className="w-5 h-5" />
@@ -307,7 +307,7 @@ export default function ClientLayout() {
             <Button
               variant="ghost"
               size="icon"
-              className="w-9 h-9 rounded-full"
+              className="hidden sm:inline-flex w-9 h-9 rounded-full"
               onClick={() => navigate('/app/perfil')}
             >
               <User className="w-5 h-5" />

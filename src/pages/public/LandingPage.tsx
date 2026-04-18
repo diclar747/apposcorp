@@ -220,7 +220,7 @@ const HeroSection = () => {
               <Sparkles className="w-3 h-3 mr-2" />
               Empresa Paraguaya de Economía Colaborativa
             </Badge>
-            <h1 className="text-5xl lg:text-7xl xl:text-8xl font-black text-slate-900 dark:text-white leading-tight mb-8">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-black text-slate-900 dark:text-white leading-tight mb-8">
               {settings.site_name.split(' ')[0]} <br />
               con tu <span className="gradient-text italic">Éxito Financiero</span>
             </h1>
