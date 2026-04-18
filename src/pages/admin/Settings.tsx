@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
 import { settingsApi } from '@/lib/api';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 interface SystemSetting {
     id: string;
@@ -33,6 +34,7 @@ export default function AdminSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { isAuthenticated } = useAuthStore();
+    const { fetchSettings: refreshPublicSettings } = useSettingsStore();
 
     useEffect(() => {
         fetchSettings();
@@ -72,7 +74,8 @@ export default function AdminSettings() {
             setSaving(true);
             await settingsApi.update({ settings });
             toast.success('Configuración guardada exitosamente');
-            fetchSettings();
+            await fetchSettings();
+            await refreshPublicSettings(); // Update global store
         } catch (error) {
             toast.error('Error al guardar configuración');
         } finally {
@@ -85,7 +88,8 @@ export default function AdminSettings() {
             setLoading(true);
             await settingsApi.init();
             toast.success('Valores por defecto inicializados');
-            fetchSettings();
+            await fetchSettings();
+            await refreshPublicSettings();
         } catch (err) {
             toast.error('Error al inicializar');
         } finally {
@@ -93,7 +97,12 @@ export default function AdminSettings() {
         }
     };
 
-    if (loading) return <div>Cargando...</div>;
+    if (loading) return (
+        <div className="flex items-center justify-center p-20">
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+            <span className="ml-2 font-medium">Cargando configuración...</span>
+        </div>
+    );
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -106,7 +115,7 @@ export default function AdminSettings() {
                     {settings.length === 0 && (
                         <Button variant="outline" onClick={initializeDefaults}>
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Restaurar Valores
+                            Inicializar Valores
                         </Button>
                     )}
                     <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
@@ -118,7 +127,7 @@ export default function AdminSettings() {
 
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[600px]">
-                    <TabsTrigger value="general">Geral</TabsTrigger>
+                    <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="contact">Contacto</TabsTrigger>
                     <TabsTrigger value="security">Seguridad</TabsTrigger>
                     <TabsTrigger value="maintenance">Mantenimiento</TabsTrigger>
@@ -141,13 +150,13 @@ export default function AdminSettings() {
                                 <Label htmlFor="site_name">Nombre del Sistema</Label>
                                 <Input
                                     id="site_name"
-                                    value={getSettingValue('site_name')}
+                                    value={getSettingValue('site_name', 'Oscorp System')}
                                     onChange={(e) => updateLocalSetting('site_name', e.target.value, 'general', true)}
                                     placeholder="Ej: Oscorp System"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="site_description">Descrição</Label>
+                                <Label htmlFor="site_description">Descripción</Label>
                                 <Textarea
                                     id="site_description"
                                     value={getSettingValue('site_description')}
@@ -205,20 +214,21 @@ export default function AdminSettings() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Phone className="w-5 h-5 text-green-500" />
-                                Informações de Contacto
+                                Información de Contacto
                             </CardTitle>
                             <CardDescription>
-                                Información de contacto mostrada a los usuarios.
+                                Esta es la información oficial de Oscorp para contacto de soporte.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="contact_email">Email de Suporte</Label>
+                                <Label htmlFor="contact_email">Email de Soporte</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         id="contact_email"
                                         className="pl-9"
+                                        placeholder="soporte@oscorp.com"
                                         value={getSettingValue('contact_email')}
                                         onChange={(e) => updateLocalSetting('contact_email', e.target.value, 'contact', true)}
                                     />
@@ -231,18 +241,20 @@ export default function AdminSettings() {
                                     <Input
                                         id="contact_phone"
                                         className="pl-9"
+                                        placeholder="+595 900 000 000"
                                         value={getSettingValue('contact_phone')}
                                         onChange={(e) => updateLocalSetting('contact_phone', e.target.value, 'contact', true)}
                                     />
                                 </div>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="contact_address">Dirección</Label>
+                                <Label htmlFor="contact_address">Dirección Física</Label>
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         id="contact_address"
                                         className="pl-9"
+                                        placeholder="Asunción, Paraguay"
                                         value={getSettingValue('contact_address')}
                                         onChange={(e) => updateLocalSetting('contact_address', e.target.value, 'contact', true)}
                                     />
@@ -258,10 +270,10 @@ export default function AdminSettings() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Shield className="w-5 h-5 text-red-500" />
-                                Seguridad e Acesso
+                                Seguridad y Acceso
                             </CardTitle>
                             <CardDescription>
-                                Configuración de seguridad y políticas de contraseña.
+                                Configuración de políticas de registro y seguridad del sistema.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -281,7 +293,7 @@ export default function AdminSettings() {
                                 <div className="space-y-0.5">
                                     <Label className="text-base">Verificación de Email</Label>
                                     <p className="text-sm text-muted-foreground">
-                                        Exigir verificación de email para nuevos registros.
+                                        Exigir verificación de email para permitir el acceso después del registro.
                                     </p>
                                 </div>
                                 <Switch
@@ -295,14 +307,14 @@ export default function AdminSettings() {
 
                 {/* Maintenance Settings */}
                 <TabsContent value="maintenance">
-                    <Card className="border-red-200 dark:border-red-900">
+                    <Card className="border-red-200 dark:border-red-900 shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-red-600">
                                 <Wrench className="w-5 h-5" />
-                                Mantenimiento do Sistema
+                                Mantenimiento del Sistema
                             </CardTitle>
                             <CardDescription>
-                                Controla el acceso al sistema durante mantenimientos.
+                                Controla el acceso al sistema durante tareas de mantenimiento técnico.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -310,7 +322,7 @@ export default function AdminSettings() {
                                 <div className="space-y-0.5">
                                     <Label className="text-base font-semibold text-red-700 dark:text-red-400">Modo Mantenimiento</Label>
                                     <p className="text-sm text-red-600/80 dark:text-red-400/80">
-                                        Cuando esté activo, solo los administradores podrán acceder al sistema.
+                                        Cuando esté activo, solo los superadministradores podrán acceder al sistema.
                                     </p>
                                 </div>
                                 <Switch

@@ -55,7 +55,7 @@ router.put('/change-password', authenticate, async (req: AuthRequest, res) => {
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+      return res.status(400).json({ error: 'Contraseña actual incorrecta' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -138,6 +138,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
     const {
       storeName,
       storeSlug,
+      ruc,
       description,
       address,
       phone,
@@ -171,6 +172,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
 
     const updateData: any = {
       storeName,
+      ruc,
       description,
       address,
       phone,
@@ -200,6 +202,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
         whatsappNumber: whatsappNumber || '',
         logo: logo || '',
         banner: banner || '',
+        ruc: ruc || '',
         socialLinks: socialLinks || {},
         businessHours: businessHours || {},
         planActive: true,
@@ -220,6 +223,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
     const userId = req.params.id as string;
     const {
       storeName,
+      ruc,
       description,
       address,
       phone,
@@ -250,6 +254,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
       where: { userId },
       update: {
         storeName,
+        ruc,
         description,
         address,
         phone,
@@ -271,6 +276,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
         whatsappNumber: whatsappNumber || '',
         logo: logo || '',
         banner: banner || '',
+        ruc: ruc || '',
         socialLinks: socialLinks || {},
         planActive: true,
         planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),

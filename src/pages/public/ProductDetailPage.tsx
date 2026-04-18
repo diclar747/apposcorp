@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, Store, Star, ArrowLeft, Heart,
@@ -20,6 +20,8 @@ export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(0);
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('from') === 'vendedor';
   const [quantity, setQuantity] = useState(1);
   const [isLiked, setIsLiked] = useState(false);
 
@@ -209,9 +211,17 @@ export default function ProductDetailPage() {
                 <div className="flex gap-4">
                   <Button
                     onClick={handleAddToCart}
-                    className="flex-1 h-20 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-blue-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-95"
+                    disabled={isPreview}
+                    className={cn(
+                      "flex-1 h-20 rounded-[2rem] font-black text-xl transition-all hover:scale-[1.02] active:scale-95",
+                      isPreview 
+                        ? "bg-gray-100 text-gray-400 border border-gray-200"
+                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-2xl shadow-blue-200 dark:shadow-none"
+                    )}
                   >
-                    {inCart ? (
+                    {isPreview ? (
+                      "Vista Previa - Carrito Desactivado"
+                    ) : inCart ? (
                       <>
                         <Check className="w-6 h-6 mr-3 stroke-[3]" />
                         En el Carrito

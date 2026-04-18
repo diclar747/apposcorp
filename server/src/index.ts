@@ -29,6 +29,7 @@ import planRoutes from './routes/plans.js';
 import reviewRoutes from './routes/reviews.js';
 import { prisma } from './utils/prisma.js';
 import webpush from 'web-push';
+import { checkMaintenanceMode } from './middleware/maintenance.js';
 
 // Configure Web Push if keys are present
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -87,6 +88,9 @@ app.get('/api/health/db', async (req, res) => {
     });
   }
 });
+
+// Maintenance mode check
+app.use(checkMaintenanceMode);
 
 // API Routes
 import campaignRoutes from './routes/campaigns.js';

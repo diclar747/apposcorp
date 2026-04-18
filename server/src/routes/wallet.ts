@@ -41,7 +41,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Billetera no encontrada' });
+      return res.json(null);
     }
 
     res.json(wallet);
@@ -350,6 +350,30 @@ router.post('/pin/set', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Verify transaction PIN
+router.post('/pin/verify', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ error: 'PIN requerido' });
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user!.userId },
+    });
+
+    if (!wallet) return res.status(404).json({ error: 'Billetera no encontrada' });
+    if (!wallet.transactionPin) return res.status(400).json({ error: 'PIN no configurado' });
+
+    const bcrypt = await import('bcryptjs');
+    const isValid = await bcrypt.compare(pin, wallet.transactionPin);
+
+    if (!isValid) return res.status(400).json({ error: 'PIN incorrecto' });
+
+    res.json({ message: 'PIN verificado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // Change transaction PIN
 router.post('/pin/change', authenticate, async (req: AuthRequest, res) => {
   try {
@@ -367,7 +391,7 @@ router.post('/pin/change', authenticate, async (req: AuthRequest, res) => {
       if (!currentPin) return res.status(400).json({ error: 'PIN actual requerido' });
       const bcrypt = await import('bcryptjs');
       const isValid = await bcrypt.compare(currentPin, wallet.transactionPin);
-      if (!isValid) return res.status(401).json({ error: 'PIN actual incorrecto' });
+      if (!isValid) return res.status(400).json({ error: 'PIN actual incorrecto' });
     }
 
     const bcrypt = await import('bcryptjs');
@@ -406,7 +430,7 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res) => {
       if (!pin) return res.status(400).json({ error: 'PIN de transacción requerido' });
       const bcrypt = await import('bcryptjs');
       const pinValid = await bcrypt.compare(pin, fromWallet.transactionPin);
-      if (!pinValid) return res.status(401).json({ error: 'PIN incorrecto' });
+      if (!pinValid) return res.status(400).json({ error: 'PIN incorrecto' });
     }
 
     // 2. Check receiver wallet

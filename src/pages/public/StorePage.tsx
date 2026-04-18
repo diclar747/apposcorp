@@ -28,6 +28,7 @@ export default function StorePage() {
   const [searchParams] = useSearchParams();
   const isInApp = location.pathname.startsWith('/app');
   const from = searchParams.get('from');
+  const isPreview = from === 'vendedor';
   const backUrl = from === 'vendedor' ? '/vendedor' : '/app/tiendas';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
@@ -73,22 +74,23 @@ export default function StorePage() {
   }, [slug]);
 
   const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/tienda/${slug}`;
     const shareData = {
       title: store?.name || 'Tienda Oscorp',
       text: store?.description || 'Visita esta tienda en Oscorp',
-      url: window.location.href
+      url: shareUrl
     };
 
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         toast.success('¡Enlace copiado al portapapeles!');
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         toast.success('¡Enlace copiado al portapapeles!');
       }
     }
@@ -115,13 +117,14 @@ export default function StorePage() {
   };
 
   const canPurchase = useMemo(() => {
+    if (isPreview) return false;
     if (!store?.plan) return false;
     const planName = store.plan.name.toLowerCase();
     if (planName.includes('básico') || planName.includes('basic')) return false;
 
     const features = store.plan.features || [];
     return features.some((f: string) => f.toLowerCase().includes('tienda online'));
-  }, [store]);
+  }, [store, isPreview]);
 
   const categories = useMemo((): string[] => {
     if (!store?.products) return [];
@@ -468,6 +471,7 @@ export default function StorePage() {
                           }}
                           viewMode={viewMode}
                           canPurchase={canPurchase}
+                          isPreview={isPreview}
                           onConsult={() => {
                             const number = store.whatsappNumber || store.phone || '';
                             const cleanNumber = number.replace(/\D/g, '');
@@ -705,7 +709,7 @@ export default function StorePage() {
       </div>
 
       {/* Modern Cart Drawer with Vaul - Moved higher when in-app to avoid BottomNav overlap */}
-      {canPurchase && (
+      {!isPreview && canPurchase && (
         <CartDrawer
           items={items}
           total={total}
@@ -850,7 +854,7 @@ export default function StorePage() {
                   </div>
                   <div className="flex flex-col gap-3">
                     <Button 
-                      disabled={!canPurchase || selectedProduct.stock <= 0}
+                      disabled={isPreview || !canPurchase || selectedProduct.stock <= 0}
                       onClick={() => {
                         addItem(selectedProduct, 1);
                         setSelectedProduct(null);
@@ -858,12 +862,18 @@ export default function StorePage() {
                       }}
                       className={cn(
                         "flex-1 h-16 rounded-2xl font-black text-lg transition-all active:scale-95",
-                        canPurchase && selectedProduct.stock > 0
+                        !isPreview && canPurchase && selectedProduct.stock > 0
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 dark:shadow-none"
                           : "bg-gray-100 text-gray-400 border border-gray-200"
                       )}
                     >
-                      {selectedProduct.stock <= 0 ? 'SIN STOCK' : canPurchase ? 'Añadir al Carrito' : 'Visitar tienda para comprar'}
+                      {isPreview 
+                        ? 'VISTA PREVIA - CARRITO DESACTIVADO' 
+                        : selectedProduct.stock <= 0 
+                        ? 'SIN STOCK' 
+                        : canPurchase 
+                        ? 'Añadir al Carrito' 
+                        : 'Visitar tienda para comprar'}
                     </Button>
                     
                     {!canPurchase && (
@@ -894,7 +904,23 @@ export default function StorePage() {
 
 // --- Sub-components ---
 
-function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchase, onConsult }: { product: any, onAddToCart: () => void, onViewProduct: () => void, viewMode: 'grid' | 'list', canPurchase: boolean, onConsult: () => void }) {
+function ProductCard({ 
+  product, 
+  onAddToCart, 
+  onViewProduct, 
+  viewMode, 
+  canPurchase, 
+  onConsult,
+  isPreview = false
+}: { 
+  product: any, 
+  onAddToCart: () => void, 
+  onViewProduct: () => void, 
+  viewMode: 'grid' | 'list', 
+  canPurchase: boolean, 
+  onConsult: () => void,
+  isPreview?: boolean
+}) {
   const isOutOfStock = product.stock <= 0;
   
   if (viewMode === 'list') {
@@ -950,34 +976,38 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <Button
-                disabled={!canPurchase || isOutOfStock}
-                onClick={onAddToCart}
-                className={cn(
-                  "h-14 px-8 rounded-2xl font-black text-lg min-w-[200px]",
-                  canPurchase && !isOutOfStock
-                    ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none" 
-                    : "bg-gray-100 text-gray-400 border border-gray-200"
-                )}
-              >
-                {isOutOfStock ? 'SIN STOCK' : canPurchase ? (
-                  <>
-                    <Plus className="w-5 h-5 mr-3 stroke-[3]" />
-                    Agregar al Carrito
-                  </>
-                ) : (
-                  'Visitar tienda para comprar'
-                )}
-              </Button>
-              {(!canPurchase || isOutOfStock) && (
-                <Button 
-                  onClick={onConsult}
-                  variant="outline" 
-                  className="h-12 rounded-xl border-green-200 text-green-600 hover:bg-green-50 font-bold"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Consultar por WhatsApp
-                </Button>
+              {!isPreview && (
+                <>
+                  <Button
+                    disabled={!canPurchase || isOutOfStock}
+                    onClick={onAddToCart}
+                    className={cn(
+                      "h-14 px-8 rounded-2xl font-black text-lg min-w-[200px]",
+                      canPurchase && !isOutOfStock
+                        ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none" 
+                        : "bg-gray-100 text-gray-400 border border-gray-200"
+                    )}
+                  >
+                    {isOutOfStock ? 'SIN STOCK' : canPurchase ? (
+                      <>
+                        <Plus className="w-5 h-5 mr-3 stroke-[3]" />
+                        Agregar al Carrito
+                      </>
+                    ) : (
+                      'Visitar tienda para comprar'
+                    )}
+                  </Button>
+                  {(!canPurchase || isOutOfStock) && (
+                    <Button 
+                      onClick={onConsult}
+                      variant="outline" 
+                      className="h-12 rounded-xl border-green-200 text-green-600 hover:bg-green-50 font-bold"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Consultar por WhatsApp
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1028,7 +1058,7 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
         )}
 
         <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2 z-20">
-          {isOutOfStock ? (
+          {isPreview ? null : isOutOfStock ? (
              <Button
                disabled
                className="w-full h-14 bg-red-600 text-white rounded-2xl font-black shadow-2xl border-0"
@@ -1086,7 +1116,7 @@ function ProductCard({ product, onAddToCart, onViewProduct, viewMode, canPurchas
               {formatCurrency(product.price)}
             </span>
           </div>
-          {canPurchase && (
+          {canPurchase && !isPreview && (
             <button
               onClick={onAddToCart}
               className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 interface WhatsAppButtonProps {
     phoneNumber?: string;
@@ -10,10 +11,13 @@ interface WhatsAppButtonProps {
 }
 
 export const WhatsAppButton = ({
-    phoneNumber = '595975855585',
+    phoneNumber,
     message = 'Gracias por llegar hasta aquí, ¿en qué te podemos ayudar?',
     className
 }: WhatsAppButtonProps) => {
+    const { settings } = useSettingsStore();
+    const finalPhoneNumber = phoneNumber || settings.contact_phone.replace(/\+/g, '').replace(/\s/g, '') || '595975855585';
+    
     const [isOpen, setIsOpen] = useState(false);
     const [showGreeting, setShowGreeting] = useState(false);
 
@@ -27,7 +31,7 @@ export const WhatsAppButton = ({
 
     const handleWhatsAppClick = () => {
         const encodedMessage = encodeURIComponent(message);
-        window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+        window.open(`https://wa.me/${finalPhoneNumber}?text=${encodedMessage}`, '_blank');
         setShowGreeting(false);
     };
 

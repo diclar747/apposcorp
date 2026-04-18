@@ -113,7 +113,7 @@ export default function ResetPasswordPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-14 bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90 rounded-2xl font-black text-lg transition-all"
+              className="w-full h-14 bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-white dark:text-indigo-600 dark:hover:bg-slate-100 rounded-2xl font-black text-lg transition-all shadow-xl shadow-indigo-600/20 dark:shadow-none"
             >
               {isLoading ? (
                 <div className="w-6 h-6 border-3 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
