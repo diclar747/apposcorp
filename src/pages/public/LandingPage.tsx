@@ -285,7 +285,7 @@ const PillarSection = () => {
       title: "Educación Financiera:",
       desc: "Creamos y ofrecemos el curso especializado en Educación Financiera “Ingenio Millonario”, en la modalidad Aula Invertida. Creamos la app IM/Matriz Financiero/OSCORP y el producto educativo IM. Firma de CONVENIOS.",
       image: "/images/brand/education-concept.png",
-      logo: "https://oscorp.com.py/assets/images/logos/logo_ingenio_millonario.png",
+      logo: "/images/logos/logo_ingenio_millonario.png",
       logoSubtext: "INGENIO MILLONARIO",
       color: "blue"
     },
@@ -293,7 +293,7 @@ const PillarSection = () => {
       title: "Empresarial:",
       desc: "Ofrecemos la Plataforma de Comercio Electrónico OSCORP-e, para la venta de productos y servicios las 24 horas a nivel nacional. Asesoramos y ofrecemos software a las microempresas para su crecimiento, mediante servicios integrales. Creamos el curso empresarial SOY EMPRESARI@. Firma de CONVENIOS.",
       image: "/images/brand/ecosystem-full.png", // Placeholder until generated
-      logo: "https://oscorp.com.py/assets/images/logos/logo_empresarial.png",
+      logo: "/images/logos/logo_empresarial.png",
       logoSubtext: "REESCRIBIMOS LAS REGLAS DEL COMERCIO",
       color: "orange"
     },
@@ -301,7 +301,7 @@ const PillarSection = () => {
       title: "Inversiones:",
       desc: "Ofrecemos la Plataforma de Crowdfunding OSCORP-i (FINTECH) para inversiones; juntando personas que necesitan con aquellos que puedan otorgarlos. Firma de CONVENIOS.",
       image: "/images/brand/ecosystem-tablet-phone.png", // Placeholder until generated
-      logo: "https://oscorp.com.py/assets/images/logos/logoFinanciero2.png",
+      logo: "/images/logos/logo_empresarial.png",
       logoSubtext: "REESCRIBIMOS LAS REGLAS DE INVERSIÓN",
       color: "teal"
     }
@@ -327,8 +327,8 @@ const PillarSection = () => {
               className="group bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden flex flex-col h-full border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all duration-500"
             >
               {/* Header con Logo - Mas Grande y Limpio */}
-              <div className="p-10 flex flex-col items-center justify-center min-h-[160px] bg-white dark:bg-slate-950/20">
-                <img src={pillar.logo} alt="" className="h-20 w-auto object-contain transition-transform group-hover:scale-105 duration-500" />
+              <div className="p-2 flex flex-col items-center justify-center h-[220px] bg-white dark:bg-slate-950/20">
+                <img src={pillar.logo} alt="" className="h-full w-auto object-contain transition-transform group-hover:scale-110 duration-500" />
               </div>
 
               {/* Imagen/Ilustración - Mas Impactante */}
