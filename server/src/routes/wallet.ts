@@ -106,6 +106,35 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
       tag: 'deposit-request'
     }).catch(console.error);
 
+    // Notify admins about new deposit request
+    try {
+      const client = await prisma.user.findUnique({
+        where: { id: req.user!.userId },
+        select: { firstName: true, lastName: true }
+      });
+      const clientName = client ? `${client.firstName} ${client.lastName}` : 'Un cliente';
+
+      const admins = await prisma.user.findMany({
+        where: { roles: { has: 'superadmin' } },
+        select: { id: true }
+      });
+
+      if (admins.length > 0) {
+        await prisma.notification.createMany({
+          data: admins.map(admin => ({
+            userId: admin.id,
+            title: 'Nueva Solicitud de Recarga',
+            message: `${clientName} ha solicitado una recarga de ₲ ${amount.toLocaleString('es-PY')}.`,
+            type: 'info',
+            actionUrl: '/admin/transacciones',
+            isRead: false
+          }))
+        });
+      }
+    } catch (notifyError) {
+      console.error('Failed to notify admins:', notifyError);
+    }
+
     res.json({ message: 'Solicitud recibida', transaction });
   } catch (error) {
     console.error('Error in deposit:', error);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Notification } from '@/types';
 import { notificationsApi } from '@/lib/api';
+import { toast } from 'sonner';
 
 const calcUnread = (notifications: Notification[]) =>
   notifications.filter(n => !n.isRead).length;
@@ -75,6 +76,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({
       notifications: newNotifications,
       unreadCount: calcUnread(newNotifications),
+    });
+
+    // Show toast
+    toast(notification.title, {
+      description: notification.message,
+      action: notification.actionUrl ? {
+        label: 'Ver detalles',
+        onClick: () => window.location.href = notification.actionUrl!
+      } : undefined,
     });
   },
 }));
