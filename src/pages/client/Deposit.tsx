@@ -50,7 +50,7 @@ export default function DepositPage() {
       
       // WhatsApp Integration
       const adminPhone = '595975855585'; 
-      const message = `Hola, quisiera recargar saldo en mi billetera Oscorp.\n\n*Monto:* ₲ ${numAmount.toLocaleString('es-PY')}\n*Usuario:* ${user.firstName} ${user.lastName}\n*Email:* ${user.email}\n*ID:* ${user.id}`;
+      const message = `¡Hola Oscorp! 👋 Quisiera realizar una recarga de saldo en mi billetera.\n\n*Monto:* ₲ ${numAmount.toLocaleString('es-PY')}\n*Usuario:* ${user.firstName} ${user.lastName}\n*Email:* ${user.email}\n*ID:* ${user.id}\n\nAdjunto el comprobante de transferencia bancaria. Quedo atento a la validación. ¡Gracias!`;
       const whatsappUrl = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
       
       // Open WhatsApp automatically
@@ -68,7 +68,7 @@ export default function DepositPage() {
           animate={{ scale: 1, opacity: 1 }}
           className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto border border-blue-500/20"
         >
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+          <CheckCircle className="w-12 h-12 text-blue-500" />
         </motion.div>
         
         <div className="space-y-4">
@@ -213,6 +213,61 @@ export default function DepositPage() {
             })}
           </div>
 
+          {/* Bank Transfer Info */}
+          <div className="glass-premium p-6 rounded-[2.5rem] border border-white/10 space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-20">
+              <img 
+                src="/images/logos/ueno-logo.png" 
+                alt="ueno bank" 
+                className="h-8 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://ueno.com.py/wp-content/uploads/2021/11/logo-ueno-footer.png';
+                }}
+              />
+            </div>
+            
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Datos para Transferencia</h3>
+              
+              <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                <div>
+                  <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest mb-0.5">Titular</p>
+                  <p className="text-xs font-bold uppercase">OSCORP E.A.S.</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest mb-0.5">RUC / CI</p>
+                  <p className="text-xs font-bold">80128841-0 / 3718400</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest mb-0.5">Entidad</p>
+                  <div className="flex items-center gap-1.5">
+                    <img 
+                      src="https://ueno.com.py/wp-content/uploads/2021/11/logo-ueno-footer.png" 
+                      alt="" 
+                      className="w-4 h-4 object-contain" 
+                      onError={(e) => e.currentTarget.style.display = 'none'}
+                    />
+                    <p className="text-xs font-bold uppercase">ueno bank S.A.</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest mb-0.5">N° de cuenta</p>
+                  <p className="text-xs font-bold tracking-tight">6192654055</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest mb-0.5">Moneda</p>
+                  <p className="text-xs font-bold uppercase">Guaraníes</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+              <p className="text-[8px] font-bold text-blue-500/60 uppercase text-center leading-relaxed">
+                Una vez realizada la transferencia, dale al botón de abajo para enviar el comprobante.
+              </p>
+            </div>
+          </div>
+
           <div className="p-6 glass-premium rounded-[2.5rem] border border-white/5 space-y-4">
             <div className="flex justify-between items-end">
               <div>
@@ -223,7 +278,7 @@ export default function DepositPage() {
             </div>
             <div className="h-px bg-white/5" />
             <div className="flex justify-between font-black">
-              <span className="text-xs uppercase tracking-widest">Total a pagar</span>
+              <span className="text-xs uppercase tracking-widest text-muted-foreground/60">Total a pagar</span>
               <span className="text-xl tracking-tight">{formatCurrency(parseFloat(amount))}</span>
             </div>
           </div>
@@ -231,9 +286,14 @@ export default function DepositPage() {
           <Button 
             onClick={handleDeposit}
             disabled={isLoading}
-            className="w-full h-16 rounded-[2rem] bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
+            className="w-full h-20 rounded-[2.5rem] bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 px-8"
           >
-            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'CONFIRMAR RECARGA'}
+            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs">CONFIRMAR RECARGA</span>
+                <span className="text-[8px] opacity-60">Y ENVIAR COMPROBANTE</span>
+              </div>
+            )}
           </Button>
         </motion.div>
       )}

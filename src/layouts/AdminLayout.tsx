@@ -78,8 +78,8 @@ export default function AdminLayout() {
 
   useEffect(() => {
     fetchNotifications();
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -324,7 +324,10 @@ export default function AdminLayout() {
                         {notifications.map((notif) => (
                           <DropdownMenuItem asChild key={notif.id}>
                             <div 
-                              onClick={() => !notif.isRead && markAsRead(notif.id)}
+                              onClick={() => {
+                                if (!notif.isRead) markAsRead(notif.id);
+                                if (notif.actionUrl) navigate(notif.actionUrl);
+                              }}
                               className={cn(
                                 "p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50 relative group outline-none focus:bg-gray-50 dark:focus:bg-slate-800/50 block w-full",
                                 !notif.isRead && "bg-blue-50/30 dark:bg-blue-900/5"

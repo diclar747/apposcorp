@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Wallet, Transaction } from '@/types';
-import { walletApi } from '@/lib/api';
+import { walletApi, notificationsApi } from '@/lib/api';
 
 interface WalletState {
   wallet: Wallet | null;
