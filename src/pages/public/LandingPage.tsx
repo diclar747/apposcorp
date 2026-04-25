@@ -301,7 +301,7 @@ const PillarSection = () => {
       title: "Inversiones:",
       desc: "Ofrecemos la Plataforma de Crowdfunding OSCORP-i (FINTECH) para inversiones; juntando personas que necesitan con aquellos que puedan otorgarlos. Firma de CONVENIOS.",
       image: "/images/brand/ecosystem-tablet-phone.png", // Placeholder until generated
-      logo: "/images/logos/logo_empresarial.png",
+      logo: "/images/logos/logo_inversiones.png",
       logoSubtext: "REESCRIBIMOS LAS REGLAS DE INVERSIÓN",
       color: "teal"
     }
