@@ -104,7 +104,7 @@ export function FloatingSocialButtons() {
                 {isOpen ? <X className="w-8 h-8" /> : <Plus className="w-8 h-8 stroke-[3]" />}
 
                 {!isOpen && (
-                    <span className="absolute inset-0 rounded-[2rem] bg-blue-600 animate-ping opacity-20" />
+                    <span className="absolute inset-0 rounded-[2rem] bg-blue-600 animate-ping opacity-20 pointer-events-none" />
                 )}
             </motion.button>
         </div>

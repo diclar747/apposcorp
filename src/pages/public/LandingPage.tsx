@@ -216,13 +216,15 @@ const HeroSection = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Badge className="mb-6 bg-blue-500/10 text-blue-400 border-blue-500/20 px-4 py-1.5 rounded-full backdrop-blur-md uppercase tracking-[0.2em] font-bold text-[10px]">
-              <Sparkles className="w-3 h-3 mr-2" />
-              Empresa Paraguaya de Economía Colaborativa
+            <Badge className="mb-6 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20 px-4 py-2 sm:py-1.5 rounded-2xl sm:rounded-full backdrop-blur-md uppercase tracking-[0.1em] sm:tracking-[0.2em] font-bold text-[10px] whitespace-normal text-center h-auto leading-tight inline-flex items-center max-w-full">
+              <Sparkles className="w-3 h-3 mr-2 shrink-0" />
+              <span>Empresa Paraguaya de Economía Colaborativa</span>
             </Badge>
             <h1 className="text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-black text-slate-900 dark:text-white leading-tight mb-8">
               {settings.site_name.split(' ')[0]} <br />
-              somos <span className="gradient-text italic">economía colaborativa</span>
+              <span className="gradient-text italic text-3xl sm:text-4xl lg:text-5xl xl:text-6xl block mt-4">
+                CREER - CREAR - <span className="whitespace-nowrap">CRECER DIFERENTE.</span>
+              </span>
             </h1>
             <p className="text-xl text-slate-600 dark:text-slate-400 mb-10 leading-relaxed max-w-xl font-light">
               {settings.site_description || 'Entregamos beneficios y soluciones en Educación Financiera, Empresarial e Inversiones. Ayudamos a las personas a generar riqueza con una actitud diferente.'}
@@ -326,9 +328,18 @@ const PillarSection = () => {
               transition={{ delay: i * 0.1 }}
               className="group bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden flex flex-col h-full border border-slate-100 dark:border-slate-800 hover:shadow-2xl transition-all duration-500"
             >
-              {/* Header con Logo - Mas Grande y Limpio */}
-              <div className="p-2 flex flex-col items-center justify-center h-[220px] bg-white dark:bg-slate-950/20">
-                <img src={pillar.logo} alt="" className="h-full w-auto object-contain transition-transform group-hover:scale-110 duration-500" />
+              {/* Header con Logo - Uniforme */}
+              <div className="p-4 flex flex-col items-center justify-center h-[200px] bg-white dark:bg-slate-950/20 overflow-hidden">
+                <img
+                  src={pillar.logo}
+                  alt=""
+                  className={cn(
+                    "object-contain transition-transform duration-500",
+                    i === 0 ? "h-48 w-auto group-hover:scale-105" : 
+                    i === 1 ? "h-20 w-auto group-hover:scale-110" : 
+                    "h-48 w-auto scale-[1.85] group-hover:scale-[2.0]" // El tercero viene con padding y se ve chico, lo agrandamos
+                  )} 
+                />
               </div>
 
               {/* Imagen/Ilustración - Mas Impactante */}
@@ -654,7 +665,7 @@ const MarketplaceSection = () => {
                 </Button>
               </Link>
               <Link to="/login" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 border-white/20 text-white hover:bg-white/10 rounded-full text-base font-bold">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 border-slate-700 dark:border-white/20 text-white hover:bg-slate-800 dark:hover:bg-white/10 hover:text-white bg-transparent rounded-full text-base font-bold">
                   Panel de Vendedor
                 </Button>
               </Link>
@@ -938,11 +949,11 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <p className="text-slate-500 dark:text-slate-600 text-xs font-bold uppercase tracking-widest">
+        <div className="pt-8 pb-16 sm:pb-8 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <p className="text-slate-500 dark:text-slate-600 text-xs font-bold uppercase tracking-widest text-center sm:text-left">
             © {new Date().getFullYear()} Oscorp - Ingenio Empresarial. Todos los derechos reservados.
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-4 sm:pr-24 z-10">
             {[
               { Icon: Facebook, href: "https://www.facebook.com/share/1BfdPwqaZN/" },
               { Icon: Instagram, href: "https://www.instagram.com/oscorp_py?igsh=OGpxZnI4cTcxZWtw&utm_source=ig_contact_invite" },
