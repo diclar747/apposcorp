@@ -221,7 +221,6 @@ const HeroSection = () => {
               <span>Empresa Paraguaya de Economía Colaborativa</span>
             </Badge>
             <h1 className="text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-black text-slate-900 dark:text-white leading-tight mb-8">
-              {settings.site_name.split(' ')[0]} <br />
               <span className="gradient-text italic text-3xl sm:text-4xl lg:text-5xl xl:text-6xl block mt-4">
                 CREER - CREAR - <span className="whitespace-nowrap">CRECER DIFERENTE.</span>
               </span>
