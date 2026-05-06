@@ -30,15 +30,26 @@ import { useClientStats } from '@/hooks/useClientStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
 
 export default function ClientHome() {
-  const { user, hasRole } = useAuthStore();
+  const { user, hasRole, setActiveRole, addRole, isLoading: isAuthLoading } = useAuthStore();
   const { transactions, fetchTransactions } = useWalletStore();
   const { data: stats, isLoading: isLoadingStats, isError } = useClientStats();
   const { addItem, isInCart } = useCartStore();
   const navigate = useNavigate();
   
   const [showQR, setShowQR] = useState(false);
+  const [showIngenioAlert, setShowIngenioAlert] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
@@ -73,8 +84,24 @@ export default function ClientHome() {
     toast.success(`${product.name} agregado al carrito`);
   };
 
-  const handleIngenioNavigation = () => {
-    navigate('/ingenio');
+  const handleIngenioNavigation = async (label?: string) => {
+    if (hasRole(['ingenio'])) {
+      setActiveRole('ingenio');
+      // Usamos window.location.href para asegurar un refresco completo del contexto
+      window.location.href = '/ingenio';
+      return;
+    }
+    setShowIngenioAlert(true);
+  };
+
+  const handleRegisterIngenio = async () => {
+    const success = await addRole('ingenio');
+    if (success) {
+      toast.success('¡Registro exitoso! Bienvenido a Ingenio Millonario.');
+      setShowIngenioAlert(false);
+      setActiveRole('ingenio');
+      window.location.href = '/ingenio';
+    }
   };
 
   // Build monthly chart data from real transactions
@@ -306,6 +333,25 @@ export default function ClientHome() {
         userName={`${user?.firstName || 'Usuario'} ${user?.lastName || ''}`}
         balance={stats?.finances?.balance}
       />
+
+      <AlertDialog open={showIngenioAlert} onOpenChange={setShowIngenioAlert}>
+        <AlertDialogContent className="w-[calc(100%-2rem)] sm:w-full mx-auto rounded-xl sm:rounded-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Quieres registrarte en Ingenio Millonario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ingenio Millonario es una academia exclusiva donde aprenderás sobre finanzas, e-commerce y desarrollo personal con profesores de alto nivel.
+              <br /><br />
+              Al aceptar, se activará tu acceso a Ingenio Millonario utilizando tu misma cuenta de Oscorp, sin necesidad de crear una nueva.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isAuthLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleRegisterIngenio(); }} disabled={isAuthLoading}>
+              {isAuthLoading ? 'Registrando...' : 'Sí, registrarme'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
