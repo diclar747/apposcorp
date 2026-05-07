@@ -68,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
           // Determine initial active role
           const initialRole = response.user.roles.includes('superadmin') ? 'superadmin' :
             response.user.roles.includes('seller') ? 'seller' :
+            response.user.roles.includes('client') ? 'client' :
             response.user.roles.includes('ingenio') ? 'ingenio' : 'client';
 
           set({
@@ -100,6 +101,7 @@ export const useAuthStore = create<AuthState>()(
           // Determine initial active role
           const initialRole = response.user.roles.includes('superadmin') ? 'superadmin' :
             response.user.roles.includes('seller') ? 'seller' :
+            response.user.roles.includes('client') ? 'client' :
             response.user.roles.includes('ingenio') ? 'ingenio' : 'client';
 
           set({
@@ -188,21 +190,26 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             activeRole: get().activeRole || (user.roles.includes('superadmin') ? 'superadmin' :
               user.roles.includes('seller') ? 'seller' :
+              user.roles.includes('client') ? 'client' :
               user.roles.includes('ingenio') ? 'ingenio' : 'client'),
             error: null
           });
         } catch (error: any) {
           const errorMessage = error.message || '';
-          localStorage.removeItem('oscorp-token');
-          set({
-            user: null,
-            isAuthenticated: false,
-            token: null,
-            activeRole: null,
-            error: errorMessage
-          });
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
+          
+          // Only clear session if it's explicitly an auth error
+          if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('inválido') || errorMessage.includes('expirado')) {
+            localStorage.removeItem('oscorp-token');
+            set({
+              user: null,
+              isAuthenticated: false,
+              token: null,
+              activeRole: null,
+              isHydrated: true
+            });
+          } else {
+            // For other errors (network, etc), we keep the current session
+            set({ isHydrated: true });
           }
         }
       },

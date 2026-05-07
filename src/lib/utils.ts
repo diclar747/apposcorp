@@ -259,6 +259,7 @@ export function getTransactionStatusInfo(status: string): { label: string; color
     processing: { label: 'En Proceso', color: 'text-blue-700', bgColor: 'bg-blue-100' },
     completed: { label: 'Completado', color: 'text-green-700', bgColor: 'bg-green-100' },
     rejected: { label: 'Rechazado', color: 'text-red-700', bgColor: 'bg-red-100' },
+    failed: { label: 'Rechazado', color: 'text-red-700', bgColor: 'bg-red-100' },
     cancelled: { label: 'Cancelado', color: 'text-gray-700', bgColor: 'bg-gray-100' },
   };
   return statuses[s] || { label: status, color: 'text-gray-700', bgColor: 'bg-gray-100' };

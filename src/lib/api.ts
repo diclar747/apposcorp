@@ -24,10 +24,8 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   });
 
   if (response.status === 401) {
-    localStorage.removeItem('oscorp-token');
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
+    // Let the calling code handle unauthorized errors
+    // Instead of forcing a hard redirect here
   }
 
   if (!response.ok) {
@@ -213,10 +211,10 @@ export const walletApi = {
     const query = new URLSearchParams(params as Record<string, string>).toString();
     return fetchWithAuth(`/wallet/transactions${query ? `?${query}` : ''}`);
   },
-  deposit: (amount: number, description?: string) =>
+  deposit: (amount: number, description?: string, receiptUrl?: string) =>
     fetchWithAuth('/wallet/deposit', {
       method: 'POST',
-      body: JSON.stringify({ amount, description }),
+      body: JSON.stringify({ amount, description, receiptUrl }),
     }),
   transfer: (toUserId: string, amount: number, description?: string, pin?: string) =>
     fetchWithAuth('/wallet/transfer', {

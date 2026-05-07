@@ -165,10 +165,6 @@ export default function ClientHome() {
           <p className="text-[10px] text-muted-foreground/60 uppercase tracking-[0.3em] font-black mb-1">Tu Resumen de hoy</p>
           <h1 className="text-2xl font-black tracking-tight tracking-tighter">¡Hola, {user?.firstName}!</h1>
         </div>
-        <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 px-3 py-1.5 rounded-full border border-amber-500/20">
-          <Sparkles className="w-3.5 h-3.5 fill-current" />
-          <span className="text-[10px] font-black">{stats?.finances?.rewardPoints || 0} Puntos</span>
-        </div>
       </div>
 
       {/* Virtual Card */}
@@ -255,18 +251,32 @@ export default function ClientHome() {
               >
                 <div className={cn(
                   'w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg',
+                  t.status === 'failed' ? 'bg-rose-500/10 text-rose-500' :
                   t.amount > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
                 )}>
-                  {t.amount > 0 ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                  {t.status === 'failed' ? <XCircle className="w-5 h-5" /> : t.amount > 0 ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[11px] truncate uppercase tracking-tight">{t.description}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-[11px] truncate uppercase tracking-tight">{t.description}</p>
+                    {t.status === 'pending' && (
+                      <Badge variant="secondary" className="text-[8px] h-4 uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20 px-1 py-0">
+                        PENDIENTE
+                      </Badge>
+                    )}
+                    {t.status === 'failed' && (
+                      <Badge variant="destructive" className="text-[8px] h-4 uppercase tracking-widest bg-rose-500/10 text-rose-500 border-rose-500/20 px-1 py-0">
+                        RECHAZADO
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-[8px] text-muted-foreground/60 font-black uppercase tracking-widest mt-0.5">
                     {new Date(t.createdAt).toLocaleDateString('es-PY')}
                   </p>
                 </div>
                 <p className={cn(
                   'font-black text-xs font-mono',
+                  t.status === 'failed' ? 'text-muted-foreground/40 line-through' :
                   t.amount > 0 ? 'text-emerald-500' : 'text-rose-500'
                 )}>
                   {t.amount > 0 ? '+' : ''}{formatCurrency(t.amount)}

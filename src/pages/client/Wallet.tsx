@@ -19,6 +19,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VirtualCard } from '@/components/client/VirtualCard';
 import { FinanceChart } from '@/components/client/FinanceChart';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from '@/components/ui/separator';
+import { Calendar, Hash, Tag, Info, X } from 'lucide-react';
 
 const quickActions = [
   { icon: ArrowUpRight, label: 'Enviar', href: '/app/wallet/transferir', color: 'bg-blue-500', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
@@ -30,9 +39,17 @@ const quickActions = [
 export default function ClientWallet() {
   const { user } = useAuthStore();
   const { wallet, transactions, fetchWallet, fetchTransactions } = useWalletStore();
-  const [showBalance, setShowBalance] = useState(true);
+  const [showBalance, setShowBalance] = useState(() => {
+    const saved = localStorage.getItem('oscorp_show_balance');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all');
+
+  useEffect(() => {
+    localStorage.setItem('oscorp_show_balance', JSON.stringify(showBalance));
+  }, [showBalance]);
   const [showAll, setShowAll] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -60,6 +77,7 @@ export default function ClientWallet() {
       description: t.description,
       date: new Date(t.createdAt).toLocaleDateString('es-PY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
       status: t.status as 'completed' | 'pending' | 'failed',
+      raw: t // Keep original for details
     };
   });
 
@@ -92,6 +110,13 @@ export default function ClientWallet() {
         >
           {showBalance ? <EyeOff className="w-5 h-5 text-muted-foreground" /> : <Eye className="w-5 h-5 text-muted-foreground" />}
         </Button>
+      </div>
+
+      <div className="flex flex-col mb-2">
+        <p className="text-[10px] text-muted-foreground/60 uppercase tracking-[0.2em] font-bold mb-1">Balance Disponible</p>
+        <p className="text-3xl font-black tracking-tighter">
+          {showBalance ? (wallet ? formatCurrency(wallet.balance) : '₲ 0') : '*********'}
+        </p>
       </div>
 
       {/* Virtual Card */}
@@ -148,7 +173,7 @@ export default function ClientWallet() {
       {/* Finance Chart */}
       <div className="px-4 w-full min-w-0 overflow-hidden">
         <FinanceChart
-          transactions={transactions}
+          transactions={transactions.filter((t) => t.status === 'completed')}
           type="area"
           title="Estadísticas"
         />
@@ -190,7 +215,8 @@ export default function ClientWallet() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: index * 0.05 }}
-                className="glass-premium p-4 rounded-3xl border border-white/5 flex items-center gap-4 hover:border-white/10 transition-all group"
+                onClick={() => setSelectedTransaction(transaction)}
+                className="glass-premium p-4 rounded-3xl border border-white/5 flex items-center gap-4 hover:border-white/10 transition-all group cursor-pointer active:scale-[0.98]"
               >
                 <div className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg',
@@ -284,6 +310,101 @@ export default function ClientWallet() {
           </div>
         </motion.div>
       </Link>
+
+      {/* Transaction Details Dialog */}
+      <Dialog open={!!selectedTransaction} onOpenChange={(open) => !open && setSelectedTransaction(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-white/10 glass-premium-dark shadow-2xl">
+          {selectedTransaction && (
+            <div className="relative px-6 pt-8 pb-10 space-y-8">
+              <DialogHeader className="mb-0">
+                  <DialogTitle className="text-2xl font-black text-center uppercase tracking-tight">Detalle de Operación</DialogTitle>
+                  <DialogDescription className="text-center text-muted-foreground font-medium italic">Comprobante Digital Oscorp</DialogDescription>
+                </DialogHeader>
+
+                {/* Header Info */}
+                <div className="flex flex-col items-center justify-center space-y-3">
+                  <div className={cn(
+                    "w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl",
+                    selectedTransaction.type === 'income' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                  )}>
+                    {selectedTransaction.type === 'income' ? <ArrowDownLeft className="w-10 h-10" /> : <ArrowUpRight className="w-10 h-10" />}
+                  </div>
+                  <div className="text-center">
+                    <p className={cn(
+                      "text-3xl font-black font-mono tracking-tighter",
+                      selectedTransaction.type === 'income' ? "text-emerald-500" : "text-rose-500"
+                    )}>
+                      {selectedTransaction.type === 'income' ? '+' : '-'} ₲ {selectedTransaction.amount.toLocaleString()}
+                    </p>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "mt-2 uppercase tracking-widest text-[10px] font-black px-4 py-1 rounded-full",
+                        selectedTransaction.status === 'completed' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                        selectedTransaction.status === 'pending' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                        "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                      )}
+                    >
+                      {selectedTransaction.status === 'completed' ? 'Completado' : 
+                       selectedTransaction.status === 'pending' ? 'Pendiente' : 'Fallido'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Detail Grid */}
+                <div className="glass-premium p-6 rounded-[2rem] border border-white/5 space-y-5 shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground/60">
+                        <Info className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">Concepto</span>
+                    </div>
+                    <span className="text-xs font-bold text-foreground text-right max-w-[180px]">{selectedTransaction.description}</span>
+                  </div>
+
+                  <Separator className="bg-white/5" />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground/60">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">Fecha</span>
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{selectedTransaction.date}</span>
+                  </div>
+
+                  <Separator className="bg-white/5" />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground/60">
+                        <Tag className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">Categoría</span>
+                    </div>
+                    <span className="text-xs font-bold text-foreground uppercase tracking-widest text-[10px]">
+                      {selectedTransaction.category === 'store' ? 'Tienda / Compra' : 'Billetera / Transferencia'}
+                    </span>
+                  </div>
+
+                  <Separator className="bg-white/5" />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground/60">
+                        <Hash className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">ID Operación</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-muted-foreground/60 font-bold break-all ml-4 text-right">{selectedTransaction.id}</span>
+                  </div>
+                </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

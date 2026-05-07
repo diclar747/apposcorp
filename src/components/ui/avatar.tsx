@@ -19,18 +19,22 @@ function Avatar({
   )
 }
 
-const DEFAULT_AVATAR = "https://apposcorp.vercel.app/icons/icon-192x192.png";
+const DEFAULT_AVATAR = "/favicon.png";
 
 function AvatarImage({
   className,
   src,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+  // Filter out auto-generated Dicebear avatars to use Oscorp logo instead
+  const isGenerated = typeof src === 'string' && src.includes('dicebear.com');
+  const finalSrc = isGenerated || !src ? DEFAULT_AVATAR : src;
+
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn("aspect-square size-full", className)}
-      src={src || DEFAULT_AVATAR}
+      src={finalSrc}
       {...props}
     />
   )

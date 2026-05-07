@@ -35,6 +35,7 @@ import { Switch } from '@/components/ui/switch';
 import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '@/lib/pushNotifications';
 import { generateQRValue } from '@/lib/qr';
 import { ImageUpload } from '@/components/shared/ImageUpload';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const menuItems = [
   { icon: User, label: 'Editar perfil', action: 'edit', color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -328,20 +329,17 @@ export default function ClientProfile() {
               <>
                 <div className="relative group">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 p-[3px] shadow-2xl group-hover:scale-105 transition-transform duration-500">
-                    <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
-                      {user?.avatar ? (
-                        <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-2xl font-black text-foreground/60">
-                          {user ? getInitials(user.firstName, user.lastName) : 'U'}
-                        </span>
-                      )}
-                    </div>
+                    <Avatar className="w-full h-full border-0">
+                      <AvatarImage src={user?.avatar} />
+                      <AvatarFallback className="text-2xl font-black text-foreground/60 bg-background">
+                        {user ? getInitials(user.firstName, user.lastName) : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={initEdit}
-                    className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-blue-600 border-2 border-background flex items-center justify-center text-white shadow-lg"
+                    className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-blue-600 border-2 border-background flex items-center justify-center text-white shadow-lg z-10"
                   >
                     <Edit className="w-3.5 h-3.5" />
                   </motion.button>
