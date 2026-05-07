@@ -36,6 +36,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { resolvedTheme, toggleTheme } = useThemeStore();
+  const { settings } = useSettingsStore();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -96,11 +97,13 @@ const Navbar = () => {
                   Iniciar Sesión
                 </Button>
               </Link>
-              <Link to="/register">
-                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/25">
-                  Crear Cuenta
-                </Button>
-              </Link>
+              {settings.maintenance_mode !== 'true' && (
+                <Link to="/register">
+                  <Button size="sm" className="bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/25">
+                    Crear Cuenta
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile Controls */}
@@ -179,11 +182,13 @@ const Navbar = () => {
                     Iniciar Sesión
                   </Button>
                 </Link>
-                <Link to="/register" className="block" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-violet-600 text-white text-base font-semibold">
-                    Crear Cuenta
-                  </Button>
-                </Link>
+                {settings.maintenance_mode !== 'true' && (
+                  <Link to="/register" className="block" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-violet-600 text-white text-base font-semibold">
+                      Crear Cuenta
+                    </Button>
+                  </Link>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -229,12 +234,21 @@ const HeroSection = () => {
               {settings.site_description || 'Entregamos beneficios y soluciones en Educación Financiera, Empresarial e Inversiones. Ayudamos a las personas a generar riqueza con una actitud diferente.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/register" className="w-full sm:w-auto mt-2 sm:mt-0">
-                <Button size="lg" className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-2xl shadow-blue-500/20 group">
-                  Saber Más
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
+              {settings.maintenance_mode !== 'true' ? (
+                <Link to="/register" className="w-full sm:w-auto mt-2 sm:mt-0">
+                  <Button size="lg" className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-2xl shadow-blue-500/20 group">
+                    Saber Más
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              ) : (
+                <a href="#marketplace" className="w-full sm:w-auto mt-2 sm:mt-0">
+                  <Button size="lg" className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-2xl shadow-blue-500/20 group">
+                    Ver Catálogo
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </a>
+              )}
               <a href="#marketplace" className="w-full sm:w-auto">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 rounded-2xl border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 backdrop-blur-md text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 text-lg font-bold">
                   Ver Marketplace

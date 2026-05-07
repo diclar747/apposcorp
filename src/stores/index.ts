@@ -4,3 +4,4 @@ export { useCartStore } from './cartStore';
 export { useNotificationStore } from './notificationStore';
 export { usePaywallStore } from './paywallStore';
 export { useThemeStore } from './themeStore';
+export { useSettingsStore } from './settingsStore';

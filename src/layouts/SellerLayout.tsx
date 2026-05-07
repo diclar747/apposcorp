@@ -69,10 +69,11 @@ export default function SellerLayout() {
   
   const isPlanActive = user?.sellerProfile?.planActive;
   const isOnPlansPage = location.pathname === '/vendedor/planes';
+  const isOnNotificationsPage = location.pathname === '/vendedor/notificaciones';
 
   useEffect(() => {
     if (user) {
-      if (!isPlanActive && !isOnPlansPage) {
+      if (!isPlanActive && !isOnPlansPage && !isOnNotificationsPage) {
         navigate('/vendedor/planes');
       }
       

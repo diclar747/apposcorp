@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Store, User, Shield, BookOpen } from 'lucide-react';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useSettingsStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,8 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { login } = useAuthStore();
+   const { login } = useAuthStore();
+   const { settings } = useSettingsStore();
   const hasVerified = useRef(false);
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<LoginFormValues>({
@@ -237,14 +238,16 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              ¿No tienes una cuenta?{' '}
-              <Link to="/register" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
-                Regístrate
-              </Link>
-            </p>
-          </div>
+          {settings.maintenance_mode !== 'true' && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                ¿No tienes una cuenta?{' '}
+                <Link to="/register" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                  Regístrate
+                </Link>
+              </p>
+            </div>
+          )}
         </motion.div>
 
         {/* Footer */}
