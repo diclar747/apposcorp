@@ -83,8 +83,8 @@ export default function LoginPage() {
           navigate('/admin');
         } else if (currentUser?.roles.includes('seller')) {
           navigate('/vendedor');
-        } else if (currentUser?.roles.includes('ingenio') && currentUser?.roles.includes('client')) {
-          navigate(currentUser.initialInterface === 'INGENIO' ? '/ingenio' : '/app');
+        } else if (currentUser?.roles.includes('client')) {
+          navigate('/app');
         } else if (currentUser?.roles.includes('ingenio')) {
           navigate('/ingenio');
         } else {
@@ -115,8 +115,8 @@ export default function LoginPage() {
           navigate('/admin');
         } else if (currentUser?.roles.includes('seller')) {
           navigate('/vendedor');
-        } else if (currentUser?.roles.includes('ingenio') && currentUser?.roles.includes('client')) {
-          navigate(currentUser.initialInterface === 'INGENIO' ? '/ingenio' : '/app');
+        } else if (currentUser?.roles.includes('client')) {
+          navigate('/app');
         } else if (currentUser?.roles.includes('ingenio')) {
           navigate('/ingenio');
         } else {

@@ -72,7 +72,7 @@ router.get('/transactions', authenticate, async (req: AuthRequest, res) => {
 // Deposit money to wallet (Pending manual approval)
 router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { amount, description } = req.body;
+    const { amount, description, receiptUrl } = req.body;
 
     if (amount <= 0) {
       return res.status(400).json({ error: 'Valor inválido' });
@@ -95,6 +95,7 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res) => {
         amount: parseFloat(amount),
         description: description || 'Depósito pendiente de aprobación',
         status: 'pending',
+        metadata: receiptUrl ? { receiptUrl } : undefined,
       },
     });
 

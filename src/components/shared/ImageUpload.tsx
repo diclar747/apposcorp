@@ -78,14 +78,17 @@ export function ImageUpload({
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
         className={cn(
-          'relative cursor-pointer border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors overflow-hidden flex items-center justify-center bg-muted/50',
-          isCircle ? 'w-24 h-24 rounded-full' : 'w-full aspect-[2/1] rounded-xl',
+          'relative cursor-pointer transition-colors overflow-hidden flex items-center justify-center bg-slate-100 dark:bg-slate-800',
+          !className?.includes('border') && 'border-2 border-dashed border-slate-200 dark:border-slate-700',
+          !className?.includes('w-') && (isCircle ? 'w-24' : 'w-full'),
+          !className?.includes('h-') && (isCircle ? 'h-24' : 'aspect-[2/1]'),
+          !className?.includes('rounded-') && (isCircle ? 'rounded-full' : 'rounded-xl'),
           loading && 'opacity-50 pointer-events-none'
         )}
       >
         {value ? (
           <img
-            src={value}
+            src={typeof value === 'string' && value.includes('dicebear.com') ? '/favicon.png' : value}
             alt="Preview"
             className={cn(
               'w-full h-full object-cover',
@@ -93,9 +96,9 @@ export function ImageUpload({
             )}
           />
         ) : (
-          <div className="flex flex-col items-center gap-1 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground w-full h-full">
             {isCircle ? (
-              <Camera className="w-6 h-6" />
+              <img src="/favicon.png" className="w-full h-full p-4 object-contain opacity-30 group-hover:opacity-50 transition-opacity" alt="Default" />
             ) : (
               <>
                 <Upload className="w-6 h-6" />

@@ -13,7 +13,7 @@ interface WalletState {
   fetchTransactions: (walletId: string) => Promise<void>;
   transfer: (fromUserId: string, toUserId: string, amount: number, description?: string, pin?: string) => Promise<boolean>;
   requestWithdrawal: (userId: string, amount: number) => Promise<boolean>;
-  deposit: (userId: string, amount: number, description?: string) => Promise<boolean>;
+  deposit: (userId: string, amount: number, description?: string, receiptUrl?: string) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -92,11 +92,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     }
   },
 
-  deposit: async (userId: string, amount: number, description?: string) => {
+  deposit: async (userId: string, amount: number, description?: string, receiptUrl?: string) => {
     set({ isLoading: true, error: null });
 
     try {
-      await walletApi.deposit(amount, description);
+      await walletApi.deposit(amount, description, receiptUrl);
 
       // Refresh wallet and transactions
       const { fetchWallet, fetchTransactions, wallet } = get();

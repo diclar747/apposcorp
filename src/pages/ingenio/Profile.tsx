@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/shared/ImageUpload";
 import { 
   User, Shield, Key, Eye, EyeOff, CreditCard, Clock, 
-  ShieldCheck, CheckCircle, Landmark, Sparkles
+  ShieldCheck, CheckCircle, Landmark, Sparkles, AlertCircle
 } from "lucide-react";
 import { useIngenioSubscription } from "@/hooks/useIngenioSubscription";
-import { SubscriptionModal } from "@/components/ingenio/SubscriptionModal";
+import { usePaywallStore } from "@/stores/paywallStore";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,7 +22,7 @@ export default function IngenioProfile() {
   const { user, fetchCurrentUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
-  const [showSubModal, setShowSubModal] = useState(false);
+  const { isOpen, openPaywall, closePaywall } = usePaywallStore();
   const { status, isActive, subscription } = useIngenioSubscription();
 
   // Personal Info State
@@ -150,7 +150,7 @@ export default function IngenioProfile() {
                   <ImageUpload
                     value={profileData.avatar}
                     onChange={(val) => setProfileData({ ...profileData, avatar: val })}
-                    className="w-24 h-24 rounded-[2rem] shadow-xl border-4 border-white"
+                    className="w-24 h-24 rounded-full shadow-xl border-4 border-white dark:border-slate-800"
                   />
                   <div className="text-center sm:text-left">
                      <p className="font-black text-lg mb-1">Avatar de Usuario</p>
@@ -202,7 +202,7 @@ export default function IngenioProfile() {
           <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
             <CardHeader className="p-8 pb-4">
               <CardTitle className="text-2xl font-black flex items-center gap-2">
-                <Shield className="w-7 h-7 text-rose-500" /> Seguridad
+                <Shield className="w-7 h-7 text-indigo-600" /> Seguridad
               </CardTitle>
               <CardDescription className="font-medium">
                 Mantén tu cuenta protegida cambiando tu contraseña regularmente.
@@ -211,14 +211,15 @@ export default function IngenioProfile() {
             <CardContent className="p-8 pt-4">
               <form onSubmit={handlePasswordSubmit} className="max-w-md space-y-6">
                 <div className="space-y-2">
-                  <Label className="font-black text-xs ml-1 uppercase tracking-widest text-slate-400">Contraseña Actual</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Contraseña Actual</Label>
                   <div className="relative">
                     <Input
                       type={showPassRaw.current ? "text" : "password"}
                       value={passwords.currentPassword}
                       onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
                       required
-                      className="h-12 rounded-xl text-lg font-bold border-slate-200 pr-12"
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-12 pr-12 transition-all focus:border-indigo-500/50"
+                      placeholder="Tu contraseña actual"
                     />
                     <button type="button" onClick={() => setShowPassRaw({...showPassRaw, current: !showPassRaw.current})} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                       {showPassRaw.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -227,30 +228,54 @@ export default function IngenioProfile() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="font-black text-xs ml-1 uppercase tracking-widest text-slate-400">Nueva Contraseña</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Nueva Contraseña</Label>
                   <div className="relative">
                     <Input
                       type={showPassRaw.new ? "text" : "password"}
                       value={passwords.newPassword}
                       onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
                       required
-                      className="h-12 rounded-xl text-lg font-bold border-slate-200 pr-12"
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-12 pr-12 transition-all focus:border-indigo-500/50"
+                      placeholder="Ingresa la contraseña nueva"
                     />
                     <button type="button" onClick={() => setShowPassRaw({...showPassRaw, new: !showPassRaw.new})} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                       {showPassRaw.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
+                  
+                  {/* Requirements List */}
+                  <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-3 mt-2">
+                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">Requisitos de Seguridad:</p>
+                      <ul className="text-[10px] font-bold text-slate-500 space-y-1 mt-1">
+                        <li className="flex items-center gap-2">
+                          <div className={cn("w-1.5 h-1.5 rounded-full", passwords.newPassword.length >= 8 ? "bg-emerald-500" : "bg-slate-300")} />
+                          Mínimo 8 caracteres
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className={cn("w-1.5 h-1.5 rounded-full", /[A-Za-z]/.test(passwords.newPassword) ? "bg-emerald-500" : "bg-slate-300")} />
+                          Al menos una letra
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className={cn("w-1.5 h-1.5 rounded-full", /\d/.test(passwords.newPassword) ? "bg-emerald-500" : "bg-slate-300")} />
+                          Al menos un número
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-black text-xs ml-1 uppercase tracking-widest text-slate-400">Confirmar</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Confirmar Nueva Contraseña</Label>
                   <div className="relative">
                     <Input
                       type={showPassRaw.confirm ? "text" : "password"}
                       value={passwords.confirmPassword}
                       onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
                       required
-                      className="h-12 rounded-xl text-lg font-bold border-slate-200 pr-12"
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-12 pr-12 transition-all focus:border-indigo-500/50"
+                      placeholder="Repite la nueva contraseña"
                     />
                     <button type="button" onClick={() => setShowPassRaw({...showPassRaw, confirm: !showPassRaw.confirm})} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                       {showPassRaw.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -258,8 +283,8 @@ export default function IngenioProfile() {
                   </div>
                 </div>
 
-                <Button type="submit" disabled={passLoading} className="w-full h-12 bg-slate-900 text-white hover:bg-black rounded-xl font-black text-lg">
-                  {passLoading ? "Procesando..." : "Cambiar Contraseña"}
+                <Button type="submit" disabled={passLoading} className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-500/20">
+                  {passLoading ? "Procesando..." : "Actualizar Contraseña"}
                 </Button>
               </form>
             </CardContent>
@@ -314,7 +339,7 @@ export default function IngenioProfile() {
 
                   {!isActive && (
                     <Button 
-                      onClick={() => setShowSubModal(true)}
+                      onClick={openPaywall}
                       className="bg-indigo-600 hover:bg-indigo-700 h-16 px-12 rounded-2xl text-xl font-black shadow-2xl shadow-indigo-600/30 w-full md:w-auto"
                     >
                       {status === 'PENDING_APPROVAL' ? 'Ver Detalles de Solicitud' : 'Solicitar Acceso Full'}
@@ -326,11 +351,6 @@ export default function IngenioProfile() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <SubscriptionModal 
-        open={showSubModal} 
-        onOpenChange={setShowSubModal} 
-      />
     </div>
   );
 }

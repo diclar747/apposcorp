@@ -24,6 +24,25 @@ export interface PushPayload {
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload) {
+  // 1. Create persistent notification in DB
+  try {
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: payload.title,
+        message: payload.body,
+        type: payload.tag === 'deposit-approved' ? 'success' : 
+              payload.tag === 'deposit-rejected' ? 'error' : 
+              'info',
+        actionUrl: payload.url,
+        imageUrl: payload.image || payload.icon,
+      }
+    });
+  } catch (error) {
+    console.error('[DB NOTIFICATION ERROR] Error creating notification:', error);
+  }
+
+  // 2. Send Web Push
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { userId, isActive: true },
   });

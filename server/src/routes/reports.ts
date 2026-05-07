@@ -87,15 +87,15 @@ router.get('/financial', authenticate, authorize('superadmin'), async (req: Auth
     const expenseTypes = ['withdrawal', 'purchase', 'transfer_out', 'expense', 'fee'];
 
     const totalIncome = allTransactions
-      .filter(t => incomeTypes.includes(t.type))
+      .filter(t => incomeTypes.includes(t.type) && t.status === 'completed')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const totalExpenses = allTransactions
-      .filter(t => expenseTypes.includes(t.type))
+      .filter(t => expenseTypes.includes(t.type) && t.status === 'completed')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const totalCommissions = allTransactions
-      .filter(t => t.type === 'commission')
+      .filter(t => t.type === 'commission' && t.status === 'completed')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const pendingAmounts = allTransactions
@@ -115,6 +115,13 @@ router.get('/financial', authenticate, authorize('superadmin'), async (req: Auth
     // --- Desglose por Tipo ---
     const typeBreakdown: Record<string, { count: number; total: number }> = {};
     for (const tx of allTransactions) {
+      if (tx.status !== 'completed' && tx.type !== 'withdrawal') {
+        // We might want to keep withdrawals even if pending for some stats, 
+        // but the user asked for completed. Let's stick to completed.
+        if (tx.status !== 'completed') continue;
+      }
+      if (tx.status !== 'completed') continue;
+
       if (!typeBreakdown[tx.type]) {
         typeBreakdown[tx.type] = { count: 0, total: 0 };
       }
@@ -125,6 +132,8 @@ router.get('/financial', authenticate, authorize('superadmin'), async (req: Auth
     // --- Tendencia Diaria ---
     const dailyMap: Record<string, { date: string; income: number; expenses: number }> = {};
     for (const tx of allTransactions) {
+      if (tx.status !== 'completed') continue;
+      
       const dayKey = tx.createdAt.toISOString().split('T')[0];
       if (!dailyMap[dayKey]) {
         dailyMap[dayKey] = { date: dayKey, income: 0, expenses: 0 };

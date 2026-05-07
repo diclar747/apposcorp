@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Wallet, Landmark, ShieldCheck, AlertCircle, CheckCircle, CheckCircle2, Loader2, ArrowRight, Plus, Sparkles } from 'lucide-react';
+import { CreditCard, Wallet, Landmark, ShieldCheck, AlertCircle, CheckCircle, CheckCircle2, Loader2, ArrowRight, Plus, Sparkles, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -147,8 +147,16 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl max-h-[95vh] flex flex-col">
+      <DialogContent showCloseButton={false} className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl max-h-[95vh] flex flex-col">
         <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-8 pt-16 sm:p-10 sm:pt-20 text-white relative overflow-hidden shrink-0">
+          {/* Custom Close Button for visibility on dark background */}
+          <button 
+            onClick={() => onOpenChange(false)}
+            className="absolute top-5 right-5 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          
           <div className="absolute -top-10 -right-10 opacity-10 pointer-events-none">
             <ShieldCheck className="w-64 h-64" />
           </div>

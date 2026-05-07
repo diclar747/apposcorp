@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ImageUpload } from '@/components/shared/ImageUpload';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency, cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -33,6 +34,8 @@ export default function DepositPage() {
   const [selectedMethod, setSelectedMethod] = useState('transfer');
   const [step, setStep] = useState<'amount' | 'method' | 'success'>('amount');
 
+  const [receipt, setReceipt] = useState<string | null>(null);
+  
   const handleDeposit = async () => {
     if (!user) return;
     const numAmount = parseFloat(amount);
@@ -42,19 +45,16 @@ export default function DepositPage() {
       return;
     }
 
-    const success = await deposit(user.id, numAmount, `Recarga vía Transferencia Bancaria`);
+    if (!receipt) {
+      toast.error('Por favor, sube el comprobante de transferencia');
+      return;
+    }
+
+    const success = await deposit(user.id, numAmount, `Recarga vía Transferencia Bancaria`, receipt);
     
     if (success) {
       setStep('success');
       toast.success('Solicitud enviada para validación');
-      
-      // WhatsApp Integration
-      const adminPhone = '595975855585'; 
-      const message = `¡Hola Oscorp! 👋 Quisiera realizar una recarga de saldo en mi billetera.\n\n*Monto:* ₲ ${numAmount.toLocaleString('es-PY')}\n*Usuario:* ${user.firstName} ${user.lastName}\n*Email:* ${user.email}\n*ID:* ${user.id}\n\nAdjunto el comprobante de transferencia bancaria. Quedo atento a la validación. ¡Gracias!`;
-      const whatsappUrl = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
-      
-      // Open WhatsApp automatically
-      window.open(whatsappUrl, '_blank');
     } else {
       toast.error('Hubo un problema al procesar la solicitud.');
     }
@@ -76,8 +76,8 @@ export default function DepositPage() {
           <p className="text-muted-foreground/60 font-medium leading-relaxed">
             Tu solicitud de recarga por <span className="text-foreground font-black">{formatCurrency(parseFloat(amount))}</span> está siendo validada por nuestro equipo administrativo.
           </p>
-          <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-amber-600">
-            Asegúrate de haber enviado el comprobante vía WhatsApp
+          <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-600">
+            Nuestro equipo revisará tu comprobante en breve
           </div>
         </div>
 
@@ -261,10 +261,18 @@ export default function DepositPage() {
               </div>
             </div>
 
-            <div className="p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10">
-              <p className="text-[8px] font-bold text-blue-500/60 uppercase text-center leading-relaxed">
-                Una vez realizada la transferencia, dale al botón de abajo para enviar el comprobante.
+            <div className="p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10 space-y-4">
+              <p className="text-[10px] font-black text-blue-500 uppercase text-center tracking-widest">
+                Sube tu comprobante aquí
               </p>
+              <ImageUpload
+                value={receipt}
+                onChange={setReceipt}
+                label="Subir Comprobante"
+                shape="rect"
+                maxWidth={600}
+                maxHeight={800}
+              />
             </div>
           </div>
 

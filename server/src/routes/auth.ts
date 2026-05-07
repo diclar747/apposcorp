@@ -145,7 +145,7 @@ router.post('/register', async (req, res) => {
         roles: finalRoles,
         initialInterface: initialInterface || 'OSCORP',
         ingenioAccess: false,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        avatar: null,
         isVerified: isVerifiedInitially,
         verificationToken: isVerifiedInitially ? null : verificationToken,
         verificationTokenExpires: isVerifiedInitially ? null : verificationTokenExpires,
@@ -229,6 +229,7 @@ router.post('/register', async (req, res) => {
         from: `"Oscorp Platform" <${process.env.SMTP_USER}>`,
         to: email,
         subject: 'Oscorp Platform - Verifica tu cuenta',
+        text: `Hola ${firstName},\n\nGracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico copiando y pegando el siguiente enlace en tu navegador:\n\n${verifyUrl}\n\nSi no solicitaste este registro, por favor ignora este correo.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
             <h2 style="color: #1e293b; text-align: center;">¡Bienvenido a Oscorp!</h2>
@@ -563,6 +564,7 @@ router.post('/forgot-password', async (req, res) => {
         from: `"Oscorp Security" <${process.env.SMTP_USER}>`,
         to: email,
         subject: 'Recuperación de contraseña - Oscorp',
+        text: `Has solicitado restablecer tu contraseña.\n\nCopia y pega el siguiente enlace en tu navegador para continuar:\n${resetUrl}\n\nEste enlace expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
             <h2 style="color: #1e293b; text-align: center;">Recuperación de Contraseña</h2>

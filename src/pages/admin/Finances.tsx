@@ -189,15 +189,35 @@ export default function AdminFinances() {
                           <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                      <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickFormatter={(val) => val.split('-').slice(1).reverse().join('/')} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickFormatter={(value) => `₲${value / 1000000}M`} />
-                      <Tooltip 
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.1} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#94a3b8" 
+                        fontSize={10} 
+                        tickFormatter={(val) => val.split('-').slice(1).reverse().join('/')}
+                        tick={{ fill: '#94a3b8' }}
                       />
-                      <Area type="monotone" dataKey="income" name="Ingresos" stroke="#22c55e" fillOpacity={1} fill="url(#colorIncome)" />
-                      <Area type="monotone" dataKey="expenses" name="Egresos" stroke="#ef4444" fillOpacity={1} fill="url(#colorExpenses)" />
+                      <YAxis 
+                        stroke="#94a3b8" 
+                        fontSize={10} 
+                        tickFormatter={(value) => `₲${value.toLocaleString('es-PY')}`}
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <Tooltip 
+                        labelFormatter={(label) => `Fecha: ${label.split('-').reverse().join('/')}`}
+                        formatter={(value: number) => [formatCurrency(value), ""]}
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                          borderRadius: '12px', 
+                          border: 'none', 
+                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                          color: '#0f172a'
+                        }}
+                        itemStyle={{ fontWeight: 'bold' }}
+                        labelStyle={{ color: '#64748b', marginBottom: '4px', fontWeight: 'bold' }}
+                      />
+                      <Area type="monotone" dataKey="income" name="Ingresos" stroke="#22c55e" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="expenses" name="Egresos" stroke="#ef4444" fillOpacity={1} fill="url(#colorExpenses)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -215,10 +235,30 @@ export default function AdminFinances() {
                       name: getTransactionTypeInfo(name).label, 
                       total: data.total 
                     }))}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickFormatter={(value) => `₲${formatCompactNumber(value)}`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.1} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#94a3b8" 
+                        fontSize={10} 
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <YAxis 
+                        stroke="#94a3b8" 
+                        fontSize={10} 
+                        tickFormatter={(value) => `₲${value.toLocaleString('es-PY')}`}
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatCurrency(value), "Monto Total"]}
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                          borderRadius: '12px', 
+                          border: 'none', 
+                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                          color: '#0f172a'
+                        }}
+                        labelStyle={{ color: '#64748b', marginBottom: '4px', fontWeight: 'bold' }}
+                      />
                       <Bar dataKey="total" name="Monto Total" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
