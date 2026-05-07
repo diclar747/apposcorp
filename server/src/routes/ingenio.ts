@@ -707,7 +707,7 @@ router.get('/subscription/me', requireAuth, async (req: AuthRequest, res) => {
 router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
     try {
         const userId = req.user!.userId;
-        const { installments, paymentMethod } = req.body;
+        const { installments, paymentMethod, receiptUrl } = req.body;
 
         // Validar configuración real
         const settings = await prisma.systemSetting.findMany({
@@ -847,13 +847,22 @@ router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
             });
         } else {
             // Transferencia bancaria
-            const sub = await prisma.ingenioSubscription.upsert({
+            const existingReceipts = (existingSub as any)?.receipts ? (Array.isArray((existingSub as any).receipts) ? (existingSub as any).receipts : []) : [];
+            const newReceiptEntry = {
+                url: receiptUrl,
+                date: new Date().toISOString(),
+                method: 'BANK_TRANSFER'
+            };
+
+            const sub = await (prisma.ingenioSubscription as any).upsert({
                 where: { userId },
                 update: {
-                    status: isRevoked ? 'REVOKED' : 'PENDING_APPROVAL', // Si está revocado, sigue revocado hasta que admin apruebe
+                    status: isRevoked ? 'REVOKED' : 'PENDING_APPROVAL',
                     totalAmount: isPayingQuota ? existingSub.totalAmount : realPrice,
                     installments: isPayingQuota ? existingSub.installments : installments,
                     paymentMethod: 'BANK_TRANSFER',
+                    receiptUrl,
+                    receipts: [...existingReceipts, newReceiptEntry],
                     updatedAt: new Date()
                 },
                 create: {
@@ -861,10 +870,33 @@ router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
                     status: 'PENDING_APPROVAL',
                     totalAmount: realPrice,
                     installments,
-                    paymentMethod: 'BANK_TRANSFER'
+                    paymentMethod: 'BANK_TRANSFER',
+                    receiptUrl,
+                    receipts: [newReceiptEntry]
                 }
             });
-            return res.json({ message: 'Solicitud enviada. Por favor realice la transferencia para procesar la activación.' });
+
+            // Send push notification to superadmin
+            const admins = await prisma.user.findMany({ where: { roles: { has: 'superadmin' } } });
+            if (admins.length > 0) {
+                const user = await prisma.user.findUnique({ where: { id: userId } });
+                const userName = user ? `${user.firstName} ${user.lastName}` : 'Un usuario';
+                
+                // Add notification to admin
+                await Promise.all(admins.map(admin => 
+                    prisma.notification.create({
+                        data: {
+                            userId: admin.id,
+                            title: 'Nueva Solicitud de Acceso - Ingenio Millonario',
+                            message: `${userName} ha solicitado acceso vía transferencia bancaria y subió un comprobante.`,
+                            type: 'system',
+                            actionUrl: '/admin/ingenio/suscripciones'
+                        }
+                    })
+                ));
+            }
+
+            return res.json({ message: 'Solicitud enviada. Pendiente de validación.' });
         }
     } catch (error) {
         console.error('Subscription error:', error);
@@ -959,6 +991,17 @@ router.put('/admin/subscriptions/:id/approve', requireAdmin, async (req: AuthReq
             });
         }
 
+        // Add push notification for user
+        await prisma.notification.create({
+            data: {
+                userId: sub.userId,
+                title: 'Acceso Aprobado - Ingenio Millonario',
+                message: 'Tu pago fue validado y tu acceso ha sido aprobado. ¡Bienvenido a Ingenio Millonario!',
+                type: 'system',
+                actionUrl: '/app/ingenio'
+            }
+        });
+
         res.json({ message: 'Acceso concedido exitosamente' });
     } catch (error) {
         res.status(500).json({ error: 'Error al aprobar suscripción' });
@@ -986,6 +1029,14 @@ router.put('/admin/subscriptions/:id/revoke', requireAdmin, async (req: AuthRequ
             prisma.user.update({
                 where: { id: sub.userId },
                 data: { ingenioAccess: false }
+            }),
+            prisma.notification.create({
+                data: {
+                    userId: sub.userId,
+                    title: 'Acceso Revocado - Ingenio Millonario',
+                    message: 'Tu acceso a Ingenio Millonario ha sido revocado. Contacta con soporte para más información.',
+                    type: 'system'
+                }
             })
         ]);
         res.json({ message: 'Acceso revocado exitosamente' });
@@ -1015,6 +1066,14 @@ router.delete('/admin/subscriptions/:id', requireAdmin, async (req: AuthRequest,
             // También eliminamos el perfil de estudiante para que desaparezca totalmente de Ingenio
             prisma.ingenioStudent.deleteMany({
                 where: { userId: sub.userId }
+            }),
+            prisma.notification.create({
+                data: {
+                    userId: sub.userId,
+                    title: 'Suscripción Eliminada - Ingenio Millonario',
+                    message: 'Tu solicitud o suscripción ha sido eliminada por un administrador.',
+                    type: 'system'
+                }
             })
         ]);
 

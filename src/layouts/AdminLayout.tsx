@@ -64,6 +64,7 @@ const sidebarItems = [
   { icon: BookOpen, label: 'Materiales Ingenio', href: '/admin/ingenio/materiales' },
   { icon: Send, label: 'Campañas', href: '/admin/campanas' },
   { icon: ShieldCheck, label: 'Planes', href: '/admin/planes' },
+  { icon: ShieldCheck, label: 'Susc. Vendedores', href: '/admin/planes/suscripciones' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
 ];
 

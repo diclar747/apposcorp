@@ -13,7 +13,9 @@ import {
   MoreHorizontal, 
   RefreshCw,
   Trash2,
-  Ban
+  Ban,
+  Eye,
+  Calendar
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,6 +72,7 @@ export default function IngenioSubscriptions() {
   const [selectedSub, setSelectedSub] = useState<any>(null);
   const [amountPaid, setAmountPaid] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -145,21 +148,37 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
       .date{color:#666;font-size:11px;margin-bottom:16px}
       .stats{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
       .stat{background:#f5f5f5;padding:10px 14px;border-radius:8px;min-width:120px}
-      .stat-label{font-size:10px;color:#666}
-      .stat-value{font-size:16px;font-weight:bold}
-      table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
-      th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #ddd}
-      td{padding:5px 8px;border-bottom:1px solid #eee}
-      tr:nth-child(even){background:#fafafa}
+      .stat-label{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+      .stat-value{font-size:18px;font-weight:900;color:#1e293b}
+      .stat.pending .stat-value{color:#d97706}
+      .stat.active .stat-value{color:#16a34a}
+      .stat.collected .stat-value{color:#4f46e5}
+      .stat.debt .stat-value{color:#64748b}
+      table{width:100%;border-collapse:collapse;font-size:10px;margin-top:20px;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+      th{background:#f8fafc;padding:10px 12px;text-align:left;border-bottom:2px solid #e2e8f0;color:#64748b;text-transform:uppercase;font-size:9px;letter-spacing:0.5px}
+      td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}
+      tr:nth-child(even){background:#f8fafc}
       .text-right{text-align:right}
-      .text-green{color:#16a34a}
-      .text-red{color:#dc2626}
+      .badge{padding:2px 6px;border-radius:4px;font-size:8px;font-weight:bold;text-transform:uppercase}
+      .badge-pending{background:#fef3c7;color:#92400e}
+      .badge-active{background:#dcfce7;color:#166534}
+      .badge-revoked{background:#fee2e2;color:#991b1b}
       @media print{body{padding:0}.no-print{display:none}}
     </style></head><body>
-    <h1>${title} - Ingenio Millonario</h1>
-    <p class="date">Generado: ${new Date().toLocaleDateString('es-PY')} ${new Date().toLocaleTimeString('es-PY')}</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h1 style="margin:0;color:#1e293b">Reporte de Suscripciones Ingenio</h1>
+        <p style="margin:4px 0 0;color:#64748b;font-size:11px">Control de accesos y gestión de cobros - OSCORP</p>
+      </div>
+      <div style="text-align:right">
+        <p class="date" style="margin:0">Generado: ${new Date().toLocaleDateString('es-PY')} ${new Date().toLocaleTimeString('es-PY')}</p>
+      </div>
+    </div>
     ${statsHtml}
-    ${tableHtml}
+    <div style="margin-top:30px">
+      <h2 style="font-size:14px;font-weight:900;color:#1e293b;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Detalle de Suscriptores</h2>
+      ${tableHtml}
+    </div>
     <script>window.onload=function(){window.print()}<\/script>
   </body></html>`;
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -169,21 +188,46 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
 }
 
   const exportToPDF = () => {
+    const totalPending = subscriptions.filter(s => s.status === 'PENDING_APPROVAL').length;
+    const totalActive = subscriptions.filter(s => s.status === 'ACTIVE').length;
+    const totalCollected = subscriptions.reduce((acc, curr) => acc + curr.paidAmount, 0);
+    const totalToCollect = subscriptions.reduce((acc, curr) => acc + (curr.totalAmount - curr.paidAmount), 0);
+
     const statsHtml = `<div class="stats">
-      <div class="stat"><div class="stat-label">Total Suscripciones</div><div class="stat-value">${filtered.length}</div></div>
-      <div class="stat"><div class="stat-label">Recaudado</div><div class="stat-value text-green">${formatCurrency(filtered.reduce((acc, curr) => acc + curr.paidAmount, 0))}</div></div>
+      <div class="stat pending"><div class="stat-label">Pendientes</div><div class="stat-value">${totalPending}</div></div>
+      <div class="stat active"><div class="stat-label">Activas</div><div class="stat-value">${totalActive}</div></div>
+      <div class="stat collected"><div class="stat-label">Recaudado</div><div class="stat-value">${formatCurrency(totalCollected)}</div></div>
+      <div class="stat debt"><div class="stat-label">Por Cobrar</div><div class="stat-value">${formatCurrency(totalToCollect)}</div></div>
     </div>`;
     
-    const rows = filtered.map(s => `<tr>
-      <td>${s.user?.firstName || ''} ${s.user?.lastName || 'Usuario'}</td>
-      <td>${getSubscriptionStatusInfo(s.status).label}</td>
-      <td>${s.installments} cuotas</td>
-      <td class="text-right">${formatCurrency(s.paidAmount)}</td>
-      <td class="text-right">${formatCurrency(s.totalAmount)}</td>
-      <td>${formatDate(getSafeDate(s.updatedAt || s.createdAt))}</td>
-    </tr>`).join('');
+    const rows = filtered.map(s => {
+      const statusInfo = getSubscriptionStatusInfo(s.status);
+      const badgeClass = s.status === 'PENDING_APPROVAL' ? 'badge-pending' : 
+                        s.status === 'ACTIVE' ? 'badge-active' : 'badge-revoked';
+      
+      return `<tr>
+        <td style="font-weight:bold">${s.user?.firstName || ''} ${s.user?.lastName || 'Usuario'}</td>
+        <td><span class="badge ${badgeClass}">${statusInfo.label}</span></td>
+        <td>${s.installments} cuotas</td>
+        <td class="text-right" style="font-weight:bold;color:#16a34a">${formatCurrency(s.paidAmount)}</td>
+        <td class="text-right" style="font-weight:bold">${formatCurrency(s.totalAmount)}</td>
+        <td>${formatDate(getSafeDate(s.updatedAt || s.createdAt))}</td>
+      </tr>`;
+    }).join('');
     
-    const tableHtml = `<table><thead><tr><th>Usuario</th><th>Estado</th><th>Plan</th><th>Pagado</th><th>Total</th><th>Último Mov.</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const tableHtml = `<table>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Estado</th>
+          <th>Plan</th>
+          <th class="text-right">Pagado</th>
+          <th class="text-right">Total</th>
+          <th>Último Mov.</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
     
     generatePDF('Reporte de Suscripciones', statsHtml, tableHtml);
     toast.success('PDF exportado correctamente');
@@ -434,6 +478,16 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
                             Re-activar Acceso
                           </DropdownMenuItem>
                         )}
+
+                        {sub.receiptUrl && (
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedSub(sub);
+                            setReceiptDialogOpen(true);
+                          }}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Ver Comprobante
+                          </DropdownMenuItem>
+                        )}
                         
                         {sub.status !== 'REVOKED' && (
                           <AlertDialog>
@@ -490,24 +544,26 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
 
       {/* Approval Modal */}
       <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedSub?.status === 'ACTIVE' ? 'Actualizar Pago' : 
-               selectedSub?.status === 'REVOKED' ? 'Re-activar Acceso' : 'Aprobar Suscripción'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedSub?.status === 'ACTIVE' 
-                ? `Registra un nuevo cobro para ${selectedSub?.user?.firstName}.`
-                : selectedSub?.status === 'REVOKED'
-                ? `Estás re-activando el acceso de ${selectedSub?.user?.firstName}. Puedes registrar un pago inicial si es necesario.`
-                : selectedSub?.paymentMethod === 'WALLET' 
-                  ? 'El pago ya se realizó a través de la Billetera. Confirma la aprobación del acceso.' 
-                  : 'Ingresa el monto cobrado de la transferencia bancaria para validarlo en el sistema.'}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl max-h-[95vh] flex flex-col">
+          <div className="p-6 pb-3 border-b dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black">
+                {selectedSub?.status === 'ACTIVE' ? 'Actualizar Pago' : 
+                 selectedSub?.status === 'REVOKED' ? 'Re-activar Acceso' : 'Aprobar Suscripción'}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                {selectedSub?.status === 'ACTIVE' 
+                  ? `Registra un nuevo cobro para ${selectedSub?.user?.firstName}.`
+                  : selectedSub?.status === 'REVOKED'
+                  ? `Estás re-activando el acceso de ${selectedSub?.user?.firstName}. Puedes registrar un pago inicial si es necesario.`
+                  : selectedSub?.paymentMethod === 'WALLET' 
+                    ? 'El pago ya se realizó a través de la Billetera. Confirma la aprobación del acceso.' 
+                    : 'Ingresa el monto cobrado de la transferencia bancaria para validarlo en el sistema.'}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
           
-          <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border">
               <div className="flex justify-between items-center mb-2 pb-2 border-b">
                  <p className="text-sm font-bold text-slate-900 dark:text-white">Resumen de Cuenta</p>
@@ -609,6 +665,34 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
               </div>
             )}
 
+            {selectedSub?.status === 'PENDING_APPROVAL' && selectedSub?.receiptUrl ? (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Comprobante de Pago Enviado</Label>
+                  {selectedSub.receipts?.length > 1 && (
+                    <Badge variant="secondary" className="text-[9px] font-bold">
+                      +{selectedSub.receipts.length - 1} anteriores
+                    </Badge>
+                  )}
+                </div>
+                <div className="rounded-xl border overflow-hidden bg-slate-950 flex justify-center p-2 shadow-inner">
+                  <img 
+                    src={selectedSub.receiptUrl} 
+                    alt="Comprobante" 
+                    className="max-h-[400px] w-auto mx-auto object-contain rounded-lg shadow-sm"
+                  />
+                </div>
+              </div>
+            ) : (selectedSub?.status === 'ACTIVE' || selectedSub?.status === 'REVOKED') && (
+              <div className="py-8 text-center text-slate-500 bg-slate-100/50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                   <Clock className="w-5 h-5 text-slate-300" />
+                </div>
+                <p className="font-bold text-xs">Comprobante de pago aún no enviado</p>
+                <p className="text-[10px] opacity-60">El usuario no ha reportado un nuevo pago para esta cuota.</p>
+              </div>
+            )}
+
             {(selectedSub?.paymentMethod === 'BANK_TRANSFER' || selectedSub?.status === 'ACTIVE' || selectedSub?.status === 'REVOKED') && (
               <div className="space-y-2">
                 <Label>Monto a Registrar</Label>
@@ -634,21 +718,118 @@ function generatePDF(title: string, statsHtml: string, tableHtml: string) {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveDialogOpen(false)} disabled={isSubmitting}>
-              Cancelar
-            </Button>
-            <Button onClick={handleApprove} disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700">
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Procesando...
-                </>
-              ) : (
-                selectedSub?.status === 'ACTIVE' ? 'Registrar Pago' : 
-                selectedSub?.status === 'REVOKED' ? 'Re-activar Ahora' : 'Confirmar Aprobación'
-              )}
-            </Button>
-          </DialogFooter>
+          <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t dark:border-slate-800">
+            <DialogFooter className="flex flex-col sm:flex-row gap-3">
+              <Button variant="outline" onClick={() => setApproveDialogOpen(false)} disabled={isSubmitting}>
+                Cancelar
+              </Button>
+              <Button onClick={handleApprove} disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 font-black">
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Procesando...
+                  </>
+                ) : (
+                  selectedSub?.status === 'ACTIVE' ? 'Registrar Pago' : 
+                  selectedSub?.status === 'REVOKED' ? 'Re-activar Ahora' : 'Confirmar Aprobación'
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] w-[95vw] p-0 overflow-hidden border-none shadow-2xl max-h-[92vh] flex flex-col">
+          <div className="p-6 pb-4 border-b dark:border-slate-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black">Detalles del Comprobante</DialogTitle>
+              <DialogDescription>
+                Información del pago enviado por {selectedSub?.user?.firstName} {selectedSub?.user?.lastName}.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          
+          <div className="bg-white dark:bg-slate-900 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border dark:border-slate-800">
+                  <div className="flex items-center gap-2 text-slate-400 mb-1">
+                    <Calendar className="w-3 h-3" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Fecha de Envío</span>
+                  </div>
+                  <p className="text-sm font-black dark:text-white">
+                    {selectedSub?.updatedAt ? new Date(selectedSub.updatedAt).toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '---'}
+                  </p>
+                </div>
+                
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border dark:border-slate-800">
+                  <div className="flex items-center gap-2 text-slate-400 mb-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Estado Actual</span>
+                  </div>
+                  <div className="mt-0.5">
+                    <Badge className={`${getSubscriptionStatusInfo(selectedSub?.status || '').bgColor} ${getSubscriptionStatusInfo(selectedSub?.status || '').color} border-0 text-[10px] font-bold`}>
+                      {getSubscriptionStatusInfo(selectedSub?.status || '').label}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">Historial de Comprobantes</span>
+                  <Badge variant="outline" className="text-[9px] font-black px-2 py-0 h-5">
+                    {selectedSub?.receipts?.length || (selectedSub?.receiptUrl ? 1 : 0)} ARCHIVOS
+                  </Badge>
+                </div>
+                
+                <div className="space-y-6">
+                  {selectedSub?.receipts && Array.isArray(selectedSub.receipts) && selectedSub.receipts.length > 0 ? (
+                    [...selectedSub.receipts].reverse().map((r: any, idx: number) => (
+                      <div key={idx} className="space-y-2 border-b dark:border-slate-800 pb-6 last:border-0 last:pb-0">
+                        <div className="flex items-center justify-between px-2">
+                           <div className="flex items-center gap-2">
+                             <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                               {selectedSub.receipts.length - idx}
+                             </div>
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                               Enviado el {new Date(r.date).toLocaleDateString('es-PY')} a las {new Date(r.date).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' })}
+                             </p>
+                           </div>
+                        </div>
+                        <div className="rounded-2xl border-2 border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-950 flex justify-center shadow-sm">
+                           <img 
+                              src={r.url} 
+                              alt={`Comprobante ${selectedSub.receipts.length - idx}`} 
+                              className="max-h-[60vh] w-auto mx-auto object-contain"
+                            />
+                        </div>
+                      </div>
+                    ))
+                  ) : selectedSub?.receiptUrl ? (
+                    <div className="rounded-2xl border-2 border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-950 flex justify-center shadow-sm">
+                       <img 
+                          src={selectedSub.receiptUrl} 
+                          alt="Comprobante" 
+                          className="max-h-[60vh] w-auto mx-auto object-contain"
+                        />
+                    </div>
+                  ) : (
+                    <div className="py-20 text-center text-slate-500 bg-slate-50 dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+                      <p className="font-bold text-sm">No hay comprobantes registrados</p>
+                      <p className="text-xs opacity-60">El usuario aún no ha subido archivos.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-800/30">
+              <Button onClick={() => setReceiptDialogOpen(false)} className="rounded-xl font-bold px-8">
+                Cerrar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

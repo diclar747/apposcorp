@@ -665,12 +665,6 @@ export default function AdminUsers() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setViewingUser(user)}>Ver perfil</DropdownMenuItem>
                             <DropdownMenuItem>Ver transacciones</DropdownMenuItem>
-                            {user.roles.includes('seller') && (
-                              <DropdownMenuItem onClick={() => handleOpenPlanModal(user)}>
-                                <Shield className="w-4 h-4 mr-2" />
-                                Gestionar Plan
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleToggleIngenio(user.id, user.ingenioAccess)}>
                               {user.ingenioAccess ? 'Desactivar Ingenio' : 'Activar Ingenio'}
@@ -811,7 +805,7 @@ export default function AdminUsers() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-gray-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-gray-100 dark:border-slate-800">
                 <div>
                   <Label className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Teléfono</Label>
                   <p className="font-medium text-gray-900 dark:text-white mt-1">{viewingUser.phone || 'No registrado'}</p>
@@ -826,16 +820,21 @@ export default function AdminUsers() {
                 </div>
                 <div className="pt-4 border-t border-gray-100">
                   <div className="flex justify-between items-center mb-4">
-                    <Label className="text-gray-500 text-xs uppercase tracking-wider font-bold">Gestión Ingenio Millonario</Label>
+                    <Label className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider font-bold">Gestión Ingenio Millonario</Label>
                     <Badge variant={viewingUser.ingenioAccess ? "default" : "secondary"} className={viewingUser.ingenioAccess ? "bg-purple-100 text-purple-700" : ""}>
                       {viewingUser.ingenioAccess ? "Acceso Activo" : "Sin Acceso"}
                     </Badge>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-4">
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-gray-100 dark:border-slate-800 shadow-sm">
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        className={`flex-1 ${viewingUser.ingenioAccess ? "bg-red-50 text-red-600 hover:bg-red-100 border-red-100" : "bg-purple-600 text-white hover:bg-purple-700"}`}
+                        className={cn(
+                          "flex-1 font-bold",
+                          viewingUser.ingenioAccess 
+                            ? "bg-red-50 text-red-600 hover:bg-red-100 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30" 
+                            : "bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-600/20"
+                        )}
                         variant={viewingUser.ingenioAccess ? "outline" : "default"}
                         onClick={async () => {
                           const newStatus = !viewingUser.ingenioAccess;

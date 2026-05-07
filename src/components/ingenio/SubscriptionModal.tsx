@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Wallet, Landmark, ShieldCheck, AlertCircle, CheckCircle, CheckCircle2, Loader2, ArrowRight, Plus, Sparkles, X } from 'lucide-react';
+import { CreditCard, Wallet, Landmark, ShieldCheck, AlertCircle, CheckCircle, CheckCircle2, Loader2, ArrowRight, Plus, Sparkles, X, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { ingenioApi, usersApi } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ImageUpload } from '@/components/shared/ImageUpload';
 
 interface SubscriptionModalProps {
   open: boolean;
@@ -27,7 +28,8 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
   const [config, setConfig] = useState({ price: 700000, maxInstallments: 3, contactPhone: '' });
   const [installments, setInstallments] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'BANK_TRANSFER'>('WALLET');
-  const [step, setStep] = useState<'selection' | 'upgrade_benefits' | 'processing' | 'success'>('selection');
+  const [step, setStep] = useState<'selection' | 'upload_receipt' | 'upgrade_benefits' | 'processing' | 'success' | 'pending_approval'>('selection');
+  const [receipt, setReceipt] = useState<string | null>(null);
 
   const sub = user?.ingenioSubscription;
   const isRevoked = sub?.status === 'REVOKED';
@@ -59,9 +61,14 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
     if (open) {
       fetchConfig();
       if (user) fetchWallet(user.id);
-      setStep('selection');
+      
+      if (sub?.status === 'PENDING_APPROVAL') {
+        setStep('pending_approval');
+      } else {
+        setStep('selection');
+      }
     }
-  }, [open, user]);
+  }, [open, user, sub?.status]);
 
   const fetchConfig = async () => {
     try {
@@ -73,8 +80,18 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
   };
 
   const handleSubscribe = async () => {
+    if (paymentMethod === 'BANK_TRANSFER' && step === 'selection') {
+      setStep('upload_receipt');
+      return;
+    }
+
     if (paymentMethod === 'WALLET' && !canPayWithWallet) {
       toast.error('Saldo insuficiente en tu Billetera Oscorp');
+      return;
+    }
+
+    if (paymentMethod === 'BANK_TRANSFER' && !receipt) {
+      toast.error('Por favor, sube el comprobante de transferencia');
       return;
     }
 
@@ -83,39 +100,9 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
 
       await ingenioApi.subscribe({
         installments: isPayingNextQuota ? sub!.installments : installments,
-        paymentMethod
+        paymentMethod,
+        receiptUrl: receipt || undefined
       });
-      
-      if (paymentMethod === 'BANK_TRANSFER') {
-        const adminPhone = config.contactPhone.replace(/\D/g, '') || "595975855585";
-        const userName = `${user?.firstName} ${user?.lastName || ''}`;
-        
-        let message = '';
-        if (isPayingNextQuota) {
-          if (sub?.installments === 1) {
-            message = `INGENIO MILLONARIO - ${isRevoked ? 'REACTIVACIÓN' : 'PAGO DE ACCESO'}\n` +
-                      `Hola! Me gustaría registrar el pago de mi saldo pendiente para volver a activar mi acceso.\n` +
-                      `Usuario: ${userName}\n` +
-                      `Monto a Abonar: ${formatCurrency(activeAmount)}`;
-          } else {
-            message = `INGENIO MILLONARIO - ${isRevoked ? 'REACTIVACIÓN' : 'PAGO DE CUOTA'}\n` +
-                      `Hola! Me gustaría volver a activar mi acceso de Ingenio Millonario.\n` +
-                      `Usuario: ${userName}\n` +
-                      `Monto de Cuota Pendiente: ${formatCurrency(activeAmount)}\n` +
-                      `Cuota Nro: ${currentQuotaNumber} de ${sub?.installments}\n` +
-                      `Deuda Total: ${formatCurrency(remainingBalance)}`;
-          }
-        } else {
-          message = `INGENIO MILLONARIO - NUEVA SOLICITUD\n` +
-                    `Hola! Acabo de registrar mi solicitud de acceso full a Ingenio Millonario.\n` +
-                    `Usuario: ${userName}\n` +
-                    `Plan: ${installments} ${installments === 1 ? 'pago único' : 'cuotas'}\n` +
-                    `Monto Total: ${formatCurrency(config.price)}\n` +
-                    `Método: Transferencia Bancaria.`;
-        }
-        
-        window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`, '_blank');
-      }
       
       setStep('success');
       await fetchCurrentUser();
@@ -148,7 +135,7 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl max-h-[95vh] flex flex-col">
-        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-8 pt-16 sm:p-10 sm:pt-20 text-white relative overflow-hidden shrink-0">
+        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-6 pt-12 sm:p-8 sm:pt-14 text-white relative overflow-hidden shrink-0">
           {/* Custom Close Button for visibility on dark background */}
           <button 
             onClick={() => onOpenChange(false)}
@@ -164,7 +151,7 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
             <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-4 backdrop-blur-md px-3 py-1 font-bold text-[10px] tracking-widest">
               INGENIO MILLONARIO PASS
             </Badge>
-            <DialogTitle className="text-3xl sm:text-4xl font-black mb-3 tracking-tighter leading-none uppercase">
+            <DialogTitle className="text-2xl sm:text-3xl font-black mb-2 tracking-tighter leading-none uppercase">
               Acceso Ilimitado
             </DialogTitle>
             <DialogDescription className="text-indigo-100 text-xs sm:text-sm font-medium leading-relaxed max-w-[340px]">
@@ -374,6 +361,79 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
               </motion.div>
             )}
 
+            {step === 'upload_receipt' && (
+              <motion.div
+                key="upload_receipt"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="glass-premium p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 space-y-6 relative overflow-hidden bg-slate-50 dark:bg-slate-900">
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Datos para Transferencia</h3>
+                    
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">Titular</p>
+                        <p className="text-xs font-bold uppercase dark:text-slate-200">OSCORP E.A.S.</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">RUC / CI</p>
+                        <p className="text-xs font-bold dark:text-slate-200">80128841-0 / 3718400</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">Entidad</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold uppercase dark:text-slate-200">ueno bank S.A.</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">N° de cuenta</p>
+                        <p className="text-xs font-bold tracking-tight dark:text-slate-200">6192654055</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">Monto a Transferir</p>
+                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 tracking-tight">{formatCurrency(activeAmount)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 space-y-4">
+                    <p className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase text-center tracking-widest">
+                      Sube tu comprobante aquí
+                    </p>
+                    <ImageUpload
+                      value={receipt}
+                      onChange={setReceipt}
+                      label="Subir Comprobante"
+                      shape="rect"
+                      maxWidth={600}
+                      maxHeight={800}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-2">
+                  <Button 
+                    onClick={handleSubscribe} 
+                    disabled={loading || !receipt}
+                    className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Confirmar Pago y Enviar"}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setStep('selection')}
+                    disabled={loading}
+                    className="font-bold text-slate-500"
+                  >
+                    Volver Atrás
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
             {step === 'upgrade_benefits' && (
               <motion.div
                 key="upgrade_benefits"
@@ -439,46 +499,85 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
                   <CheckCircle2 className="w-12 h-12 text-green-600" />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">¡Solicitud Enviada!</h3>
-                <p className="text-slate-500 max-w-xs mx-auto">
+                <p className="text-slate-500 max-w-xs mx-auto text-sm">
                   {paymentMethod === 'WALLET' 
                     ? (isRevoked 
                         ? "¡Excelente! Tu pago ha sido procesado y tu acceso a Ingenio Millonario ha sido restaurado automáticamente."
                         : "Tu pago ha sido procesado con éxito. Un administrador validará tu acceso en breve.")
-                    : "Hemos recibido tu solicitud. Por favor envía el comprobante de transferencia al soporte vía WhatsApp para reactivar tu cuenta."}
+                    : "Hemos recibido tu comprobante. Nuestro equipo administrativo verificará el pago en las próximas 24 horas hábiles para activar tu acceso."}
                 </p>
                 <Button 
                   onClick={() => onOpenChange(false)} 
-                  className="mt-6 bg-slate-900 dark:bg-slate-100 dark:text-slate-900"
+                  className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-10 rounded-xl"
                 >
                   Entendido
                 </Button>
               </motion.div>
             )}
+
+            {step === 'pending_approval' && (
+              <motion.div
+                key="pending_approval"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="py-6 space-y-6"
+              >
+                <div className="bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-900/20 p-8 rounded-[2.5rem] text-center space-y-4">
+                  <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-amber-200/50 dark:shadow-none">
+                    <Clock className="w-8 h-8 text-amber-600 animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-black text-amber-900 dark:text-amber-400 uppercase tracking-tight">Pago en Verificación</h3>
+                    <p className="text-sm text-amber-800/80 dark:text-amber-400/80 font-medium leading-relaxed">
+                      Ya hemos recibido tu comprobante de pago. Un administrador está validando la transacción para activar tu acceso ilimitado.
+                    </p>
+                  </div>
+                  <div className="pt-4 border-t border-amber-200 dark:border-amber-900/30">
+                    <p className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">Tiempo estimado</p>
+                    <p className="text-sm font-black text-amber-900 dark:text-amber-400">Menos de 24 horas hábiles</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button 
+                    className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"
+                    onClick={() => onOpenChange(false)}
+                  >
+                    Entendido
+                  </Button>
+                  <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    Recibirás una notificación push cuando sea aprobado
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
-        {step === 'selection' && (
+        {(step === 'selection' || step === 'upload_receipt') && (
           <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t dark:border-slate-800 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-end shrink-0">
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="font-bold sm:order-1">
               Cerrar
             </Button>
-            <Button 
-              onClick={handleSubscribe} 
-              disabled={loading || (paymentMethod === 'WALLET' && !isClient)}
-              className="bg-indigo-600 hover:bg-indigo-700 font-extrabold px-8 h-12 shadow-lg shadow-indigo-200 dark:shadow-none sm:order-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  {isPayingNextQuota ? 'Pagar Cuota Ahora' : 'Confirmar suscripción'}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
+            {step === 'selection' && (
+              <Button 
+                onClick={handleSubscribe} 
+                disabled={loading || (paymentMethod === 'WALLET' && !isClient)}
+                className="bg-indigo-600 hover:bg-indigo-700 font-extrabold px-8 h-12 shadow-lg shadow-indigo-200 dark:shadow-none sm:order-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    {paymentMethod === 'BANK_TRANSFER' ? 'Siguiente' : isPayingNextQuota ? 'Pagar Cuota Ahora' : 'Confirmar suscripción'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>

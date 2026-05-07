@@ -728,7 +728,7 @@ export const ingenioApi = {
 
   // Subscription
   getConfig: () => fetchWithAuth('/ingenio/config'),
-  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER' }) => 
+  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER', receiptUrl?: string }) => 
     fetchWithAuth('/ingenio/subscribe', { method: 'POST', body: JSON.stringify(data) }),
   getMySubscription: () => fetchWithAuth('/ingenio/me'),
   
@@ -777,6 +777,29 @@ export const uploadApi = {
   }
 };
 
+export const sellerSubscriptionsApi = {
+  getMySubscription: () => fetchWithAuth('/seller-subscriptions/my-subscription'),
+  subscribe: (data: { planId: string, paymentMethod: string, receiptUrl?: string, billingCycle: string }) =>
+    fetchWithAuth('/seller-subscriptions/subscribe', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getAll: () => fetchWithAuth('/seller-subscriptions/all'),
+  approve: (id: string, amountPaid: number) =>
+    fetchWithAuth(`/seller-subscriptions/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ amountPaid }),
+    }),
+  revoke: (id: string) =>
+    fetchWithAuth(`/seller-subscriptions/${id}/revoke`, {
+      method: 'POST',
+    }),
+  delete: (id: string) =>
+    fetchWithAuth(`/seller-subscriptions/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
 export default {
   auth: authApi,
   users: usersApi,
@@ -794,4 +817,5 @@ export default {
   management: managementApi,
   reports: reportsApi,
   plans: plansApi,
+  sellerSubscriptions: sellerSubscriptionsApi,
 };

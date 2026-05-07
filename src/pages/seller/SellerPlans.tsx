@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Zap, Crown, Shield, MessageCircle, CreditCard, Star } from 'lucide-react';
+import { CheckCircle2, Zap, Crown, Shield, MessageCircle, CreditCard, Star, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { plansApi } from '@/lib/api';
+import { plansApi, sellerSubscriptionsApi } from '@/lib/api';
 import { useAuthStore } from '@/stores';
 import type { SubscriptionPlan } from '@/types';
 import { cn, formatCurrency } from '@/lib/utils';
+import { SellerSubscriptionModal } from '@/components/seller/SellerSubscriptionModal';
 
 type BillingCycle = 'monthly' | 'quarterly' | 'semi_annual' | 'annual';
 
@@ -15,11 +16,24 @@ export default function SellerPlans() {
     const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [loading, setLoading] = useState(true);
     const [cycle, setCycle] = useState<BillingCycle>('monthly');
+    const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const { user } = useAuthStore();
+    const [currentSubscription, setCurrentSubscription] = useState<any>(null);
 
     useEffect(() => {
         fetchPlans();
+        fetchCurrentSubscription();
     }, []);
+
+    const fetchCurrentSubscription = async () => {
+        try {
+            const sub = await sellerSubscriptionsApi.getMySubscription();
+            setCurrentSubscription(sub);
+        } catch (error) {
+            console.error('Error fetching subscription:', error);
+        }
+    };
 
     const fetchPlans = async () => {
         try {
@@ -34,15 +48,8 @@ export default function SellerPlans() {
     };
 
     const handleAcquire = (plan: SubscriptionPlan) => {
-        const cycleNames = {
-            monthly: 'Mensual',
-            quarterly: 'Trimestral',
-            semi_annual: 'Semestral',
-            annual: 'Anual'
-        };
-        const message = `Hola Oscorp, me interesa adquirir el ${plan.name} (Plan ${cycleNames[cycle]}) para mi comercio. Mi usuario es ${user?.email}. ¿Podrían pasarme los datos para la transferencia bancaria?`;
-        const whatsappUrl = `https://wa.me/595975855585?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
+        setSelectedPlan(plan);
+        setIsModalOpen(true);
     };
 
     if (loading) {
@@ -191,8 +198,10 @@ export default function SellerPlans() {
                                                 : "bg-white hover:bg-slate-200 text-slate-950"
                                         )}
                                     >
-                                        Adquirir Plan
-                                        <MessageCircle className="w-5 h-5 ml-2" />
+                                        {currentSubscription?.planId === plan.id && (currentSubscription.status === 'EXPIRED' || currentSubscription.status === 'REVOKED') 
+                                            ? 'Renovar Plan' 
+                                            : 'Adquirir Plan'}
+                                        <ArrowRight className="w-5 h-5 ml-2" />
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -212,10 +221,19 @@ export default function SellerPlans() {
                 </div>
                 <h3 className="text-xl font-black text-white uppercase tracking-tight mb-4">Proceso de Activación</h3>
                 <p className="text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                    Al solicitar tu plan, te pondrás en contacto con soporte vía WhatsApp para coordinar la **transferencia bancaria**. 
-                    Una vez confirmado el pago, tu cuenta será activada inmediatamente por un administrador.
+                    Al elegir tu plan, podrás adjuntar tu **comprobante de transferencia** directamente en la plataforma. 
+                    Nuestro equipo verificará el pago y activará tu cuenta para que puedas empezar a vender lo antes posible.
                 </p>
             </motion.div>
+            <SellerSubscriptionModal
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                plan={selectedPlan}
+                billingCycle={cycle}
+                onSuccess={() => {
+                    fetchPlans(); // Optionally refresh
+                }}
+            />
         </div>
     );
 }
