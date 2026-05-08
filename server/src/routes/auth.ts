@@ -1,5 +1,6 @@
 import { Router } from 'express';
-// import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
@@ -35,7 +36,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     // 1. Mensaje Genérico: Misma respuesta exacta
@@ -119,8 +119,6 @@ router.post('/register', async (req, res) => {
 
     const isVerifiedInitially = requireEmailVerification?.value === 'false';
 
-    const bcrypt = await import('bcryptjs');
-    const crypto = await import('crypto');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 5. Generate verification token and expiration
@@ -372,7 +370,6 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const isValid = await bcrypt.compare(currentPassword, user.password);
 
     if (!isValid) {
@@ -619,7 +616,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'El enlace de recuperación es inválido o ha expirado' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await prisma.user.update({
