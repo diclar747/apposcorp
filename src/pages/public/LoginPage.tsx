@@ -72,7 +72,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
 
-    const success = await login(data.email, data.password);
+    const success = await login(data.email, data.password, rememberMe);
 
     if (success) {
       toast.success('¡Bienvenido de vuelta!');
@@ -106,7 +106,7 @@ export default function LoginPage() {
     setValue('password', password);
     
     setIsLoading(true);
-    const success = await login(email, password);
+    const success = await login(email, password, rememberMe);
 
     if (success) {
       toast.success('¡Bienvenido de vuelta!');

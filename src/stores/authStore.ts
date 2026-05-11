@@ -29,7 +29,7 @@ interface AuthState {
   setActiveRole: (role: UserRole) => void;
 
   // Actions
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, remember?: boolean) => Promise<boolean>;
   register: (data: RegisterData) => Promise<any | false>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<boolean>;
@@ -56,14 +56,20 @@ export const useAuthStore = create<AuthState>()(
       setInterfaceMode: (mode: string) => set({ interfaceMode: mode }),
       setActiveRole: (role: UserRole) => set({ activeRole: role }),
 
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string, remember: boolean = false) => {
         set({ isLoading: true, error: null });
 
         try {
           const response = await authApi.login(email, password);
 
-          // Save token
-          localStorage.setItem('oscorp-token', response.token);
+          // Save token based on remember preference
+          if (remember) {
+            localStorage.setItem('oscorp-token', response.token);
+            sessionStorage.removeItem('oscorp-token');
+          } else {
+            sessionStorage.setItem('oscorp-token', response.token);
+            localStorage.removeItem('oscorp-token');
+          }
 
           // Determine initial active role
           const initialRole = response.user.roles.includes('superadmin') ? 'superadmin' :
@@ -124,6 +130,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         localStorage.removeItem('oscorp-token');
+        sessionStorage.removeItem('oscorp-token');
         set({
           user: null,
           isAuthenticated: false,
@@ -180,7 +187,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       fetchCurrentUser: async () => {
-        const token = localStorage.getItem('oscorp-token');
+        const token = localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token');
         if (!token) return;
 
         try {
@@ -200,6 +207,7 @@ export const useAuthStore = create<AuthState>()(
           // Only clear session if it's explicitly an auth error
           if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('inválido') || errorMessage.includes('expirado')) {
             localStorage.removeItem('oscorp-token');
+            sessionStorage.removeItem('oscorp-token');
             set({
               user: null,
               isAuthenticated: false,
