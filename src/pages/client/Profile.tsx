@@ -417,7 +417,7 @@ export default function ClientProfile() {
                 </div>
               );
             }
-            if (item.action === 'push' && pushSupported) {
+            if (item.action === 'push') {
               return (
                 <div key={item.label} className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group">
                   <div className="flex items-center gap-4">
@@ -431,7 +431,13 @@ export default function ClientProfile() {
                   </div>
                   <Switch
                     checked={pushEnabled}
-                    onCheckedChange={handlePushToggle}
+                    onCheckedChange={(val) => {
+                      if (!pushSupported) {
+                        toast.info('Para activar notificaciones en iPhone, añade esta web a tu pantalla de inicio.');
+                        return;
+                      }
+                      handlePushToggle(val);
+                    }}
                     disabled={pushLoading}
                     className="data-[state=checked]:bg-blue-600"
                   />

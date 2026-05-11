@@ -109,7 +109,7 @@ function LessonMedia({ url, title }: { url: string; title?: string }) {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden bg-slate-100 dark:bg-slate-950 p-2"
                     >
-                        <div className="h-[500px] w-full">
+                        <div className="h-[60vh] min-h-[400px] md:h-[75vh] w-full">
                             <SecureViewer 
                                 url={url} 
                                 type={type as any} 

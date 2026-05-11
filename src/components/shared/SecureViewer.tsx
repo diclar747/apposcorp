@@ -118,14 +118,25 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
         )}
 
         {type === 'pdf' && (
-          <div className="w-full h-full bg-slate-800 flex flex-col">
-            <iframe
-              src={`${url}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
-              className="w-full flex-1 border-none"
+          <div className="w-full h-full bg-slate-800 flex flex-col relative">
+            <object
+              data={url}
+              type="application/pdf"
+              className="w-full h-full border-none"
               onLoad={() => setLoading(false)}
-              title={title}
-              key={isFullscreen ? 'fs' : 'normal'} // Force reload on transition to fix mobile rendering
-            />
+            >
+              <iframe
+                src={url}
+                className="w-full h-full border-none"
+                onLoad={() => setLoading(false)}
+                title={title}
+              />
+            </object>
+            
+            {/* Mobile zoom tip */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-bold text-white/80 pointer-events-none sm:hidden">
+              Usa el botón ⛶ para mejor visualización y zoom
+            </div>
           </div>
         )}
 
