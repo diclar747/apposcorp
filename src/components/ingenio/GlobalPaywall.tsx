@@ -6,7 +6,7 @@ import { SubscriptionModal } from './SubscriptionModal';
 import { useAuthStore } from '@/stores';
 
 export function GlobalPaywall() {
-  const { user } = useAuthStore();
+  const { user, setActiveRole } = useAuthStore();
   const { isOpen, openPaywall, closePaywall } = usePaywallStore();
   const { isActive } = useIngenioSubscription();
   const location = useLocation();
@@ -42,7 +42,16 @@ export function GlobalPaywall() {
           if (isIngenioRoute && !isActive) {
             isRedirecting.current = true;
             closePaywall();
-            navigate('/app');
+            // Determinar a dónde redirigir según los roles disponibles
+            if (user.roles.includes('seller')) {
+              setActiveRole('seller');
+              navigate('/vendedor');
+            } else if (user.roles.includes('client')) {
+              setActiveRole('client');
+              navigate('/app');
+            } else {
+              navigate('/');
+            }
             // Reset redirecting flag after a short delay
             setTimeout(() => { isRedirecting.current = false; }, 500);
           } else {

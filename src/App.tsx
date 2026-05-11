@@ -155,10 +155,10 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin Routes */}
-        <Route
+          <Route
           path="/admin"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
+            <ProtectedRoute allowedRoles={['superadmin', 'seller', 'client', 'ingenio']}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -185,10 +185,10 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         </Route>
 
         {/* Seller Routes */}
-        <Route
+          <Route
           path="/vendedor"
           element={
-            <ProtectedRoute allowedRoles={['seller']}>
+            <ProtectedRoute allowedRoles={['superadmin', 'seller', 'client', 'ingenio']}>
               <SellerLayout />
             </ProtectedRoute>
           }
@@ -212,10 +212,10 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         </Route>
 
         {/* Client App Routes */}
-        <Route
+          <Route
           path="/app"
           element={
-            <ProtectedRoute allowedRoles={['client', 'seller', 'superadmin']}>
+            <ProtectedRoute allowedRoles={['superadmin', 'seller', 'client', 'ingenio']}>
               <ClientLayout />
             </ProtectedRoute>
           }
