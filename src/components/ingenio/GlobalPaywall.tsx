@@ -39,24 +39,7 @@ export function GlobalPaywall() {
       open={isOpen} 
       onOpenChange={(open) => {
         if (!open) {
-          if (isIngenioRoute && !isActive) {
-            isRedirecting.current = true;
-            closePaywall();
-            // Determinar a dónde redirigir según los roles disponibles
-            if (user.roles.includes('seller')) {
-              setActiveRole('seller');
-              navigate('/vendedor');
-            } else if (user.roles.includes('client')) {
-              setActiveRole('client');
-              navigate('/app');
-            } else {
-              navigate('/');
-            }
-            // Reset redirecting flag after a short delay
-            setTimeout(() => { isRedirecting.current = false; }, 500);
-          } else {
-            closePaywall();
-          }
+          closePaywall();
         }
       }} 
     />
