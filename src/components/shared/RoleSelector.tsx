@@ -57,7 +57,18 @@ export const RoleSelector: React.FC = () => {
   const navigate = useNavigate();
   const { user, activeRole, setActiveRole } = useAuthStore();
 
-  if (!user || user.roles.length <= 1) return null;
+  if (!user) return null;
+
+  const roles = user.roles || [];
+  const hasClient = roles.includes('client');
+  const hasIngenio = roles.includes('ingenio');
+
+  // Si tiene 0 o 1 rol, no mostrar
+  if (roles.length <= 1) return null;
+
+  // Si tiene client e ingenio (y posiblemente solo esos dos según el pedido), ocultar el selector
+  // El usuario pidió quitar el botón si tiene los dos roles.
+  if (hasClient && hasIngenio && roles.length === 2) return null;
 
   const currentRole = activeRole || 'client';
   const config = ROLE_CONFIG[currentRole as keyof typeof ROLE_CONFIG];
