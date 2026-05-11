@@ -127,14 +127,17 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
         )}
 
         {type === 'pdf' && (() => {
-          const absoluteUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+          const isDataUrl = url.startsWith('data:');
+          const isAbsolute = url.startsWith('http://') || url.startsWith('https://');
+          const finalUrl = isDataUrl || isAbsolute ? url : `${window.location.origin}${url}`;
+          
           return (
           <div className="w-full h-full bg-slate-900 flex flex-col relative overflow-hidden">
-            {/* Google Docs Viewer for mobile (handles fit and zoom better) */}
+            {/* Google Docs Viewer for mobile (handles fit and zoom better, but DOES NOT support data: URIs) */}
             <iframe
-              src={window.innerWidth < 768 
-                ? `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`
-                : `${absoluteUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitW`
+              src={(window.innerWidth < 768 && !isDataUrl)
+                ? `https://docs.google.com/viewer?url=${encodeURIComponent(finalUrl)}&embedded=true`
+                : `${finalUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitW`
               }
               className="w-full h-full border-none bg-slate-900"
               onLoad={() => setLoading(false)}
@@ -144,7 +147,7 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
             {/* Mobile Overlays */}
             <div className="absolute bottom-4 right-4 flex flex-col gap-2 sm:hidden z-30">
                <Button 
-                onClick={() => window.open(absoluteUrl, '_blank')}
+                onClick={() => window.open(finalUrl, '_blank')}
                 size="sm"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-2xl text-[10px] uppercase tracking-widest px-4 h-10"
                >
