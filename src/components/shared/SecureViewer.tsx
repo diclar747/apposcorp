@@ -118,24 +118,31 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
         )}
 
         {type === 'pdf' && (
-          <div className="w-full h-full bg-slate-800 flex flex-col relative">
-            <object
-              data={url}
-              type="application/pdf"
-              className="w-full h-full border-none"
+          <div className="w-full h-full bg-slate-900 flex flex-col relative overflow-hidden">
+            {/* Google Docs Viewer for mobile (handles fit and zoom better) */}
+            <iframe
+              src={window.innerWidth < 768 
+                ? `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
+                : `${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitW`
+              }
+              className="w-full h-full border-none bg-slate-900"
               onLoad={() => setLoading(false)}
-            >
-              <iframe
-                src={url}
-                className="w-full h-full border-none"
-                onLoad={() => setLoading(false)}
-                title={title}
-              />
-            </object>
+              title={title}
+            />
             
-            {/* Mobile zoom tip */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-bold text-white/80 pointer-events-none sm:hidden">
-              Usa el botón ⛶ para mejor visualización y zoom
+            {/* Mobile Overlays */}
+            <div className="absolute bottom-4 right-4 flex flex-col gap-2 sm:hidden z-30">
+               <Button 
+                onClick={() => window.open(url, '_blank')}
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-2xl text-[10px] uppercase tracking-widest px-4 h-10"
+               >
+                 Optimizar Vista
+               </Button>
+            </div>
+
+            <div className="absolute bottom-4 left-4 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-bold text-white/70 pointer-events-none sm:hidden">
+              Usa ⛶ o el botón de la derecha si no se ve bien
             </div>
           </div>
         )}
