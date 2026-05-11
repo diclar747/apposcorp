@@ -454,7 +454,7 @@ router.get('/client-stats', authenticate, async (req: AuthRequest, res) => {
         ingenioStudent: {
           select: { 
             isActive: true,
-            assignments: {
+            ingenio_student_assignments: {
               orderBy: { assignedAt: 'desc' },
               take: 1,
               select: { stage: true, progress: true, status: true }
@@ -497,7 +497,7 @@ router.get('/client-stats', authenticate, async (req: AuthRequest, res) => {
         ? courses.reduce((sum, c) => sum + c.progress, 0) / courses.length 
         : 0;
 
-      const lastAssignment = user.ingenioStudent?.assignments[0] || null;
+      const lastAssignment = user.ingenioStudent?.ingenio_student_assignments[0] || null;
 
       academyStats = {
         hasAccess: true,
