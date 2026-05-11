@@ -65,6 +65,15 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Safety timeout for loading state
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   return (
     <div 
         ref={containerRef}
