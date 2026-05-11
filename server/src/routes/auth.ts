@@ -67,9 +67,16 @@ router.post('/login', async (req, res) => {
       token,
       user: userWithoutPassword,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Error en el servidor al intentar iniciar sesión' });
+    res.status(500).json({ 
+      error: 'Error en el servidor al intentar iniciar sesión',
+      debug: process.env.NODE_ENV === 'production' ? {
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+      } : error?.message
+    });
   }
 });
 

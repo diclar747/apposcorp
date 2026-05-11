@@ -90,6 +90,40 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
+// Diagnostic endpoint - TEMPORARY (test login query)
+app.get('/api/health/test-login-query', async (req, res) => {
+  try {
+    const email = (req.query.email as string) || 'admin@oscorp.com';
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        wallet: true,
+        virtualCard: true,
+        sellerProfile: {
+          include: {
+            plan: true
+          }
+        },
+        bankData: true,
+        ingenioSubscription: true,
+      }
+    });
+    if (!user) {
+      return res.json({ status: 'user_not_found', email });
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ status: 'ok', user: userWithoutPassword });
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'error',
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      name: error?.name,
+    });
+  }
+});
+
 // Maintenance mode check
 app.use(checkMaintenanceMode);
 
