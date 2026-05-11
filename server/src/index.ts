@@ -79,14 +79,13 @@ app.get('/api/health/db', async (req, res) => {
       status: 'ok',
       userCount,
       users,
-      databaseUrl: process.env.DATABASE_URL,
-      nodeEnv: process.env.NODE_ENV
+      databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
     });
   } catch (error: any) {
     res.status(500).json({
       status: 'error',
       error: error.message,
-      databaseUrl: process.env.DATABASE_URL
+      databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
     });
   }
 });
