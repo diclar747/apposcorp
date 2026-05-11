@@ -845,7 +845,7 @@ model IngenioStudent {
   isActive                    Boolean                       @default(true)
   joinedAt                    DateTime                      @default(now())
   updatedAt                   DateTime                      @updatedAt
-  ingenio_student_assignments ingenio_student_assignments[]
+  assignments                 IngenioStudentAssignment[]
   referredBy                  User?                         @relation("StudentReferredBy", fields: [referredById], references: [id])
   user                        User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   referrals                   User[]                        @relation("StudentReferrals")
@@ -874,8 +874,8 @@ model SubscriptionPlan {
   @@map("subscription_plans")
 }
 
-model ingenio_materials {
-  id            String   @id
+model IngenioMaterial {
+  id            String   @id @default(uuid())
   stage         String
   title         String
   description   String?
@@ -885,12 +885,14 @@ model ingenio_materials {
   isPublic      Boolean  @default(false)
   order         Int      @default(0)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
   segmentNumber Int      @default(1)
+
+  @@map("ingenio_materials")
 }
 
-model ingenio_student_assignments {
-  id               String         @id
+model IngenioStudentAssignment {
+  id               String         @id @default(uuid())
   studentId        String
   stage            String
   status           String         @default("pending")
@@ -899,9 +901,10 @@ model ingenio_student_assignments {
   startedAt        DateTime?
   completedAt      DateTime?
   notes            String?
-  ingenio_students IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student          IngenioStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, stage])
+  @@map("ingenio_student_assignments")
 }
 
 enum UserRole {
