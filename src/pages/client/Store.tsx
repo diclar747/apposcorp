@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, ShoppingBag, ShoppingCart, Loader2, Check } from 'lucide-react';
 import { productsApi, storesApi } from '@/lib/api';
@@ -12,8 +12,9 @@ import { toast } from 'sonner';
 const categories = ['Todos', 'Tecnología', 'Moda', 'Hogar', 'Deportes', 'Servicios', 'Gourmet'];
 
 export default function ClientStore() {
+  const { slug } = useParams();
   const [searchParams] = useSearchParams();
-  const storeSlug = searchParams.get('store');
+  const storeSlug = slug || searchParams.get('store');
 
   const { addItem, isInCart } = useCartStore();
 
