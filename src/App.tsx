@@ -222,9 +222,9 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         >
           <Route index element={<ClientDashboard />} />
           <Route path="tiendas" element={<ClientStores />} />
-          <Route path="tiendas/:slug" element={<ClientStoreDetail />} />
+          <Route path="tiendas/:slug" element={<StorePage />} />
           <Route path="tienda" element={<ClientStoreDetail />} />
-          <Route path="tienda/:slug" element={<ClientStoreDetail />} />
+          <Route path="tienda/:slug" element={<StorePage />} />
           <Route path="producto/:id" element={<ClientProduct />} />
           <Route path="escanear" element={<ClientScan />} />
           <Route path="wallet" element={<ClientWallet />} />

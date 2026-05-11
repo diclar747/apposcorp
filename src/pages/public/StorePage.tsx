@@ -29,7 +29,7 @@ export default function StorePage() {
   const isInApp = location.pathname.startsWith('/app');
   const from = searchParams.get('from');
   const isPreview = from === 'vendedor';
-  const backUrl = from === 'vendedor' ? '/vendedor' : '/app/tiendas';
+  const backUrl = from === 'vendedor' ? '/vendedor' : (isInApp ? '/app/tiendas' : '/');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -225,7 +225,7 @@ export default function StorePage() {
           </Button>
         </div>
 
-        {!isInApp && (
+        {(isInApp || !isInApp) && (
           <div className="absolute top-6 left-6 md:left-12 flex gap-4 z-30">
             <Link to={backUrl}>
               <Button variant="outline" className="rounded-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20">
