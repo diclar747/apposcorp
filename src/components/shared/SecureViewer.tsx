@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Lock, FileText, Video, Music, Loader2, X, Maximize2, ArrowLeft } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface SecureViewerProps {
   url: string;
@@ -147,11 +148,32 @@ export function SecureViewer({ url, type, title, onClose }: SecureViewerProps) {
             {/* Mobile Overlays */}
             <div className="absolute bottom-4 right-4 flex flex-col gap-2 sm:hidden z-30">
                <Button 
-                onClick={() => window.open(finalUrl, '_blank')}
+                onClick={() => {
+                  if (isDataUrl) {
+                    try {
+                      const arr = finalUrl.split(',');
+                      const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+                      const bstr = atob(arr[1]);
+                      let n = bstr.length;
+                      const u8arr = new Uint8Array(n);
+                      while(n--){
+                          u8arr[n] = bstr.charCodeAt(n);
+                      }
+                      const blob = new Blob([u8arr], {type: mime});
+                      const blobUrl = URL.createObjectURL(blob);
+                      window.open(blobUrl, '_blank');
+                    } catch (e) {
+                      console.error('Error opening base64 PDF', e);
+                      toast.error('Error al abrir el PDF completo.');
+                    }
+                  } else {
+                    window.open(finalUrl, '_blank');
+                  }
+                }}
                 size="sm"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-2xl text-[10px] uppercase tracking-widest px-4 h-10"
                >
-                 Optimizar Vista
+                 Abrir PDF Completo
                </Button>
             </div>
 
