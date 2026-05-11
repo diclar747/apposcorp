@@ -407,13 +407,34 @@ router.delete('/:id', authenticate, authorize('superadmin'), async (req, res) =>
   try {
     const id = req.params.id as string;
 
-    await prisma.user.delete({
-      where: { id },
+    // We use a transaction to ensure everything is deleted correctly
+    await prisma.$transaction(async (tx) => {
+      // 1. Clear referrals references (IngenioStudent)
+      await tx.ingenioStudent.updateMany({
+        where: { referredById: id },
+        data: { referredById: null }
+      });
+
+      // 2. Delete orders where user is buyer or seller (cascades to orderItems and trackingEvents)
+      await tx.order.deleteMany({
+        where: {
+          OR: [
+            { buyerId: id },
+            { sellerId: id }
+          ]
+        }
+      });
+
+      // 3. Delete the user (this will cascade to wallet, sellerProfile, courses, etc. due to schema config)
+      await tx.user.delete({
+        where: { id },
+      });
     });
 
-    res.json({ message: 'Usuário deletado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    res.json({ message: 'Usuario y todos sus datos relacionados eliminados con éxito' });
+  } catch (error: any) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Error al eliminar el usuario', details: error.message });
   }
 });
 
