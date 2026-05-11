@@ -80,6 +80,9 @@ import ClientIngenioStudy from '@/pages/client/IngenioStudy';
 import ClientCourses from '@/pages/client/Courses';
 import ClientCourseDetail from '@/pages/client/CourseDetail';
 import ClientNotifications from '@/pages/client/Notifications';
+import ClientProduct from '@/pages/client/Product';
+import ClientCart from '@/pages/client/Cart';
+import ClientCheckout from '@/pages/client/Checkout';
 
 // Ingenio Pages
 import IngenioDashboard from '@/pages/ingenio/Dashboard';
@@ -220,6 +223,9 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route index element={<ClientDashboard />} />
           <Route path="tiendas" element={<ClientStores />} />
           <Route path="tiendas/:slug" element={<ClientStoreDetail />} />
+          <Route path="tienda" element={<ClientStoreDetail />} />
+          <Route path="tienda/:slug" element={<ClientStoreDetail />} />
+          <Route path="producto/:id" element={<ClientProduct />} />
           <Route path="escanear" element={<ClientScan />} />
           <Route path="wallet" element={<ClientWallet />} />
           <Route path="wallet/transferir" element={<TransferMoney />} />
@@ -234,6 +240,8 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="cursos" element={<ClientCourses />} />
           <Route path="cursos/:id" element={<ClientCourseDetail />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
+          <Route path="carrito" element={<ClientCart />} />
+          <Route path="checkout" element={<ClientCheckout />} />
         </Route>
 
         <Route
