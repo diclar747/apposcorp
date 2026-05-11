@@ -3,7 +3,7 @@ import type { BillingCycle } from '@/types';
 const API_URL = '/api';
 
 // Helper to get token
-const getToken = () => localStorage.getItem('oscorp-token');
+const getToken = () => localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token');
 
 // Generic fetch with auth
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -302,7 +302,7 @@ export const creditsApi = {
       formData.append('documents', file);
       formData.append('types', type);
     });
-    const token = localStorage.getItem('oscorp-token');
+    const token = getToken();
     const res = await fetch(`${API_URL}/credits/${creditId}/documents`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -760,7 +760,7 @@ export const uploadApi = {
   uploadFile: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const token = localStorage.getItem('oscorp-token');
+    const token = getToken();
     
     const response = await fetch('/api/upload', {
       method: 'POST',
