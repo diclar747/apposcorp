@@ -45,8 +45,8 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      isAuthenticated: false,
-      token: localStorage.getItem('oscorp-token'),
+      isAuthenticated: !!(localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token')),
+      token: localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token'),
       isLoading: false,
       error: null,
       interfaceMode: 'OSCORP',
@@ -283,6 +283,16 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.isHydrated = true;
+          // Validate token presence after rehydration
+          const token = localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token');
+          if (!token) {
+            state.isAuthenticated = false;
+            state.user = null;
+            state.token = null;
+            state.activeRole = null;
+          } else {
+            state.token = token;
+          }
         }
       },
     }
