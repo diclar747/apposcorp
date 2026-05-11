@@ -8,6 +8,56 @@ import { authenticate, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
+// Helper: fetch user with all relations, with fallback for DB schema mismatches
+async function findUserWithRelations(where: { id?: string; email?: string }) {
+  // Try full query first
+  try {
+    return await prisma.user.findUnique({
+      where: where as any,
+      include: {
+        wallet: true,
+        virtualCard: true,
+        sellerProfile: { include: { plan: true } },
+        bankData: true,
+        ingenioSubscription: true,
+        sellerSubscription: true,
+      },
+    });
+  } catch (e) {
+    console.warn('Full user query failed, trying without sellerSubscription:', (e as any)?.message);
+  }
+  // Fallback without sellerSubscription
+  try {
+    return await prisma.user.findUnique({
+      where: where as any,
+      include: {
+        wallet: true,
+        virtualCard: true,
+        sellerProfile: { include: { plan: true } },
+        bankData: true,
+        ingenioSubscription: true,
+      },
+    });
+  } catch (e) {
+    console.warn('Second user query failed, trying minimal includes:', (e as any)?.message);
+  }
+  // Fallback minimal
+  try {
+    return await prisma.user.findUnique({
+      where: where as any,
+      include: {
+        wallet: true,
+        virtualCard: true,
+        sellerProfile: true,
+      },
+    });
+  } catch (e) {
+    console.warn('Third user query failed, trying bare query:', (e as any)?.message);
+  }
+  // Last resort: no includes
+  return await prisma.user.findUnique({ where: where as any });
+}
+
 // Login
 router.post('/login', async (req, res) => {
   try {
@@ -17,20 +67,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'El email y la contraseña son obligatorios' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        wallet: true,
-        virtualCard: true,
-        sellerProfile: {
-          include: {
-            plan: true
-          }
-        },
-        bankData: true,
-        ingenioSubscription: true,
-      }
-    });
+    const user = await findUserWithRelations({ email });
 
     // 1. Mensaje Genérico: Evitamos enumeración de usarios
     if (!user) {
@@ -69,14 +106,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      error: 'Error en el servidor al intentar iniciar sesión',
-      debug: process.env.NODE_ENV === 'production' ? {
-        message: error?.message,
-        code: error?.code,
-        meta: error?.meta,
-      } : error?.message
-    });
+    res.status(500).json({ error: 'Error en el servidor al intentar iniciar sesión' });
   }
 });
 
@@ -290,29 +320,17 @@ router.post('/register', async (req, res) => {
 // Get current user
 router.get('/me', authenticate, async (req: AuthRequest, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      include: {
-        wallet: true,
-        virtualCard: true,
-        sellerProfile: {
-          include: {
-            plan: true
-          }
-        },
-        bankData: true,
-        ingenioSubscription: true,
-      },
-    });
+    const user = await findUserWithRelations({ id: req.user!.userId });
 
     if (!user) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    console.error('Get /me error:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
@@ -321,33 +339,24 @@ router.put('/me', authenticate, async (req: AuthRequest, res) => {
   try {
     const { firstName, lastName, phone, address, city, avatar } = req.body;
 
-    const user = await prisma.user.update({
+    // Do the update first with no includes (safe)
+    await prisma.user.update({
       where: { id: req.user!.userId },
-      data: {
-        firstName,
-        lastName,
-        phone,
-        address,
-        city,
-        avatar,
-      },
-      include: {
-        wallet: true,
-        virtualCard: true,
-        sellerProfile: {
-          include: {
-            plan: true
-          }
-        },
-        bankData: true,
-        ingenioSubscription: true,
-      },
+      data: { firstName, lastName, phone, address, city, avatar },
     });
+
+    // Then fetch the full user with relations using safe helper
+    const user = await findUserWithRelations({ id: req.user!.userId });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
 
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    console.error('Update /me error:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
