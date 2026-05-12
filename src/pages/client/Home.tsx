@@ -54,10 +54,10 @@ export default function ClientHome() {
   const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
-    if (user?.walletId) {
-      fetchTransactions(user.walletId);
+    if (user) {
+      fetchTransactions(user.walletId || '');
     }
-  }, [user?.walletId, fetchTransactions]);
+  }, [user, fetchTransactions]);
 
   useEffect(() => {
     const loadProducts = async () => {
