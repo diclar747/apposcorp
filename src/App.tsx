@@ -44,6 +44,7 @@ import AdminPlans from '@/pages/admin/Plans';
 import AdminSellerSubscriptions from '@/pages/admin/SellerSubscriptions';
 import AdminSettings from '@/pages/admin/Settings';
 import AdminProfile from '@/pages/admin/Profile';
+import AdminManual from '@/pages/admin/Manual';
 
 // Seller Pages
 import SellerDashboard from '@/pages/seller/Dashboard';
@@ -181,6 +182,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="planes/suscripciones" element={<AdminSellerSubscriptions />} />
           <Route path="configuracion" element={<AdminSettings />} />
           <Route path="perfil" element={<AdminProfile />} />
+          <Route path="manual" element={<AdminManual />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
         </Route>
 

@@ -65,6 +65,7 @@ const sidebarItems = [
   { icon: Send, label: 'Campañas', href: '/admin/campanas' },
   { icon: ShieldCheck, label: 'Planes', href: '/admin/planes' },
   { icon: ShieldCheck, label: 'Susc. Vendedores', href: '/admin/planes/suscripciones' },
+  { icon: BookOpen, label: 'Manual del Sistema', href: '/admin/manual' },
   { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
 ];
 

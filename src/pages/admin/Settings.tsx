@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Globe, Shield, Bell, Wrench, RefreshCw, Mail, Phone, MapPin } from 'lucide-react';
+import { Save, Globe, Shield, Bell, Wrench, RefreshCw, Mail, Phone, MapPin, BookOpen, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +31,7 @@ interface SystemSetting {
 }
 
 export default function AdminSettings() {
+    const navigate = useNavigate();
     const [settings, setSettings] = useState<SystemSetting[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -126,11 +128,12 @@ export default function AdminSettings() {
             </div>
 
             <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[600px]">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 lg:w-[700px]">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="contact">Contacto</TabsTrigger>
                     <TabsTrigger value="security">Seguridad</TabsTrigger>
                     <TabsTrigger value="maintenance">Mantenimiento</TabsTrigger>
+                    <TabsTrigger value="manual">Manual</TabsTrigger>
                 </TabsList>
 
                 {/* General Settings */}
@@ -329,6 +332,35 @@ export default function AdminSettings() {
                                     checked={getSettingValue('maintenance_mode', 'false') === 'true'}
                                     onCheckedChange={(checked) => updateLocalSetting('maintenance_mode', String(checked), 'maintenance', true)}
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* Manual Tab */}
+                <TabsContent value="manual">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <BookOpen className="w-5 h-5 text-blue-500" />
+                                Manual del Sistema
+                            </CardTitle>
+                            <CardDescription>
+                                Accede a la documentación completa e interactiva de Oscorp Platform.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4 text-left">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                El Manual del Sistema contiene guías paso a paso detalladas para usuarios, comerciantes/vendedores y administradores, además del manual de instalación técnica. Cuenta con buscador inteligente y exportación a PDF.
+                            </p>
+                            <div className="pt-2">
+                                <Button 
+                                    onClick={() => navigate('/admin/manual')}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                                >
+                                    Abrir Manual Interactivo
+                                    <ArrowRight className="w-4 h-4 ml-2" />
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
