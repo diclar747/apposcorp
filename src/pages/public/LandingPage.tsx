@@ -56,6 +56,7 @@ const Navbar = () => {
     { label: 'Marketplace', href: '#marketplace' },
     { label: 'Nosotros', href: '#nosotros' },
     { label: 'Contacto', href: '#contacto' },
+    { label: 'Manual', href: '/manual', isRouterLink: true },
   ];
 
   return (
@@ -74,15 +75,25 @@ const Navbar = () => {
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-6 lg:gap-8">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) => 
+                link.isRouterLink ? (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    className="text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                )
+              )}
             </div>
 
             <div className="hidden md:flex items-center gap-3">
@@ -160,19 +171,36 @@ const Navbar = () => {
 
               {/* Nav links */}
               <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-                {navLinks.map((link, i) => (
-                  <motion.a
-                    key={link.label}
-                    href={link.href}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-800 font-medium text-base transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {link.label}
-                  </motion.a>
-                ))}
+                {navLinks.map((link, i) => 
+                  link.isRouterLink ? (
+                    <motion.div
+                      key={link.label}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <Link
+                        to={link.href}
+                        className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-800 font-medium text-base transition-colors w-full text-left"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    </motion.div>
+                  ) : (
+                    <motion.a
+                      key={link.label}
+                      href={link.href}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-800 font-medium text-base transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {link.label}
+                    </motion.a>
+                  )
+                )}
               </nav>
 
               {/* Bottom actions */}
@@ -942,6 +970,7 @@ const Footer = () => {
               <li><Link to="/ingenio" className="hover:text-blue-600 transition-colors">Ingenio Millonario</Link></li>
               <li><Link to="/app/wallet" className="hover:text-blue-600 transition-colors">Fintech Crowdfunding</Link></li>
               <li><Link to="/app" className="hover:text-blue-600 transition-colors">Marketplace</Link></li>
+              <li><Link to="/manual" className="hover:text-blue-600 transition-colors">Manual del Sistema</Link></li>
             </ul>
           </div>
           <div>

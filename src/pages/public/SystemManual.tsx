@@ -1,308 +1,933 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
+  Search,
   User,
+  Store,
   Shield,
-  Cog,
-  Download,
-  Printer,
-  ArrowRight,
-  ArrowLeft,
   Terminal,
-  LayoutDashboard,
-  Database,
-  Key,
-  ShoppingCart,
-  Percent,
+  Printer,
+  ChevronRight,
+  CheckCircle,
+  HelpCircle,
   Smartphone,
   CreditCard,
-  PlayCircle,
-  HelpCircle,
-  FileText,
-  ChevronRight,
-  Check,
-  Building,
-  Store,
-  DollarSign,
-  Briefcase,
-  Layers,
-  ArrowUpRight,
-  RefreshCw,
+  Plus,
   Trash2,
   Lock,
-  Plus
+  Database,
+  ArrowRight,
+  TrendingUp,
+  Settings,
+  X,
+  FileText,
+  Mail,
+  Phone,
+  Layers,
+  MapPin,
+  Percent,
+  PlusCircle,
+  AlertCircle,
+  LayoutDashboard,
+  ShoppingCart,
+  Wallet,
+  DollarSign,
+  Send,
+  Bell,
+  Wrench,
+  Clock,
+  Sparkles
 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-interface Slide {
+interface Section {
+  id: string;
   title: string;
-  subtitle: string;
+  tab: 'general' | 'cliente' | 'vendedor' | 'admin' | 'tecnico';
+  keywords: string[];
+  description: string;
   content: React.ReactNode;
-  bgClass: string;
 }
 
 export default function SystemManual() {
-  const [activeTab, setActiveTab] = useState<'presentacion' | 'cliente' | 'vendedor' | 'admin' | 'tecnico'>('presentacion');
-  const [slideIndex, setSlideIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<'general' | 'cliente' | 'vendedor' | 'admin' | 'tecnico'>('general');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handlePrint = () => {
     window.print();
   };
 
-  const slides: Slide[] = [
+  const sections: Section[] = [
+    // === GENERAL ===
     {
-      title: "Oscorp Platform",
-      subtitle: "Ecosistema Digital Integral E-Commerce + Fintech + E-Learning",
-      bgClass: "from-[#0f172a] via-[#1e1b4b] to-[#0f172a]",
+      id: 'vision-general',
+      title: 'Visión General de Oscorp Platform',
+      tab: 'general',
+      keywords: ['general', 'oscorp', 'ecosistema', 'arquitectura', 'roles'],
+      description: 'Introducción conceptual al ecosistema integrado fintech, e-commerce y e-learning.',
       content: (
-        <div className="flex flex-col items-center justify-center h-full text-center px-6">
-          <div className="animate-float mb-6">
-            <img src="/images/oscorp-round.png" alt="Oscorp Logo" className="w-32 h-32 mx-auto drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
-          </div>
-          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 text-white">
-            OSCORP <span className="gradient-text font-black">PLATFORM</span>
-          </h2>
-          <p className="text-lg md:text-xl text-gray-300 max-w-2xl leading-relaxed mb-8">
-            Un ecosistema robusto de servicios financieros digitales, mercado multi-vendedor y academia de educación financiera unificados en un solo lugar.
+        <div className="space-y-4">
+          <p>
+            <strong>Oscorp Platform</strong> es una solución integral diseñada para funcionar como un ecosistema digital colaborativo en Paraguay. Combina operaciones de comercio electrónico multilocal con servicios financieros avanzados (fintech) y un área académica premium.
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl mt-4">
-            {[
-              { label: "Fintech Wallet", desc: "Billetera P2P y Tarjetas QR", color: "border-blue-500/30 bg-blue-500/5 text-blue-400" },
-              { label: "Marketplace", desc: "Tiendas y POS integrado", color: "border-purple-500/30 bg-purple-500/5 text-purple-400" },
-              { label: "Créditos", desc: "Amortización automatizada", color: "border-indigo-500/30 bg-indigo-500/5 text-indigo-400" },
-              { label: "Ingenio Millonario", desc: "Academia Financiera Premium", color: "border-pink-500/30 bg-pink-500/5 text-pink-400" }
-            ].map((item, idx) => (
-              <div key={idx} className={`p-4 rounded-2xl border ${item.color} backdrop-blur-sm`}>
-                <div className="font-bold text-sm md:text-base">{item.label}</div>
-                <div className="text-xs text-gray-400 mt-1">{item.desc}</div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+              <h4 className="font-bold text-sm text-blue-400 flex items-center gap-1.5"><Smartphone className="w-4 h-4" /> Billetera Digital & QR</h4>
+              <p className="text-xs text-muted-foreground mt-1">Soporte P2P inmediato, pagos escaneando el código QR de clientes y transacciones liquidadas de forma atómica en base de datos.</p>
+            </div>
+            <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10">
+              <h4 className="font-bold text-sm text-purple-400 flex items-center gap-1.5"><Store className="w-4 h-4" /> Marketplace y POS</h4>
+              <p className="text-xs text-muted-foreground mt-1">Directorio de tiendas verificadas online y terminal Punto de Venta (POS) física para cobros en mostrador con caja diaria.</p>
+            </div>
+            <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
+              <h4 className="font-bold text-sm text-indigo-400 flex items-center gap-1.5"><CreditCard className="w-4 h-4" /> Sistema de Créditos</h4>
+              <p className="text-xs text-muted-foreground mt-1">Simulación y solicitud de financiamiento, adjuntando documentos RUC o cédula con desembolso directo a la wallet.</p>
+            </div>
+            <div className="p-4 rounded-xl bg-pink-500/5 border border-pink-500/10">
+              <h4 className="font-bold text-sm text-pink-400 flex items-center gap-1.5"><Layers className="w-4 h-4" /> Ingenio Millonario</h4>
+              <p className="text-xs text-muted-foreground mt-1">Programa premium de suscripción con cursos, metas financieras, ruleta interactiva de 10 pasos y referidos.</p>
+            </div>
           </div>
         </div>
       )
     },
     {
-      title: "Billetera Digital P2P y Tarjetas QR",
-      subtitle: "El Núcleo Financiero de la Plataforma",
-      bgClass: "from-[#0f172a] via-[#1e3a8a] to-[#0f172a]",
+      id: 'roles-usuario',
+      title: 'Sistema Multi-Rol por Cuenta',
+      tab: 'general',
+      keywords: ['roles', 'usuarios', 'cliente', 'vendedor', 'admin', 'ingenio'],
+      description: 'Explicación del esquema de roles que coexisten dentro de una misma cuenta.',
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center h-full max-w-5xl mx-auto px-6">
-          <div className="text-left space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">
-              <Smartphone className="w-3.5 h-3.5" /> FINTECH SERVICES
-            </div>
-            <h3 className="text-3xl font-bold text-white">Transacciones Rápidas y Tarjetas Virtuales</h3>
-            <p className="text-gray-300 leading-relaxed text-sm md:text-base">
-              Cada usuario al registrarse obtiene una **Billetera Digital** y una **Tarjeta Virtual OSC** con un número único y un código QR estructurado.
+        <div className="space-y-4">
+          <p>
+            El sistema admite **cuatro roles principales** de usuario que pueden ser asignados de forma combinada a un mismo email, compartiendo el monedero y los datos personales:
+          </p>
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li><strong className="text-blue-500">Cliente (client):</strong> Permite comprar en tiendas, escanear para pagar, solicitar préstamos y acceder a la wallet principal.</li>
+            <li><strong className="text-purple-500">Vendedor (seller):</strong> Habilita la barra lateral del vendedor, creación de tienda, gestión de productos, inventario, pedidos y acceso al POS.</li>
+            <li><strong className="text-pink-500">Estudiante Ingenio (ingenio):</strong> Otorga acceso a las herramientas del flujo de caja, ruleta educativa, descargas de materiales y la academia premium.</li>
+            <li><strong className="text-indigo-500">Administrador (superadmin):</strong> Concede acceso total al panel global `/admin` para gestionar usuarios, créditos, reportes y configurar la plataforma.</li>
+          </ul>
+        </div>
+      )
+    },
+
+    // === CLIENTE (13 SUB-MÓDULOS DETALLADOS) ===
+    {
+      id: 'registro-usuario',
+      title: 'Paso a Paso: Registro de Cuentas y Teléfono Completo',
+      tab: 'cliente',
+      keywords: ['registro', 'telefono', 'crear cuenta', 'verificacion', 'token'],
+      description: 'Guía paso a paso del formulario de registro y formato correcto de número de contacto.',
+      content: (
+        <div className="space-y-4">
+          <p>
+            El registro de usuarios se realiza de forma interactiva en la pantalla pública de `/register`:
+          </p>
+          <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>
+              <strong>Paso 1: Datos Personales.</strong> Ingresa Nombre, Apellido, Email y Contraseña. 
+              <br />
+              <strong className="text-amber-500">Carga del Número de Teléfono:</strong> Debes ingresar el número completo incluyendo el código de área del país (ejemplo para Paraguay: <code>+595981XXXXXX</code> o <code>0981XXXXXX</code>). El sistema valida este formato para habilitar transferencias automáticas por número telefónico.
+            </li>
+            <li>
+              <strong>Paso 2: Tipo de Cuenta.</strong> Selecciona tu objetivo (Comprar, Vender o Educación Financiera). Esto preconfigura los roles iniciales de la cuenta.
+            </li>
+            <li>
+              <strong>Paso 3: Verificación.</strong> El servidor crea un token criptográfico único. Recibirás un correo con un botón de verificación. Si estás en modo demo, el sistema mostrará el token de demostración en pantalla. Introduce este token en la pantalla de verificación para activar tu cuenta.
+            </li>
+          </ol>
+          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex gap-2">
+            <Lock className="w-4 h-4 shrink-0" />
+            <span>Si intentas iniciar sesión sin verificar tu correo, verás el mensaje de error 403: "Cuenta no verificada".</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'client-inicio',
+      title: '1. Inicio (Pantalla Principal del Cliente)',
+      tab: 'cliente',
+      keywords: ['cliente', 'inicio', 'tarjeta virtual', 'bienvenida', 'resumen hoy', 'accesos directos', 'menu inferior'],
+      description: 'Guía de la pantalla de bienvenida del usuario, visualización de tarjeta y accesos directos.',
+      content: (
+        <div className="space-y-4 text-sm">
+          <p>
+            Al ingresar a la interfaz del cliente (`/app`), verás la pantalla de **Inicio** (Resumen de hoy), diseñada con un estilo premium y las siguientes secciones clave:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>
+              <strong>Saludo Personalizado & Tarjeta de Débito Virtual:</strong>
+              <br />
+              Muestra el saludo principal (Ej: "¡Hola, Claudio!") y tu tarjeta digital **OSCORP PREMIUM** de color azul marino con chip integrado, antena contactless y un código QR de cobro impreso.
+              <br />
+              - **Número de Tarjeta (Ej: `OSC144394`):** Cuenta con un botón de copia rápida al portapapeles.
+              <br />
+              - **Nombre y Vencimiento:** Indica el nombre del titular y la fecha de vencimiento (`12/28`).
+            </li>
+            <li>
+              <strong>Botón "VER QR":</strong>
+              <br />
+              Ubicado debajo de la tarjeta virtual. Al presionarlo, despliega un modal centrado con tu código QR de monedero para recibir cobros presenciales al instante.
+            </li>
+            <li>
+              <strong>Cuadrícula de 8 Accesos Directos (Funciones de la Billetera):</strong>
+              <br />
+              Un panel interactivo para navegar rápidamente a cada módulo:
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li><strong className="text-blue-400">Enviar:</strong> Transferencias P2P directas ingresando destinatario y monto.</li>
+                <li><strong className="text-emerald-400">Recibir:</strong> Muestra tu ficha de cobro maximizada con brillo de pantalla aumentado.</li>
+                <li><strong className="text-purple-400">Préstamos:</strong> Solicitudes de financiamiento cargando foto de cédula (frente/dorso).</li>
+                <li><strong className="text-amber-400">Recargar:</strong> Agrega saldos de prueba de forma instantánea a tu billetera.</li>
+                <li><strong className="text-pink-400">E-Commerce:</strong> Directorio de tiendas comerciales online.</li>
+                <li><strong className="text-yellow-400">Cursos:</strong> Academia y lecciones en video de educación financiera.</li>
+                <li><strong className="text-cyan-400">Historial:</strong> Lista inmutable y filtros de todas tus transacciones.</li>
+                <li><strong className="text-gray-400">Ajustes:</strong> Edición de perfil, notificaciones y carga de datos bancarios.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Tarjetas de Estado Inferiores:</strong>
+              <br />
+              - **TUS PEDIDOS:** Monitorea el estado logístico de tus compras en el Marketplace (ej: "Sin pedidos aún").
+              <br />
+              - **CRÉDITOS:** Informa el estado de tus cuotas y préstamos activos de manera directa (ej: "Sin créditos activos").
+            </li>
+            <li>
+              <strong>Barra de Navegación Inferior Flotante (Menú):</strong>
+              <br />
+              Navegación persistente en móvil y escritorio con 5 accesos rápidos:
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>**INICIO (Casa):** Te lleva a este panel de resumen general.</li>
+                <li>**BILLETERA (Monedero):** Abre la visualización detallada del saldo e ingresos/egresos del mes.</li>
+                <li>**Botón Central QR (Azul):** Abre inmediatamente la cámara para Pago QR (Escanear y Pagar).</li>
+                <li>**TIENDA (Bolsa):** Explora los catálogos y tiendas premium de la plataforma.</li>
+                <li>**PERFIL (Usuario):** Abre tus configuraciones personales, avatar y datos de cobro bancario.</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-billetera',
+      title: '2. Mi Billetera (Visualización de Balances y Flujos)',
+      tab: 'cliente',
+      keywords: ['cliente', 'billetera', 'balance', 'ingresos', 'egresos', 'ocultar saldo'],
+      description: 'Control de saldo, estadísticas del mes y visualización analítica de ingresos/gastos.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Mi Billetera** (`/app/wallet`) consolida tus recursos económicos:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Saldo Disponible:** Indicador grande de tu saldo actual en Guaraníes (₲). Cuenta con un botón de ojo (Ocultar/Ver) para proteger tu privacidad en espacios públicos.</li>
+            <li>**Estadísticas Rápidas:** Dos widgets analíticos que muestran el total de **Ingresos del Mes** (barra verde) y **Egresos del Mes** (barra roja).</li>
+            <li>**Historial Integrado:** Lista compacta de los últimos movimientos de la wallet con opción de filtrado rápido.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-tarjeta',
+      title: '3. Mi Tarjeta (Diseños y Descarga de QR)',
+      tab: 'cliente',
+      keywords: ['cliente', 'tarjeta', 'diseño tarjeta', 'descargar qr', 'copiar nro'],
+      description: 'Personalización del diseño visual de la tarjeta virtual y descarga del código de cobro.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En **Mi Tarjeta** (`/app/tarjeta`), gestionas las credenciales de tu plástico digital:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Personalizar Estilo:** Cambia el diseño visual de la tarjeta seleccionando entre las plantillas de colores disponibles (Azul Premium, Púrpura Gradiente, Oscuro Minimalista o HSL personalizado).</li>
+            <li>**Descargar QR:** Presiona el botón **"Descargar QR"** para guardar tu código QR de monedero en un archivo PNG de alta resolución. Puedes compartir esta imagen por mensajería para que otros te paguen de forma remota.</li>
+            <li>**Copiar Número de Tarjeta:** Haz clic en "Copiar Nro." para registrar la credencial en el portapapeles y enviarla en texto.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-pago-qr',
+      title: '4. Pago QR (Escanear y Pagar en Comercios)',
+      tab: 'cliente',
+      keywords: ['cliente', 'pago qr', 'escanear qr', 'camara', 'confirmar pago', 'pin'],
+      description: 'Cómo usar la cámara del teléfono para pagar en locales físicos y tiendas POS.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Pago QR** (`/app/escanear`) habilita el cobro sin contacto:
+          </p>
+          <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>Presiona **"Pago QR"** en la barra lateral o el botón flotante central de la barra inferior.</li>
+            <li>Autoriza los permisos de cámara y enfoca el código QR presentado por el vendedor o el POS.</li>
+            <li>El sistema leerá los datos del comercio. Si el QR tiene un monto pre-cargado, este se mostrará en pantalla. De lo contrario, digita el total a abonar.</li>
+            <li>Presiona "Confirmar Pago" e ingresa tu **PIN de 4 dígitos** para debitar el saldo de tu wallet de forma inmediata.</li>
+          </ol>
+        </div>
+      )
+    },
+    {
+      id: 'client-enviar',
+      title: '5. Enviar (Transferencias P2P a Contactos)',
+      tab: 'cliente',
+      keywords: ['cliente', 'enviar', 'transferir', 'buscar contacto', 'pin transaccional'],
+      description: 'Flujo completo para transferir dinero digital a amigos o familiares mediante email o teléfono.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El acceso de **Enviar** (ubicado en los botones rápidos de Inicio) realiza transferencias P2P inmediatas:
+          </p>
+          <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Buscar Destinatario:** Digita el nombre, correo electrónico o número de teléfono del contacto.</li>
+            <li>**Monto y Mensaje:** Selecciona al usuario en la lista de coincidencias, ingresa el monto a transferir (₲) y escribe una nota opcional (Ej: "Pago de almuerzo").</li>
+            <li>**Confirmación y PIN:** Verifica los datos de transferencia y autoriza ingresando tu PIN de 4 dígitos. El destinatario recibirá el importe y una alerta push en su dispositivo.</li>
+          </ol>
+        </div>
+      )
+    },
+    {
+      id: 'client-recibir',
+      title: '6. Recibir (Visualizar Ficha de Cobro)',
+      tab: 'cliente',
+      keywords: ['cliente', 'recibir', 'mostrar qr', 'cobrar qr'],
+      description: 'Despliegue rápido de la ficha QR en pantalla para captar transferencias.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El botón rápido **Recibir** está diseñado para cobros presenciales:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>Al presionarlo, la pantalla aumenta su brillo y muestra de forma maximizada tu código QR y número de tarjeta.</li>
+            <li>Permite que otra persona abra su escáner y apunte a tu pantalla para realizar el traspaso de fondos cara a cara sin ingresar datos manuales.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-prestamos',
+      title: '7. Préstamos (Créditos Personales en Cuotas)',
+      tab: 'cliente',
+      keywords: ['cliente', 'prestamos', 'creditos', 'solicitar credito', 'cedula', 'interes', 'pagar cuota'],
+      description: 'Cómo simular un préstamo, cargar las fotos de tu cédula y pagar las cuotas mensuales.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Préstamos** (`/app/creditos`) te permite gestionar tu financiación:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Simulación:** Ingresa el monto total a solicitar y selecciona la cantidad de cuotas (3 a 24). El sistema calcula en tiempo real la tasa de interés y el monto exacto de la cuota mensual a abonar.</li>
+            <li>**Cargar Documentación:** Toma o sube dos fotos obligatorias: **Foto frontal de tu Cédula de Identidad** y **Foto del dorso de tu Cédula**. Envía la solicitud.</li>
+            <li>**Pago de Cuotas:** Si el administrador aprueba tu crédito, los fondos se acreditarán en tu wallet. Cada mes, ingresa al historial de préstamos activos y presiona **"Pagar Cuota"** para realizar el débito automático de tu saldo disponible.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-recargar',
+      title: '8. Recargar (Depósito de Saldo Simulador)',
+      tab: 'cliente',
+      keywords: ['cliente', 'recargar', 'depositar dinero', 'recarga virtual'],
+      description: 'Simulador integrado para acreditar saldos de prueba de forma inmediata en tu wallet.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            La acción de **Recargar** te permite añadir saldos ficticios para testear el Marketplace y Cursos:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>Presiona **"Recargar"** en la botonera rápida de Inicio.</li>
+            <li>Selecciona el importe predefinido a cargar (₲ 50.000, ₲ 100.000, ₲ 500.000 o ₲ 1.000.000).</li>
+            <li>Confirma la operación. Tu balance se actualizará al instante con una transacción registrada de tipo `deposit`.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-ecommerce',
+      title: '9. E-Commerce (Directorio de Tiendas, Carrito y Compra)',
+      tab: 'cliente',
+      keywords: ['cliente', 'ecommerce', 'compras', 'tiendas', 'carrito', 'checkout', 'delivery', 'retiro'],
+      description: 'Búsqueda de productos, carrito de compras, selección de envío y pago por wallet.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **E-Commerce** (`/app/tiendas` y `/app/carrito`) es el motor de compras online:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Explorar:** Navega por los catálogos organizados por categoría (Tecnología, Moda, Hogar, etc.) de las tiendas verificadas.</li>
+            <li>**Carrito:** Agrega los artículos, ingresa al icono de carrito y ajusta las cantidades que deseas comprar.</li>
+            <li>**Checkout:**
+              <ul className="list-disc pl-5 mt-1">
+                <li>Selecciona tipo de entrega: **Delivery** (envío a domicilio) o **Retiro en Tienda** (retiras en el local físico del vendedor).</li>
+                <li>Selecciona método de pago: **Pagar con Wallet** (descuenta automáticamente de tu balance OSC) o **Pago Contra Entrega** (abonas al recibir).</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-cursos',
+      title: '10. Cursos (Plataforma E-Learning de Capacitación)',
+      tab: 'cliente',
+      keywords: ['cliente', 'cursos', 'academia', 'inscribirse', 'lecciones', 'progreso'],
+      description: 'Catálogo de cursos, registro a clases, visualización de lecciones en video y progreso del alumno.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El submódulo de **Cursos** (`/app/cursos`) te conecta con la capacitación financiera:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Inscripción:** Explora el catálogo de capacitaciones gratuitas o de pago. Si es de pago y no posees membresía Ingenio activa, se debitará el costo del curso de tu wallet.</li>
+            <li>**Visualización:** Entra al curso para ver el temario dividido en módulos y lecciones. Reproduce los videos y consulta los materiales de apoyo.</li>
+            <li>**Marcar Completado:** Al finalizar una clase, márcala como completada. El sistema recalculará tu barra de progreso (`0-100%`) y emitirá tu certificado al completar todas las lecciones.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-historial',
+      title: '11. Historial (Estado y Auditoría de Movimientos)',
+      tab: 'cliente',
+      keywords: ['cliente', 'historial', 'movimientos', 'ingresos', 'egresos', 'compras', 'ventas'],
+      description: 'Listado y auditoría de transacciones personales con filtros rápidos por tipo.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Historial** recopila y organiza todas las transacciones financieras de tu cuenta:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Buscador y Filtros:** Clasifica los movimientos en: Todo, Ingresos (depósitos, transferencias recibidas, créditos cobrados) o Gastos (compras, cuotas pagadas, transferencias enviadas).</li>
+            <li>**Código de Colores:** Los ingresos se marcan con un signo positivo (`+`) y color verde; los egresos con un signo negativo (`-`) y color rojo.</li>
+            <li>**Ficha de Detalle:** Haz clic sobre cualquier transacción para desplegar el ID único de auditoría, la fecha y hora exacta, la descripción y el estado de la operación.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'client-ajustes',
+      title: '12. Ajustes (Configuración del Perfil y Datos Bancarios)',
+      tab: 'cliente',
+      keywords: ['cliente', 'ajustes', 'perfil', 'datos bancarios', 'banco', 'cuenta corriente', 'notificaciones'],
+      description: 'Edición de información personal, carga de datos de transferencia y switch de notificaciones.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En **Ajustes** (`/app/perfil` y menús de Perfil), configuras tus preferencias de cuenta:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Editar Perfil:** Modifica tu foto de perfil (avatar), nombre, apellido, dirección de domicilio y teléfono.</li>
+            <li>**Datos Bancarios:** Registra el nombre de tu Banco, número de cuenta bancaria y tipo de cuenta (Ahorro/Corriente). Estos datos son obligatorios si solicitas retiros de dinero de tu wallet a tu cuenta corriente física.</li>
+            <li>**Notificaciones Push:** Activa o desactiva las alertas del navegador para recibir avisos de compras y transferencias.</li>
+          </ul>
+        </div>
+      )
+    },
+
+    // === VENDEDOR ===
+    {
+      id: 'configurar-tienda',
+      title: 'Creación y Configuración de Tiendas',
+      tab: 'vendedor',
+      keywords: ['tienda', 'crear tienda', 'comerciante', 'logo', 'banner', 'whatsapp'],
+      description: 'Paso a paso para configurar tu perfil comercial y subir logo y banner.',
+      content: (
+        <div className="space-y-4">
+          <p>
+            Al asumir el rol de Vendedor, el sistema te redirigirá a la pantalla de configuración comercial en `/vendedor/tienda`:
+          </p>
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li><strong>Configuración Inicial:</strong> Registra el Nombre de tu Tienda, descripción comercial, dirección física, email y teléfono oficial de contacto.</li>
+            <li><strong>Imágenes de Marca:</strong> Sube tu logo (formato circular de aspecto 1:1) y un banner publicitario (aspecto apaisado para la cabecera de la tienda).</li>
+            <li><strong>WhatsApp Business:</strong> Registra tu número de Whatsapp comercial. El sistema habilitará botones automáticos en el Marketplace para que los compradores puedan chatear contigo directamente sobre tus productos.</li>
+            <li><strong>Visibilidad en Línea:</strong> Usa el interruptor "Tienda Online / Offline" para ocultar o publicar todo tu catálogo en la plataforma de inmediato.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'pos-comercial',
+      title: 'Punto de Venta (POS) Completo y Métodos de Cobro',
+      tab: 'vendedor',
+      keywords: ['pos', 'punto de venta', 'cobrar', 'efectivo', 'tarjeta', 'f2', 'contado', 'credito'],
+      description: 'Guía de uso de la terminal POS interactiva, ventas al contado, a crédito y cobros mediante Wallet QR.',
+      content: (
+        <div className="space-y-4">
+          <p>
+            El POS (`/vendedor/pos`) está optimizado para agilizar transacciones en local comercial:
+          </p>
+          <div className="space-y-3">
+            <h4 className="font-bold text-sm text-purple-400">Paso 1: Armar el Carrito de Compra</h4>
+            <p className="text-xs text-muted-foreground">
+              Toca los artículos de la cuadrícula o lee el SKU con un escáner de códigos de barras (enfocando el campo de búsqueda rápida). Ajusta cantidades con los botones `+` y `-`.
             </p>
-            <ul className="space-y-2 text-sm text-gray-300">
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>**Transferencias P2P**: Búsqueda por email o teléfono y envío con PIN de 4 dígitos.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>**Carga con QR**: Escaneo directo de tarjetas para pagos en comercios.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>**Historial de Ledger**: Registro inmutable de ingresos, egresos y comisiones.</span>
-              </li>
+            
+            <h4 className="font-bold text-sm text-purple-400">Paso 2: Asignar Cliente (Opcional)</h4>
+            <p className="text-xs text-muted-foreground">
+              Haz clic en el botón de cliente en la barra superior. Selecciona un cliente registrado en tu CRM local. Esto es **obligatorio** si la venta se registrará bajo la modalidad de crédito comercial.
+            </p>
+            
+            <h4 className="font-bold text-sm text-purple-400">Paso 3: Cobrar (Tecla F2)</h4>
+            <p className="text-xs text-muted-foreground">
+              Presiona "Cobrar" o la tecla rápida **F2** para seleccionar las condiciones de cobro:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+              <li><strong>Contado - Efectivo:</strong> Digita el monto recibido del cliente; la pantalla calcula el cambio/vuelto de inmediato.</li>
+              <li><strong>Contado - Tarjeta:</strong> Simula el cobro a través de una terminal de tarjetas bancarias.</li>
+              <li><strong>Contado - Wallet QR:</strong> Genera un código QR de cobro exclusivo del ticket. El cliente escanea el código con su app móvil Oscorp y confirma el pago con su PIN. El POS detecta el pago de forma automática y emite el ticket.</li>
+              <li><strong>Crédito:</strong> Registra la venta a cuenta corriente. Requiere un cliente asignado y añade la deuda a su ficha de balance.</li>
             </ul>
           </div>
-          <div className="flex justify-center">
-            {/* Visual virtual card */}
-            <div className="w-80 h-48 rounded-3xl p-6 relative overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#0d2137] to-[#1a2744] shadow-2xl border border-white/10 text-left">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <div className="text-[10px] text-gray-400 tracking-wider">TARJETA DIGITAL PREMIUM</div>
-                  <div className="text-sm font-bold text-white tracking-widest mt-0.5">OSCORP WALLET</div>
-                </div>
-                <img src="/images/oscorp-round.png" alt="Oscorp Mini" className="w-8 h-8 opacity-80" />
+        </div>
+      )
+    },
+    {
+      id: 'productos-crud',
+      title: 'Gestión de Productos (Escribir, Editar y Eliminar)',
+      tab: 'vendedor',
+      keywords: ['productos', 'escribir', 'editar', 'eliminar', 'costo', 'ganancia', 'sku', 'inventario'],
+      description: 'Gestión de inventario de productos físicos/servicios y uso de la calculadora de costo/ganancias.',
+      content: (
+        <div className="space-y-4">
+          <p>
+            El módulo de catálogo en `/vendedor/productos` permite mantener al día el inventario:
+          </p>
+          <ul className="space-y-3 text-sm text-gray-300">
+            <li>
+              <strong>Escribir (Crear Producto):</strong> Presiona **"Nuevo Producto"**. Registra el nombre, SKU único, categoría, stock inicial y visibilidad (Solo Online, Solo POS, o Ambos). Sube hasta 5 imágenes arrastrándolas al modal o pegando URLs directas.
+            </li>
+            <li>
+              <strong>Calculadora Financiera de Costo/Margen:</strong>
+              <div className="p-3 bg-slate-900 border border-white/5 rounded-xl font-mono text-xs text-purple-300 my-1">
+                PRECIO VENTA = COSTO COMPRA * (1 + PORCENTAJE GANANCIA / 100)
               </div>
-              <div className="text-lg font-mono text-gray-200 tracking-widest mb-4">OSC-8924-1729-9304</div>
-              <div className="flex justify-between items-end">
-                <div>
-                  <div className="text-[8px] text-gray-400">TITULAR</div>
-                  <div className="text-xs font-semibold text-white">USUARIO DEMO</div>
-                </div>
-                <div className="bg-white p-1 rounded-md">
-                  <div className="w-10 h-10 bg-black flex items-center justify-center text-[6px] text-white">QR CODE</div>
-                </div>
-              </div>
-            </div>
+              <p className="text-xs text-muted-foreground">
+                Si ingresas el **Costo de Compra** (₲) y el **Porcentaje de Ganancia** (%), el sistema calculará el **Precio de Venta** final de forma automática. También calcula el porcentaje a la inversa si modificas el costo y el precio final.
+              </p>
+            </li>
+            <li>
+              <strong>Editar:</strong> Haz clic en el botón de 3 puntos (⋯) de la fila y selecciona **"Editar"**. Permite ajustar stock, precios y agregar variantes (talla, color) con precios específicos.
+            </li>
+            <li>
+              <strong>Eliminar:</strong> Pulsa **"Eliminar"** desde la lista de acciones. Aparecerá un cuadro de confirmación del navegador para verificar la acción de forma segura antes de realizar la baja permanente.
+            </li>
+          </ul>
+        </div>
+      )
+    },
+
+    // === ADMINISTRADOR (16 SUB-MÓDULOS) ===
+    {
+      id: 'admin-dashboard',
+      title: '1. Dashboard (Panel Principal Admin)',
+      tab: 'admin',
+      keywords: ['admin', 'dashboard', 'resumen', 'kpi', 'graficos', 'metricas'],
+      description: 'Cómo supervisar el estado financiero y operativo general de la plataforma.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El **Dashboard** (`/admin`) es la pantalla de control principal del administrador. Contiene:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**KPIs Clave:** Resumen de Usuarios Totales, Tiendas Activas, Productos en catálogo, Ventas de hoy, Ingresos acumulados del mes y Créditos activos.</li>
+            <li>**Tendencias comparativas:** Cada KPI muestra una variación porcentual en verde (crecimiento) o rojo (reducción) en comparación con el mes anterior.</li>
+            <li>**Gráficos en tiempo real:** Gráfico mensual de Ventas vs Comisiones recaudadas (5% de retención base), barra de crecimiento de usuarios (clientes frente a vendedores), y distribución del estado de pedidos en gráfico de dona.</li>
+            <li>**Tablas de Monitoreo:** Resumen de las últimas 5 órdenes de compra y las últimas 5 transacciones de wallet realizadas en todo el ecosistema.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-tiendas',
+      title: '2. Tiendas (Gestión de Comercios)',
+      tab: 'admin',
+      keywords: ['admin', 'tiendas', 'aprobar tienda', 'verificar tienda', 'bloquear tienda'],
+      description: 'Cómo verificar tiendas asociadas, modificar su estado de conexión y administrarlas.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En el módulo de **Tiendas** (`/admin/tiendas`), el administrador supervisa los perfiles de los vendedores:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Visualizar Catálogos:** Inspecciona los banners, logos, descripciones y datos de contacto de cada comercio.</li>
+            <li>**Verificación (Badge Verificada):** Pulsa el botón "Verificar" en la ficha del comercio. Esto le añade un check azul de autenticidad en el Marketplace público, aumentando la confianza de los compradores.</li>
+            <li>**Cambio de Estado:** Desactiva temporalmente tiendas que cometan faltas comerciales. Una tienda desactivada no aparecerá en el directorio público y sus productos quedarán ocultos temporalmente en el Marketplace.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-usuarios',
+      title: '3. Usuarios (Gestión de Cuentas y Roles)',
+      tab: 'admin',
+      keywords: ['admin', 'usuarios', 'roles', 'contraseñas', 'modificar usuario', 'crear usuario', 'borrar usuario'],
+      description: 'Control de perfiles, cambio de contraseñas, activación y borrado físico de cuentas.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Usuarios** (`/admin/usuarios`) administra las cuentas registradas en la base de datos:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Crear Usuario:** Registra cuentas desde el panel asignándoles contraseña y roles inmediatos.</li>
+            <li>**Asignación de Roles Múltiples:** Edita perfiles mediante casillas de verificación. Un mismo usuario puede tener checkboxes activados para Cliente (Wallet), Vendedor (POS/Tienda), Ingenio (Academia) y Admin (Acceso al panel). El backend autogenera billeteras si agregas el rol `client` y no existía una previamente.</li>
+            <li>**Resetear Contraseñas:** Permite modificar la contraseña de cualquier usuario que deba blanquear accesos, cifrándola con bcrypt de forma segura al guardar.</li>
+            <li>**Activar / Desactivar Cuentas:** Modifica el flag `isActive`. Si está desactivado, el usuario no podrá iniciar sesión.</li>
+            <li>**Eliminación en Cascada:** Al presionar "Eliminar Usuario", la base de datos borrará la cuenta y todas sus relaciones (pedidos, productos, wallet) para evitar datos huérfanos.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-productos',
+      title: '4. Productos (Monitoreo del Catálogo Global)',
+      tab: 'admin',
+      keywords: ['admin', 'productos', 'catalogo global', 'eliminar producto', 'precios'],
+      description: 'Supervisión de artículos cargados por los vendedores y eliminación de contenido no permitido.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En **Productos** (`/admin/productos`), el administrador supervisa todo el inventario de la plataforma:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Búsqueda y Filtros:** Filtra productos por tienda de origen, categoría, stock y visibilidad (Online/POS).</li>
+            <li>**Moderación:** Modifica o da de baja productos que infrinjan los términos de uso. La eliminación del producto es física y reduce el stock del marketplace de inmediato.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-pedidos',
+      title: '5. Pedidos (Historial y Logística Global)',
+      tab: 'admin',
+      keywords: ['admin', 'pedidos', 'ordenes', 'comisiones', 'ganancias', 'seguimiento'],
+      description: 'Supervisión de todas las compras online, comisiones retenidas y desglose de envíos.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Pedidos** (`/admin/pedidos`) consolida las transacciones de compraventa del Marketplace:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Inspección de Órdenes:** Visualiza el desglose completo del carrito comprado, datos del cliente, dirección de entrega y método de pago (Wallet o Contra entrega).</li>
+            <li>**Desglose Monetario:** Rastrear el Subtotal, Impuesto, Costo de Envío, la **Comisión retenida para la plataforma** y la ganancia neta acreditada al vendedor.</li>
+            <li>**Historial de Cambios de Estado:** Consulta el log temporal detallado (Tracking) que indica el día, hora y operador que cambió el pedido de "Pendiente" a "Confirmado", "Listo" o "Entregado".</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-finanzas',
+      title: '6. Finanzas (Reportes de Rentabilidad de la Plataforma)',
+      tab: 'admin',
+      keywords: ['admin', 'finanzas', 'ganancia plataforma', 'balance general', 'comisiones acumuladas'],
+      description: 'Visualización del balance contable general del ecosistema digital.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Finanzas** (`/admin/finanzas`) proporciona auditoría de rentabilidad:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Balance Consolidado:** Suma de ingresos totales (depósitos), egresos totales (retiros y créditos aprobados) y comisiones de plataforma.</li>
+            <li>**Métricas de Comisión:** Reporte detallado de comisiones acumuladas provenientes del marketplace (5% default de ventas online).</li>
+            <li>**Saldos en Tránsito:** Monitorea el volumen de dinero en estado "Pendiente" (retiros de efectivo solicitados que aún no se han aprobado).</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-transacciones',
+      title: '7. Transacciones (Auditoría del Ledger de Billeteras)',
+      tab: 'admin',
+      keywords: ['admin', 'transacciones', 'ledger', 'historial transacciones', 'auditar wallet'],
+      description: 'Buscador y filtro global de todos los movimientos de saldo digital realizados.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Transacciones** (`/admin/transacciones`) es el registro inmutable de movimientos:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Historial Paginado:** Lista detallada que muestra fecha, ID, email del emisor, email del receptor, descripción, monto y estado.</li>
+            <li>**Filtro por Tipo de Operación:** Clasifica las búsquedas por depósitos (`deposit`), retiros (`withdrawal`), transferencias P2P (`transfer_out` / `transfer_in`), compras en el marketplace (`purchase`), ventas (`sale`) y cobros de comisión (`commission`).</li>
+            <li>**Trazabilidad:** Permite verificar auditorías en caso de disputas de pagos o transferencias P2P no reconocidas.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-retiros',
+      title: '8. Retiros (Aprobación de Efectivo a Cuentas Bancarias)',
+      tab: 'admin',
+      keywords: ['admin', 'retiros', 'aprobar retiro', 'datos bancarios', 'rechazar retiro'],
+      description: 'Cómo procesar las solicitudes de transferencia de saldo digital a cuentas bancarias físicas de los usuarios.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El flujo de **Retiros** (`/admin/retiros`) gestiona las salidas de dinero de las wallets de usuarios/comercios a sus cuentas bancarias:
+          </p>
+          <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Auditar Datos Bancarios:** Inspecciona la ficha del retiro que incluye: Banco del destinatario, Número de Cuenta, Tipo de Cuenta (Ahorro/Corriente), Nombre del Titular y su Documento de Identidad (CI/RUC).</li>
+            <li>**Operación Externa:** El administrador debe ingresar al home banking físico de su banco y realizar la transferencia bancaria manual al destinatario por el monto indicado.</li>
+            <li>**Aprobación:** Una vez realizada la transferencia manual, presiona **"Aprobar"** en el panel. El estado cambia a aprobado y se formaliza el débito en la billetera.</li>
+            <li>**Rechazo:** Si los datos bancarios son erróneos, presiona **"Rechazar"**. El dinero retenido regresa automáticamente al saldo disponible de la wallet del usuario con una notificación de error.</li>
+          </ol>
+        </div>
+      )
+    },
+    {
+      id: 'admin-creditos',
+      title: '9. Créditos (Aprobación y Análisis de Préstamos)',
+      tab: 'admin',
+      keywords: ['admin', 'creditos', 'aprobar prestamos', 'cedula de identidad', 'amortizacion', 'desembolso'],
+      description: 'Auditoría de imágenes de cédulas y activación de planes de amortización con desembolso automático.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En el módulo de **Créditos** (`/admin/creditos`), el administrador opera como la entidad crediticia:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
+            <li>**Análisis de Documentación:** Abre la solicitud para inspeccionar los archivos de **Cédula de Identidad (Frente y Dorso)** cargados por el cliente.</li>
+            <li>**Cálculo de Cuotas e Intereses:** Revisa la tabla de amortización con los vencimientos mensuales, monto solicitado, tasa de interés y valor exacto de la cuota.</li>
+            <li>**Aprobación:** Presione **"Aprobar"**. Automáticamente:
+              <ul className="list-disc pl-5 mt-1">
+                <li>El estado del préstamo pasa a **Activo**.</li>
+                <li>Se realiza una transferencia automática desde la cuenta de Oscorp acreditando el monto total solicitado al saldo disponible de la wallet del cliente.</li>
+                <li>Se genera una notificación de acreditación inmediata en la cuenta del usuario.</li>
+              </ul>
+            </li>
+            <li>**Rechazo:** Si los documentos son ilegibles o el perfil no califica, presiona **"Rechazar"** ingresando el motivo de rechazo.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-reportes',
+      title: '10. Reportes (Auditoría y Descarga CSV)',
+      tab: 'admin',
+      keywords: ['admin', 'reportes', 'exportar csv', 'descargar excel', 'auditoria financiera'],
+      description: 'Cómo generar y exportar listados de auditoría financiera con formato compatible para Excel.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Reportes** (`/admin/reportes`) recopila estadísticas de control fiscal:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Filtros de Exportación:** Selecciona rango de fechas, tipo de movimiento o estado del registro.</li>
+            <li>**Exportación a CSV:** Haz clic en **"Exportar a CSV"**. El servidor generará un archivo con cabecera **BOM UTF-8** para asegurar que caracteres especiales e importes en Guaraníes se abran correctamente en Microsoft Excel.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-ingenio-master',
+      title: '11. Ingenio Millonario (Gestión de la Academia y Ruleta)',
+      tab: 'admin',
+      keywords: ['admin', 'ingenio', 'setup inicial', 'ruleta', 'etapas', 'e1', 'e2', 'academia'],
+      description: 'Inicialización de contenidos educativos, etapas de la ruleta de 10 pasos y academia.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Ingenio Millonario** (`/admin/ingenio`) permite estructurar el programa educativo premium:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Inicializar Sistema (Setup):** Si es la primera instalación, pulsa **"Setup Inicial"**. El sistema creará automáticamente las etapas **E1 (Fundamentos)** y **E2 (Maestría)**, configurará sus 10 segmentos respectivos de la ruleta con colores, e insertará dos cursos base en el e-learning.</li>
+            <li>**Gestión de Segmentos:** Edita los títulos y descripciones de los 10 pasos de cada etapa (Mentalidad, Ahorro, Inversiones, etc.).</li>
+            <li>**Carga de Contenido de Cursos:** Vincula lecciones de video (URLs de YouTube/Vimeo), documentos de lectura y resúmenes para cada etapa o segmento.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-suscripciones',
+      title: '12. Suscripciones Ingenio (Habilitación de Estudiantes)',
+      tab: 'admin',
+      keywords: ['admin', 'suscripciones', 'aprobar ingenio', 'revocar acceso', 'transferencia bancaria'],
+      description: 'Habilitación de estudiantes premium, registro de cuotas y aprobación de transferencias bancarias.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En **Suscripciones Ingenio** (`/admin/ingenio/suscripciones`), controlas quién tiene acceso al programa premium:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Aprobación de Transferencias Bancarias:** Cuando un alumno paga su suscripción mediante transferencia bancaria, el estado queda en `PENDING_APPROVAL`. Tras confirmar el cobro en tu banco, ingresa el monto recibido en el panel y pulsa **"Aprobar"**. El sistema habilitará el rol `ingenio` en su cuenta de inmediato.</li>
+            <li>**Revocar Acceso:** Si el estudiante incumple el pago de sus cuotas mensuales de financiamiento, presiona **"Revocar Acceso"** para bloquear su ingreso a la academia y al dashboard financiero personal.</li>
+            <li>**Restablecer / Eliminar:** Elimina la suscripción para realizar un reset completo del alumno (borrando sus avances y código de referido).</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-materiales',
+      title: '13. Materiales Ingenio (Gestión de Descargables)',
+      tab: 'admin',
+      keywords: ['admin', 'materiales', 'descargables', 'pdf', 'plantilla', 'excel', 'subir archivo'],
+      description: 'Subida de archivos adjuntos, plantillas de presupuesto y guías PDF para alumnos.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Materiales** (`/admin/ingenio/materiales`) gestiona los recursos descargables:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Subir Recurso:** Presiona **"Nuevo Material"**. Carga el título, selecciona el tipo de archivo (PDF, Excel, Imagen), asigna la etapa (E1/E2) y el paso de la ruleta (1 al 10) al que pertenece.</li>
+            <li>**Configurar Descarga:** Sube el archivo o ingresa su URL de almacenamiento, define si su acceso es público o requiere membresía activa y pulsa Guardar.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-campanas-push',
+      title: '14. Campañas (Mensajes Push y Difusión Masiva)',
+      tab: 'admin',
+      keywords: ['admin', 'campañas', 'campanas', 'broadcast', 'push api', 'marketing', 'notificaciones'],
+      description: 'Cómo disparar notificaciones push y alertas in-app a segmentos de usuarios.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Campañas** (`/admin/campanas`) opera como el portal de comunicación masiva:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Creación de Campaña:** Diseña comunicados agregando un título, descripción corta, imagen opcional y enlace de destino.</li>
+            <li>**Segmentación:** Elige el grupo receptor: Todos los usuarios, solo Clientes, solo Vendedores o solo Estudiantes de la academia.</li>
+            <li>**Envío (Web Push API):** Presiona **"Enviar"**. El servidor se conecta al Service Worker del navegador de cada usuario registrado, proyectando el mensaje emergente en pantallas móviles y de escritorio en tiempo real.</li>
+            <li>**Estadísticas de Tasa de Clics:** Permite medir cuántas notificaciones fueron entregadas, cuántas leídas y cuántos clics totales se registraron.</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-planes',
+      title: '15. Planes (Suscripciones para Vendedores)',
+      tab: 'admin',
+      keywords: ['admin', 'planes', 'planes vendedor', 'membresias comercio', 'tarifas tiendas'],
+      description: 'Cómo definir los planes comerciales y costos mensuales que pagan los vendedores para usar la plataforma.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            El módulo de **Planes** (`/admin/planes`) define la monetización del Marketplace:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Registrar Planes:** Crea ofertas comerciales como Plan Básico, Estándar y Comercial.</li>
+            <li>**Costos y Ciclos:** Fija los precios en Guaraníes, los días de prueba gratuitos (ej: 7 días), el límite máximo de productos que pueden publicar y el ciclo de facturación (mensual, trimestral, anual).</li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'admin-susc-vendedores',
+      title: '16. Susc. Vendedores (Control de Membresías de Comercios)',
+      tab: 'admin',
+      keywords: ['admin', 'susc. vendedores', 'aprobar membresia vendedor', 'suscripciones tiendas'],
+      description: 'Aprobación de pagos de membresías de comercios y activación de sus límites de catálogo.',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p>
+            En **Susc. Vendedores** (`/admin/planes/suscripciones`), controlas las membresías de los comercios:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+            <li>**Revisión de Pagos:** Verifica las solicitudes de activación de plan de las tiendas comerciales.</li>
+            <li>**Aprobación:** Aprueba el pago del plan tras confirmar la acreditación bancaria, lo que actualiza la fecha de vencimiento del vendedor y activa su límite correspondiente de carga de productos.</li>
+          </ul>
+        </div>
+      )
+    },
+
+    // === TECNICO ===
+    {
+      id: 'tecnico-setup',
+      title: 'Manual Técnico: Instalación, Carga y Dependencias',
+      tab: 'tecnico',
+      keywords: ['instalacion', 'compilar', 'software', 'npx', 'npm', 'despliegue', 'db', 'prisma', 'postgres'],
+      description: 'Comandos técnicos para instalar dependencias, configurar variables de entorno y levantar el entorno de desarrollo.',
+      content: (
+        <div className="space-y-4">
+          <p>
+            Para levantar el ecosistema completo en un nuevo servidor o máquina de desarrollo local, siga estos comandos en terminal:
+          </p>
+          <div className="space-y-3">
+            <h4 className="font-bold text-xs text-emerald-400">1. Descargar Dependencias</h4>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npm install
+            </pre>
+
+            <h4 className="font-bold text-xs text-emerald-400">2. Variables de Entorno</h4>
+            <p className="text-xs text-muted-foreground">
+              Renombra el archivo <code>.env.local</code> o crea uno llamado <code>.env</code> en la raíz del proyecto. Configura:
+            </p>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[10px] text-slate-400 overflow-x-auto">
+{`DATABASE_URL="postgresql://user:pass@host:5432/dbname"
+JWT_SECRET="tu_clave_secreta_jwt"
+SMTP_USER="tu_correo_gmail@gmail.com"
+SMTP_PASS="tu_contrasena_aplicacion_gmail"
+VAPID_PUBLIC_KEY="clave_publica_push"
+VAPID_PRIVATE_KEY="clave_privada_push"`}
+            </pre>
           </div>
         </div>
       )
     },
     {
-      title: "Marketplace y Sistema POS Comercial",
-      subtitle: "Habilitación Completa para Vendedores",
-      bgClass: "from-[#0f172a] via-[#311042] to-[#0f172a]",
+      id: 'tecnico-database',
+      title: 'Inicialización de Base de Datos y Datos Semilla (Seeds)',
+      tab: 'tecnico',
+      keywords: ['prisma', 'migrate', 'seed', 'db', 'base de datos', 'postgre', 'generar'],
+      description: 'Cómo aplicar migraciones de base de datos PostgreSQL, generar bindings de Prisma y cargar datos iniciales.',
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center h-full max-w-5xl mx-auto px-6">
-          <div className="flex justify-center order-2 md:order-1">
-            <div className="w-full max-w-sm rounded-3xl p-6 bg-slate-900/80 border border-purple-500/20 backdrop-blur-md shadow-2xl space-y-4 text-left">
-              <div className="flex justify-between items-center pb-3 border-b border-white/5">
-                <span className="text-xs text-purple-400 font-bold flex items-center gap-1"><Store className="w-4 h-4" /> PUNTO DE VENTA (POS)</span>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">Sesión Activa</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>1x iPhone 15 Pro</span>
-                  <span>₲ 8.500.000</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>2x Funda Protectora</span>
-                  <span>₲ 300.000</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-white/5">
-                  <span>Total a Cobrar</span>
-                  <span className="text-purple-400">₲ 8.800.000</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-2 bg-slate-800 rounded-lg text-center text-[10px] text-gray-300 border border-white/5 cursor-pointer">Efectivo</div>
-                <div className="p-2 bg-slate-800 rounded-lg text-center text-[10px] text-gray-300 border border-white/5 cursor-pointer">Tarjeta</div>
-                <div className="p-2 bg-purple-500/20 rounded-lg text-center text-[10px] text-purple-400 border border-purple-500/40 cursor-pointer">Wallet QR</div>
-              </div>
-              <button className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1">
-                COBRAR (F2) <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-          <div className="text-left space-y-4 order-1 md:order-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-semibold">
-              <Store className="w-3.5 h-3.5" /> TIENDA MULTI-VENDEDOR
-            </div>
-            <h3 className="text-3xl font-bold text-white">Ventas Online y Físicas Unificadas</h3>
-            <p className="text-gray-300 leading-relaxed text-sm md:text-base">
-              Los vendedores cuentan con una tienda virtual pública y un potente **Punto de Venta (POS)** para registrar ventas físicas y cobrar a través del QR del monedero del cliente.
-            </p>
-            <ul className="space-y-2 text-sm text-gray-300">
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-purple-400 shrink-0" />
-                <span>**POS de Cobro Inteligente**: Efectivo, tarjeta y wallet QR integrado.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-purple-400 shrink-0" />
-                <span>**Calculadora de Márgenes**: Define costos y porcentajes; el precio de venta se calcula de inmediato.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-purple-400 shrink-0" />
-                <span>**Gestión Logística**: Avance del pedido de "Pendiente" a "Entregado" con notificaciones automáticas al cliente.</span>
-              </li>
-            </ul>
+        <div className="space-y-4">
+          <p>
+            El proyecto utiliza **Prisma ORM** para mapear los esquemas a la base de datos relacional PostgreSQL.
+          </p>
+          <div className="space-y-3">
+            <h4 className="font-bold text-xs text-emerald-400">1. Generación de Modelos de Cliente</h4>
+            <p className="text-xs text-muted-foreground">Genera los bindings de cliente compilados en typescript para usar en el backend:</p>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npx prisma generate
+            </pre>
+
+            <h4 className="font-bold text-xs text-emerald-400">2. Sincronizar Esquema de Base de Datos</h4>
+            <p className="text-xs text-muted-foreground">Aplica los esquemas de Prisma a tu base de datos relacional PostgreSQL:</p>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npx prisma db push
+            </pre>
+
+            <h4 className="font-bold text-xs text-emerald-400">3. Poblar Base de Datos (Seed)</h4>
+            <p className="text-xs text-muted-foreground">Carga las cuentas administradoras de prueba, planes, categorías financieras y cursos base iniciales:</p>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npm run db:seed
+            </pre>
           </div>
         </div>
       )
     },
     {
-      title: "Ingenio Millonario",
-      subtitle: "Habilitación Completa para Vendedores",
-      bgClass: "from-[#0f172a] via-[#581c87] to-[#0f172a]",
+      id: 'tecnico-compilacion',
+      title: 'Compilar y Ejecutar en Producción',
+      tab: 'tecnico',
+      keywords: ['compilar', 'build', 'vite', 'npm run build', 'ejecutar', 'produccion'],
+      description: 'Pasos para generar los empaquetados optimizados para despliegue.',
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center h-full max-w-5xl mx-auto px-6">
-          <div className="text-left space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-semibold">
-              <Plus className="w-3.5 h-3.5" /> PROGRAMA PREMIUM
-            </div>
-            <h3 className="text-3xl font-bold text-white">Educación Financiera y Finanzas Personales</h3>
-            <p className="text-gray-300 leading-relaxed text-sm md:text-base">
-              El módulo estrella de la plataforma. Diseñado con una estructura en etapas (E1 y E2) y una **ruleta pedagógica de 10 principios financieros** por nivel.
-            </p>
-            <ul className="space-y-2 text-sm text-gray-300">
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-violet-400 shrink-0" />
-                <span>**Gestión de Contabilidad**: Seguimiento de Activos, Pasivos, Ingresos y Gastos de caja.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-violet-400 shrink-0" />
-                <span>**Metas de Ahorro y Presupuestos**: Control de límites mensuales y registro de bitácoras de ahorro.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-violet-400 shrink-0" />
-                <span>**Sistema de Referidos**: Creación de códigos únicos de referido para invitar a nuevos estudiantes y rastrear beneficios.</span>
-              </li>
-            </ul>
-          </div>
-          <div className="flex justify-center">
-            {/* Visual wheel segment representation */}
-            <div className="relative w-64 h-64 rounded-full border-4 border-violet-500/30 flex items-center justify-center bg-slate-950/60 shadow-2xl">
-              <div className="absolute inset-2 rounded-full border-2 border-dashed border-violet-500/20"></div>
-              <div className="absolute w-4 h-4 bg-violet-500 rounded-full z-10 animate-pulse"></div>
-              <div className="text-center z-10 px-4">
-                <div className="text-[10px] text-violet-400 font-bold uppercase tracking-widest">Etapa E1</div>
-                <div className="text-lg font-black text-white mt-1">10 PASOS</div>
-                <div className="text-[9px] text-gray-400 mt-0.5">Fundamentos Financieros</div>
-              </div>
-              {/* Dots around the circle */}
-              {[...Array(10)].map((_, i) => {
-                const angle = (i * 360) / 10;
-                return (
-                  <div
-                    key={i}
-                    className="absolute w-6 h-6 rounded-full bg-slate-800 text-[10px] text-gray-400 flex items-center justify-center font-bold border border-violet-500/30"
-                    style={{
-                      transform: `rotate(${angle}deg) translate(110px) rotate(-${angle}deg)`
-                    }}
-                  >
-                    {i + 1}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )
-    },
-    {
-      title: "Arquitectura y Stack Técnico",
-      subtitle: "Un Ecosistema Robusto y Escalable",
-      bgClass: "from-[#0f172a] via-[#0f2d2a] to-[#0f172a]",
-      content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center h-full max-w-5xl mx-auto px-6">
-          <div className="flex flex-col justify-center gap-4">
-            <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/20 text-left">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold mb-2 text-sm">
-                <Database className="w-4 h-4" /> Base de Datos Relacional
-              </div>
-              <p className="text-xs text-gray-300">
-                PostgreSQL gestionado a través de **Prisma ORM (v6.8.0)**. Soporta transacciones atómicas para compras, transferencias e inscripciones.
-              </p>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/20 text-left">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold mb-2 text-sm">
-                <Terminal className="w-4 h-4" /> Node.js & Express API
-              </div>
-              <p className="text-xs text-gray-300">
-                Servidor Express.js estructurado en controladores, servicios y middlewares de seguridad como `authenticate` y `requireActiveSubscription`.
-              </p>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/20 text-left">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold mb-2 text-sm">
-                <Key className="w-4 h-4" /> Seguridad y Notificaciones
-              </div>
-              <p className="text-xs text-gray-300">
-                Autenticación robusta con JSON Web Tokens (JWT) y hashes de contraseña bcryptjs. Sistema integrado de **Web Push API (VAPID)** para alertas en tiempo real.
-              </p>
-            </div>
-          </div>
-          <div className="text-left space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
-              <Cog className="w-3.5 h-3.5" /> STACK TECNOLÓGICO
-            </div>
-            <h3 className="text-3xl font-bold text-white">Desarrollado para Alta Performance</h3>
-            <p className="text-gray-300 leading-relaxed text-sm md:text-base">
-              El frontend corre sobre **React 19 + TypeScript + Vite** con estilos rápidos y adaptables provistos por Tailwind CSS y animaciones en Framer Motion.
-            </p>
-            <div className="flex flex-wrap gap-2 pt-2">
-              {['Vite', 'React 19', 'Tailwind', 'Express', 'Prisma ORM', 'PostgreSQL', 'Zustand', 'JWT', 'Web Push'].map((tech) => (
-                <span key={tech} className="px-2.5 py-1 bg-slate-800 rounded-lg text-xs text-emerald-300 border border-emerald-500/10">
-                  {tech}
-                </span>
-              ))}
+        <div className="space-y-4">
+          <p>
+            Para generar y correr los binarios optimizados reduciendo tiempos de respuesta de la plataforma en producción:
+          </p>
+          <div className="space-y-3">
+            <h4 className="font-bold text-xs text-emerald-400">1. Compilación del Frontend (React bundle con Vite)</h4>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npm run build
+            </pre>
+
+            <h4 className="font-bold text-xs text-emerald-400">2. Compilación del Backend (Servidor Express TypeScript a JS)</h4>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npm run server:build
+            </pre>
+
+            <h4 className="font-bold text-xs text-emerald-400">3. Levantar Servidor en Producción</h4>
+            <pre className="p-3 bg-slate-950 border border-white/5 rounded-xl font-mono text-[11px] text-emerald-400 overflow-x-auto">
+              npm run server:start
+            </pre>
+
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs flex gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>Para desarrollo local concurrente de cliente y servidor, ejecute: <code>npm run dev:full</code>.</span>
             </div>
           </div>
         </div>
@@ -310,833 +935,248 @@ export default function SystemManual() {
     }
   ];
 
-  const handleNextSlide = () => {
-    setSlideIndex((prev) => (prev + 1) % slides.length);
-  };
+  // Filtering sections based on active tab and search query
+  const filteredSections = useMemo(() => {
+    return sections.filter((sec) => {
+      const matchesTab = searchQuery ? true : sec.tab === activeTab;
+      if (!matchesTab) return false;
 
-  const handlePrevSlide = () => {
-    setSlideIndex((prev) => (prev - 1 + slides.length) % slides.length);
-  };
+      if (!searchQuery) return true;
+
+      const query = searchQuery.toLowerCase();
+      const matchesTitle = sec.title.toLowerCase().includes(query);
+      const matchesDesc = sec.description.toLowerCase().includes(query);
+      const matchesKeywords = sec.keywords.some((kw) => kw.toLowerCase().includes(query));
+
+      return matchesTitle || matchesDesc || matchesKeywords;
+    });
+  }, [activeTab, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#070b13] text-foreground pb-12 relative overflow-hidden font-sans">
-      {/* Background decoration */}
-      <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-blue-900/10 to-transparent pointer-events-none -z-10"></div>
-      <div className="absolute top-[20%] right-[-10%] w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
-      <div className="absolute bottom-[10%] left-[-10%] w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
-
-      {/* HEADER (No-print) */}
-      <header className="no-print border-b border-white/5 bg-slate-950/60 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/images/oscorp-round.png" alt="Oscorp Logo" className="w-9 h-9 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
-            <div>
-              <span className="font-extrabold text-white text-base tracking-tight">OSCORP</span>
-              <span className="text-xs block text-gray-400 font-semibold mt-[-4px]">CENTRO DE DOCUMENTACIÓN</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20"
-            >
-              <Printer className="w-4 h-4" /> Exportar a PDF / Imprimir
-            </button>
-          </div>
+    <div className="space-y-6 max-w-5xl mx-auto pb-10 font-sans text-left">
+      
+      {/* Header and top options (No-print) */}
+      <div className="no-print flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="w-7 h-7 text-blue-500" /> Manual y Documentación del Ecosistema
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            Guía de uso y procedimientos para clientes, comercios, administración y soporte técnico.
+          </p>
         </div>
-      </header>
+        <div className="flex gap-2">
+          <Button
+            onClick={handlePrint}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+          >
+            <Printer className="w-4 h-4" /> Exportar Manual a PDF
+          </Button>
+        </div>
+      </div>
 
-      {/* TABS SELECTOR (No-print) */}
-      <div className="no-print max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="flex p-1 bg-slate-900/80 border border-white/5 rounded-2xl overflow-x-auto no-scrollbar gap-1">
+      {/* Search Bar (No-print) */}
+      <div className="no-print relative">
+        <Search className="absolute left-3.5 top-3 h-5 w-5 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Buscar un tema en el manual (ej: POS, retiros, créditos, campañas, compilar, registro)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-11 pr-10 py-6 text-sm rounded-2xl border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm focus:ring-blue-500"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3.5 top-3.5 text-gray-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Tabs list (No-print) - hidden when searching */}
+      {!searchQuery && (
+        <div className="no-print flex p-1 bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto no-scrollbar gap-1">
           {[
-            { id: 'presentacion', label: '🖥️ Presentación', desc: 'Diapositivas' },
-            { id: 'cliente', label: '👤 Cliente', desc: 'Guía de Usuario' },
-            { id: 'vendedor', label: '🏬 Vendedor y POS', desc: 'Guía Comercial' },
-            { id: 'admin', label: '🛡️ Administrador', desc: 'Guía del Panel' },
-            { id: 'tecnico', label: '⚙️ Técnico', desc: 'Instalación y Carga' }
+            { id: 'general', label: '🖥️ Visión General' },
+            { id: 'cliente', label: '👤 Cliente / Usuario' },
+            { id: 'vendedor', label: '🏬 Vendedor y POS' },
+            { id: 'admin', label: '🛡️ Administración' },
+            { id: 'tecnico', label: '⚙️ Manual Técnico' }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 min-w-[140px] px-4 py-3 rounded-xl transition-all text-center relative ${
+              className={`flex-1 min-w-[130px] py-2.5 rounded-xl text-xs font-semibold transition-all text-center ${
                 activeTab === tab.id
-                  ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/10'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-800/10 dark:hover:bg-white/5'
               }`}
             >
-              <div className="text-xs md:text-sm">{tab.label}</div>
-              <div className={`text-[9px] block ${activeTab === tab.id ? 'text-blue-100' : 'text-gray-500'}`}>
-                {tab.desc}
-              </div>
+              {tab.label}
             </button>
           ))}
         </div>
+      )}
+
+      {/* Search results banner (No-print) */}
+      {searchQuery && (
+        <div className="no-print p-3 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-xl text-xs font-medium text-left">
+          Mostrando resultados de búsqueda para "{searchQuery}" ({filteredSections.length} encontrados)
+        </div>
+      )}
+
+      {/* Main Sections render (Web view) */}
+      <div className="no-print space-y-6">
+        {filteredSections.length === 0 ? (
+          <div className="text-center py-20 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl">
+            <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <h3 className="font-bold text-gray-800 dark:text-gray-200">No se encontraron temas</h3>
+            <p className="text-xs text-gray-500 mt-1">Prueba con palabras clave más sencillas como "POS", "créditos", "campañas" o "compilar".</p>
+          </div>
+        ) : (
+          filteredSections.map((sec) => {
+            const themeColor =
+              sec.tab === 'cliente' ? 'border-l-blue-500' :
+              sec.tab === 'vendedor' ? 'border-l-purple-500' :
+              sec.tab === 'admin' ? 'border-l-indigo-500' :
+              sec.tab === 'tecnico' ? 'border-l-emerald-500' :
+              'border-l-slate-400';
+
+            return (
+              <motion.div
+                key={sec.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`bg-white dark:bg-slate-900 rounded-2xl border-l-4 ${themeColor} border-y border-r border-gray-200 dark:border-slate-800/50 shadow-sm overflow-hidden`}
+              >
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                      {sec.tab}
+                    </span>
+                    <span className="text-xs text-muted-foreground">ID: {sec.id}</span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
+                    {sec.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    {sec.description}
+                  </p>
+                  <div className="pt-4 border-t border-gray-100 dark:border-slate-800/50 text-slate-700 dark:text-gray-300 text-sm leading-relaxed">
+                    {sec.content}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
       </div>
 
-      {/* MAIN CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        
-        {/* TAB: PRESENTATION (No-print) */}
-        {activeTab === 'presentacion' && (
-          <div className="no-print">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/5 bg-slate-950">
-              <div className={`py-16 md:py-24 bg-gradient-to-b ${slides[slideIndex].bgClass} transition-all duration-700 min-h-[480px] flex flex-col justify-between relative`}>
-                {/* Visual grid background */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
-                
-                <div className="text-center px-4 mb-4">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-                    {slides[slideIndex].title}
-                  </span>
-                  <p className="text-xs text-gray-400 mt-2 font-medium">{slides[slideIndex].subtitle}</p>
-                </div>
-
-                <div className="flex-1 flex items-center justify-center">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={slideIndex}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -15 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-full"
-                    >
-                      {slides[slideIndex].content}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-
-                {/* Navigation Footer */}
-                <div className="flex justify-between items-center px-6 md:px-12 pt-6 border-t border-white/5 mt-8">
-                  <div className="flex gap-1">
-                    {slides.map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-1.5 rounded-full transition-all duration-300 ${i === slideIndex ? 'w-6 bg-blue-500' : 'w-1.5 bg-slate-800'}`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handlePrevSlide}
-                      className="p-2 rounded-xl bg-slate-900 border border-white/5 hover:bg-slate-800 text-gray-400 hover:text-white transition-all"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={handleNextSlide}
-                      className="p-2 rounded-xl bg-slate-900 border border-white/5 hover:bg-slate-800 text-gray-400 hover:text-white transition-all"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Quick Helper under the slider */}
-            <div className="mt-8 p-6 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-md flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-3">
-                <FileText className="w-8 h-8 text-blue-400" />
-                <div className="text-left">
-                  <h4 className="font-bold text-white text-sm">¿Deseas el manual completo en un solo documento?</h4>
-                  <p className="text-xs text-gray-400">Presiona el botón "Exportar a PDF" de arriba para abrir la vista de impresión optimizada.</p>
-                </div>
-              </div>
-              <button
-                onClick={handlePrint}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white border border-white/10 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-              >
-                <Printer className="w-3.5 h-3.5" /> Ver Formato PDF
-              </button>
-            </div>
+      {/* ======================================================== */}
+      {/* PRINT-ONLY COMPLETE DOCUMENT VIEW (Hidden in Web View) */}
+      {/* ======================================================== */}
+      <div className="print-layout hidden space-y-12 p-12 bg-white text-black leading-relaxed">
+        {/* Cover Page */}
+        <div className="print-page-break flex flex-col items-center justify-center min-h-[90vh] text-center pt-24">
+          <img src="/images/oscorp-round.png" alt="Oscorp Logo" className="w-40 h-40 mb-8" />
+          <h1 className="text-4xl font-black text-slate-950 mb-2">MANUAL INTEGRAL DE LA PLATAFORMA</h1>
+          <h2 className="text-xl font-bold text-blue-600 mb-8">OSCORP PLATFORM</h2>
+          <div className="w-24 h-1 bg-blue-600 mb-12"></div>
+          <p className="text-base text-slate-600 max-w-xl mb-12">
+            Guía Técnica, Comercial y Operativa Completa para Administradores, Comercios y Clientes.
+          </p>
+          <div className="text-xs text-slate-500 mt-24">
+            <div>Sitio Oficial de Referencia: https://oscorp.com.py/</div>
+            <div>Versión del Ecosistema: 1.0.0</div>
+            <div>Fecha de Impresión: {new Date().toLocaleDateString('es-ES')}</div>
           </div>
-        )}
+        </div>
 
-        {/* ======================================================== */}
-        {/* TABS CONTENT - WEB VIEW */}
-        {/* ======================================================== */}
-        <div className="no-print mt-4">
+        {/* Section 1: Intro / General */}
+        <div className="print-page-break space-y-6">
+          <h2 className="text-2xl font-black border-b pb-2 text-slate-900">1. Visión General y Roles del Ecosistema</h2>
+          <p>
+            **Oscorp Platform** es una suite paraguaya integrada de e-commerce y fintech de alto nivel.
+          </p>
+          <h3 className="text-lg font-bold text-blue-700 mt-4">1.1 Canales de Roles</h3>
+          <p>
+            Los roles operan dentro de una misma cuenta en base al vector <code>UserRole[]</code> del modelo de Prisma, permitiendo a los usuarios cambiar de interfaz instantáneamente sin perder su wallet:
+          </p>
+          <ul className="list-disc pl-6 space-y-2">
+            <li><strong>Cliente (client):</strong> Monedero virtual, marketplace, transferencias P2P y solicitud de créditos.</li>
+            <li><strong>Vendedor (seller):</strong> Configuración de tiendas públicas, base de CRM de clientes locales, inventario y POS.</li>
+            <li><strong>Estudiante (ingenio):</strong> Academia premium de educación financiera y herramientas de gestión del flujo de caja.</li>
+            <li><strong>Administrador (superadmin):</strong> Control financiero y de usuarios a nivel de administración global.</li>
+          </ul>
+        </div>
+
+        {/* Section 2: Cliente */}
+        <div className="print-page-break space-y-6">
+          <h2 className="text-2xl font-black border-b pb-2 text-slate-900">2. Manual de Operaciones de Cliente (Billetera)</h2>
           
-          {/* CLIENT MANUAL */}
-          {activeTab === 'cliente' && (
-            <div className="space-y-8 animate-fadeIn">
-              <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/5 backdrop-blur-md text-left">
-                <h2 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
-                  <User className="w-6 h-6 text-blue-400" /> MANUAL DE USUARIO / CLIENTE
-                </h2>
-                <p className="text-gray-400 text-sm">Este manual cubre todas las operaciones que realiza un usuario regular en la plataforma (Wallet, Marketplace, Cursos y Créditos).</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6 text-left">
-                  {/* Sec 1: Registro */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold">1</span>
-                      Registro e Inicio de Sesión
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Para crear una cuenta nueva en **Oscorp Platform**:
-                      </p>
-                      <ol className="list-decimal pl-5 space-y-2 text-xs text-gray-400">
-                        <li>Presiona el botón **"Regístrate"** en la pantalla de bienvenida.</li>
-                        <li>
-                          **Formulario Paso 1 (Datos Personales)**: Carga tu nombre, apellido, correo electrónico (será tu usuario), número de teléfono completo y contraseña de seguridad (mínimo 8 caracteres, 1 número y 1 letra).
-                        </li>
-                        <li>
-                          **Formulario Paso 2 (Tipo de cuenta)**: Elige el rol inicial de tu cuenta seleccionando la tarjeta: **Usuarios** (para billetera y compras), **Comerciante** (vendedor con POS) o **Ingenio Millonario** (programa financiero).
-                        </li>
-                        <li>
-                          **Formulario Paso 3 (Confirmación)**: Revisa tus datos y presiona **"Crear Cuenta"**.
-                        </li>
-                      </ol>
-                      <div className="p-3 bg-amber-500/15 border border-amber-500/20 text-amber-400 rounded-xl text-xs flex gap-2">
-                        <Lock className="w-4 h-4 shrink-0" />
-                        <div>
-                          **Verificación Obligatoria**: Antes de iniciar sesión debes verificar tu email pulsando el botón en el correo recibido. En modo demo, copia el token y pégalo en la pantalla.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sec 2: Billetera */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold">2</span>
-                      Operaciones de Wallet y Pago QR
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Al ingresar a la interfaz del Cliente en `/app` verás tu **Tarjeta Digital**. Desde aquí puedes realizar las siguientes acciones financieras:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
-                          <div className="font-bold text-xs text-white">Recibir / Ver QR</div>
-                          <p className="text-[11px] text-gray-400 mt-1">Presiona "Recibir". Mostrará tu tarjeta con un QR único de tu cuenta. También puedes copiar tu número de tarjeta OSC en un clic.</p>
-                        </div>
-                        <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
-                          <div className="font-bold text-xs text-white">Transferencias P2P</div>
-                          <p className="text-[11px] text-gray-400 mt-1">Presiona "Enviar". Busca al usuario de destino por su nombre o correo electrónico, ingresa el monto, un mensaje y confirma ingresando tu PIN de seguridad.</p>
-                        </div>
-                        <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
-                          <div className="font-bold text-xs text-white">Cargar / Pagar QR</div>
-                          <p className="text-[11px] text-gray-400 mt-1">Presiona "Cargar" para abrir el escáner de cámara. Apunta al QR de otro usuario o de una tienda y confirma la transacción de forma inmediata.</p>
-                        </div>
-                        <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
-                          <div className="font-bold text-xs text-white">Carga de Fondos (Simulada)</div>
-                          <p className="text-[11px] text-gray-400 mt-1">En el módulo Wallet puedes pulsar "Depositar" para acreditar dinero ficticio de inmediato a tu saldo para realizar pruebas de flujo.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sec 3: Marketplace */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold">3</span>
-                      Marketplace y Proceso de Compra
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        El sistema incluye un catálogo global de tiendas en `/app/tiendas`.
-                      </p>
-                      <ol className="list-decimal pl-5 space-y-2 text-xs text-gray-400">
-                        <li>**Explorar Tiendas**: Navega por las tiendas verificadas o busca productos en el Home.</li>
-                        <li>**Agregar al Carrito**: Haz clic sobre cualquier producto y pulsa **"Agregar al Carrito"**.</li>
-                        <li>**Gestión de Carrito**: Accede al carrito en la barra inferior para ajustar cantidades o quitar productos.</li>
-                        <li>**Proceso de Checkout**:
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            <li>Elige tipo de entrega: **Delivery** (envío) o **Retiro en Tienda**.</li>
-                            <li>Elige método de pago: **Pagar con Wallet** (usa tu saldo OSC) o **Pago Contra Entrega**.</li>
-                          </ul>
-                        </li>
-                      </ol>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Quick stats / design sidebar info */}
-                  <div className="p-6 rounded-3xl bg-slate-900/80 border border-blue-500/20 text-left relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-xl"></div>
-                    <HelpCircle className="w-8 h-8 text-blue-400 mb-2" />
-                    <h4 className="font-bold text-white text-sm">¿Cómo se configura el PIN?</h4>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                      La primera vez que vayas a transferir dinero o pagar con QR, el sistema detectará que no tienes un PIN transaccional y te solicitará crear uno de **4 dígitos**. 
-                    </p>
-                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                      Este PIN se encripta de forma segura en la base de datos y se te exigirá para autorizar cada retiro o transferencia.
-                    </p>
-                  </div>
-
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left">
-                    <h4 className="font-bold text-white text-sm mb-3">Créditos Personales</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                      Si necesitas financiamiento, puedes dirigirte a **"Mis Créditos"**:
-                    </p>
-                    <ul className="space-y-2 text-xs text-gray-300">
-                      <li className="flex items-start gap-1.5">
-                        <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                        <span>Solicita ingresando el monto y número de cuotas (3 a 24 meses).</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                        <span>Carga imágenes claras de tu **Cédula de Identidad (Frente y Dorso)**.</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                        <span>Una vez aprobado por el Administrador, el monto total se acreditará a tu Wallet.</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                        <span>Paga tus cuotas mensualmente pulsando "Pagar Cuota" (se debita de tu Wallet).</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+          {sections.filter(s => s.tab === 'cliente').map((sec, i) => (
+            <div key={sec.id} className="mt-4 space-y-2">
+              <h3 className="text-lg font-bold text-blue-700">{sec.title}</h3>
+              <p className="text-xs italic text-gray-600">{sec.description}</p>
+              <div className="text-sm text-slate-800">{sec.content}</div>
             </div>
-          )}
-
-          {/* SELLER MANUAL */}
-          {activeTab === 'vendedor' && (
-            <div className="space-y-8 animate-fadeIn">
-              <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/5 backdrop-blur-md text-left">
-                <h2 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
-                  <Store className="w-6 h-6 text-purple-400" /> MANUAL DEL VENDEDOR / COMERCIANTE y POS
-                </h2>
-                <p className="text-gray-400 text-sm">Este manual cubre el flujo comercial del sistema: gestión de tiendas, inventario, proveedores, ventas físicas y POS.</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6 text-left">
-                  {/* POS */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold">1</span>
-                      Uso del Punto de Venta (POS)
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        El POS interactivo (`/vendedor/pos`) está diseñado para realizar ventas físicas de mostrador ágilmente:
-                      </p>
-                      <ol className="list-decimal pl-5 space-y-2 text-xs text-gray-400">
-                        <li>**Carga de Productos**: Haz clic sobre los productos del grid de catálogo en pantalla para añadirlos al ticket. También puedes usar el escáner de lector de código de barras físico enfocando el SKU en la barra de búsqueda.</li>
-                        <li>**Asignar Cliente**: Opcionalmente, pulsa el botón de cliente en la barra superior para registrar un cliente específico (necesario si la venta es a Crédito).</li>
-                        <li>**Cobrar (Tecla F2)**: Abre el modal de pago y selecciona el tipo de venta:
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            <li>**Contado**: Pago inmediato por Efectivo (el sistema calcula el vuelto), Tarjeta de Débito/Crédito (terminal simulada) o **Wallet QR** (genera un QR de cobro que el cliente escanea desde su app para pagar de inmediato).</li>
-                            <li>**Crédito**: Venta a cuenta para un cliente previamente registrado en tu CRM interno.</li>
-                          </ul>
-                        </li>
-                        <li>**Impresión del Ticket**: Al finalizar el cobro se visualiza el ticket RUC digital con el desglose de productos, IVA (10%) y botón de impresión.</li>
-                      </ol>
-                    </div>
-                  </div>
-
-                  {/* PRODUCTS */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold">2</span>
-                      Gestión de Productos (Escribir, Editar, Eliminar)
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Administra tu catálogo desde `/vendedor/productos`:
-                      </p>
-                      <ul className="space-y-3 text-xs text-gray-400">
-                        <li>
-                          <strong className="text-white">Añadir Producto:</strong> Pulsa **"Nuevo Producto"**. Carga nombre, SKU único, fotos (hasta 5, por arrastre o URL), stock inicial y categoría.
-                        </li>
-                        <li>
-                          <strong className="text-white">Calculadora Financiera:</strong> Ingresa el **Costo de Compra** del producto y el **Porcentaje de Ganancia** deseado. El sistema calculará automáticamente el **Precio de Venta final**. También funciona a la inversa.
-                        </li>
-                        <li>
-                          <strong className="text-white">Visibilidad:</strong> Puedes configurar si el producto se vende "Solo Online" (Marketplace), "Solo Local" (POS físico de mostrador) o en "Ambos" entornos.
-                        </li>
-                        <li>
-                          <strong className="text-white">Editar y Eliminar:</strong> Haz clic en el botón de 3 puntos (⋯) de la fila del producto para modificar datos o pulsar **"Eliminar"** (requiere confirmación del navegador para evitar pérdidas accidentales).
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* ORDERS */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold">3</span>
-                      Procesamiento de Pedidos
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-2">
-                      <p>
-                        Cuando un cliente realiza un pedido online en tu tienda, aparecerá en el panel de `/vendedor/pedidos` como **Pendiente**.
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Deberás avanzar su estado secuencialmente pulsando el botón azul de estado rápido en la tabla:
-                      </p>
-                      <div className="flex flex-wrap gap-2 py-2">
-                        {['Pendiente', 'Confirmado', 'En Preparación', 'Listo', 'En Camino', 'Entregado'].map((status, i) => (
-                          <div key={status} className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                            {i > 0 && <ChevronRight className="w-3 h-3 text-purple-400" />}
-                            <span className="px-2 py-0.5 bg-slate-800 rounded-md border border-white/5 text-gray-200">{status}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-400">
-                        Cada cambio de estado notifica automáticamente al usuario por medio de alertas en su cuenta y alertas push en el navegador.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="p-6 rounded-3xl bg-slate-900/80 border border-purple-500/20 text-left relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-xl"></div>
-                    <Store className="w-8 h-8 text-purple-400 mb-2" />
-                    <h4 className="font-bold text-white text-sm">Configuración de la Tienda</h4>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                      Antes de poder utilizar el POS o vender productos en el Marketplace, debes configurar tu perfil comercial en **`/vendedor/tienda`**.
-                    </p>
-                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                      El sistema te pedirá el **Nombre comercial**, dirección física, teléfono, enlace de WhatsApp Business, redes sociales, y las imágenes de **Logo circular** y **Banner rectangular**.
-                    </p>
-                  </div>
-
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left">
-                    <h4 className="font-bold text-white text-sm mb-3">Gestión de Proveedores</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                      En el submódulo **"Proveedores"** y **"Compras"** puedes:
-                    </p>
-                    <ul className="space-y-2 text-xs text-gray-300">
-                      <li className="flex items-start gap-1.5">
-                        <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
-                        <span>Registrar a tus proveedores mayoristas con RUC y teléfono.</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
-                        <span>Cargar compras de stock realizadas a proveedores para llevar la contabilidad del costo de compra real del inventario.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ADMIN MANUAL */}
-          {activeTab === 'admin' && (
-            <div className="space-y-8 animate-fadeIn">
-              <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/5 backdrop-blur-md text-left">
-                <h2 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
-                  <Shield className="w-6 h-6 text-indigo-400" /> MANUAL DEL ADMINISTRADOR (SUPERADMIN)
-                </h2>
-                <p className="text-gray-400 text-sm">Este manual cubre el control de administración global, aprobación de finanzas, retiros y campañas de marketing de la plataforma.</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6 text-left">
-                  {/* Admin User */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xs font-bold">1</span>
-                      Administración de Usuarios y Asignación de Planes
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Desde `/admin/usuarios` tienes el control completo sobre las cuentas registradas en el sistema:
-                      </p>
-                      <ul className="space-y-3 text-xs text-gray-400">
-                        <li>
-                          <strong className="text-white">Gestión de Perfiles y Contraseñas:</strong> Permite editar datos de contacto, cambiar contraseñas de usuarios con problemas de acceso, y asignar o revocar roles (Cliente, Vendedor, Admin, Estudiante) mediante casillas de verificación directas.
-                        </li>
-                        <li>
-                          <strong className="text-white">Control de Planes Comerciales:</strong> Para cuentas con rol de vendedor, a través del menú de 3 puntos (⋯) puedes configurar su plan de facturación (Básico, Estándar, Comercial) o cambiar su modelo a **"Por Comisión"**, especificando el porcentaje que la plataforma retendrá de cada venta online.
-                        </li>
-                        <li>
-                          <strong className="text-white">Desactivar / Eliminar:</strong> Puedes suspender temporalmente el acceso de un usuario (`isActive = false`) o borrar su cuenta permanentemente (esta acción realiza un borrado en cascada de sus billeteras, órdenes y tiendas).
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Financial Controls */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xs font-bold">2</span>
-                      Aprobación de Créditos y Suscripciones
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        El administrador actúa como la entidad validadora de transacciones manuales:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
-                          <div className="font-bold text-xs text-white">Aprobación de Créditos</div>
-                          <p className="text-[11px] text-gray-400 mt-1">Revisa en `/admin/creditos` los documentos de identidad cargados por el cliente. Si todo es correcto, pulsa **"Aprobar"**. Esto cambiará el crédito a "Activo" y transferirá los fondos a la wallet del usuario automáticamente.</p>
-                        </div>
-                        <div className="p-3 bg-slate-800/40 rounded-xl border border-white/5">
-                          <div className="font-bold text-xs text-white">Suscripciones de Ingenio</div>
-                          <p className="text-[11px] text-gray-400 mt-1">Cuando un usuario selecciona suscripción por "Transferencia Bancaria", queda en estado pendiente de aprobación. Valida la transferencia en tu cuenta bancaria y pulsa **"Aprobar"** para otorgarle el acceso premium de inmediato.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Push and Marketing */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xs font-bold">3</span>
-                      Campañas de Notificaciones Push
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-2">
-                      <p>
-                        El panel de `/admin/campanas` permite realizar acciones de marketing directo:
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Crea campañas especificando título, mensaje corto y rol de destino (ej: solo vendedores, solo estudiantes de Ingenio, o todos). Al guardar y enviar, el servidor enviará alertas directas al navegador de los usuarios a través del Service Worker de Web Push API, registrando la tasa de apertura y clics de la campaña.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="p-6 rounded-3xl bg-slate-900/80 border border-indigo-500/20 text-left relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl"></div>
-                    <Shield className="w-8 h-8 text-indigo-400 mb-2" />
-                    <h4 className="font-bold text-white text-sm">Dashboard de Control Global</h4>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                      El panel principal de administración brinda KPIs en tiempo real de la salud del negocio.
-                    </p>
-                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                      Visualiza gráficamente el volumen de transacciones de billetera, el crecimiento diario de la base de usuarios y reportes contables del mes consolidando comisiones ganadas y egresos por retiros.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TECHNICAL MANUAL */}
-          {activeTab === 'tecnico' && (
-            <div className="space-y-8 animate-fadeIn">
-              <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/5 backdrop-blur-md text-left">
-                <h2 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
-                  <Terminal className="w-6 h-6 text-emerald-400" /> MANUAL TÉCNICO: CARGA, COMPILACIÓN Y DESPLIEGUE
-                </h2>
-                <p className="text-gray-400 text-sm">Guía de comandos y flujo técnico para programadores y administradores de servidores sobre cómo inicializar y compilar el software.</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6 text-left">
-                  {/* Step 1 */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold">1</span>
-                      Instalación e Inicialización del Software
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Para descargar el software y levantar el entorno de desarrollo local por primera vez:
-                      </p>
-                      <div className="bg-slate-950 p-4 rounded-xl font-mono text-xs text-emerald-400 border border-white/5 space-y-2">
-                        <div># 1. Instalar las dependencias del proyecto</div>
-                        <div className="text-gray-400">npm install</div>
-                        <div className="mt-2"># 2. Configurar el archivo de entorno</div>
-                        <div className="text-gray-400">cp .env.example .env</div>
-                      </div>
-                      <p className="text-xs text-gray-400">
-                        Asegúrate de configurar las variables del archivo `.env` (cadena de conexión de PostgreSQL `DATABASE_URL`, variables de correo SMTP y llaves Web Push VAPID).
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold">2</span>
-                      Base de Datos (Prisma ORM)
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Inicializa la base de datos PostgreSQL mapeando el esquema de Prisma y poblando los datos iniciales de prueba:
-                      </p>
-                      <div className="bg-slate-950 p-4 rounded-xl font-mono text-xs text-emerald-400 border border-white/5 space-y-2">
-                        <div># Generar el cliente de Prisma</div>
-                        <div className="text-gray-400">npm run db:generate</div>
-                        <div className="mt-2"># Aplicar las migraciones a la base de datos</div>
-                        <div className="text-gray-400">npm run db:push</div>
-                        <div className="mt-2"># Poblar la BD con datos iniciales (Seed)</div>
-                        <div className="text-gray-400">npm run db:seed</div>
-                      </div>
-                      <p className="text-xs text-gray-400">
-                        El comando `db:seed` creará las cuentas de demostración (admin, cliente, vendedor, ingenio) y configurará los parámetros del sistema por defecto.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold">3</span>
-                      Compilación y Construcción para Producción
-                    </h3>
-                    <div className="text-sm text-gray-300 space-y-3">
-                      <p>
-                        Para compilar el código de TypeScript a JavaScript optimizado para producción tanto para el frontend como para el servidor backend:
-                      </p>
-                      <div className="bg-slate-950 p-4 rounded-xl font-mono text-xs text-emerald-400 border border-white/5 space-y-2">
-                        <div># Compilar Frontend (React Vite Bundle)</div>
-                        <div className="text-gray-400">npm run build</div>
-                        <div className="mt-2 font-bold"># Compilar Servidor Express Backend</div>
-                        <div className="text-gray-400">npm run server:build</div>
-                        <div className="mt-2"># Ejecutar en producción</div>
-                        <div className="text-gray-400">npm run server:start</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="p-6 rounded-3xl bg-slate-900/80 border border-emerald-500/20 text-left relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl"></div>
-                    <Terminal className="w-8 h-8 text-emerald-400 mb-2" />
-                    <h4 className="font-bold text-white text-sm">Ejecución en Desarrollo</h4>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                      Durante la etapa de programación local, puedes iniciar el servidor Express y el cliente Vite al mismo tiempo utilizando:
-                    </p>
-                    <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs text-emerald-400 border border-white/5 mt-2">
-                      npm run dev:full
-                    </div>
-                    <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">
-                      Esto corre concurrentemente ambos entornos con escucha de cambios automáticos (hot-reload).
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* ======================================================== */}
-        {/* PRINT ONLY LAYOUT (Oculto en pantalla normal) */}
-        {/* ======================================================== */}
-        <div className="print-layout hidden space-y-12 text-left p-12 bg-white text-black leading-relaxed">
-          {/* Cover Page */}
-          <div className="print-page-break flex flex-col items-center justify-center min-h-[90vh] text-center pt-24">
-            <img src="/images/oscorp-round.png" alt="Oscorp Logo" className="w-40 h-40 mb-8" />
-            <h1 className="text-5xl font-black tracking-tight text-slate-950 mb-2">MANUAL COMPLETO DEL SISTEMA</h1>
-            <h2 className="text-2xl font-bold text-blue-600 mb-8">OSCORP PLATFORM</h2>
-            <div className="w-24 h-1 bg-blue-600 mb-12"></div>
-            <p className="text-lg text-slate-600 max-w-xl mb-12">
-              Ecosistema Integral de E-Commerce, Fintech y E-Learning de Alta Gama para Administración y Clientes.
-            </p>
-            <div className="text-sm text-slate-500 mt-24">
-              <div>Sitio Oficial: https://oscorp.com.py/</div>
-              <div>Versión del Software: 1.0.0</div>
-              <div>Fecha de Emisión: {new Date().toLocaleDateString('es-ES')}</div>
+        {/* Section 3: Vendedor */}
+        <div className="print-page-break space-y-6">
+          <h2 className="text-2xl font-black border-b pb-2 text-slate-900">3. Manual Comercial (Vendedor y POS)</h2>
+          
+          <h3 className="text-lg font-bold text-purple-700">3.1 Configuración de Tienda y CRUD de Productos</h3>
+          <p>
+            El comerciante ingresa a <code>/vendedor/tienda</code> para registrar su logo circular, banner horizontal y enlace oficial de WhatsApp Business. En <code>/vendedor/productos</code> gestiona su inventario. El sistema provee una calculadora financiera donde al ingresar el <strong>costo de compra</strong> del producto y el <strong>margen de ganancia (%)</strong> deseado, el software calcula de inmediato el precio público final. Las imágenes pueden ser cargadas localmente o mediante enlace URL.
+          </p>
+
+          <h3 className="text-lg font-bold text-purple-700 mt-6">3.2 Punto de Venta (POS) e Integración de Cobro QR</h3>
+          <p>
+            La terminal POS interactiva permite añadir productos con clics o escáneres de SKU láser. Soporta ventas al **Contado** o **Crédito** (cargando la cuenta corriente del cliente seleccionado). Los cobros al contado aceptan efectivo, tarjetas bancarias tradicionales o **Wallet QR** (genera un QR de pago interactivo que es escaneado por el cliente desde su monedero Oscorp, confirmando la venta de forma atómica sin contacto).
+          </p>
+        </div>
+
+        {/* Section 4: Admin (Todos los submódulos impresos) */}
+        <div className="print-page-break space-y-6">
+          <h2 className="text-2xl font-black border-b pb-2 text-slate-900">4. Manual Completo del Administrador (16 Sub-módulos)</h2>
+          
+          {sections.filter(s => s.tab === 'admin').map((sec, i) => (
+            <div key={sec.id} className="mt-4 space-y-2">
+              <h3 className="text-lg font-bold text-indigo-700">{sec.title}</h3>
+              <p className="text-xs italic text-gray-600">{sec.description}</p>
+              <div className="text-sm text-slate-800">{sec.content}</div>
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Section 1: Intro */}
-          <div className="print-page-break space-y-6">
-            <h2 className="text-3xl font-extrabold border-b pb-2 text-slate-900">1. Introducción al Ecosistema Oscorp</h2>
-            <p>
-              **Oscorp Platform** es un ecosistema digital paraguayo integral que unifica cuatro pilares de negocios y finanzas dentro de una sola interfaz:
-            </p>
-            <table className="w-full text-left border-collapse border border-slate-300 text-sm mt-4">
-              <thead>
-                <tr className="bg-slate-100">
-                  <th className="border border-slate-300 p-2.5 font-bold">Módulo</th>
-                  <th className="border border-slate-300 p-2.5 font-bold">Funcionalidad Clave</th>
-                  <th className="border border-slate-300 p-2.5 font-bold">Roles de Usuario</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-slate-300 p-2.5 font-bold">Billetera Digital (Wallet)</td>
-                  <td className="border border-slate-300 p-2.5">Envío y recepción de dinero digital P2P, generación de tarjetas con QR.</td>
-                  <td className="border border-slate-300 p-2.5">Cliente, Vendedor</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 p-2.5 font-bold">Marketplace Multi-Tienda</td>
-                  <td className="border border-slate-300 p-2.5">Creación de catálogo online, procesamiento de pedidos y delivery.</td>
-                  <td className="border border-slate-300 p-2.5">Cliente, Vendedor</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 p-2.5 font-bold">Créditos Automáticos</td>
-                  <td className="border border-slate-300 p-2.5">Carga de cédula, amortización y pago de cuotas debitadas de la wallet.</td>
-                  <td className="border border-slate-300 p-2.5">Cliente</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 p-2.5 font-bold">Ingenio Millonario</td>
-                  <td className="border border-slate-300 p-2.5">Academia financiera premium, control de flujo de caja personal.</td>
-                  <td className="border border-slate-300 p-2.5">Estudiante Premium (Ingenio)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Section 2: Cliente */}
-          <div className="print-page-break space-y-6">
-            <h2 className="text-3xl font-extrabold border-b pb-2 text-slate-900">2. Manual de Usuario (Cliente)</h2>
-            
-            <h3 className="text-xl font-bold text-blue-700 mt-4">2.1 Registro en la Plataforma</h3>
-            <p>
-              El flujo de registro está estructurado en 3 fases para recopilar y verificar la identidad de los usuarios:
-            </p>
-            <ol className="list-decimal pl-6 space-y-2">
-              <li>
-                <strong>Fase 1 - Datos Personales:</strong> Nombre completo, apellido, dirección de correo electrónico válida (usuario para el inicio de sesión) y número de teléfono celular completo. Se define una contraseña que cumpla con los estándares de seguridad mínimos (al menos una letra, un número y mínimo 8 caracteres).
-              </li>
-              <li>
-                <strong>Fase 2 - Tipo de Cuenta:</strong> Elección del rol principal. Cada rol habilita interfaces y monederos específicos automáticamente de fondo en la base de datos relacional.
-              </li>
-              <li>
-                <strong>Fase 3 - Verificación:</strong> Creación del perfil. El sistema genera un token criptográfico único con validez de 24 horas. El usuario debe ingresar a su correo para pulsar el enlace de verificación. Si la cuenta no está verificada, el sistema bloqueará el login automáticamente con un código de error 403.
-              </li>
-            </ol>
-
-            <h3 className="text-xl font-bold text-blue-700 mt-6">2.2 Operaciones de Wallet y Pago con QR</h3>
-            <p>
-              Cada usuario tiene asignado un número de tarjeta con el formato <code>OSCXXXXXX</code> y un código QR que encapsula la información de su wallet:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>
-                <strong>Transferencia P2P:</strong> En la sección "Enviar", el usuario busca al receptor escribiendo su correo o teléfono. Ingresa el monto en Guaraníes (₲) y confirma mediante su <strong>PIN de Seguridad de 4 dígitos</strong>. Este PIN es hasheado con bcrypt al crearse.
-              </li>
-              <li>
-                <strong>Pagar en Comercios (QR):</strong> El usuario selecciona el lector QR, lo que activa la cámara del dispositivo móvil. Al enfocar el código QR de un comercio o de otro usuario, se realiza la validación de saldo del emisor y se transfiere el dinero instantáneamente, registrando un movimiento tipo <code>purchase</code> y <code>sale</code> respectivamente.
-              </li>
-            </ul>
-
-            <h3 className="text-xl font-bold text-blue-700 mt-6">2.3 Solicitud y Pago de Créditos</h3>
-            <p>
-              El módulo de préstamos permite a los clientes solicitar líneas de financiación directa en cuotas mensuales:
-            </p>
-            <ol className="list-decimal pl-6 space-y-2">
-              <li>El cliente ingresa a "Créditos" y selecciona el monto deseado y la cantidad de cuotas (3, 6, 12, 18 o 24 meses).</li>
-              <li>Carga las imágenes obligatorias de su documento de identidad: <strong>Cédula Frente</strong> y <strong>Cédula Dorso</strong>.</li>
-              <li>La solicitud ingresa al panel administrativo en estado <code>pending</code>. Una vez revisada y aprobada por el admin, el capital total se inyecta en la wallet del usuario, generándose la tabla de amortización de vencimientos mensuales.</li>
-              <li>Cada mes, el cliente abona su cuota presionando "Pagar Cuota" en su interfaz, lo que realiza el cobro directo de su saldo de wallet disponible.</li>
-            </ol>
-          </div>
-
-          {/* Section 3: Vendedor */}
-          <div className="print-page-break space-y-6">
-            <h2 className="text-3xl font-extrabold border-b pb-2 text-slate-900">3. Manual Comercial (Vendedor y POS)</h2>
-            
-            <h3 className="text-xl font-bold text-purple-700 mt-4">3.1 Configuración de Tienda</h3>
-            <p>
-              El comerciante debe inicializar su perfil de negocio en <code>/vendedor/tienda</code> para poder publicar productos en la plataforma pública o cobrar con el POS. Los campos requeridos son:
-            </p>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Nombre legal y comercial de la tienda.</li>
-              <li>Dirección física detallada y número de teléfono.</li>
-              <li>Enlace de WhatsApp Business y perfiles de Facebook/Instagram.</li>
-              <li>Carga de imágenes para el Logo comercial e imagen de portada (Banner).</li>
-            </ul>
-
-            <h3 className="text-xl font-bold text-purple-700 mt-6">3.2 Gestión de Catálogo e Inventario (CRUD)</h3>
-            <p>
-              La creación de productos requiere la especificación de un <strong>SKU único</strong> (Stock Keeping Unit). El sistema facilita un gestor financiero:
-            </p>
-            <div className="p-4 bg-slate-100 rounded-lg font-mono text-xs border border-slate-300">
-              PRECIO DE VENTA = COSTO DE COMPRA + (COSTO DE COMPRA * PORCENTAJE DE GANANCIA / 100)
-            </div>
-            <p className="text-sm">
-              Al cargar el costo de compra del producto y la ganancia deseada, el formulario de creación de productos calcula el precio público sugerido inmediatamente. Las imágenes se pueden subir arrastrándolas al recuadro o ingresando enlaces web directos. Para eliminar un producto, se debe seleccionar "Eliminar" en el menú de acciones del producto y confirmar en la ventana emergente.
-            </p>
-
-            <h3 className="text-xl font-bold text-purple-700 mt-6">3.3 Funcionamiento del Punto de Venta (POS)</h3>
-            <p>
-              El POS del comerciante es una de las pantallas más completas, integrando ventas físicas tradicionales con la wallet fintech de Oscorp:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Escanear Productos:</strong> Se realiza de forma ágil tocando la cuadrícula de artículos en pantalla o leyendo el SKU con un lector láser enfocado en el campo de texto.</li>
-              <li><strong>Métodos de Cobro:</strong> Al pulsar "Cobrar" (o presionar la tecla rápida **F2**), se abre el modal que soporta pagos en efectivo (calculando el vuelto), tarjeta física (simulada) y **Cobro con Wallet QR**. Este último muestra un código de barras en pantalla con el identificador único y total de la venta; el cliente lo escanea con la cámara de su teléfono y, al confirmar, el sistema de base de datos realiza la transferencia de saldo y liquida el ticket POS automáticamente.</li>
-              <li><strong>Ventas a Crédito:</strong> El vendedor puede fiar la compra asignando el ticket a un cliente previamente registrado en su base de datos comercial (CRM interno), cargando la deuda en su cuenta corriente comercial.</li>
-            </ul>
-          </div>
-
-          {/* Section 4: Admin */}
-          <div className="print-page-break space-y-6">
-            <h2 className="text-3xl font-extrabold border-b pb-2 text-slate-900">4. Manual del Administrador</h2>
-            <p>
-              El rol de <code>superadmin</code> posee atribuciones globales sobre el funcionamiento financiero y operativo de la plataforma desde `/admin`:
-            </p>
-            <ul className="list-disc pl-6 space-y-3">
-              <li>
-                <strong>Gestión de Cuentas:</strong> Controla los roles de cada usuario y el estado de sus suscripciones. Permite modificar, bloquear y eliminar cuentas conflictivas.
-              </li>
-              <li>
-                <strong>Aprobación de Transacciones:</strong> Valida retiros de dinero de monederos digitales solicitados por comerciantes y usuarios. Revisa los documentos cargados para aprobar créditos personales pendientes.
-              </li>
-              <li>
-                <strong>Control de Suscripciones Premium:</strong> Administra el ingreso al programa "Ingenio Millonario". El administrador puede otorgar o revocar el flag <code>ingenioAccess</code> manualmente a cuentas que abonen por transferencia bancaria.
-              </li>
-              <li>
-                <strong>Campañas y Marketing:</strong> Permite redactar comunicados masivos y enviarlos por medio de notificaciones Push del navegador a todos los dispositivos móviles y navegadores que posean suscripciones Web Push activas registradas en la base de datos.
-              </li>
-            </ul>
-          </div>
-
-          {/* Section 5: Technical */}
-          <div className="print-page-break space-y-6">
-            <h2 className="text-3xl font-extrabold border-b pb-2 text-slate-900">5. Manual Técnico: Compilación y Carga del Software</h2>
-            <p>
-              Detalles específicos para programadores y administradores sobre cómo instalar y compilar el ecosistema de Oscorp Platform en servidores propios.
-            </p>
-
-            <h3 className="text-xl font-bold text-emerald-700 mt-4">5.1 Requisitos de Entorno</h3>
-            <ul className="list-disc pl-6 space-y-1">
-              <li>Node.js (versión 18 o superior recomendada).</li>
-              <li>Base de datos PostgreSQL.</li>
-              <li>Gestor de paquetes npm o yarn.</li>
-            </ul>
-
-            <h3 className="text-xl font-bold text-emerald-700 mt-6">5.2 Instalación de la Base de Datos</h3>
-            <p>
-              La estructura de la base de datos está modelada a través del archivo <code>schema.prisma</code>. Debe inicializarse ejecutando:
-            </p>
-            <div className="bg-slate-100 p-3 rounded font-mono text-xs border border-slate-300 space-y-1">
-              <div># Instalar dependencias</div>
-              <div>npm install</div>
-              <div># Generar cliente ORM y migrar esquemas</div>
-              <div>npx prisma generate</div>
-              <div>npx prisma db push</div>
-              <div># Cargar registros por defecto en la BD</div>
-              <div>npm run db:seed</div>
-            </div>
-
-            <h3 className="text-xl font-bold text-emerald-700 mt-6">5.3 Procesos de Compilación</h3>
-            <p>
-              Para compilar el frontend y el backend de forma optimizada y segura:
-            </p>
-            <div className="bg-slate-100 p-3 rounded font-mono text-xs border border-slate-300 space-y-1">
-              <div># Compilar el bundle estático del Frontend (React + Vite)</div>
-              <div>npm run build</div>
-              <div># Compilar el servidor de Backend a producción</div>
-              <div>npm run server:build</div>
-              <div># Iniciar la plataforma en modo producción</div>
-              <div>npm run server:start</div>
-            </div>
-            
-            <h3 className="text-xl font-bold text-emerald-700 mt-6">5.4 Ejecución de Desarrollo Concurrentemente</h3>
-            <p>
-              Para correr el entorno de desarrollo local con recarga en caliente de cliente y servidor al mismo tiempo:
-            </p>
-            <div className="bg-slate-100 p-3 rounded font-mono text-xs border border-slate-300">
-              npm run dev:full
-            </div>
+        {/* Section 5: Técnico */}
+        <div className="print-page-break space-y-6">
+          <h2 className="text-2xl font-black border-b pb-2 text-slate-900">5. Manual Técnico: Compilación y Carga</h2>
+          <p>
+            Guía de comandos básicos para instalación y despliegue del sistema:
+          </p>
+          <div className="bg-slate-100 p-4 rounded-xl font-mono text-xs border border-slate-300 space-y-2">
+            <div># 1. Instalar dependencias</div>
+            <div className="text-gray-500">npm install</div>
+            <div># 2. Generar binds del ORM Prisma</div>
+            <div className="text-gray-500">npx prisma generate</div>
+            <div># 3. Empujar esquemas a PostgreSQL</div>
+            <div className="text-gray-500">npx prisma db push</div>
+            <div># 4. Poblar datos iniciales (Seed)</div>
+            <div className="text-gray-500">npm run db:seed</div>
+            <div># 5. Compilar cliente y servidor para producción</div>
+            <div className="text-gray-500">npm run build && npm run server:build</div>
+            <div># 6. Levantar servidor Express de producción</div>
+            <div className="text-gray-500">npm run server:start</div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Embedded print css overrides */}
+      {/* Local print style overrides */}
       <style>{`
         @media print {
           body {
