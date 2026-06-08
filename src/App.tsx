@@ -24,7 +24,6 @@ import PresentacionE2 from '@/pages/public/PresentacionE2';
 import ForgotPasswordPage from '@/pages/public/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/public/ResetPasswordPage';
 import NotFoundPage from '@/pages/public/NotFoundPage';
-import SystemManual from '@/pages/public/SystemManual';
 
 // Admin Pages
 import AdminDashboard from '@/pages/admin/Dashboard';
@@ -155,7 +154,6 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         <Route path="/presentacion-e2" element={<PresentacionE2 />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/manual" element={<SystemManual />} />
 
         {/* Admin Routes */}
           <Route
