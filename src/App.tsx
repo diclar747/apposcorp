@@ -62,6 +62,7 @@ import SellerGestion from '@/pages/seller/Gestion';
 import SellerProfile from '@/pages/seller/Profile';
 import SellerSettings from '@/pages/seller/Settings';
 import SellerPlans from '@/pages/seller/SellerPlans';
+import SellerManual from '@/pages/seller/Manual';
 
 // Client Pages
 import ClientDashboard from '@/pages/client/Home';
@@ -84,6 +85,7 @@ import ClientNotifications from '@/pages/client/Notifications';
 import ClientProduct from '@/pages/client/Product';
 import ClientCart from '@/pages/client/Cart';
 import ClientCheckout from '@/pages/client/Checkout';
+import ClientManual from '@/pages/client/Manual';
 
 // Ingenio Pages
 import IngenioDashboard from '@/pages/ingenio/Dashboard';
@@ -211,6 +213,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="configuracion" element={<SellerSettings />} />
           <Route path="notificaciones" element={<ClientNotifications />} />
           <Route path="planes" element={<SellerPlans />} />
+          <Route path="manual" element={<SellerManual />} />
         </Route>
 
         {/* Client App Routes */}
@@ -244,6 +247,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="notificaciones" element={<ClientNotifications />} />
           <Route path="carrito" element={<ClientCart />} />
           <Route path="checkout" element={<ClientCheckout />} />
+          <Route path="manual" element={<ClientManual />} />
         </Route>
 
         <Route

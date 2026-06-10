@@ -22,7 +22,8 @@ import {
   Users,
   Sun,
   Moon,
-  Wallet
+  Wallet,
+  BookOpen
 } from 'lucide-react';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
@@ -53,6 +54,7 @@ const sidebarItems = [
   { icon: DollarSign, label: 'Gestión', href: '/vendedor/gestion' },
   { icon: BarChart3, label: 'Reportes', href: '/vendedor/reportes' },
   { icon: Settings, label: 'Configuración', href: '/vendedor/configuracion' },
+  { icon: BookOpen, label: 'Manual Comercial', href: '/vendedor/manual' },
 ];
 
 export default function SellerLayout() {

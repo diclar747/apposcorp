@@ -24,7 +24,8 @@ import {
   HelpCircle,
   Moon,
   Sun,
-  Coins
+  Coins,
+  BookOpen
 } from 'lucide-react';
 import { useAuthStore, useCartStore, useNotificationStore, useWalletStore } from '@/stores';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -90,6 +91,7 @@ const menuSections: MenuSection[] = [
     items: [
       { icon: Settings, label: 'Ajustes', href: '/app/perfil' },
       { icon: HelpCircle, label: 'Ayuda', href: '/app/perfil' },
+      { icon: BookOpen, label: 'Manual de Billetera', href: '/app/manual' },
     ]
   }
 ];
