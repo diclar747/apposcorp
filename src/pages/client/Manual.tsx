@@ -53,7 +53,7 @@ export default function ClientManual() {
       content: (
         <div className="space-y-4">
           <p>
-            El registro de usuarios se realiza en la pantalla pública de `/register`:
+            El registro de usuarios se realiza en la pantalla pública de "/register":
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
             <li>
@@ -84,13 +84,13 @@ export default function ClientManual() {
       content: (
         <div className="space-y-4 text-sm">
           <p>
-            Al ingresar a la interfaz de usuario (`/app`), verás la pantalla de **Inicio** (Resumen de hoy):
+            Al ingresar a la interfaz de usuario ("/app"), verás la pantalla de <strong>Inicio</strong> (Resumen de hoy):
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
             <li>
               <strong>Tarjeta de Débito Virtual:</strong>
               <br />
-              Una réplica digital de tu tarjeta **OSCORP PREMIUM** en azul marino con chip inteligente. Muestra tu número de tarjeta único (ej. `OSC144394`) con botón para copiar, tu nombre como titular y el vencimiento (`12/28`).
+              Una réplica digital de tu tarjeta <strong>OSCORP PREMIUM</strong> en azul marino con chip inteligente. Muestra tu número de tarjeta único (ej. "OSC144394") con botón para copiar, tu nombre como titular y el vencimiento ("12/28").
             </li>
             <li>
               <strong>Botón "VER QR":</strong>
@@ -120,12 +120,12 @@ export default function ClientManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Mi Billetera** (`/app/wallet`), visualizas y gestionas tus fondos:
+            En <strong>Mi Billetera</strong> ("/app/wallet"), visualizas y gestionas tus fondos:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Saldo Disponible:** Cuenta con un botón de ojo (Ocultar/Ver) para proteger tu privacidad de saldos.</li>
-            <li>**Analíticas:** Widgets del total de **Ingresos del Mes** (barra verde) y **Egresos del Mes** (barra roja) para control financiero.</li>
-            <li>**Movimientos:** Historial integrado de transacciones del monedero.</li>
+            <li><strong>Saldo Disponible:</strong> Cuenta con un botón de ojo (Ocultar/Ver) para proteger tu privacidad de saldos.</li>
+            <li><strong>Analíticas:</strong> Widgets del total de <strong>Ingresos del Mes</strong> (barra verde) y <strong>Egresos del Mes</strong> (barra roja) para control financiero.</li>
+            <li><strong>Movimientos:</strong> Historial integrado de transacciones del monedero.</li>
           </ul>
         </div>
       )
@@ -139,12 +139,12 @@ export default function ClientManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Mi Tarjeta** (`/app/tarjeta`), controlas tu plástico digital:
+            En <strong>Mi Tarjeta</strong> ("/app/tarjeta"), controlas tu plástico digital:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Estilizar Tarjeta:** Elige plantillas de colores para cambiar el fondo de tu tarjeta virtual.</li>
-            <li>**Descargar QR:** Presiona **"Descargar QR"** para guardar tu código de cobro en imagen PNG de alta calidad y enviársela a tus clientes para cobrar a distancia.</li>
-            <li>**Copiar Nro:** Copia al portapapeles el número de cuenta OSC de 9 dígitos.</li>
+            <li><strong>Estilizar Tarjeta:</strong> Elige plantillas de colores para cambiar el fondo de tu tarjeta virtual.</li>
+            <li><strong>Descargar QR:</strong> Presiona <strong>"Descargar QR"</strong> para guardar tu código de cobro en imagen PNG de alta calidad y enviársela a tus clientes para cobrar a distancia.</li>
+            <li><strong>Copiar Nro:</strong> Copia al portapapeles el número de cuenta OSC de 9 dígitos.</li>
           </ul>
         </div>
       )
@@ -161,10 +161,10 @@ export default function ClientManual() {
             Para realizar pagos con el lector QR de la billetera:
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>Abre el escáner presionando **"Pago QR"** en Inicio o el botón central azul de la barra inferior.</li>
+            <li>Abre el escáner presionando <strong>"Pago QR"</strong> en Inicio o el botón central azul de la barra inferior.</li>
             <li>Enfoca el código QR de cobro del comercio (presentado en el POS o pantalla del vendedor).</li>
             <li>El sistema cargará la información y el monto. Confirma la transacción.</li>
-            <li>Introduce tu **PIN transaccional de 4 dígitos** para liquidar el cobro y debitar el saldo de tu wallet.</li>
+            <li>Introduce tu <strong>PIN transaccional de 4 dígitos</strong> para liquidar el cobro y debitar el saldo de tu wallet.</li>
           </ol>
         </div>
       )
@@ -181,10 +181,10 @@ export default function ClientManual() {
             Traspasa saldo digital de forma inmediata a otros usuarios de la plataforma:
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>Presiona **"Enviar"** en la botonera de la pantalla de Inicio.</li>
+            <li>Presiona <strong>"Enviar"</strong> en la botonera de la pantalla de Inicio.</li>
             <li>Busca al destinatario digitando su nombre, email o número de celular verificado.</li>
             <li>Selecciona al contacto, define el monto en Guaraníes (₲) y escribe una nota opcional.</li>
-            <li>Digita tu **PIN de 4 dígitos** para completar la transferencia atómica. El saldo se reflejará al instante en su cuenta.</li>
+            <li>Digita tu <strong>PIN de 4 dígitos</strong> para completar la transferencia atómica. El saldo se reflejará al instante en su cuenta.</li>
           </ol>
         </div>
       )
@@ -201,7 +201,7 @@ export default function ClientManual() {
             Para cobrar de forma presencial a otra persona:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>Haz clic en el acceso rápido **"Recibir"**.</li>
+            <li>Haz clic en el acceso rápido <strong>"Recibir"</strong>.</li>
             <li>El brillo de la pantalla se configurará al máximo y presentará tu código QR único y número de tarjeta.</li>
             <li>El otro usuario solo debe abrir su lector QR de Oscorp, escanear tu pantalla y enviarte el dinero.</li>
           </ul>
@@ -220,9 +220,9 @@ export default function ClientManual() {
             En la fase de pruebas o demostración, puedes añadir saldos de simulación:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>Toca el botón **"Recargar"** en Inicio.</li>
+            <li>Toca el botón <strong>"Recargar"</strong> en Inicio.</li>
             <li>Selecciona el monto que deseas cargar (₲ 50.000, ₲ 100.000, ₲ 500.000 o ₲ 1.000.000).</li>
-            <li>Presiona confirmar. Tu balance sumará esa cifra al instante bajo una transacción registrada como `deposit`.</li>
+            <li>Presiona confirmar. Tu balance sumará esa cifra al instante bajo una transacción registrada como "deposit".</li>
           </ul>
         </div>
       )
@@ -236,12 +236,12 @@ export default function ClientManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            Solicita créditos directamente a tu wallet desde el módulo de **Préstamos** (`/app/creditos`):
+            Solicita créditos directamente a tu wallet desde el módulo de <strong>Préstamos</strong> ("/app/creditos"):
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Simulación:** Ingresa la suma requerida y las cuotas de amortización (3 a 24 meses). La calculadora te indicará el interés y el costo exacto de la cuota mensual.</li>
-            <li>**Subir Cédula:** Carga dos imágenes legibles: el frente y dorso de tu Cédula de Identidad Civil. Envía la solicitud para aprobación administrativa.</li>
-            <li>**Pago de Cuotas:** Tras la aprobación y acreditación, ingresa mensualmente a la misma pantalla y presiona **"Pagar Cuota"** para debitarla de tu saldo disponible.</li>
+            <li><strong>Simulación:</strong> Ingresa la suma requerida y las cuotas de amortización (3 a 24 meses). La calculadora te indicará el interés y el costo exacto de la cuota mensual.</li>
+            <li><strong>Subir Cédula:</strong> Carga dos imágenes legibles: el frente y dorso de tu Cédula de Identidad Civil. Envía la solicitud para aprobación administrativa.</li>
+            <li><strong>Pago de Cuotas:</strong> Tras la aprobación y acreditación, ingresa mensualmente a la misma pantalla y presiona <strong>"Pagar Cuota"</strong> para debitarla de tu saldo disponible.</li>
           </ul>
         </div>
       )
@@ -258,9 +258,9 @@ export default function ClientManual() {
             Compra productos online en las tiendas asociadas a la plataforma:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Explorar:** Ingresa a **Tiendas** (`/app/tiendas`) para ver comercios o a **Productos** para ver el catálogo unificado.</li>
-            <li>**Carrito:** Agrega los productos elegidos al carrito. Revisa cantidades en `/app/carrito`.</li>
-            <li>**Checkout:** Elige el modo de entrega (Delivery a domicilio o Retiro en Local) y el método de cobro (Pagar con Wallet Oscorp o Pago Contra Entrega).</li>
+            <li><strong>Explorar:</strong> Ingresa a <strong>Tiendas</strong> ("/app/tiendas") para ver comercios o a <strong>Productos</strong> para ver el catálogo unificado.</li>
+            <li><strong>Carrito:</strong> Agrega los productos elegidos al carrito. Revisa cantidades en "/app/carrito".</li>
+            <li><strong>Checkout:</strong> Elige el modo de entrega (Delivery a domicilio o Retiro en Local) y el método de cobro (Pagar con Wallet Oscorp o Pago Contra Entrega).</li>
           </ul>
         </div>
       )
@@ -274,12 +274,12 @@ export default function ClientManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            Capacítate financieramente con los cursos de la academia (`/app/cursos`):
+            Capacítate financieramente con los cursos de la academia ("/app/cursos"):
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Inscribirse:** Selecciona el curso que te interese. Si es de pago y no tienes membresía activa de Ingenio Millonario, se descontará del saldo de tu billetera.</li>
-            <li>**Clases y Videos:** Reproduce las lecciones grabadas en video y consulta los archivos de apoyo.</li>
-            <li>**Progreso:** Marca las lecciones finalizadas. El sistema actualizará tu progreso y emitirá tu certificación al llegar al 100%.</li>
+            <li><strong>Inscribirse:</strong> Selecciona el curso que te interese. Si es de pago y no tienes membresía activa de Ingenio Millonario, se descontará del saldo de tu billetera.</li>
+            <li><strong>Clases y Videos:</strong> Reproduce las lecciones grabadas en video y consulta los archivos de apoyo.</li>
+            <li><strong>Progreso:</strong> Marca las lecciones finalizadas. El sistema actualizará tu progreso y emitirá tu certificación al llegar al 100%.</li>
           </ul>
         </div>
       )
@@ -293,11 +293,11 @@ export default function ClientManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            Audita cada movimiento en la pantalla de **Historial** (`/app/wallet` o accesos rápidos):
+            Audita cada movimiento en la pantalla de <strong>Historial</strong> ("/app/wallet" o accesos rápidos):
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Filtros Rápidos:** Clasifica movimientos por: Todo, Ingresos (verde con signo `+`) o Egresos (rojo con signo `-`).</li>
-            <li>**Detalles de Transacción:** Haz clic en una fila para desplegar su ID único, fecha/hora exacta y estado de acreditación.</li>
+            <li><strong>Filtros Rápidos:</strong> Clasifica movimientos por: Todo, Ingresos (verde con signo "+") o Egresos (rojo con signo "-").</li>
+            <li><strong>Detalles de Transacción:</strong> Haz clic en una fila para desplegar su ID único, fecha/hora exacta y estado de acreditación.</li>
           </ul>
         </div>
       )
@@ -311,12 +311,12 @@ export default function ClientManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Ajustes** (`/app/perfil`), configura tu cuenta personal:
+            En <strong>Ajustes</strong> ("/app/perfil"), configura tu cuenta personal:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Editar Perfil:** Modifica tu nombre, dirección física, número celular y foto de perfil.</li>
-            <li>**Datos Bancarios:** Registra el nombre de tu Banco, número de cuenta y tipo de cuenta. Estos datos son indispensables si deseas retirar tu saldo digital de Oscorp a tu cuenta bancaria tradicional.</li>
-            <li>**Notificaciones Push:** Activa el interruptor para recibir alertas instantáneas de cobros y transferencias en tu dispositivo.</li>
+            <li><strong>Editar Perfil:</strong> Modifica tu nombre, dirección física, número celular y foto de perfil.</li>
+            <li><strong>Datos Bancarios:</strong> Registra el nombre de tu Banco, número de cuenta y tipo de cuenta. Estos datos son indispensables si deseas retirar tu saldo digital de Oscorp a tu cuenta bancaria tradicional.</li>
+            <li><strong>Notificaciones Push:</strong> Activa el interruptor para recibir alertas instantáneas de cobros y transferencias en tu dispositivo.</li>
           </ul>
         </div>
       )

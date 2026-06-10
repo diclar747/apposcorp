@@ -103,13 +103,13 @@ export default function AdminManual() {
       content: (
         <div className="space-y-4">
           <p>
-            El sistema admite **cuatro roles principales** de usuario que pueden ser asignados de forma combinada a un mismo email, compartiendo el monedero y los datos personales:
+            El sistema admite <strong>cuatro roles principales</strong> de usuario que pueden ser asignados de forma combinada a un mismo email, compartiendo el monedero y los datos personales:
           </p>
           <ul className="space-y-2 text-sm text-gray-300">
             <li><strong className="text-blue-500">Cliente (client):</strong> Permite comprar en tiendas, escanear para pagar, solicitar préstamos y acceder a la wallet principal.</li>
             <li><strong className="text-purple-500">Vendedor (seller):</strong> Habilita la barra lateral del vendedor, creación de tienda, gestión de productos, inventario, pedidos y acceso al POS.</li>
             <li><strong className="text-pink-500">Estudiante Ingenio (ingenio):</strong> Otorga acceso a las herramientas del flujo de caja, ruleta educativa, descargas de materiales y la academia premium.</li>
-            <li><strong className="text-indigo-500">Administrador (superadmin):</strong> Concede acceso total al panel global `/admin` para gestionar usuarios, créditos, reportes y configurar la plataforma.</li>
+            <li><strong className="text-indigo-500">Administrador (superadmin):</strong> Concede acceso total al panel global "/admin" para gestionar usuarios, créditos, reportes y configurar la plataforma.</li>
           </ul>
         </div>
       )
@@ -125,7 +125,7 @@ export default function AdminManual() {
       content: (
         <div className="space-y-4">
           <p>
-            El registro de usuarios se realiza de forma interactiva en la pantalla pública de `/register`:
+            El registro de usuarios se realiza de forma interactiva en la pantalla pública de "/register":
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
             <li>
@@ -156,17 +156,17 @@ export default function AdminManual() {
       content: (
         <div className="space-y-4 text-sm">
           <p>
-            Al ingresar a la interfaz del cliente (`/app`), verás la pantalla de **Inicio** (Resumen de hoy), diseñada con un estilo premium y las siguientes secciones clave:
+            Al ingresar a la interfaz del cliente ("/app"), verás la pantalla de <strong>Inicio</strong> (Resumen de hoy), diseñada con un estilo premium y las siguientes secciones clave:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
             <li>
               <strong>Saludo Personalizado & Tarjeta de Débito Virtual:</strong>
               <br />
-              Muestra el saludo principal (Ej: "¡Hola, Claudio!") y tu tarjeta digital **OSCORP PREMIUM** de color azul marino con chip integrado, antena contactless y un código QR de cobro impreso.
+              Muestra el saludo principal (Ej: "¡Hola, Claudio!") y tu tarjeta digital <strong>OSCORP PREMIUM</strong> de color azul marino con chip integrado, antena contactless y un código QR de cobro impreso.
               <br />
-              - **Número de Tarjeta (Ej: `OSC144394`):** Cuenta con un botón de copia rápida al portapapeles.
+              - <strong>Número de Tarjeta (Ej: "OSC144394"):</strong> Cuenta con un botón de copia rápida al portapapeles.
               <br />
-              - **Nombre y Vencimiento:** Indica el nombre del titular y la fecha de vencimiento (`12/28`).
+              - <strong>Nombre y Vencimiento:</strong> Indica el nombre del titular y la fecha de vencimiento ("12/28").
             </li>
             <li>
               <strong>Botón "VER QR":</strong>
@@ -191,20 +191,20 @@ export default function AdminManual() {
             <li>
               <strong>Tarjetas de Estado Inferiores:</strong>
               <br />
-              - **TUS PEDIDOS:** Monitorea el estado logístico de tus compras en el Marketplace (ej: "Sin pedidos aún").
+              - <strong>TUS PEDIDOS:</strong> Monitorea el estado logístico de tus compras en el Marketplace (ej: "Sin pedidos aún").
               <br />
-              - **CRÉDITOS:** Informa el estado de tus cuotas y préstamos activos de manera directa (ej: "Sin créditos activos").
+              - <strong>CRÉDITOS:</strong> Informa el estado de tus cuotas y préstamos activos de manera directa (ej: "Sin créditos activos").
             </li>
             <li>
               <strong>Barra de Navegación Inferior Flotante (Menú):</strong>
               <br />
               Navegación persistente en móvil y escritorio con 5 accesos rápidos:
               <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li>**INICIO (Casa):** Te lleva a este panel de resumen general.</li>
-                <li>**BILLETERA (Monedero):** Abre la visualización detallada del saldo e ingresos/egresos del mes.</li>
-                <li>**Botón Central QR (Azul):** Abre inmediatamente la cámara para Pago QR (Escanear y Pagar).</li>
-                <li>**TIENDA (Bolsa):** Explora los catálogos y tiendas premium de la plataforma.</li>
-                <li>**PERFIL (Usuario):** Abre tus configuraciones personales, avatar y datos de cobro bancario.</li>
+                <li><strong>INICIO (Casa):</strong> Te lleva a este panel de resumen general.</li>
+                <li><strong>BILLETERA (Monedero):</strong> Abre la visualización detallada del saldo e ingresos/egresos del mes.</li>
+                <li><strong>Botón Central QR (Azul):</strong> Abre inmediatamente la cámara para Pago QR (Escanear y Pagar).</li>
+                <li><strong>TIENDA (Bolsa):</strong> Explora los catálogos y tiendas premium de la plataforma.</li>
+                <li><strong>PERFIL (Usuario):</strong> Abre tus configuraciones personales, avatar y datos de cobro bancario.</li>
               </ul>
             </li>
           </ul>
@@ -220,12 +220,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Mi Billetera** (`/app/wallet`) consolida tus recursos económicos:
+            El módulo de <strong>Mi Billetera</strong> ("/app/wallet") consolida tus recursos económicos:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Saldo Disponible:** Indicador grande de tu saldo actual en Guaraníes (₲). Cuenta con un botón de ojo (Ocultar/Ver) para proteger tu privacidad en espacios públicos.</li>
-            <li>**Estadísticas Rápidas:** Dos widgets analíticos que muestran el total de **Ingresos del Mes** (barra verde) y **Egresos del Mes** (barra roja).</li>
-            <li>**Historial Integrado:** Lista compacta de los últimos movimientos de la wallet con opción de filtrado rápido.</li>
+            <li><strong>Saldo Disponible:</strong> Indicador grande de tu saldo actual en Guaraníes (₲). Cuenta con un botón de ojo (Ocultar/Ver) para proteger tu privacidad en espacios públicos.</li>
+            <li><strong>Estadísticas Rápidas:</strong> Dos widgets analíticos que muestran el total de <strong>Ingresos del Mes</strong> (barra verde) y <strong>Egresos del Mes</strong> (barra roja).</li>
+            <li><strong>Historial Integrado:</strong> Lista compacta de los últimos movimientos de la wallet con opción de filtrado rápido.</li>
           </ul>
         </div>
       )
@@ -239,12 +239,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Mi Tarjeta** (`/app/tarjeta`), gestionas las credenciales de tu plástico digital:
+            En <strong>Mi Tarjeta</strong> ("/app/tarjeta"), gestionas las credenciales de tu plástico digital:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Personalizar Estilo:** Cambia el diseño visual de la tarjeta seleccionando entre las plantillas de colores disponibles (Azul Premium, Púrpura Gradiente, Oscuro Minimalista o HSL personalizado).</li>
-            <li>**Descargar QR:** Presiona el botón **"Descargar QR"** para guardar tu código QR de monedero en un archivo PNG de alta resolución. Puedes compartir esta imagen por mensajería para que otros te paguen de forma remota.</li>
-            <li>**Copiar Número de Tarjeta:** Haz clic en "Copiar Nro." para registrar la credencial en el portapapeles y enviarla en texto.</li>
+            <li><strong>Personalizar Estilo:</strong> Cambia el diseño visual de la tarjeta seleccionando entre las plantillas de colores disponibles (Azul Premium, Púrpura Gradiente, Oscuro Minimalista o HSL personalizado).</li>
+            <li><strong>Descargar QR:</strong> Presiona el botón <strong>"Descargar QR"</strong> para guardar tu código QR de monedero en un archivo PNG de alta resolución. Puedes compartir esta imagen por mensajería para que otros te paguen de forma remota.</li>
+            <li><strong>Copiar Número de Tarjeta:</strong> Haz clic en "Copiar Nro." para registrar la credencial en el portapapeles y enviarla en texto.</li>
           </ul>
         </div>
       )
@@ -258,13 +258,13 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Pago QR** (`/app/escanear`) habilita el cobro sin contacto:
+            El módulo de <strong>Pago QR</strong> ("/app/escanear") habilita el cobro sin contacto:
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>Presiona **"Pago QR"** en la barra lateral o el botón flotante central de la barra inferior.</li>
+            <li>Presiona <strong>"Pago QR"</strong> en la barra lateral o el botón flotante central de la barra inferior.</li>
             <li>Autoriza los permisos de cámara y enfoca el código QR presentado por el vendedor o el POS.</li>
             <li>El sistema leerá los datos del comercio. Si el QR tiene un monto pre-cargado, este se mostrará en pantalla. De lo contrario, digita el total a abonar.</li>
-            <li>Presiona "Confirmar Pago" e ingresa tu **PIN de 4 dígitos** para debitar el saldo de tu wallet de forma inmediata.</li>
+            <li>Presiona "Confirmar Pago" e ingresa tu <strong>PIN de 4 dígitos</strong> para debitar el saldo de tu wallet de forma inmediata.</li>
           </ol>
         </div>
       )
@@ -278,12 +278,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El acceso de **Enviar** (ubicado en los botones rápidos de Inicio) realiza transferencias P2P inmediatas:
+            El acceso de <strong>Enviar</strong> (ubicado en los botones rápidos de Inicio) realiza transferencias P2P inmediatas:
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Buscar Destinatario:** Digita el nombre, correo electrónico o número de teléfono del contacto.</li>
-            <li>**Monto y Mensaje:** Selecciona al usuario en la lista de coincidencias, ingresa el monto a transferir (₲) y escribe una nota opcional (Ej: "Pago de almuerzo").</li>
-            <li>**Confirmación y PIN:** Verifica los datos de transferencia y autoriza ingresando tu PIN de 4 dígitos. El destinatario recibirá el importe y una alerta push en su dispositivo.</li>
+            <li><strong>Buscar Destinatario:</strong> Digita el nombre, correo electrónico o número de teléfono del contacto.</li>
+            <li><strong>Monto y Mensaje:</strong> Selecciona al usuario en la lista de coincidencias, ingresa el monto a transferir (₲) y escribe una nota opcional (Ej: "Pago de almuerzo").</li>
+            <li><strong>Confirmación y PIN:</strong> Verifica los datos de transferencia y autoriza ingresando tu PIN de 4 dígitos. El destinatario recibirá el importe y una alerta push en su dispositivo.</li>
           </ol>
         </div>
       )
@@ -297,7 +297,7 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El botón rápido **Recibir** está diseñado para cobros presenciales:
+            El botón rápido <strong>Recibir</strong> está diseñado para cobros presenciales:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
             <li>Al presionarlo, la pantalla aumenta su brillo y muestra de forma maximizada tu código QR y número de tarjeta.</li>
@@ -315,12 +315,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Préstamos** (`/app/creditos`) te permite gestionar tu financiación:
+            El módulo de <strong>Préstamos</strong> ("/app/creditos") te permite gestionar tu financiación:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Simulación:** Ingresa el monto total a solicitar y selecciona la cantidad de cuotas (3 a 24). El sistema calcula en tiempo real la tasa de interés y el monto exacto de la cuota mensual a abonar.</li>
-            <li>**Cargar Documentación:** Toma o sube dos fotos obligatorias: **Foto frontal de tu Cédula de Identidad** y **Foto del dorso de tu Cédula**. Envía la solicitud.</li>
-            <li>**Pago de Cuotas:** Si el administrador aprueba tu crédito, los fondos se acreditarán en tu wallet. Cada mes, ingresa al historial de préstamos activos y presiona **"Pagar Cuota"** para realizar el débito automático de tu saldo disponible.</li>
+            <li><strong>Simulación:</strong> Ingresa el monto total a solicitar y selecciona la cantidad de cuotas (3 a 24). El sistema calcula en tiempo real la tasa de interés y el monto exacto de la cuota mensual a abonar.</li>
+            <li><strong>Cargar Documentación:</strong> Toma o sube dos fotos obligatorias: <strong>Foto frontal de tu Cédula de Identidad</strong> y <strong>Foto del dorso de tu Cédula</strong>. Envía la solicitud.</li>
+            <li><strong>Pago de Cuotas:</strong> Si el administrador aprueba tu crédito, los fondos se acreditarán en tu wallet. Cada mes, ingresa al historial de préstamos activos y presiona <strong>"Pagar Cuota"</strong> para realizar el débito automático de tu saldo disponible.</li>
           </ul>
         </div>
       )
@@ -334,12 +334,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            La acción de **Recargar** te permite añadir saldos ficticios para testear el Marketplace y Cursos:
+            La acción de <strong>Recargar</strong> te permite añadir saldos ficticios para testear el Marketplace y Cursos:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>Presiona **"Recargar"** en la botonera rápida de Inicio.</li>
+            <li>Presiona <strong>"Recargar"</strong> en la botonera rápida de Inicio.</li>
             <li>Selecciona el importe predefinido a cargar (₲ 50.000, ₲ 100.000, ₲ 500.000 o ₲ 1.000.000).</li>
-            <li>Confirma la operación. Tu balance se actualizará al instante con una transacción registrada de tipo `deposit`.</li>
+            <li>Confirma la operación. Tu balance se actualizará al instante con una transacción registrada de tipo "deposit".</li>
           </ul>
         </div>
       )
@@ -353,15 +353,15 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **E-Commerce** (`/app/tiendas` y `/app/carrito`) es el motor de compras online:
+            El módulo de <strong>E-Commerce</strong> ("/app/tiendas" y "/app/carrito") es el motor de compras online:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Explorar:** Navega por los catálogos organizados por categoría (Tecnología, Moda, Hogar, etc.) de las tiendas verificadas.</li>
-            <li>**Carrito:** Agrega los artículos, ingresa al icono de carrito y ajusta las cantidades que deseas comprar.</li>
-            <li>**Checkout:**
+            <li><strong>Explorar:</strong> Navega por los catálogos organizados por categoría (Tecnología, Moda, Hogar, etc.) de las tiendas verificadas.</li>
+            <li><strong>Carrito:</strong> Agrega los artículos, ingresa al icono de carrito y ajusta las cantidades que deseas comprar.</li>
+            <li><strong>Checkout:</strong>
               <ul className="list-disc pl-5 mt-1">
-                <li>Selecciona tipo de entrega: **Delivery** (envío a domicilio) o **Retiro en Tienda** (retiras en el local físico del vendedor).</li>
-                <li>Selecciona método de pago: **Pagar con Wallet** (descuenta automáticamente de tu balance OSC) o **Pago Contra Entrega** (abonas al recibir).</li>
+                <li>Selecciona tipo de entrega: <strong>Delivery</strong> (envío a domicilio) o <strong>Retiro en Tienda</strong> (retiras en el local físico del vendedor).</li>
+                <li>Selecciona método de pago: <strong>Pagar con Wallet</strong> (descuenta automáticamente de tu balance OSC) o <strong>Pago Contra Entrega</strong> (abonas al recibir).</li>
               </ul>
             </li>
           </ul>
@@ -377,12 +377,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El submódulo de **Cursos** (`/app/cursos`) te conecta con la capacitación financiera:
+            El submódulo de <strong>Cursos</strong> ("/app/cursos") te conecta con la capacitación financiera:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Inscripción:** Explora el catálogo de capacitaciones gratuitas o de pago. Si es de pago y no posees membresía Ingenio activa, se debitará el costo del curso de tu wallet.</li>
-            <li>**Visualización:** Entra al curso para ver el temario dividido en módulos y lecciones. Reproduce los videos y consulta los materiales de apoyo.</li>
-            <li>**Marcar Completado:** Al finalizar una clase, márcala como completada. El sistema recalculará tu barra de progreso (`0-100%`) y emitirá tu certificado al completar todas las lecciones.</li>
+            <li><strong>Inscripción:</strong> Explora el catálogo de capacitaciones gratuitas o de pago. Si es de pago y no posees membresía Ingenio activa, se debitará el costo del curso de tu wallet.</li>
+            <li><strong>Visualización:</strong> Entra al curso para ver el temario dividido en módulos y lecciones. Reproduce los videos y consulta los materiales de apoyo.</li>
+            <li><strong>Marcar Completado:</strong> Al finalizar una clase, márcala como completada. El sistema recalculará tu barra de progreso (`0-100%`) y emitirá tu certificado al completar todas las lecciones.</li>
           </ul>
         </div>
       )
@@ -396,12 +396,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Historial** recopila y organiza todas las transacciones financieras de tu cuenta:
+            El módulo de <strong>Historial</strong> recopila y organiza todas las transacciones financieras de tu cuenta:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Buscador y Filtros:** Clasifica los movimientos en: Todo, Ingresos (depósitos, transferencias recibidas, créditos cobrados) o Gastos (compras, cuotas pagadas, transferencias enviadas).</li>
-            <li>**Código de Colores:** Los ingresos se marcan con un signo positivo (`+`) y color verde; los egresos con un signo negativo (`-`) y color rojo.</li>
-            <li>**Ficha de Detalle:** Haz clic sobre cualquier transacción para desplegar el ID único de auditoría, la fecha y hora exacta, la descripción y el estado de la operación.</li>
+            <li><strong>Buscador y Filtros:</strong> Clasifica los movimientos en: Todo, Ingresos (depósitos, transferencias recibidas, créditos cobrados) o Gastos (compras, cuotas pagadas, transferencias enviadas).</li>
+            <li><strong>Código de Colores:</strong> Los ingresos se marcan con un signo positivo ("+") y color verde; los egresos con un signo negativo ("-") y color rojo.</li>
+            <li><strong>Ficha de Detalle:</strong> Haz clic sobre cualquier transacción para desplegar el ID único de auditoría, la fecha y hora exacta, la descripción y el estado de la operación.</li>
           </ul>
         </div>
       )
@@ -415,12 +415,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Ajustes** (`/app/perfil` y menús de Perfil), configuras tus preferencias de cuenta:
+            En <strong>Ajustes</strong> ("/app/perfil" y menús de Perfil), configuras tus preferencias de cuenta:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Editar Perfil:** Modifica tu foto de perfil (avatar), nombre, apellido, dirección de domicilio y teléfono.</li>
-            <li>**Datos Bancarios:** Registra el nombre de tu Banco, número de cuenta bancaria y tipo de cuenta (Ahorro/Corriente). Estos datos son obligatorios si solicitas retiros de dinero de tu wallet a tu cuenta corriente física.</li>
-            <li>**Notificaciones Push:** Activa o desactiva las alertas del navegador para recibir avisos de compras y transferencias.</li>
+            <li><strong>Editar Perfil:</strong> Modifica tu foto de perfil (avatar), nombre, apellido, dirección de domicilio y teléfono.</li>
+            <li><strong>Datos Bancarios:</strong> Registra el nombre de tu Banco, número de cuenta bancaria y tipo de cuenta (Ahorro/Corriente). Estos datos son obligatorios si solicitas retiros de dinero de tu wallet a tu cuenta corriente física.</li>
+            <li><strong>Notificaciones Push:</strong> Activa o desactiva las alertas del navegador para recibir avisos de compras y transferencias.</li>
           </ul>
         </div>
       )
@@ -436,7 +436,7 @@ export default function AdminManual() {
       content: (
         <div className="space-y-4">
           <p>
-            Al asumir el rol de Vendedor, el sistema te redirigirá a la pantalla de configuración comercial en `/vendedor/tienda`:
+            Al asumir el rol de Vendedor, el sistema te redirigirá a la pantalla de configuración comercial en "/vendedor/tienda":
           </p>
           <ul className="space-y-2 text-sm text-gray-300">
             <li><strong>Configuración Inicial:</strong> Registra el Nombre de tu Tienda, descripción comercial, dirección física, email y teléfono oficial de contacto.</li>
@@ -456,22 +456,22 @@ export default function AdminManual() {
       content: (
         <div className="space-y-4">
           <p>
-            El POS (`/vendedor/pos`) está optimizado para agilizar transacciones en local comercial:
+            El POS ("/vendedor/pos") está optimizado para agilizar transacciones en local comercial:
           </p>
           <div className="space-y-3">
             <h4 className="font-bold text-sm text-purple-400">Paso 1: Armar el Carrito de Compra</h4>
             <p className="text-xs text-muted-foreground">
-              Toca los artículos de la cuadrícula o lee el SKU con un escáner de códigos de barras (enfocando el campo de búsqueda rápida). Ajusta cantidades con los botones `+` y `-`.
+              Toca los artículos de la cuadrícula o lee el SKU con un escáner de códigos de barras (enfocando el campo de búsqueda rápida). Ajusta cantidades con los botones "+" y "-".
             </p>
             
             <h4 className="font-bold text-sm text-purple-400">Paso 2: Asignar Cliente (Opcional)</h4>
             <p className="text-xs text-muted-foreground">
-              Haz clic en el botón de cliente en la barra superior. Selecciona un cliente registrado en tu CRM local. Esto es **obligatorio** si la venta se registrará bajo la modalidad de crédito comercial.
+              Haz clic en el botón de cliente en la barra superior. Selecciona un cliente registrado en tu CRM local. Esto es <strong>obligatorio</strong> si la venta se registrará bajo la modalidad de crédito comercial.
             </p>
             
             <h4 className="font-bold text-sm text-purple-400">Paso 3: Cobrar (Tecla F2)</h4>
             <p className="text-xs text-muted-foreground">
-              Presiona "Cobrar" o la tecla rápida **F2** para seleccionar las condiciones de cobro:
+              Presiona "Cobrar" o la tecla rápida <strong>F2</strong> para seleccionar las condiciones de cobro:
             </p>
             <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
               <li><strong>Contado - Efectivo:</strong> Digita el monto recibido del cliente; la pantalla calcula el cambio/vuelto de inmediato.</li>
@@ -492,11 +492,11 @@ export default function AdminManual() {
       content: (
         <div className="space-y-4">
           <p>
-            El módulo de catálogo en `/vendedor/productos` permite mantener al día el inventario:
+            El módulo de catálogo en "/vendedor/productos" permite mantener al día el inventario:
           </p>
           <ul className="space-y-3 text-sm text-gray-300">
             <li>
-              <strong>Escribir (Crear Producto):</strong> Presiona **"Nuevo Producto"**. Registra el nombre, SKU único, categoría, stock inicial y visibilidad (Solo Online, Solo POS, o Ambos). Sube hasta 5 imágenes arrastrándolas al modal o pegando URLs directas.
+              <strong>Escribir (Crear Producto):</strong> Presiona <strong>"Nuevo Producto"</strong>. Registra el nombre, SKU único, categoría, stock inicial y visibilidad (Solo Online, Solo POS, o Ambos). Sube hasta 5 imágenes arrastrándolas al modal o pegando URLs directas.
             </li>
             <li>
               <strong>Calculadora Financiera de Costo/Margen:</strong>
@@ -504,14 +504,14 @@ export default function AdminManual() {
                 PRECIO VENTA = COSTO COMPRA * (1 + PORCENTAJE GANANCIA / 100)
               </div>
               <p className="text-xs text-muted-foreground">
-                Si ingresas el **Costo de Compra** (₲) y el **Porcentaje de Ganancia** (%), el sistema calculará el **Precio de Venta** final de forma automática. También calcula el porcentaje a la inversa si modificas el costo y el precio final.
+                Si ingresas el <strong>Costo de Compra</strong> (₲) y el <strong>Porcentaje de Ganancia</strong> (%), el sistema calculará el <strong>Precio de Venta</strong> final de forma automática. También calcula el porcentaje a la inversa si modificas el costo y el precio final.
               </p>
             </li>
             <li>
-              <strong>Editar:</strong> Haz clic en el botón de 3 puntos (⋯) de la fila y selecciona **"Editar"**. Permite ajustar stock, precios y agregar variantes (talla, color) con precios específicos.
+              <strong>Editar:</strong> Haz clic en el botón de 3 puntos (⋯) de la fila y selecciona <strong>"Editar"</strong>. Permite ajustar stock, precios y agregar variantes (talla, color) con precios específicos.
             </li>
             <li>
-              <strong>Eliminar:</strong> Pulsa **"Eliminar"** desde la lista de acciones. Aparecerá un cuadro de confirmación del navegador para verificar la acción de forma segura antes de realizar la baja permanente.
+              <strong>Eliminar:</strong> Pulsa <strong>"Eliminar"</strong> desde la lista de acciones. Aparecerá un cuadro de confirmación del navegador para verificar la acción de forma segura antes de realizar la baja permanente.
             </li>
           </ul>
         </div>
@@ -528,13 +528,13 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El **Dashboard** (`/admin`) es la pantalla de control principal del administrador. Contiene:
+            El <strong>Dashboard</strong> ("/admin") es la pantalla de control principal del administrador. Contiene:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**KPIs Clave:** Resumen de Usuarios Totales, Tiendas Activas, Productos en catálogo, Ventas de hoy, Ingresos acumulados del mes y Créditos activos.</li>
-            <li>**Tendencias comparativas:** Cada KPI muestra una variación porcentual en verde (crecimiento) o rojo (reducción) en comparación con el mes anterior.</li>
-            <li>**Gráficos en tiempo real:** Gráfico mensual de Ventas vs Comisiones recaudadas (5% de retención base), barra de crecimiento de usuarios (clientes frente a vendedores), y distribución del estado de pedidos en gráfico de dona.</li>
-            <li>**Tablas de Monitoreo:** Resumen de las últimas 5 órdenes de compra y las últimas 5 transacciones de wallet realizadas en todo el ecosistema.</li>
+            <li><strong>KPIs Clave:</strong> Resumen de Usuarios Totales, Tiendas Activas, Productos en catálogo, Ventas de hoy, Ingresos acumulados del mes y Créditos activos.</li>
+            <li><strong>Tendencias comparativas:</strong> Cada KPI muestra una variación porcentual en verde (crecimiento) o rojo (reducción) en comparación con el mes anterior.</li>
+            <li><strong>Gráficos en tiempo real:</strong> Gráfico mensual de Ventas vs Comisiones recaudadas (5% de retención base), barra de crecimiento de usuarios (clientes frente a vendedores), y distribución del estado de pedidos en gráfico de dona.</li>
+            <li><strong>Tablas de Monitoreo:</strong> Resumen de las últimas 5 órdenes de compra y las últimas 5 transacciones de wallet realizadas en todo el ecosistema.</li>
           </ul>
         </div>
       )
@@ -548,12 +548,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En el módulo de **Tiendas** (`/admin/tiendas`), el administrador supervisa los perfiles de los vendedores:
+            En el módulo de <strong>Tiendas</strong> ("/admin/tiendas"), el administrador supervisa los perfiles de los vendedores:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Visualizar Catálogos:** Inspecciona los banners, logos, descripciones y datos de contacto de cada comercio.</li>
-            <li>**Verificación (Badge Verificada):** Pulsa el botón "Verificar" en la ficha del comercio. Esto le añade un check azul de autenticidad en el Marketplace público, aumentando la confianza de los compradores.</li>
-            <li>**Cambio de Estado:** Desactiva temporalmente tiendas que cometan faltas comerciales. Una tienda desactivada no aparecerá en el directorio público y sus productos quedarán ocultos temporalmente en el Marketplace.</li>
+            <li><strong>Visualizar Catálogos:</strong> Inspecciona los banners, logos, descripciones y datos de contacto de cada comercio.</li>
+            <li><strong>Verificación (Badge Verificada):</strong> Pulsa el botón "Verificar" en la ficha del comercio. Esto le añade un check azul de autenticidad en el Marketplace público, aumentando la confianza de los compradores.</li>
+            <li><strong>Cambio de Estado:</strong> Desactiva temporalmente tiendas que cometan faltas comerciales. Una tienda desactivada no aparecerá en el directorio público y sus productos quedarán ocultos temporalmente en el Marketplace.</li>
           </ul>
         </div>
       )
@@ -567,14 +567,14 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Usuarios** (`/admin/usuarios`) administra las cuentas registradas en la base de datos:
+            El módulo de <strong>Usuarios</strong> ("/admin/usuarios") administra las cuentas registradas en la base de datos:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Crear Usuario:** Registra cuentas desde el panel asignándoles contraseña y roles inmediatos.</li>
-            <li>**Asignación de Roles Múltiples:** Edita perfiles mediante casillas de verificación. Un mismo usuario puede tener checkboxes activados para Cliente (Wallet), Vendedor (POS/Tienda), Ingenio (Academia) y Admin (Acceso al panel). El backend autogenera billeteras si agregas el rol `client` y no existía una previamente.</li>
-            <li>**Resetear Contraseñas:** Permite modificar la contraseña de cualquier usuario que deba blanquear accesos, cifrándola con bcrypt de forma segura al guardar.</li>
-            <li>**Activar / Desactivar Cuentas:** Modifica el flag `isActive`. Si está desactivado, el usuario no podrá iniciar sesión.</li>
-            <li>**Eliminación en Cascada:** Al presionar "Eliminar Usuario", la base de datos borrará la cuenta y todas sus relaciones (pedidos, productos, wallet) para evitar datos huérfanos.</li>
+            <li><strong>Crear Usuario:</strong> Registra cuentas desde el panel asignándoles contraseña y roles inmediatos.</li>
+            <li><strong>Asignación de Roles Múltiples:</strong> Edita perfiles mediante casillas de verificación. Un mismo usuario puede tener checkboxes activados para Cliente (Wallet), Vendedor (POS/Tienda), Ingenio (Academia) y Admin (Acceso al panel). El backend autogenera billeteras si agregas el rol "client" y no existía una previamente.</li>
+            <li><strong>Resetear Contraseñas:</strong> Permite modificar la contraseña de cualquier usuario que deba blanquear accesos, cifrándola con bcrypt de forma segura al guardar.</li>
+            <li><strong>Activar / Desactivar Cuentas:</strong> Modifica el flag "isActive". Si está desactivado, el usuario no podrá iniciar sesión.</li>
+            <li><strong>Eliminación en Cascada:</strong> Al presionar "Eliminar Usuario", la base de datos borrará la cuenta y todas sus relaciones (pedidos, productos, wallet) para evitar datos huérfanos.</li>
           </ul>
         </div>
       )
@@ -588,11 +588,11 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Productos** (`/admin/productos`), el administrador supervisa todo el inventario de la plataforma:
+            En <strong>Productos</strong> ("/admin/productos"), el administrador supervisa todo el inventario de la plataforma:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Búsqueda y Filtros:** Filtra productos por tienda de origen, categoría, stock y visibilidad (Online/POS).</li>
-            <li>**Moderación:** Modifica o da de baja productos que infrinjan los términos de uso. La eliminación del producto es física y reduce el stock del marketplace de inmediato.</li>
+            <li><strong>Búsqueda y Filtros:</strong> Filtra productos por tienda de origen, categoría, stock y visibilidad (Online/POS).</li>
+            <li><strong>Moderación:</strong> Modifica o da de baja productos que infrinjan los términos de uso. La eliminación del producto es física y reduce el stock del marketplace de inmediato.</li>
           </ul>
         </div>
       )
@@ -606,12 +606,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Pedidos** (`/admin/pedidos`) consolida las transacciones de compraventa del Marketplace:
+            El módulo de <strong>Pedidos</strong> ("/admin/pedidos") consolida las transacciones de compraventa del Marketplace:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Inspección de Órdenes:** Visualiza el desglose completo del carrito comprado, datos del cliente, dirección de entrega y método de pago (Wallet o Contra entrega).</li>
-            <li>**Desglose Monetario:** Rastrear el Subtotal, Impuesto, Costo de Envío, la **Comisión retenida para la plataforma** y la ganancia neta acreditada al vendedor.</li>
-            <li>**Historial de Cambios de Estado:** Consulta el log temporal detallado (Tracking) que indica el día, hora y operador que cambió el pedido de "Pendiente" a "Confirmado", "Listo" o "Entregado".</li>
+            <li><strong>Inspección de Órdenes:</strong> Visualiza el desglose completo del carrito comprado, datos del cliente, dirección de entrega y método de pago (Wallet o Contra entrega).</li>
+            <li><strong>Desglose Monetario:</strong> Rastrear el Subtotal, Impuesto, Costo de Envío, la <strong>Comisión retenida para la plataforma</strong> y la ganancia neta acreditada al vendedor.</li>
+            <li><strong>Historial de Cambios de Estado:</strong> Consulta el log temporal detallado (Tracking) que indica el día, hora y operador que cambió el pedido de "Pendiente" a "Confirmado", "Listo" o "Entregado".</li>
           </ul>
         </div>
       )
@@ -625,12 +625,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Finanzas** (`/admin/finanzas`) proporciona auditoría de rentabilidad:
+            El módulo de <strong>Finanzas</strong> ("/admin/finanzas") proporciona auditoría de rentabilidad:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Balance Consolidado:** Suma de ingresos totales (depósitos), egresos totales (retiros y créditos aprobados) y comisiones de plataforma.</li>
-            <li>**Métricas de Comisión:** Reporte detallado de comisiones acumuladas provenientes del marketplace (5% default de ventas online).</li>
-            <li>**Saldos en Tránsito:** Monitorea el volumen de dinero en estado "Pendiente" (retiros de efectivo solicitados que aún no se han aprobado).</li>
+            <li><strong>Balance Consolidado:</strong> Suma de ingresos totales (depósitos), egresos totales (retiros y créditos aprobados) y comisiones de plataforma.</li>
+            <li><strong>Métricas de Comisión:</strong> Reporte detallado de comisiones acumuladas provenientes del marketplace (5% default de ventas online).</li>
+            <li><strong>Saldos en Tránsito:</strong> Monitorea el volumen de dinero en estado "Pendiente" (retiros de efectivo solicitados que aún no se han aprobado).</li>
           </ul>
         </div>
       )
@@ -644,12 +644,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Transacciones** (`/admin/transacciones`) es el registro inmutable de movimientos:
+            El módulo de <strong>Transacciones</strong> ("/admin/transacciones") es el registro inmutable de movimientos:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Historial Paginado:** Lista detallada que muestra fecha, ID, email del emisor, email del receptor, descripción, monto y estado.</li>
-            <li>**Filtro por Tipo de Operación:** Clasifica las búsquedas por depósitos (`deposit`), retiros (`withdrawal`), transferencias P2P (`transfer_out` / `transfer_in`), compras en el marketplace (`purchase`), ventas (`sale`) y cobros de comisión (`commission`).</li>
-            <li>**Trazabilidad:** Permite verificar auditorías en caso de disputas de pagos o transferencias P2P no reconocidas.</li>
+            <li><strong>Historial Paginado:</strong> Lista detallada que muestra fecha, ID, email del emisor, email del receptor, descripción, monto y estado.</li>
+            <li><strong>Filtro por Tipo de Operación:</strong> Clasifica las búsquedas por depósitos ("deposit"), retiros ("withdrawal"), transferencias P2P ("transfer_out" / "transfer_in"), compras en el marketplace ("purchase"), ventas ("sale") y cobros de comisión ("commission").</li>
+            <li><strong>Trazabilidad:</strong> Permite verificar auditorías en caso de disputas de pagos o transferencias P2P no reconocidas.</li>
           </ul>
         </div>
       )
@@ -663,13 +663,13 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El flujo de **Retiros** (`/admin/retiros`) gestiona las salidas de dinero de las wallets de usuarios/comercios a sus cuentas bancarias:
+            El flujo de <strong>Retiros</strong> ("/admin/retiros") gestiona las salidas de dinero de las wallets de usuarios/comercios a sus cuentas bancarias:
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Auditar Datos Bancarios:** Inspecciona la ficha del retiro que incluye: Banco del destinatario, Número de Cuenta, Tipo de Cuenta (Ahorro/Corriente), Nombre del Titular y su Documento de Identidad (CI/RUC).</li>
-            <li>**Operación Externa:** El administrador debe ingresar al home banking físico de su banco y realizar la transferencia bancaria manual al destinatario por el monto indicado.</li>
-            <li>**Aprobación:** Una vez realizada la transferencia manual, presiona **"Aprobar"** en el panel. El estado cambia a aprobado y se formaliza el débito en la billetera.</li>
-            <li>**Rechazo:** Si los datos bancarios son erróneos, presiona **"Rechazar"**. El dinero retenido regresa automáticamente al saldo disponible de la wallet del usuario con una notificación de error.</li>
+            <li><strong>Auditar Datos Bancarios:</strong> Inspecciona la ficha del retiro que incluye: Banco del destinatario, Número de Cuenta, Tipo de Cuenta (Ahorro/Corriente), Nombre del Titular y su Documento de Identidad (CI/RUC).</li>
+            <li><strong>Operación Externa:</strong> El administrador debe ingresar al home banking físico de su banco y realizar la transferencia bancaria manual al destinatario por el monto indicado.</li>
+            <li><strong>Aprobación:</strong> Una vez realizada la transferencia manual, presiona <strong>"Aprobar"</strong> en el panel. El estado cambia a aprobado y se formaliza el débito en la billetera.</li>
+            <li><strong>Rechazo:</strong> Si los datos bancarios son erróneos, presiona <strong>"Rechazar"</strong>. El dinero retenido regresa automáticamente al saldo disponible de la wallet del usuario con una notificación de error.</li>
           </ol>
         </div>
       )
@@ -683,19 +683,19 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En el módulo de **Créditos** (`/admin/creditos`), el administrador opera como la entidad crediticia:
+            En el módulo de <strong>Créditos</strong> ("/admin/creditos"), el administrador opera como la entidad crediticia:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
-            <li>**Análisis de Documentación:** Abre la solicitud para inspeccionar los archivos de **Cédula de Identidad (Frente y Dorso)** cargados por el cliente.</li>
-            <li>**Cálculo de Cuotas e Intereses:** Revisa la tabla de amortización con los vencimientos mensuales, monto solicitado, tasa de interés y valor exacto de la cuota.</li>
-            <li>**Aprobación:** Presione **"Aprobar"**. Automáticamente:
+            <li><strong>Análisis de Documentación:</strong> Abre la solicitud para inspeccionar los archivos de <strong>Cédula de Identidad (Frente y Dorso)</strong> cargados por el cliente.</li>
+            <li><strong>Cálculo de Cuotas e Intereses:</strong> Revisa la tabla de amortización con los vencimientos mensuales, monto solicitado, tasa de interés y valor exacto de la cuota.</li>
+            <li><strong>Aprobación:</strong> Presione <strong>"Aprobar"</strong>. Automáticamente:
               <ul className="list-disc pl-5 mt-1">
-                <li>El estado del préstamo pasa a **Activo**.</li>
+                <li>El estado del préstamo pasa a <strong>Activo</strong>.</li>
                 <li>Se realiza una transferencia automática desde la cuenta de Oscorp acreditando el monto total solicitado al saldo disponible de la wallet del cliente.</li>
                 <li>Se genera una notificación de acreditación inmediata en la cuenta del usuario.</li>
               </ul>
             </li>
-            <li>**Rechazo:** Si los documentos son ilegibles o el perfil no califica, presiona **"Rechazar"** ingresando el motivo de rechazo.</li>
+            <li><strong>Rechazo:</strong> Si los documentos son ilegibles o el perfil no califica, presiona <strong>"Rechazar"</strong> ingresando el motivo de rechazo.</li>
           </ul>
         </div>
       )
@@ -709,11 +709,11 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Reportes** (`/admin/reportes`) recopila estadísticas de control fiscal:
+            El módulo de <strong>Reportes</strong> ("/admin/reportes") recopila estadísticas de control fiscal:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Filtros de Exportación:** Selecciona rango de fechas, tipo de movimiento o estado del registro.</li>
-            <li>**Exportación a CSV:** Haz clic en **"Exportar a CSV"**. El servidor generará un archivo con cabecera **BOM UTF-8** para asegurar que caracteres especiales e importes en Guaraníes se abran correctamente en Microsoft Excel.</li>
+            <li><strong>Filtros de Exportación:</strong> Selecciona rango de fechas, tipo de movimiento o estado del registro.</li>
+            <li><strong>Exportación a CSV:</strong> Haz clic en <strong>"Exportar a CSV"</strong>. El servidor generará un archivo con cabecera <strong>BOM UTF-8</strong> para asegurar que caracteres especiales e importes en Guaraníes se abran correctamente en Microsoft Excel.</li>
           </ul>
         </div>
       )
@@ -727,12 +727,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Ingenio Millonario** (`/admin/ingenio`) permite estructurar el programa educativo premium:
+            El módulo de <strong>Ingenio Millonario</strong> ("/admin/ingenio") permite estructurar el programa educativo premium:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Inicializar Sistema (Setup):** Si es la primera instalación, pulsa **"Setup Inicial"**. El sistema creará automáticamente las etapas **E1 (Fundamentos)** y **E2 (Maestría)**, configurará sus 10 segmentos respectivos de la ruleta con colores, e insertará dos cursos base en el e-learning.</li>
-            <li>**Gestión de Segmentos:** Edita los títulos y descripciones de los 10 pasos de cada etapa (Mentalidad, Ahorro, Inversiones, etc.).</li>
-            <li>**Carga de Contenido de Cursos:** Vincula lecciones de video (URLs de YouTube/Vimeo), documentos de lectura y resúmenes para cada etapa o segmento.</li>
+            <li><strong>Inicializar Sistema (Setup):</strong> Si es la primera instalación, pulsa <strong>"Setup Inicial"</strong>. El sistema creará automáticamente las etapas <strong>E1 (Fundamentos)</strong> y <strong>E2 (Maestría)</strong>, configurará sus 10 segmentos respectivos de la ruleta con colores, e insertará dos cursos base en el e-learning.</li>
+            <li><strong>Gestión de Segmentos:</strong> Edita los títulos y descripciones de los 10 pasos de cada etapa (Mentalidad, Ahorro, Inversiones, etc.).</li>
+            <li><strong>Carga de Contenido de Cursos:</strong> Vincula lecciones de video (URLs de YouTube/Vimeo), documentos de lectura y resúmenes para cada etapa o segmento.</li>
           </ul>
         </div>
       )
@@ -746,12 +746,12 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Suscripciones Ingenio** (`/admin/ingenio/suscripciones`), controlas quién tiene acceso al programa premium:
+            En <strong>Suscripciones Ingenio</strong> ("/admin/ingenio/suscripciones"), controlas quién tiene acceso al programa premium:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Aprobación de Transferencias Bancarias:** Cuando un alumno paga su suscripción mediante transferencia bancaria, el estado queda en `PENDING_APPROVAL`. Tras confirmar el cobro en tu banco, ingresa el monto recibido en el panel y pulsa **"Aprobar"**. El sistema habilitará el rol `ingenio` en su cuenta de inmediato.</li>
-            <li>**Revocar Acceso:** Si el estudiante incumple el pago de sus cuotas mensuales de financiamiento, presiona **"Revocar Acceso"** para bloquear su ingreso a la academia y al dashboard financiero personal.</li>
-            <li>**Restablecer / Eliminar:** Elimina la suscripción para realizar un reset completo del alumno (borrando sus avances y código de referido).</li>
+            <li><strong>Aprobación de Transferencias Bancarias:</strong> Cuando un alumno paga su suscripción mediante transferencia bancaria, el estado queda en "PENDING_APPROVAL". Tras confirmar el cobro en tu banco, ingresa el monto recibido en el panel y pulsa <strong>"Aprobar"</strong>. El sistema habilitará el rol "ingenio" en su cuenta de inmediato.</li>
+            <li><strong>Revocar Acceso:</strong> Si el estudiante incumple el pago de sus cuotas mensuales de financiamiento, presiona <strong>"Revocar Acceso"</strong> para bloquear su ingreso a la academia y al dashboard financiero personal.</li>
+            <li><strong>Restablecer / Eliminar:</strong> Elimina la suscripción para realizar un reset completo del alumno (borrando sus avances y código de referido).</li>
           </ul>
         </div>
       )
@@ -765,11 +765,11 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Materiales** (`/admin/ingenio/materiales`) gestiona los recursos descargables:
+            El módulo de <strong>Materiales</strong> ("/admin/ingenio/materiales") gestiona los recursos descargables:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Subir Recurso:** Presiona **"Nuevo Material"**. Carga el título, selecciona el tipo de archivo (PDF, Excel, Imagen), asigna la etapa (E1/E2) y el paso de la ruleta (1 al 10) al que pertenece.</li>
-            <li>**Configurar Descarga:** Sube el archivo o ingresa su URL de almacenamiento, define si su acceso es público o requiere membresía activa y pulsa Guardar.</li>
+            <li><strong>Subir Recurso:</strong> Presiona <strong>"Nuevo Material"</strong>. Carga el título, selecciona el tipo de archivo (PDF, Excel, Imagen), asigna la etapa (E1/E2) y el paso de la ruleta (1 al 10) al que pertenece.</li>
+            <li><strong>Configurar Descarga:</strong> Sube el archivo o ingresa su URL de almacenamiento, define si su acceso es público o requiere membresía activa y pulsa Guardar.</li>
           </ul>
         </div>
       )
@@ -783,13 +783,13 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Campañas** (`/admin/campanas`) opera como el portal de comunicación masiva:
+            El módulo de <strong>Campañas</strong> ("/admin/campanas") opera como el portal de comunicación masiva:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Creación de Campaña:** Diseña comunicados agregando un título, descripción corta, imagen opcional y enlace de destino.</li>
-            <li>**Segmentación:** Elige el grupo receptor: Todos los usuarios, solo Clientes, solo Vendedores o solo Estudiantes de la academia.</li>
-            <li>**Envío (Web Push API):** Presiona **"Enviar"**. El servidor se conecta al Service Worker del navegador de cada usuario registrado, proyectando el mensaje emergente en pantallas móviles y de escritorio en tiempo real.</li>
-            <li>**Estadísticas de Tasa de Clics:** Permite medir cuántas notificaciones fueron entregadas, cuántas leídas y cuántos clics totales se registraron.</li>
+            <li><strong>Creación de Campaña:</strong> Diseña comunicados agregando un título, descripción corta, imagen opcional y enlace de destino.</li>
+            <li><strong>Segmentación:</strong> Elige el grupo receptor: Todos los usuarios, solo Clientes, solo Vendedores o solo Estudiantes de la academia.</li>
+            <li><strong>Envío (Web Push API):</strong> Presiona <strong>"Enviar"</strong>. El servidor se conecta al Service Worker del navegador de cada usuario registrado, proyectando el mensaje emergente en pantallas móviles y de escritorio en tiempo real.</li>
+            <li><strong>Estadísticas de Tasa de Clics:</strong> Permite medir cuántas notificaciones fueron entregadas, cuántas leídas y cuántos clics totales se registraron.</li>
           </ul>
         </div>
       )
@@ -803,11 +803,11 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            El módulo de **Planes** (`/admin/planes`) define la monetización del Marketplace:
+            El módulo de <strong>Planes</strong> ("/admin/planes") define la monetización del Marketplace:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Registrar Planes:** Crea ofertas comerciales como Plan Básico, Estándar y Comercial.</li>
-            <li>**Costos y Ciclos:** Fija los precios en Guaraníes, los días de prueba gratuitos (ej: 7 días), el límite máximo de productos que pueden publicar y el ciclo de facturación (mensual, trimestral, anual).</li>
+            <li><strong>Registrar Planes:</strong> Crea ofertas comerciales como Plan Básico, Estándar y Comercial.</li>
+            <li><strong>Costos y Ciclos:</strong> Fija los precios en Guaraníes, los días de prueba gratuitos (ej: 7 días), el límite máximo de productos que pueden publicar y el ciclo de facturación (mensual, trimestral, anual).</li>
           </ul>
         </div>
       )
@@ -821,11 +821,11 @@ export default function AdminManual() {
       content: (
         <div className="space-y-3 text-sm">
           <p>
-            En **Susc. Vendedores** (`/admin/planes/suscripciones`), controlas las membresías de los comercios:
+            En <strong>Susc. Vendedores</strong> ("/admin/planes/suscripciones"), controlas las membresías de los comercios:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-            <li>**Revisión de Pagos:** Verifica las solicitudes de activación de plan de las tiendas comerciales.</li>
-            <li>**Aprobación:** Aprueba el pago del plan tras confirmar la acreditación bancaria, lo que actualiza la fecha de vencimiento del vendedor y activa su límite correspondiente de carga de productos.</li>
+            <li><strong>Revisión de Pagos:</strong> Verifica las solicitudes de activación de plan de las tiendas comerciales.</li>
+            <li><strong>Aprobación:</strong> Aprueba el pago del plan tras confirmar la acreditación bancaria, lo que actualiza la fecha de vencimiento del vendedor y activa su límite correspondiente de carga de productos.</li>
           </ul>
         </div>
       )
@@ -874,7 +874,7 @@ VAPID_PRIVATE_KEY="clave_privada_push"`}
       content: (
         <div className="space-y-4">
           <p>
-            El proyecto utiliza **Prisma ORM** para mapear los esquemas a la base de datos relacional PostgreSQL.
+            El proyecto utiliza <strong>Prisma ORM</strong> para mapear los esquemas a la base de datos relacional PostgreSQL.
           </p>
           <div className="space-y-3">
             <h4 className="font-bold text-xs text-emerald-400">1. Generación de Modelos de Cliente</h4>
@@ -1098,7 +1098,7 @@ VAPID_PRIVATE_KEY="clave_privada_push"`}
         <div className="print-page-break space-y-6">
           <h2 className="text-2xl font-black border-b pb-2 text-slate-900">1. Visión General y Roles del Ecosistema</h2>
           <p>
-            **Oscorp Platform** es una suite paraguaya integrada de e-commerce y fintech de alto nivel.
+            <strong>Oscorp Platform</strong> es una suite paraguaya integrada de e-commerce y fintech de alto nivel.
           </p>
           <h3 className="text-lg font-bold text-blue-700 mt-4">1.1 Canales de Roles</h3>
           <p>
@@ -1136,7 +1136,7 @@ VAPID_PRIVATE_KEY="clave_privada_push"`}
 
           <h3 className="text-lg font-bold text-purple-700 mt-6">3.2 Punto de Venta (POS) e Integración de Cobro QR</h3>
           <p>
-            La terminal POS interactiva permite añadir productos con clics o escáneres de SKU láser. Soporta ventas al **Contado** o **Crédito** (cargando la cuenta corriente del cliente seleccionado). Los cobros al contado aceptan efectivo, tarjetas bancarias tradicionales o **Wallet QR** (genera un QR de pago interactivo que es escaneado por el cliente desde su monedero Oscorp, confirmando la venta de forma atómica sin contacto).
+            La terminal POS interactiva permite añadir productos con clics o escáneres de SKU láser. Soporta ventas al <strong>Contado</strong> o <strong>Crédito</strong> (cargando la cuenta corriente del cliente seleccionado). Los cobros al contado aceptan efectivo, tarjetas bancarias tradicionales o <strong>Wallet QR</strong> (genera un QR de pago interactivo que es escaneado por el cliente desde su monedero Oscorp, confirmando la venta de forma atómica sin contacto).
           </p>
         </div>
 

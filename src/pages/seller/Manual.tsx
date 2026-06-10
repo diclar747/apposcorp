@@ -43,7 +43,7 @@ export default function SellerManual() {
       content: (
         <div className="space-y-4">
           <p>
-            Al ingresar al rol de Vendedor, debes configurar tu establecimiento comercial desde la sección **Mi Tienda** (`/vendedor/tienda`):
+            Al ingresar al rol de Vendedor, debes configurar tu establecimiento comercial desde la sección <strong>Mi Tienda</strong> ("/vendedor/tienda"):
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs text-muted-foreground">
             <li><strong>Información Básica:</strong> Registra el Nombre de tu Tienda, descripción para el marketplace, dirección física del local, email de contacto y teléfono comercial.</li>
@@ -62,11 +62,11 @@ export default function SellerManual() {
       content: (
         <div className="space-y-4">
           <p>
-            Mantén al día tu inventario en el catálogo global de tu tienda en **Productos** (`/vendedor/productos`):
+            Mantén al día tu inventario en el catálogo global de tu tienda en <strong>Productos</strong> ("/vendedor/productos"):
           </p>
           <ul className="space-y-3 text-xs text-muted-foreground">
             <li>
-              <strong>Crear (Escribir):</strong> Presiona **"Nuevo Producto"**. Introduce nombre, SKU único, categoría, cantidad de stock e imágenes (puedes arrastrar archivos o pegar URLs de imágenes).
+              <strong>Crear (Escribir):</strong> Presiona <strong>"Nuevo Producto"</strong>. Introduce nombre, SKU único, categoría, cantidad de stock e imágenes (puedes arrastrar archivos o pegar URLs de imágenes).
             </li>
             <li>
               <strong>Calculadora de Precio / Margen:</strong>
@@ -74,7 +74,7 @@ export default function SellerManual() {
                 PRECIO VENTA = COSTO COMPRA * (1 + PORCENTAJE GANANCIA / 100)
               </div>
               <p>
-                Al rellenar el **Costo de Compra** (₲) y el **Margen de Ganancia** (%), la calculadora determinará automáticamente el **Precio de Venta** sugerido. Funciona de manera inversa si editas el precio final directamente.
+                Al rellenar el <strong>Costo de Compra</strong> (₲) y el <strong>Margen de Ganancia</strong> (%), la calculadora determinará automáticamente el <strong>Precio de Venta</strong> sugerido. Funciona de manera inversa si editas el precio final directamente.
               </p>
             </li>
             <li>
@@ -92,7 +92,7 @@ export default function SellerManual() {
       content: (
         <div className="space-y-4">
           <p>
-            La pantalla de **Punto de Venta** (`/vendedor/pos`) está optimizada para cobros rápidos cara a cara:
+            La pantalla de <strong>Punto de Venta</strong> ("/vendedor/pos") está optimizada para cobros rápidos cara a cara:
           </p>
           <div className="space-y-3 text-xs text-muted-foreground">
             <h4 className="font-bold text-green-500 text-xs">Paso 1: Armar el Ticket</h4>
@@ -102,12 +102,12 @@ export default function SellerManual() {
             
             <h4 className="font-bold text-green-500 text-xs">Paso 2: Registrar Cliente (Opcional)</h4>
             <p>
-              Haz clic en "Seleccionar Cliente" en la barra superior. Es indispensable si registras la venta bajo la modalidad de **Crédito** (cuenta corriente).
+              Haz clic en "Seleccionar Cliente" en la barra superior. Es indispensable si registras la venta bajo la modalidad de <strong>Crédito</strong> (cuenta corriente).
             </p>
             
             <h4 className="font-bold text-green-500 text-xs">Paso 3: Formas de Cobro (Tecla F2)</h4>
             <p>
-              Presiona "Cobrar" o la tecla rápida **F2** y selecciona la vía de pago:
+              Presiona "Cobrar" o la tecla rápida <strong>F2</strong> y selecciona la vía de pago:
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Contado - Efectivo:</strong> Digita la suma recibida; el sistema calcula el vuelto a entregar.</li>
