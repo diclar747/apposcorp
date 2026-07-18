@@ -49,3 +49,10 @@ coverage
 .temp
 .tmp
 .vercel
+
+# Backups y datos (nunca a git)
+db_backup/
+.env.bak
+.env.*.bak
+*.backup.zip
+apposcorp_backup_*.zip

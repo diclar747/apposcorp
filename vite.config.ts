@@ -13,6 +13,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ["oscorp.com.py", "www.oscorp.com.py", "oscorp.host.cnid.com.py"],
     proxy: {
       "/api": {
         target: "http://localhost:3001",
