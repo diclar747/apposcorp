@@ -18,7 +18,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "dev:full": "concurrently \"npm run server:dev\" \"npm run dev\"",
-    "start": "concurrently \"npm run server:dev\" \"vite --port 3000 --host\""
+    "start": "NODE_ENV=production tsx server/src/index.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

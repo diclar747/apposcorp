@@ -3,6 +3,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import os from 'os';
 
 // Import routes
@@ -47,11 +48,22 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+  'https://oscorp.com.py',
+  'https://www.oscorp.com.py',
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(null, true); // permitir todo en producción interna
+  },
   credentials: true,
 }));
 
@@ -394,16 +406,33 @@ app.get('/api/setup', async (req, res) => {
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Algo deu errado!' });
+  res.status(500).json({ error: 'Algo salió mal!' });
 });
 
-// Only listen if not running on Vercel (for local development)
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📡 API disponível em http://localhost:${PORT}/api`);
-  });
+// Servir frontend compilado (Vite build → /dist) en producción
+// En desarrollo, Vite corre por separado en otro puerto.
+const distPath = path.join(process.cwd(), 'dist');
+if (process.env.NODE_ENV === 'production') {
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req: express.Request, res: express.Response) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health')) return res.status(404).json({ error: 'Not found' });
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+    console.log(`🌐 Sirviendo frontend estático desde: ${distPath}`);
+  } else {
+    console.warn(`⚠️  No se encontró /dist — el frontend no está compilado.`);
+  }
 }
 
-// Export for Vercel
+// Siempre escuchar (tanto en desarrollo como en producción en el VPS)
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📡 API disponible en http://localhost:${PORT}/api`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Frontend servido desde /dist`);
+  }
+});
+
+// Export for compatibility
 export default app;
