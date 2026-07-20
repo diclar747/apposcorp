@@ -563,12 +563,13 @@ const MarketplaceSection = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mb-12 sm:mb-20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-white/5"
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="mb-12 sm:mb-20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-slate-200/60 dark:border-white/10 bg-slate-900 group"
         >
           <img
             src="/images/banner.png"
             alt="Oscorp - Reescribimos las reglas del comercio - Ofertas exclusivas por compras en la web"
-            className="w-full h-auto aspect-[2148/732] object-cover"
+            className="w-full h-auto object-cover transform group-hover:scale-[1.01] transition-transform duration-700 ease-out"
           />
         </motion.div>
 
