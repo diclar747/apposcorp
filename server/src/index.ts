@@ -415,7 +415,7 @@ const distPath = path.join(process.cwd(), 'dist');
 if (process.env.NODE_ENV === 'production') {
   if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
-    app.get('*', (req: express.Request, res: express.Response) => {
+    app.use((req: express.Request, res: express.Response) => {
       if (req.path.startsWith('/api') || req.path.startsWith('/health')) return res.status(404).json({ error: 'Not found' });
       res.sendFile(path.join(distPath, 'index.html'));
     });

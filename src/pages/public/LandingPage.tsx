@@ -565,25 +565,11 @@ const MarketplaceSection = () => {
           viewport={{ once: true }}
           className="mb-12 sm:mb-20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-slate-100 dark:border-white/5"
         >
-          <div className="flex flex-col sm:flex-row items-stretch bg-white dark:bg-slate-800/50">
-            <div className="flex-1 flex flex-col items-center justify-center gap-2 sm:gap-3 py-6 px-4 sm:py-8 sm:px-8 text-center sm:text-left sm:items-start">
-              <img src="/oscorp-logo.png" alt="Oscorp" className="h-10 sm:h-12 w-auto object-contain dark:brightness-0 dark:invert" />
-              <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                Reescribimos las reglas del comercio
-              </p>
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center gap-1 py-6 px-4 sm:py-8 sm:px-8 text-center bg-gradient-to-r from-blue-600 to-indigo-600">
-              <p className="text-base sm:text-xl lg:text-2xl font-black uppercase tracking-tight text-white">
-                Ofertas Exclusivas
-              </p>
-              <p className="text-xs sm:text-sm font-semibold text-blue-100">
-                por compras en la web
-              </p>
-              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-blue-200 mt-1">
-                Aplicación Online
-              </p>
-            </div>
-          </div>
+          <img
+            src="/images/banner.png"
+            alt="Oscorp - Reescribimos las reglas del comercio - Ofertas exclusivas por compras en la web"
+            className="w-full h-auto aspect-[2148/732] object-cover"
+          />
         </motion.div>
 
         {/* Categories */}
