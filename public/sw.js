@@ -1,8 +1,8 @@
 // Oscorp Service Worker - Push Notifications
-// Version: 1.0.1 - Updated: 2026-04-12
+// Version: 1.0.2 - Updated: 2026-07-29
 
-const OSCORP_ICON = 'https://www.oscorp.com.py/assets/images/logos/logo2.png';
-const OSCORP_BADGE = '/icons/icon-192x192.png';
+const OSCORP_ICON = '/icons/icon-192x192.png';
+const OSCORP_BADGE = '/icons/icon-96x96.png';
 
 // Listen for push events
 self.addEventListener('push', (event) => {
