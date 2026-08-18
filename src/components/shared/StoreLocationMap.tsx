@@ -1,11 +1,5 @@
-import { useCallback } from 'react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
-import { MapPin } from 'lucide-react';
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-
-// Asunción, Paraguay
-const DEFAULT_CENTER = { lat: -25.2637, lng: -57.5759 };
+import { useState } from 'react';
+import { MapPin, LocateFixed } from 'lucide-react';
 
 interface StoreLocationMapProps {
   latitude?: number | null;
@@ -15,69 +9,85 @@ interface StoreLocationMapProps {
   height?: string;
 }
 
-export function StoreLocationMap({ latitude, longitude, editable = false, onChange, height = '280px' }: StoreLocationMapProps) {
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY || '',
-  });
+// Modo edición: pide la ubicación del navegador (sin API key ni costo).
+// Modo lectura: embed gratuito de Google Maps por URL (tampoco requiere API key).
+export function StoreLocationMap({ latitude, longitude, editable = false, onChange, height = '220px' }: StoreLocationMapProps) {
+  const [locating, setLocating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
-  const center = hasCoords ? { lat: latitude as number, lng: longitude as number } : DEFAULT_CENTER;
 
-  const handleClick = useCallback((e: google.maps.MapMouseEvent) => {
-    if (!editable || !onChange || !e.latLng) return;
-    onChange(e.latLng.lat(), e.latLng.lng());
-  }, [editable, onChange]);
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Tu navegador no soporta geolocalización.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        onChange?.(position.coords.latitude, position.coords.longitude);
+        setLocating(false);
+      },
+      () => {
+        setError('No se pudo obtener tu ubicación. Revisá los permisos de ubicación del navegador.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
-  const handleMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
-    if (!editable || !onChange || !e.latLng) return;
-    onChange(e.latLng.lat(), e.latLng.lng());
-  }, [editable, onChange]);
+  if (editable) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={handleUseCurrentLocation}
+          disabled={locating}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-60"
+        >
+          <LocateFixed className="w-4 h-4" />
+          {locating ? 'Obteniendo ubicación...' : hasCoords ? 'Actualizar mi ubicación' : 'Usar mi ubicación actual'}
+        </button>
+        {hasCoords && (
+          <p className="text-xs text-slate-400 font-medium">
+            Ubicación guardada ({latitude!.toFixed(5)}, {longitude!.toFixed(5)}).{' '}
+            <a
+              href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Ver en Google Maps
+            </a>
+          </p>
+        )}
+        {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
+      </div>
+    );
+  }
 
-  if (!GOOGLE_MAPS_API_KEY) {
+  if (!hasCoords) {
     return (
       <div
         style={{ height }}
         className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center px-4"
       >
         <MapPin className="w-6 h-6 text-slate-300" />
-        <p className="text-xs text-slate-400 font-medium">
-          Mapa no disponible: falta configurar la clave de Google Maps (VITE_GOOGLE_MAPS_API_KEY).
-        </p>
+        <p className="text-xs text-slate-400 font-medium">Ubicación no disponible</p>
       </div>
     );
   }
 
-  if (!isLoaded) {
-    return <div style={{ height }} className="rounded-xl bg-slate-100 dark:bg-slate-900 animate-pulse" />;
-  }
-
   return (
     <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-      <GoogleMap
-        mapContainerStyle={{ width: '100%', height }}
-        center={center}
-        zoom={hasCoords ? 16 : 13}
-        onClick={handleClick}
-        options={{
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: false,
-        }}
-      >
-        {hasCoords && (
-          <Marker
-            position={center}
-            draggable={editable}
-            onDragEnd={handleMarkerDragEnd}
-          />
-        )}
-      </GoogleMap>
-      {editable && (
-        <p className="text-[11px] text-slate-400 font-medium px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
-          Hacé clic en el mapa o arrastrá el pin para ubicar tu tienda.
-        </p>
-      )}
+      <iframe
+        title="Ubicación de la tienda"
+        src={`https://www.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`}
+        style={{ width: '100%', height, border: 0 }}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
     </div>
   );
 }
