@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { usersApi } from '@/lib/api';
 import { ImageUpload } from '@/components/shared/ImageUpload';
+import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 
 export default function SellerStore() {
   const { user, fetchCurrentUser } = useAuthStore();
@@ -32,6 +33,8 @@ export default function SellerStore() {
     description: '',
     ruc: '',
     address: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     phone: '',
     email: '',
     whatsappNumber: '',
@@ -59,6 +62,8 @@ export default function SellerStore() {
         description: p.description || '',
         ruc: p.ruc || '',
         address: p.address || '',
+        latitude: p.latitude ?? null,
+        longitude: p.longitude ?? null,
         phone: p.phone || '',
         email: p.email || '',
         whatsappNumber: p.whatsappNumber || '',
@@ -114,6 +119,8 @@ export default function SellerStore() {
         description: p.description || '',
         ruc: p.ruc || '',
         address: p.address || '',
+        latitude: p.latitude ?? null,
+        longitude: p.longitude ?? null,
         phone: p.phone || '',
         email: p.email || '',
         whatsappNumber: p.whatsappNumber || '',
@@ -190,6 +197,14 @@ export default function SellerStore() {
               <div>
                 <Label htmlFor="address">Dirección</Label>
                 <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Calle, Ciudad" />
+                <div className="mt-2">
+                  <StoreLocationMap
+                    latitude={formData.latitude}
+                    longitude={formData.longitude}
+                    editable
+                    onChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="phone">Teléfono</Label>
@@ -398,6 +413,15 @@ export default function SellerStore() {
                 <div className="space-y-1">
                   <Label className="text-xs">Dirección</Label>
                   <Input name="address" value={formData.address} onChange={handleChange} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Ubicación en el mapa</Label>
+                  <StoreLocationMap
+                    latitude={formData.latitude}
+                    longitude={formData.longitude}
+                    editable
+                    onChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Teléfono</Label>

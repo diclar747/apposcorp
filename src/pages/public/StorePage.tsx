@@ -21,6 +21,7 @@ import { reviewsApi } from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -543,11 +544,15 @@ export default function StorePage() {
                         <p className="font-bold text-gray-900 dark:text-white">{store.email}</p>
                       </div>
                     </div>
-                    <div className="h-64 bg-gray-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
-                      <MapPin className="w-12 h-12 text-gray-300 group-hover:text-blue-500 transition-all duration-500 transform group-hover:scale-110" />
-                      <span className="absolute bottom-4 text-xs font-black text-gray-400">MAPA INTERACTIVO</span>
-                    </div>
+                    {typeof store.latitude === 'number' && typeof store.longitude === 'number' ? (
+                      <StoreLocationMap latitude={store.latitude} longitude={store.longitude} height="256px" />
+                    ) : (
+                      <div className="h-64 bg-gray-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
+                        <MapPin className="w-12 h-12 text-gray-300 group-hover:text-blue-500 transition-all duration-500 transform group-hover:scale-110" />
+                        <span className="absolute bottom-4 text-xs font-black text-gray-400">UBICACIÓN NO DISPONIBLE</span>
+                      </div>
+                    )}
                   </div>
                 </section>
               </div>

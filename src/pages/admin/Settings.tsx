@@ -47,7 +47,8 @@ export default function AdminSettings() {
             const data = await settingsApi.get();
             setSettings(data);
         } catch (error) {
-            // Settings may not exist yet - show empty state
+            console.error('Error al cargar configuración:', error);
+            toast.error(error instanceof Error ? error.message : 'Error al cargar configuración');
         } finally {
             setLoading(false);
         }
@@ -79,7 +80,8 @@ export default function AdminSettings() {
             await fetchSettings();
             await refreshPublicSettings(); // Update global store
         } catch (error) {
-            toast.error('Error al guardar configuración');
+            console.error('Error al guardar configuración:', error);
+            toast.error(error instanceof Error ? error.message : 'Error al guardar configuración');
         } finally {
             setSaving(false);
         }

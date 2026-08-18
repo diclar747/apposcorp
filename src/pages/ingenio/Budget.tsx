@@ -40,11 +40,12 @@ import { useIngenioSubscription } from '@/hooks/useIngenioSubscription';
 import { usePaywallStore } from '@/stores';
 
 export default function IngenioBudget() {
-  const [budget, setBudget] = useState({ incomeGoal: 0, expenseLimit: 0, durationMonths: 1, startDate: '' as any });
-  const [actuals, setActuals] = useState({ income: 0, expenses: 0 });
+  const [budget, setBudget] = useState<{ incomeGoal: number; expenseLimit: number; durationMonths: number; startDate: any; incomeAllocation?: any }>({ incomeGoal: 0, expenseLimit: 0, durationMonths: 1, startDate: '' as any, incomeAllocation: null });
+  const [actuals, setActuals] = useState({ income: 0, expenses: 0, assets: 0, liabilities: 0 });
+  const [exceededTypes, setExceededTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ incomeGoal: '', expenseLimit: '', durationMonths: '1' });
+  const [editForm, setEditForm] = useState({ incomeGoal: '', expenseLimit: '', durationMonths: '1', expensePercent: '', assetPercent: '', liabilityPercent: '' });
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   
@@ -98,16 +99,21 @@ export default function IngenioBudget() {
       const year = date.getFullYear();
 
       const data = await financesApi.getBudget(month, year);
-      setBudget(data.budget || { incomeGoal: 0, expenseLimit: 0, durationMonths: 1, startDate: '' as any });
-      setActuals(data.actuals || { income: 0, expenses: 0 });
-      
+      setBudget(data.budget || { incomeGoal: 0, expenseLimit: 0, durationMonths: 1, startDate: '' as any, incomeAllocation: null });
+      setActuals(data.actuals || { income: 0, expenses: 0, assets: 0, liabilities: 0 });
+      setExceededTypes(data.exceededTypes || []);
+
       const incomeGoal = data.budget?.incomeGoal || 0;
       const expenseLimit = data.budget?.expenseLimit || 0;
+      const allocation = data.budget?.incomeAllocation || {};
 
       setEditForm({
         incomeGoal: incomeGoal > 0 ? incomeGoal.toLocaleString('es-PY') : '',
         expenseLimit: expenseLimit > 0 ? expenseLimit.toLocaleString('es-PY') : '',
-        durationMonths: (data.budget?.durationMonths || 1).toString()
+        durationMonths: (data.budget?.durationMonths || 1).toString(),
+        expensePercent: allocation.expensePercent !== undefined ? String(allocation.expensePercent) : '',
+        assetPercent: allocation.assetPercent !== undefined ? String(allocation.assetPercent) : '',
+        liabilityPercent: allocation.liabilityPercent !== undefined ? String(allocation.liabilityPercent) : ''
       });
 
       // Fetch specific items
@@ -171,6 +177,15 @@ export default function IngenioBudget() {
   };
 
   const handleUpdateMonthlyGoals = async () => {
+    const expensePercent = Number(editForm.expensePercent) || 0;
+    const assetPercent = Number(editForm.assetPercent) || 0;
+    const liabilityPercent = Number(editForm.liabilityPercent) || 0;
+
+    if (expensePercent + assetPercent + liabilityPercent > 100) {
+      toast.error('La suma de porcentajes no puede superar el 100%');
+      return;
+    }
+
     try {
       const date = new Date();
       await financesApi.createBudget({
@@ -178,7 +193,8 @@ export default function IngenioBudget() {
         year: date.getFullYear(),
         incomeGoal: Number(editForm.incomeGoal.replace(/\D/g, '')),
         expenseLimit: Number(editForm.expenseLimit.replace(/\D/g, '')),
-        durationMonths: Number(editForm.durationMonths)
+        durationMonths: Number(editForm.durationMonths),
+        incomeAllocation: { expensePercent, assetPercent, liabilityPercent }
       });
       toast.success('Metas actualizadas');
       setIsEditing(false);
@@ -410,7 +426,48 @@ export default function IngenioBudget() {
                     </Select>
                   </div>
                 </div>
-                <Button 
+
+                <div className="space-y-3 pt-2 border-t border-dashed dark:border-slate-800">
+                  <Label className="font-bold text-xs uppercase text-slate-400">Distribución del Ingreso (%)</Label>
+                  <p className="text-[11px] text-slate-400 font-medium">Definí qué % de tu ingreso mensual planeás destinar a cada tipo. Se te avisará si te excedés.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-slate-400">Gasto %</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={editForm.expensePercent}
+                        onChange={e => setEditForm({ ...editForm, expensePercent: e.target.value })}
+                        className="h-10 rounded-xl font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-slate-400">Activo %</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={editForm.assetPercent}
+                        onChange={e => setEditForm({ ...editForm, assetPercent: e.target.value })}
+                        className="h-10 rounded-xl font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-slate-400">Pasivo %</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={editForm.liabilityPercent}
+                        onChange={e => setEditForm({ ...editForm, liabilityPercent: e.target.value })}
+                        className="h-10 rounded-xl font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button
                   onClick={handleUpdateMonthlyGoals}
                   className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-black text-lg"
                 >
@@ -458,6 +515,38 @@ export default function IngenioBudget() {
                  <p className="text-xs font-bold text-rose-600 uppercase tracking-widest animate-pulse">Límite de gastos excedido</p>
               )}
             </div>
+
+            {budget.incomeAllocation && (
+              <div className="space-y-5 pt-6 border-t border-dashed dark:border-slate-800">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Distribución del Ingreso</p>
+                {exceededTypes.length > 0 && (
+                  <p className="text-xs font-bold text-rose-600 uppercase tracking-widest animate-pulse">
+                    Superaste el % configurado de: {exceededTypes.map(t => t === 'expense' ? 'Gasto' : t === 'asset' ? 'Activo' : 'Pasivo').join(', ')}
+                  </p>
+                )}
+                {([
+                  { key: 'expense', label: 'Gasto', actual: actuals.expenses, limit: budget.incomeAllocation.expensePercent },
+                  { key: 'asset', label: 'Activo', actual: actuals.assets, limit: budget.incomeAllocation.assetPercent },
+                  { key: 'liability', label: 'Pasivo', actual: actuals.liabilities, limit: budget.incomeAllocation.liabilityPercent },
+                ] as const).map(row => {
+                  if (row.limit === undefined || row.limit === null) return null;
+                  const actualPercent = actuals.income > 0 ? (row.actual / actuals.income) * 100 : 0;
+                  const exceeded = exceededTypes.includes(row.key);
+                  return (
+                    <div key={row.key} className="space-y-1.5">
+                      <div className="flex justify-between items-end">
+                        <p className="text-xs font-bold text-slate-500">{row.label}</p>
+                        <Badge className={cn(
+                          "font-black border-none h-6 px-2 rounded-full text-[10px]",
+                          exceeded ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"
+                        )}>{actualPercent.toFixed(0)}% / {row.limit}%</Badge>
+                      </div>
+                      <Progress value={Math.min(actualPercent, 100)} className="h-2.5 bg-slate-50 dark:bg-slate-900 rounded-full" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 

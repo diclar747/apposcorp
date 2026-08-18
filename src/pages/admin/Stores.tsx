@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { generateReportPDF } from '@/lib/utils';
+import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 
 interface StoreData {
   id: string; // User ID
@@ -43,6 +44,8 @@ interface StoreData {
   logo: string;
   banner: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   phone: string;
   email: string;
   isActive: boolean;
@@ -76,6 +79,8 @@ export default function AdminStores() {
     storeName: '',
     description: '',
     address: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     whatsappNumber: '',
     logo: '',
     banner: '',
@@ -153,6 +158,8 @@ export default function AdminStores() {
         logo: u.sellerProfile?.logo || '',
         banner: u.sellerProfile?.banner || '',
         address: u.sellerProfile?.address || u.address || '',
+        latitude: u.sellerProfile?.latitude ?? null,
+        longitude: u.sellerProfile?.longitude ?? null,
         phone: u.sellerProfile?.phone || u.phone || '',
         email: u.sellerProfile?.email || u.email || '',
         isActive: u.isActive,
@@ -207,6 +214,8 @@ export default function AdminStores() {
         storeName: formData.storeName,
         description: formData.description,
         address: formData.address,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         phone: formData.phone,
         whatsappNumber: formData.whatsappNumber,
         email: formData.email,
@@ -233,7 +242,7 @@ export default function AdminStores() {
   const resetForm = () => {
     setFormData({
       firstName: '', lastName: '', email: '', password: '', phone: '',
-      storeName: '', description: '', address: '', whatsappNumber: '',
+      storeName: '', description: '', address: '', latitude: null, longitude: null, whatsappNumber: '',
       logo: '', banner: '', facebook: '', instagram: ''
     });
     setEditingId(null);
@@ -250,6 +259,8 @@ export default function AdminStores() {
       storeName: store.name,
       description: store.description,
       address: store.address,
+      latitude: store.latitude,
+      longitude: store.longitude,
       whatsappNumber: store.whatsappNumber,
       logo: store.logo,
       banner: store.banner,
@@ -445,6 +456,15 @@ export default function AdminStores() {
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       placeholder="Calle 123..."
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Ubicación en el mapa</Label>
+                    <StoreLocationMap
+                      latitude={formData.latitude}
+                      longitude={formData.longitude}
+                      editable
+                      onChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
                     />
                   </div>
                 </div>

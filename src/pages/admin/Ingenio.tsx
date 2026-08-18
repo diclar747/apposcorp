@@ -221,16 +221,16 @@ function DashboardView({ onNavigate, visible }: { onNavigate: (tab: string) => v
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent" />
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div>
-                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mb-1">Saldo de Caja</p>
+                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mb-1">Saldo de Caja (Hoy)</p>
                         {loading ? (
                             <div className="h-12 w-64 bg-slate-700 rounded-xl animate-pulse" />
                         ) : (
-                            <p className="text-5xl font-black tracking-tight">{formatCurrency(summary?.balance || 0)}</p>
+                            <p className="text-5xl font-black tracking-tight">{formatCurrency(summary?.todayBalance || 0)}</p>
                         )}
                         <div className="flex items-center gap-4 mt-3">
                             <span className={`text-sm font-semibold flex items-center gap-1 ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                 {balance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                Flujo: {formatCurrency(Math.abs(balance))}
+                                Flujo Histórico: {formatCurrency(Math.abs(balance))}
                             </span>
                             <span className="text-slate-500 text-xs">·</span>
                             <span className="text-slate-400 text-sm">Patrimonio Neto: <strong className={`${netWorth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(netWorth)}</strong></span>
@@ -1185,7 +1185,7 @@ function BudgetView() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     // 'description' maps directly to the DB field (FinancialRecord.description)
-    const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '' });
+    const [form, setForm] = useState<{ date: string; description: string; amount: string; categoryId: string; type: RecordType }>({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '', type: 'income' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
@@ -1281,7 +1281,7 @@ function BudgetView() {
             const payload = {
                 description: form.description,
                 amount: parseFormattedNumber(form.amount),
-                type: activeType,
+                type: form.type,
                 categoryId: form.categoryId || undefined,
                 date: form.date,
             };
@@ -1307,7 +1307,8 @@ function BudgetView() {
             date: formattedDate,
             description: record.description || '',
             amount: formatNumber(record.amount.toString()),
-            categoryId: record.categoryId || ''
+            categoryId: record.categoryId || '',
+            type: record.type || activeType
         });
         setIsEditing(true);
         setEditingId(record.id);
@@ -1330,7 +1331,7 @@ function BudgetView() {
     };
 
     const resetForm = () => {
-        setForm({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '' });
+        setForm({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '', type: activeType });
         setIsEditing(false);
         setEditingId(null);
     };
@@ -1351,7 +1352,12 @@ function BudgetView() {
                     return (
                         <button
                             key={type}
-                            onClick={() => { setActiveType(type); resetForm(); }}
+                            onClick={() => {
+                                setActiveType(type);
+                                setForm({ date: new Date().toISOString().split('T')[0], description: '', amount: '', categoryId: '', type });
+                                setIsEditing(false);
+                                setEditingId(null);
+                            }}
                             className={cn(
                                 "flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all",
                                 isActive
@@ -1397,6 +1403,21 @@ function BudgetView() {
                                     className="rounded-xl h-10 font-bold" 
                                 />
                             </div>
+                            {isEditing && (
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo</Label>
+                                    <Select value={form.type} onValueChange={val => setForm({ ...form, type: val as RecordType, categoryId: '' })}>
+                                        <SelectTrigger className="rounded-xl h-10">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {(Object.keys(TYPE_CONFIG) as RecordType[]).map(type => (
+                                                <SelectItem key={type} value={type}>{TYPE_CONFIG[type].label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría</Label>
                                 <Select value={form.categoryId} onValueChange={val => setForm({ ...form, categoryId: val })}>
@@ -1405,13 +1426,13 @@ function BudgetView() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {categories
-                                            .filter(c => c.type === activeType)
+                                            .filter(c => c.type === form.type)
                                             // Ensure uniqueness by name in the UI
                                             .filter((cat, idx, self) => self.findIndex(c => c.name === cat.name) === idx)
                                             .map(cat => (
                                                 <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                                             ))}
-                                        {categories.filter(c => c.type === activeType).length === 0 && (
+                                        {categories.filter(c => c.type === form.type).length === 0 && (
                                             <SelectItem value="none" disabled>Cargando categorías...</SelectItem>
                                         )}
                                     </SelectContent>

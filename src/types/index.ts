@@ -105,6 +105,8 @@ export interface SellerProfile {
   logo?: string;
   banner?: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone: string;
   email: string;
   businessHours: BusinessHours;
@@ -539,12 +541,19 @@ export interface Budget {
   incomeGoal: number;
   expenseLimit: number;
   categoryLimits: CategoryLimit[];
+  incomeAllocation?: IncomeAllocation;
   createdAt: Date;
 }
 
 export interface CategoryLimit {
   categoryId: string;
   limit: number;
+}
+
+export interface IncomeAllocation {
+  expensePercent: number;
+  assetPercent: number;
+  liabilityPercent: number;
 }
 
 // ============================================

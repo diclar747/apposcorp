@@ -4,7 +4,7 @@ import {
   Sun, Moon, Monitor, Check, AlertTriangle, KeyRound, AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useThemeStore } from '@/stores/themeStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { authApi, usersApi, walletApi } from '@/lib/api';
+import { authApi, usersApi, walletApi, sellerSubscriptionsApi } from '@/lib/api';
 import { isPushSupported, isSubscribedToPush, subscribeToPush, unsubscribeFromPush } from '@/lib/pushNotifications';
 
 // --- Security Tab ---
@@ -617,9 +617,22 @@ function AppearanceSection() {
 }
 
 // --- Account Tab ---
+const SUBSCRIPTION_STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  PENDING_PAYMENT: { label: 'Pago pendiente', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  PENDING_APPROVAL: { label: 'Verificando pago', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  ACTIVE: { label: 'Activa', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  REVOKED: { label: 'Revocada', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  EXPIRED: { label: 'Vencida', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+};
+
 function AccountSection() {
   const { user, logout } = useAuthStore();
   const [showDeactivate, setShowDeactivate] = useState(false);
+  const [subscription, setSubscription] = useState<any>(null);
+
+  useEffect(() => {
+    sellerSubscriptionsApi.getMySubscription().then(setSubscription).catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -651,10 +664,41 @@ function AccountSection() {
             <Separator />
             <div className="flex justify-between items-center py-2">
               <span className="text-gray-500 dark:text-gray-400">Plan</span>
-              <span className="font-medium text-gray-900 dark:text-white">
-                {user?.sellerProfile?.planActive ? 'Activo' : 'Inactivo'}
-              </span>
+              {subscription ? (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full font-medium",
+                  SUBSCRIPTION_STATUS_LABELS[subscription.status]?.className || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                )}>
+                  {SUBSCRIPTION_STATUS_LABELS[subscription.status]?.label || subscription.status}
+                </span>
+              ) : (
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {user?.sellerProfile?.planActive ? 'Activo' : 'Inactivo'}
+                </span>
+              )}
             </div>
+            {subscription && subscription.paidAmount < subscription.totalAmount && (
+              <>
+                <Separator />
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-gray-500 dark:text-gray-400">Pagado</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {formatCurrency(subscription.paidAmount)} / {formatCurrency(subscription.totalAmount)}
+                  </span>
+                </div>
+              </>
+            )}
+            {subscription?.receiptUrl && (
+              <>
+                <Separator />
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-gray-500 dark:text-gray-400">Comprobante</span>
+                  <a href={subscription.receiptUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    Ver comprobante
+                  </a>
+                </div>
+              </>
+            )}
             {user?.sellerProfile?.planExpiryDate && (
               <>
                 <Separator />

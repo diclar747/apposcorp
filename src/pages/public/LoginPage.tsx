@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { authApi } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -31,6 +32,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,6 +74,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
+    setUnverifiedEmail(null);
 
     const success = await login(data.email, data.password, rememberMe);
 
@@ -96,9 +100,25 @@ export default function LoginPage() {
       // Atrapar el error descriptivo que guardó Zustand al fallar la petición
       const authError = useAuthStore.getState().error;
       toast.error(authError || 'Credenciales incorrectas');
+      if (authError?.toLowerCase().includes('no verificada')) {
+        setUnverifiedEmail(data.email);
+      }
     }
 
     setIsLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    setResendingVerification(true);
+    try {
+      await authApi.resendVerification(unverifiedEmail);
+      toast.success('Si tu correo está pendiente de verificación, te reenviamos el enlace.');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al reenviar el correo de verificación');
+    } finally {
+      setResendingVerification(false);
+    }
   };
 
   const handleQuickLogin = async (email: string, password: string) => {
@@ -236,6 +256,24 @@ export default function LoginPage() {
                 </>
               )}
             </Button>
+
+            {unverifiedEmail && (
+              <div className="text-center mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+                <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
+                  Tu cuenta todavía no fue verificada. Revisá tu correo (incluida la carpeta de spam).
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8"
+                  disabled={resendingVerification}
+                  onClick={handleResendVerification}
+                >
+                  {resendingVerification ? 'Enviando...' : 'Reenviar correo de verificación'}
+                </Button>
+              </div>
+            )}
           </form>
 
           {settings.maintenance_mode !== 'true' && (

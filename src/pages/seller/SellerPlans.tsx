@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Zap, Crown, Shield, MessageCircle, CreditCard, Star, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Zap, Crown, Shield, MessageCircle, CreditCard, Star, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +78,35 @@ export default function SellerPlans() {
                     Impulsa tus ventas con herramientas profesionales. Elige el plan que potencie tu crecimiento.
                 </p>
             </div>
+
+            {currentSubscription && ['PENDING_PAYMENT', 'PENDING_APPROVAL', 'REVOKED', 'EXPIRED'].includes(currentSubscription.status) && (
+                <div className={cn(
+                    "max-w-2xl mx-auto mb-10 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-4 border-2",
+                    currentSubscription.status === 'PENDING_APPROVAL' || currentSubscription.status === 'PENDING_PAYMENT'
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                        : "bg-red-500/10 border-red-500/30 text-red-300"
+                )}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5">
+                        {currentSubscription.status === 'PENDING_APPROVAL' || currentSubscription.status === 'PENDING_PAYMENT'
+                            ? <Clock className="w-5 h-5" />
+                            : <AlertTriangle className="w-5 h-5" />}
+                    </div>
+                    <div className="text-center sm:text-left">
+                        <p className="font-black text-sm uppercase tracking-wider mb-0.5">
+                            {currentSubscription.status === 'PENDING_PAYMENT' && 'Pago Pendiente'}
+                            {currentSubscription.status === 'PENDING_APPROVAL' && 'Verificando tu Pago'}
+                            {currentSubscription.status === 'REVOKED' && 'Suscripción Revocada'}
+                            {currentSubscription.status === 'EXPIRED' && 'Suscripción Vencida'}
+                        </p>
+                        <p className="text-sm opacity-90">
+                            {currentSubscription.status === 'PENDING_PAYMENT' && `Has abonado ${formatCurrency(currentSubscription.paidAmount)} de ${formatCurrency(currentSubscription.totalAmount)}. Completá el pago para activar tu plan.`}
+                            {currentSubscription.status === 'PENDING_APPROVAL' && 'Estamos confirmando tu comprobante. Tendrás acceso total en menos de 24 horas.'}
+                            {currentSubscription.status === 'REVOKED' && 'Tu suscripción fue revocada. Contactá a soporte o adquirí un nuevo plan.'}
+                            {currentSubscription.status === 'EXPIRED' && 'Tu suscripción venció. Renová tu plan para seguir vendiendo.'}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Billing Cycle Selector */}
             <div className="flex justify-center mb-16">

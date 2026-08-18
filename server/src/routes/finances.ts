@@ -90,6 +90,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
 
         const todayIncome = todayRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
         const todayExpenses = todayRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+        const todayBalance = todayIncome - todayExpenses;
 
         // 3. Current Month Stats (for growth calculation)
         const currentYear = new Date().getFullYear();
@@ -109,6 +110,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
             netWorth,
             todayIncome,
             todayExpenses,
+            todayBalance,
             monthIncome,
             monthExpenses,
             savingsRate: totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0
@@ -166,6 +168,38 @@ router.post('/', authenticate, requireActiveSubscription, async (req: AuthReques
         res.status(201).json(record);
     } catch (error) {
         console.error('Create record error:', error);
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+
+// Update record
+router.put('/:id', authenticate, requireActiveSubscription, async (req: AuthRequest, res) => {
+    try {
+        const userId = req.user!.userId;
+        const id = req.params.id as string;
+        const { amount, description, type, categoryId, date, notes } = req.body;
+
+        const record = await prisma.financialRecord.update({
+            where: { id, userId },
+            data: {
+                ...(amount !== undefined && { amount: Number(amount) }),
+                ...(description !== undefined && { description }),
+                ...(notes !== undefined && { notes }),
+                ...(type !== undefined && { type }),
+                ...(categoryId !== undefined && { categoryId }),
+                ...(date !== undefined && { date: new Date(date) }),
+            },
+            include: {
+                category: true
+            }
+        });
+
+        res.json(record);
+    } catch (error: any) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Registro no encontrado' });
+        }
+        console.error('Update record error:', error);
         res.status(500).json({ error: 'Erro no servidor' });
     }
 });
@@ -272,18 +306,54 @@ router.get('/budget', authenticate, async (req: AuthRequest, res) => {
             .filter(r => r.type === 'expense')
             .reduce((sum, r) => sum + r.amount, 0);
 
+        const actualAssets = records
+            .filter(r => r.type === 'asset')
+            .reduce((sum, r) => sum + r.amount, 0);
+
+        const actualLiabilities = records
+            .filter(r => r.type === 'liability')
+            .reduce((sum, r) => sum + r.amount, 0);
+
+        const incomeAllocation = (budget?.incomeAllocation as any) || null;
+        const exceededTypes: string[] = [];
+
+        if (incomeAllocation && actualIncome > 0) {
+            const percents: Record<string, number> = {
+                expense: actualExpenses,
+                asset: actualAssets,
+                liability: actualLiabilities,
+            };
+            const limits: Record<string, number | undefined> = {
+                expense: incomeAllocation.expensePercent,
+                asset: incomeAllocation.assetPercent,
+                liability: incomeAllocation.liabilityPercent,
+            };
+            for (const type of ['expense', 'asset', 'liability']) {
+                const limitPercent = limits[type];
+                if (limitPercent === undefined || limitPercent === null) continue;
+                const actualPercent = (percents[type] / actualIncome) * 100;
+                if (actualPercent > limitPercent) {
+                    exceededTypes.push(type);
+                }
+            }
+        }
+
         res.json({
-            budget: budget || { 
-                incomeGoal: 0, 
-                expenseLimit: 0, 
-                durationMonths: 1, 
-                startDate: new Date(), 
-                categoryLimits: {} 
+            budget: budget || {
+                incomeGoal: 0,
+                expenseLimit: 0,
+                durationMonths: 1,
+                startDate: new Date(),
+                categoryLimits: {},
+                incomeAllocation: null
             },
             actuals: {
                 income: actualIncome,
-                expenses: actualExpenses
-            }
+                expenses: actualExpenses,
+                assets: actualAssets,
+                liabilities: actualLiabilities
+            },
+            exceededTypes
         });
 
     } catch (error) {

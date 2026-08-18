@@ -78,6 +78,8 @@ model SellerProfile {
   logo             String?
   banner           String?
   address          String
+  latitude         Float?
+  longitude        Float?
   phone            String
   email            String
   whatsappNumber   String
@@ -638,9 +640,10 @@ model Budget {
   userId         String
   month          Int
   year           Int
-  incomeGoal     Float    @default(0)
-  expenseLimit   Float    @default(0)
-  categoryLimits Json?
+  incomeGoal       Float    @default(0)
+  expenseLimit     Float    @default(0)
+  categoryLimits   Json?
+  incomeAllocation Json?
   createdAt      DateTime @default(now())
   durationMonths Int      @default(1)
   startDate      DateTime @default(now())

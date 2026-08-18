@@ -8,6 +8,46 @@ import { authenticate, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
+// In-memory rate limit for resend-verification (email -> last request timestamp)
+const resendVerificationRateLimit = new Map<string, number>();
+const RESEND_VERIFICATION_COOLDOWN_MS = 60 * 1000;
+
+// Builds and sends the account verification email. Fire-and-forget by callers
+// so the SMTP round-trip never blocks the HTTP response.
+async function sendVerificationEmail(email: string, firstName: string, token: string) {
+  const nodemailer = await import('nodemailer');
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?verify=${token}`;
+
+  await transporter.sendMail({
+    from: `"Oscorp Platform" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: 'Oscorp Platform - Verifica tu cuenta',
+    text: `Hola ${firstName},\n\nGracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico copiando y pegando el siguiente enlace en tu navegador:\n\n${verifyUrl}\n\nSi no solicitaste este registro, por favor ignora este correo.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+        <h2 style="color: #1e293b; text-align: center;">¡Bienvenido a Oscorp!</h2>
+        <p style="color: #475569; font-size: 16px;">Hola ${firstName},</p>
+        <p style="color: #475569; font-size: 16px;">Gracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico haciendo clic en el siguiente botón:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Verificar mi cuenta</a>
+        </div>
+        <p style="color: #475569; font-size: 14px;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
+        <p style="color: #2563eb; font-size: 14px; word-break: break-all;">${verifyUrl}</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">Si no solicitaste este registro, por favor ignora este correo.</p>
+      </div>
+    `,
+  });
+}
+
 // Helper: fetch user with all relations, with fallback for DB schema mismatches
 async function findUserWithRelations(where: { id?: string; email?: string }) {
   // Try full query first
@@ -250,45 +290,10 @@ router.post('/register', async (req, res) => {
     const isDemoMode = !process.env.SMTP_USER || !process.env.SMTP_PASS;
 
     if (!isVerifiedInitially && !isDemoMode) {
-      const nodemailer = await import('nodemailer');
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
-
-      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?verify=${verificationToken}`;
-
-      const mailOptions = {
-        from: `"Oscorp Platform" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'Oscorp Platform - Verifica tu cuenta',
-        text: `Hola ${firstName},\n\nGracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico copiando y pegando el siguiente enlace en tu navegador:\n\n${verifyUrl}\n\nSi no solicitaste este registro, por favor ignora este correo.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
-            <h2 style="color: #1e293b; text-align: center;">¡Bienvenido a Oscorp!</h2>
-            <p style="color: #475569; font-size: 16px;">Hola ${firstName},</p>
-            <p style="color: #475569; font-size: 16px;">Gracias por registrarte. Para iniciar sesión y usar todas nuestras herramientas, por favor verifica tu cuenta de correo electrónico haciendo clic en el siguiente botón:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Verificar mi cuenta</a>
-            </div>
-            <p style="color: #475569; font-size: 14px;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
-            <p style="color: #2563eb; font-size: 14px; word-break: break-all;">${verifyUrl}</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-            <p style="color: #94a3b8; font-size: 12px; text-align: center;">Si no solicitaste este registro, por favor ignora este correo.</p>
-          </div>
-        `,
-      };
-
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log(`[EMAIL ENVIADO] Verificación enviada exitosamente a ${email}`);
-      } catch (mailError) {
-        console.error('[EMAIL ERROR] Error enviando correo de verificación:', mailError);
-        // Opcional: Podrías decidir revertir el registro o continuar pero advirtiendo
-      }
+      // Fire-and-forget: don't block the register response on the SMTP round-trip.
+      sendVerificationEmail(email, firstName, verificationToken)
+        .then(() => console.log(`[EMAIL ENVIADO] Verificación enviada exitosamente a ${email}`))
+        .catch((mailError) => console.error('[EMAIL ERROR] Error enviando correo de verificación:', mailError));
     } else if (!isVerifiedInitially) {
       console.log('MODO DEMO: Token de verificación ->', verificationToken);
     }
@@ -313,6 +318,55 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Register error:', error);
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Resend account verification email
+router.post('/resend-verification', async (req, res) => {
+  const neutralResponse = { message: 'Si el correo existe y está pendiente de verificar, se reenvió el enlace de verificación.' };
+
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'El email es obligatorio' });
+    }
+
+    const lastRequest = resendVerificationRateLimit.get(email);
+    if (lastRequest && Date.now() - lastRequest < RESEND_VERIFICATION_COOLDOWN_MS) {
+      return res.status(429).json({ error: 'Espera un minuto antes de solicitar otro reenvío' });
+    }
+    resendVerificationRateLimit.set(email, Date.now());
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Don't reveal whether the email exists or is already verified
+    if (!user || user.isVerified) {
+      return res.json(neutralResponse);
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken, verificationTokenExpires },
+    });
+
+    const isDemoMode = !process.env.SMTP_USER || !process.env.SMTP_PASS;
+
+    if (isDemoMode) {
+      console.log('MODO DEMO: Token de verificación (reenvío) ->', verificationToken);
+      return res.json({ ...neutralResponse, demoToken: verificationToken });
+    }
+
+    sendVerificationEmail(user.email, user.firstName, verificationToken)
+      .then(() => console.log(`[EMAIL ENVIADO] Reenvío de verificación a ${user.email}`))
+      .catch((mailError) => console.error('[EMAIL ERROR] Error en reenvío de verificación:', mailError));
+
+    res.json(neutralResponse);
+  } catch (error) {
+    console.error('Resend verification error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
   }
 });
@@ -592,13 +646,10 @@ router.post('/forgot-password', async (req, res) => {
         `,
       };
 
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log(`[EMAIL ENVIADO] Recuperación enviada a ${email}`);
-      } catch (mailError) {
-        console.error('[EMAIL ERROR] Error enviando recuperación:', mailError);
-        // Continuamos de todas formas para que el usuario pueda usar el modo demo o el admin lo ayude
-      }
+      // Fire-and-forget: don't block the response on the SMTP round-trip.
+      transporter.sendMail(mailOptions)
+        .then(() => console.log(`[EMAIL ENVIADO] Recuperación enviada a ${email}`))
+        .catch((mailError) => console.error('[EMAIL ERROR] Error enviando recuperación:', mailError));
     } else {
       console.log('MODO DEMO: Token de recuperación para', email, '->', resetToken);
     }

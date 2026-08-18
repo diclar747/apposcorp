@@ -1,32 +1,43 @@
-import { useState } from 'react';
-import { 
-  FileText, Search, Calendar, Download, Trash2,
+import { useState, useEffect } from 'react';
+import {
+  FileText, Search, Calendar, Download, Trash2, Pencil,
   ArrowUpRight, ArrowDownLeft, Wallet, Landmark
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { 
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger 
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { financesApi } from '@/lib/api';
 import { useIngenioSubscription } from '@/hooks/useIngenioSubscription';
 import { AccessDenied } from '@/components/ingenio/AccessDenied';
-import { formatCurrency, formatShortDate } from '@/lib/utils';
+import { formatCurrency, formatShortDate, formatNumber, parseFormattedNumber } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+const EDIT_TYPE_LABELS: Record<string, string> = {
+  income: 'Ingreso',
+  expense: 'Egreso',
+  asset: 'Activo',
+  liability: 'Pasivo',
+};
 
 export default function IngenioReports() {
   const [records, setRecords] = useState<any[]>([]);
@@ -40,6 +51,52 @@ export default function IngenioReports() {
     endDate: '',
     query: ''
   });
+  const [categories, setCategories] = useState<any[]>([]);
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ type: 'income', amount: '', description: '', notes: '', date: '', categoryId: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  useEffect(() => {
+    financesApi.getCategories().then(setCategories).catch(() => {});
+  }, []);
+
+  const openEdit = (record: any) => {
+    setEditingRecord(record);
+    setEditForm({
+      type: record.type,
+      amount: formatNumber(record.amount.toString()),
+      description: record.description || '',
+      notes: record.notes || '',
+      date: new Date(record.date).toISOString().split('T')[0],
+      categoryId: record.categoryId || ''
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRecord) return;
+    if (!editForm.description || !editForm.amount) {
+      toast.error('Nombre y monto son obligatorios');
+      return;
+    }
+    try {
+      setSavingEdit(true);
+      await financesApi.update(editingRecord.id, {
+        type: editForm.type,
+        amount: parseFormattedNumber(editForm.amount),
+        description: editForm.description,
+        notes: editForm.notes,
+        date: editForm.date,
+        categoryId: editForm.categoryId || undefined,
+      });
+      toast.success('Registro actualizado');
+      setEditingRecord(null);
+      fetchReports();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al actualizar');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const fetchReports = async () => {
     try {
@@ -387,6 +444,15 @@ export default function IngenioReports() {
                        </span>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(r)}
+                        className="transition-all text-slate-300 hover:text-indigo-600 rounded-full hover:bg-indigo-50"
+                      >
+                        <Pencil className="w-5 h-5" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="transition-all text-slate-300 hover:text-rose-500 rounded-full hover:bg-rose-50">
@@ -411,6 +477,7 @@ export default function IngenioReports() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -543,6 +610,69 @@ export default function IngenioReports() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
+        <DialogContent className="rounded-[2rem] border-none shadow-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Editar registro</DialogTitle>
+            <DialogDescription className="text-slate-500 font-medium">
+              Corregí el tipo, monto u otros datos de este movimiento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo</Label>
+              <Select value={editForm.type} onValueChange={(val) => setEditForm({ ...editForm, type: val, categoryId: '' })}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(EDIT_TYPE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre / Descripción</Label>
+              <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="rounded-xl h-11" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monto (₲)</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={editForm.amount}
+                onChange={(e) => setEditForm({ ...editForm, amount: formatNumber(e.target.value) })}
+                className="rounded-xl h-11 font-bold"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría</Label>
+              <Select value={editForm.categoryId} onValueChange={(val) => setEditForm({ ...editForm, categoryId: val })}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.filter((c) => c.type === editForm.type).map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha</Label>
+              <Input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} className="rounded-xl h-11" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditingRecord(null)} className="rounded-xl h-11">Cancelar</Button>
+            <Button onClick={handleUpdate} disabled={savingEdit} className="rounded-xl h-11 bg-indigo-600 hover:bg-indigo-700 font-bold">
+              {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

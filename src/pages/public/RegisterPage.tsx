@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { authApi } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -108,8 +109,18 @@ export default function RegisterPage() {
           }
         );
       } else {
-        toast.success('¡Registro exitoso! Revisa tu bandeja de entrada o spam para verificar tu correo.');
-        
+        toast.success('¡Registro exitoso! Revisa tu bandeja de entrada o spam para verificar tu correo.', {
+          duration: 10000,
+          action: {
+            label: 'Reenviar correo',
+            onClick: () => {
+              authApi.resendVerification(registerData.email)
+                .then(() => toast.success('Correo de verificación reenviado'))
+                .catch(() => toast.error('Error al reenviar el correo'));
+            }
+          }
+        });
+
         setTimeout(() => {
           navigate('/login');
         }, 3000);

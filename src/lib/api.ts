@@ -50,6 +50,12 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  resendVerification: (email: string) =>
+    fetchWithAuth('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
   addRole: (role: string) =>
     fetchWithAuth('/auth/add-role', {
       method: 'POST',
