@@ -30,6 +30,7 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string, remember?: boolean) => Promise<boolean>;
+  loginWithGoogle: (credential: string, remember?: boolean, role?: 'client' | 'seller' | 'ingenio') => Promise<boolean>;
   register: (data: RegisterData) => Promise<any | false>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<boolean>;
@@ -90,6 +91,43 @@ export const useAuthStore = create<AuthState>()(
           set({
             isLoading: false,
             error: error.message || 'Error al iniciar sesión'
+          });
+          return false;
+        }
+      },
+
+      loginWithGoogle: async (credential: string, remember: boolean = true, role?: 'client' | 'seller' | 'ingenio') => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const response = await authApi.loginWithGoogle(credential, role);
+
+          if (remember) {
+            localStorage.setItem('oscorp-token', response.token);
+            sessionStorage.removeItem('oscorp-token');
+          } else {
+            sessionStorage.setItem('oscorp-token', response.token);
+            localStorage.removeItem('oscorp-token');
+          }
+
+          const initialRole = response.user.roles.includes('superadmin') ? 'superadmin' :
+            response.user.roles.includes('seller') ? 'seller' :
+            response.user.roles.includes('client') ? 'client' :
+            response.user.roles.includes('ingenio') ? 'ingenio' : 'client';
+
+          set({
+            user: response.user,
+            isAuthenticated: true,
+            token: response.token,
+            activeRole: initialRole,
+            isLoading: false,
+            error: null
+          });
+          return true;
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            error: error.message || 'Error al iniciar sesión con Google'
           });
           return false;
         }

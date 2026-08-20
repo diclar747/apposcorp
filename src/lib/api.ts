@@ -50,6 +50,12 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  loginWithGoogle: (credential: string, role?: 'client' | 'seller' | 'ingenio') =>
+    fetchWithAuth('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential, role }),
+    }),
+
   resendVerification: (email: string) =>
     fetchWithAuth('/auth/resend-verification', {
       method: 'POST',

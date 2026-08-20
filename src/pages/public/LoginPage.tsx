@@ -13,6 +13,9 @@ import { authApi } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { GoogleSignInButton } from '@/components/shared/GoogleSignInButton';
+
+const GOOGLE_LOGIN_ENABLED = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
 
 const loginSchema = z.object({
   email: z.string().email('Formato de email inválido'),
@@ -108,6 +111,24 @@ export default function LoginPage() {
     setIsLoading(false);
   };
 
+  const handleGoogleSuccess = () => {
+    toast.success('¡Bienvenido!');
+    setTimeout(() => {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.roles.includes('superadmin')) {
+        navigate('/admin');
+      } else if (currentUser?.roles.includes('seller')) {
+        navigate('/vendedor');
+      } else if (currentUser?.roles.includes('client')) {
+        navigate('/app');
+      } else if (currentUser?.roles.includes('ingenio')) {
+        navigate('/ingenio');
+      } else {
+        navigate('/app');
+      }
+    }, 300);
+  };
+
   const handleResendVerification = async () => {
     if (!unverifiedEmail) return;
     setResendingVerification(true);
@@ -186,6 +207,21 @@ export default function LoginPage() {
           transition={{ delay: 0.4 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
+          {GOOGLE_LOGIN_ENABLED && (
+            <>
+              <GoogleSignInButton onSuccess={handleGoogleSuccess} remember={rememberMe} />
+
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white dark:bg-slate-800 px-3 text-gray-400 dark:text-gray-500 uppercase tracking-wider">o con tu correo</span>
+                </div>
+              </div>
+            </>
+          )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>

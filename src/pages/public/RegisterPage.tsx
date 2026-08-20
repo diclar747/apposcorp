@@ -12,6 +12,9 @@ import { authApi } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { GoogleSignInButton } from '@/components/shared/GoogleSignInButton';
+
+const GOOGLE_LOGIN_ENABLED = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'Debe tener al menos 2 caracteres'),
@@ -47,6 +50,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [registeredToken, setRegisteredToken] = useState<string | null>(null);
+  const [googleRole, setGoogleRole] = useState<'client' | 'seller' | 'ingenio'>('client');
 
   const navigate = useNavigate();
   const { register: authRegister } = useAuthStore();
@@ -80,6 +84,20 @@ export default function RegisterPage() {
 
   const handleBack = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleGoogleSuccess = () => {
+    toast.success('¡Cuenta creada con Google!');
+    setTimeout(() => {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.roles.includes('seller')) {
+        navigate('/vendedor');
+      } else if (currentUser?.roles.includes('ingenio')) {
+        navigate('/ingenio');
+      } else {
+        navigate('/app');
+      }
+    }, 300);
   };
 
   const onSubmit = async (data: RegisterFormValues) => {
@@ -184,8 +202,49 @@ export default function RegisterPage() {
           exit={{ opacity: 0, x: -20 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          <form 
-            id="register-form" 
+          {currentStep === 1 && GOOGLE_LOGIN_ENABLED && (
+            <>
+              <div className="space-y-2 mb-4">
+                <Label className="text-xs text-gray-500 dark:text-gray-400">¿Cómo querés usar Oscorp?</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {accountTypes.map((type) => {
+                    const Icon = type.icon;
+                    const isSelected = googleRole === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setGoogleRole(type.id as 'client' | 'seller' | 'ingenio')}
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3 text-center transition-colors',
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                            : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-gray-300'
+                        )}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-[11px] font-medium leading-tight">{type.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <GoogleSignInButton onSuccess={handleGoogleSuccess} role={googleRole} />
+
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white dark:bg-slate-800 px-3 text-gray-400 dark:text-gray-500 uppercase tracking-wider">o completá tus datos</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          <form
+            id="register-form"
             onSubmit={handleSubmit(onSubmit)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {

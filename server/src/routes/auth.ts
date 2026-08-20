@@ -2,11 +2,13 @@ import { Router } from 'express';
 import pkg from 'bcryptjs';
 const { compare, hash } = pkg;
 import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // In-memory rate limit for resend-verification (email -> last request timestamp)
 const resendVerificationRateLimit = new Map<string, number>();
@@ -49,7 +51,7 @@ async function sendVerificationEmail(email: string, firstName: string, token: st
 }
 
 // Helper: fetch user with all relations, with fallback for DB schema mismatches
-async function findUserWithRelations(where: { id?: string; email?: string }) {
+async function findUserWithRelations(where: { id?: string; email?: string; googleId?: string }) {
   // Try full query first
   try {
     return await prisma.user.findUnique({
@@ -319,6 +321,156 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Login / auto-register with Google (Google Identity Services "Sign in with Google" button)
+router.post('/google', async (req, res) => {
+  try {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ error: 'El inicio de sesión con Google no está configurado en el servidor' });
+    }
+
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ error: 'Falta el token de Google' });
+    }
+
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (verifyError) {
+      console.error('Google token verify error:', verifyError);
+      return res.status(401).json({ error: 'Token de Google inválido o expirado' });
+    }
+
+    if (!payload?.email) {
+      return res.status(401).json({ error: 'Token de Google inválido' });
+    }
+
+    if (!payload.email_verified) {
+      return res.status(403).json({ error: 'Tu cuenta de Google no tiene el correo verificado' });
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email;
+
+    // Rol solo se usa para cuentas NUEVAS (registro). Para una cuenta existente se ignora:
+    // el rol ya está definido en la cuenta. Nunca se puede crear un superadmin por acá.
+    const requestedRole: 'client' | 'seller' | 'ingenio' =
+      ['client', 'seller', 'ingenio'].includes(req.body.role) ? req.body.role : 'client';
+
+    // 1. ¿Ya inició sesión con Google antes?
+    let user = await findUserWithRelations({ googleId });
+
+    if (!user) {
+      // 2. ¿Existe una cuenta con este email (creada con contraseña)? La vinculamos.
+      const existingByEmail = await findUserWithRelations({ email });
+
+      if (existingByEmail) {
+        // El superadmin siempre debe entrar con usuario y contraseña, nunca con Google.
+        if (existingByEmail.roles.includes('superadmin')) {
+          return res.status(403).json({ error: 'Esta cuenta debe iniciar sesión con usuario y contraseña.' });
+        }
+        await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: { googleId, isVerified: true },
+        });
+        user = await findUserWithRelations({ id: existingByEmail.id });
+      } else {
+        // 3. Usuario nuevo: se crea automáticamente, ya viene con el email verificado por Google.
+        const allowRegistration = await prisma.systemSetting.findUnique({
+          where: { key: 'allow_registration' },
+        });
+        if (allowRegistration?.value === 'false') {
+          return res.status(403).json({ error: 'El registro de nuevos usuarios está temporalmente deshabilitado.' });
+        }
+
+        const randomPassword = crypto.randomBytes(32).toString('hex');
+        const hashedPassword = await hash(randomPassword, 10);
+        const cardNumber = `OSC${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const firstName = payload.given_name || email.split('@')[0];
+        const lastName = payload.family_name || '';
+
+        // Igual que en /register: solo client y seller reciben billetera.
+        const includesWallet = requestedRole === 'client' || requestedRole === 'seller';
+
+        const created = await prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            googleId,
+            firstName,
+            lastName,
+            avatar: payload.picture || null,
+            roles: [requestedRole],
+            isVerified: true,
+            ...(includesWallet ? {
+              wallet: { create: { balance: 0, currency: 'USD' } },
+            } : {}),
+          },
+          include: { wallet: true },
+        });
+
+        if (includesWallet && created.wallet) {
+          await prisma.virtualCard.create({
+            data: {
+              userId: created.id,
+              walletId: created.wallet.id,
+              cardNumber,
+              qrData: JSON.stringify({ userId: created.id, cardNumber }),
+              design: 'gradient_blue',
+            },
+          });
+        }
+
+        if (requestedRole === 'seller') {
+          await prisma.sellerProfile.create({
+            data: {
+              userId: created.id,
+              storeName: `${firstName}'s Store`,
+              storeSlug: `store-${Date.now()}`,
+              description: '',
+              address: '',
+              phone: '',
+              email,
+              whatsappNumber: '',
+              planActive: false,
+              planExpiryDate: null,
+            },
+          });
+        }
+
+        user = await findUserWithRelations({ id: created.id });
+      }
+    }
+
+    // Defensa adicional: ninguna cuenta con rol superadmin puede seguir por Google,
+    // aunque ya tuviera un googleId vinculado de antes.
+    if (user!.roles.includes('superadmin')) {
+      return res.status(403).json({ error: 'Esta cuenta debe iniciar sesión con usuario y contraseña.' });
+    }
+
+    if (!user!.isActive) {
+      return res.status(403).json({ error: 'La cuenta ha sido desactivada' });
+    }
+
+    const token = generateToken({
+      userId: user!.id,
+      email: user!.email,
+      roles: user!.roles,
+    });
+
+    const { password: _pw, ...userWithoutPassword } = user!;
+
+    res.json({ token, user: userWithoutPassword });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ error: 'Error en el servidor al iniciar sesión con Google' });
   }
 });
 
