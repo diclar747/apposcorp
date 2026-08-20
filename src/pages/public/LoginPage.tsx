@@ -15,8 +15,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { GoogleSignInButton } from '@/components/shared/GoogleSignInButton';
 
-const GOOGLE_LOGIN_ENABLED = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
-
 const loginSchema = z.object({
   email: z.string().email('Formato de email inválido'),
   password: z.string().min(1, 'La contraseña es obligatoria')
@@ -207,7 +205,7 @@ export default function LoginPage() {
           transition={{ delay: 0.4 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          {GOOGLE_LOGIN_ENABLED && (
+          {!!settings.google_client_id && (
             <>
               <GoogleSignInButton onSuccess={handleGoogleSuccess} remember={rememberMe} />
 

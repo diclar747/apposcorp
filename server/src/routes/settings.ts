@@ -32,7 +32,11 @@ router.get('/public', async (req, res) => {
         const settingsMap = settings.reduce((acc, curr) => ({
             ...acc,
             [curr.key]: curr.value
-        }), {});
+        }), {} as Record<string, string>);
+
+        // No es un SystemSetting de la BD: viene de la variable de entorno del servidor,
+        // así el frontend no depende de que quede "horneada" en el build de Vite.
+        settingsMap.google_client_id = process.env.GOOGLE_CLIENT_ID || '';
 
         res.json(settingsMap);
     } catch (error) {

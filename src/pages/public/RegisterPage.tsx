@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Store, UserCircle, Check, BookOpen } from 'lucide-react';
-import { useAuthStore, type RegisterData } from '@/stores';
+import { useAuthStore, useSettingsStore, type RegisterData } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { GoogleSignInButton } from '@/components/shared/GoogleSignInButton';
-
-const GOOGLE_LOGIN_ENABLED = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'Debe tener al menos 2 caracteres'),
@@ -54,6 +52,7 @@ export default function RegisterPage() {
 
   const navigate = useNavigate();
   const { register: authRegister } = useAuthStore();
+  const { settings } = useSettingsStore();
 
   const { register, handleSubmit, trigger, watch, setValue, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -202,7 +201,7 @@ export default function RegisterPage() {
           exit={{ opacity: 0, x: -20 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          {currentStep === 1 && GOOGLE_LOGIN_ENABLED && (
+          {currentStep === 1 && !!settings.google_client_id && (
             <>
               <div className="space-y-2 mb-4">
                 <Label className="text-xs text-gray-500 dark:text-gray-400">¿Cómo querés usar Oscorp?</Label>

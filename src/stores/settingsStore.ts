@@ -8,6 +8,7 @@ interface PublicSettings {
     contact_phone: string;
     contact_address: string;
     maintenance_mode: string;
+    google_client_id: string;
     [key: string]: string;
 }
 
@@ -26,6 +27,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         contact_phone: '+595 900 000 000',
         contact_address: 'Asunción, Paraguay',
         maintenance_mode: 'false',
+        google_client_id: '',
     },
     isLoading: false,
     error: null,

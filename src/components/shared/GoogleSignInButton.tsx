@@ -1,8 +1,6 @@
 import { GoogleLogin } from '@react-oauth/google';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useSettingsStore } from '@/stores';
 import { toast } from 'sonner';
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
 interface GoogleSignInButtonProps {
   onSuccess: () => void;
@@ -11,11 +9,12 @@ interface GoogleSignInButtonProps {
   role?: 'client' | 'seller' | 'ingenio';
 }
 
-// No se renderiza nada si el servidor no configuró VITE_GOOGLE_CLIENT_ID.
+// No se renderiza nada si el servidor no configuró GOOGLE_CLIENT_ID (o mientras carga).
 export function GoogleSignInButton({ onSuccess, remember = true, role }: GoogleSignInButtonProps) {
   const { loginWithGoogle } = useAuthStore();
+  const { settings } = useSettingsStore();
 
-  if (!GOOGLE_CLIENT_ID) return null;
+  if (!settings.google_client_id) return null;
 
   return (
     <div className="flex justify-center [&>div]:w-full">

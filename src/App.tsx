@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useAuthStore, useSettingsStore } from '@/stores';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { GlobalPaywall } from '@/components/ingenio/GlobalPaywall';
@@ -121,10 +122,18 @@ function App() {
 
   if (!isHydrated) return null;
 
-  return (
+  const router = (
     <BrowserRouter>
       <AppContent isMaintenanceActive={isMaintenanceActive} isAdmin={isAdmin} />
     </BrowserRouter>
+  );
+
+  // El Client ID llega del backend (variable de entorno del servidor), no del build de
+  // Vite, para no depender de que el pipeline de deploy pase VITE_* como build-arg.
+  return settings.google_client_id ? (
+    <GoogleOAuthProvider clientId={settings.google_client_id}>{router}</GoogleOAuthProvider>
+  ) : (
+    router
   );
 }
 
