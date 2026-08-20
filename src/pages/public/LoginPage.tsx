@@ -205,21 +205,6 @@ export default function LoginPage() {
           transition={{ delay: 0.4 }}
           className="bg-white dark:bg-slate-800/60 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 p-6"
         >
-          {!!settings.google_client_id && (
-            <>
-              <GoogleSignInButton onSuccess={handleGoogleSuccess} remember={rememberMe} />
-
-              <div className="relative my-5">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white dark:bg-slate-800 px-3 text-gray-400 dark:text-gray-500 uppercase tracking-wider">o con tu correo</span>
-                </div>
-              </div>
-            </>
-          )}
-
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
@@ -278,7 +263,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -290,6 +275,22 @@ export default function LoginPage() {
                 </>
               )}
             </Button>
+
+            {!!settings.google_client_id && (
+              <>
+                <div className="relative my-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-gray-200 dark:border-slate-700" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-white dark:bg-slate-800 px-3 text-gray-400 dark:text-gray-500 uppercase tracking-wider">o</span>
+                  </div>
+                </div>
+                <div className="h-12 flex items-center [&>div]:w-full">
+                  <GoogleSignInButton onSuccess={handleGoogleSuccess} remember={rememberMe} />
+                </div>
+              </>
+            )}
 
             {unverifiedEmail && (
               <div className="text-center mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
