@@ -221,16 +221,16 @@ function DashboardView({ onNavigate, visible }: { onNavigate: (tab: string) => v
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent" />
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                     <div>
-                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mb-1">Saldo de Caja (Hoy)</p>
+                        <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mb-1">Saldo de Caja</p>
                         {loading ? (
                             <div className="h-12 w-64 bg-slate-700 rounded-xl animate-pulse" />
                         ) : (
-                            <p className="text-5xl font-black tracking-tight">{formatCurrency(summary?.todayBalance || 0)}</p>
+                            <p className="text-5xl font-black tracking-tight">{formatCurrency(balance)}</p>
                         )}
                         <div className="flex items-center gap-4 mt-3">
-                            <span className={`text-sm font-semibold flex items-center gap-1 ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {balance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                Flujo Histórico: {formatCurrency(Math.abs(balance))}
+                            <span className={`text-sm font-semibold flex items-center gap-1 ${(summary?.todayBalance || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {(summary?.todayBalance || 0) >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                Hoy: {(summary?.todayBalance || 0) >= 0 ? '+' : ''}{formatCurrency(summary?.todayBalance || 0)}
                             </span>
                             <span className="text-slate-500 text-xs">·</span>
                             <span className="text-slate-400 text-sm">Patrimonio Neto: <strong className={`${netWorth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(netWorth)}</strong></span>

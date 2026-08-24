@@ -43,7 +43,8 @@ export default function IngenioDashboard() {
     liabilities: 0,
     netWorth: 0,
     netWorthGrowth: 0,
-    todayBalance: 0
+    todayBalance: 0,
+    balance: 0
   });
   const { status, isActive, isReadOnly, subscription } = useIngenioSubscription();
   const { openPaywall } = usePaywallStore();
@@ -83,7 +84,8 @@ export default function IngenioDashboard() {
         liabilities: data.totalLiabilities || 0,
         netWorth: data.netWorth || 0,
         netWorthGrowth: data.savingsRate || 0,
-        todayBalance: data.todayBalance || 0
+        todayBalance: data.todayBalance || 0,
+        balance: data.balance || 0
       });
     } catch (error) {
       console.error(error);
@@ -321,15 +323,18 @@ export default function IngenioDashboard() {
             </CardContent>
           </Card>
           <Card className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl">
-            <div className={cn("absolute left-0 top-0 bottom-0 w-2", summary.todayBalance >= 0 ? "bg-indigo-500" : "bg-rose-500")} />
+            <div className={cn("absolute left-0 top-0 bottom-0 w-2", summary.balance >= 0 ? "bg-indigo-500" : "bg-rose-500")} />
             <CardContent className="p-8 pl-10">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Saldo de Caja (Hoy)</p>
-                  <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.todayBalance)}</p>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Saldo de Caja</p>
+                  <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.balance)}</p>
+                  <p className={cn("text-xs font-bold mt-2", summary.todayBalance >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                    Hoy: {summary.todayBalance >= 0 ? '+' : ''}{formatCurrency(summary.todayBalance)}
+                  </p>
                 </div>
-                <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner", summary.todayBalance >= 0 ? "bg-indigo-50 dark:bg-indigo-500/10" : "bg-rose-50 dark:bg-rose-500/10")}>
-                  <Wallet className={cn("w-8 h-8", summary.todayBalance >= 0 ? "text-indigo-600 dark:text-indigo-400" : "text-rose-600 dark:text-rose-400")} />
+                <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner", summary.balance >= 0 ? "bg-indigo-50 dark:bg-indigo-500/10" : "bg-rose-50 dark:bg-rose-500/10")}>
+                  <Wallet className={cn("w-8 h-8", summary.balance >= 0 ? "text-indigo-600 dark:text-indigo-400" : "text-rose-600 dark:text-rose-400")} />
                 </div>
               </div>
             </CardContent>
