@@ -247,6 +247,7 @@ export function getTransactionTypeInfo(type: string): { label: string; color: st
     commission: { label: 'Comisión', color: 'text-orange-600', sign: '-' },
     credit: { label: 'Crédito', color: 'text-blue-600', sign: '+' },
     fee: { label: 'Tarifa', color: 'text-red-600', sign: '-' },
+    adjustment: { label: 'Ajuste Manual', color: 'text-indigo-600', sign: '' },
   };
   return types[type] || { label: type, color: 'text-gray-600', sign: '' };
 }

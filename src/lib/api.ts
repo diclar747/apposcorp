@@ -269,6 +269,15 @@ export const walletApi = {
     fetchWithAuth(`/wallet/approve-withdrawal/${id}`, { method: 'POST' }),
   rejectWithdrawal: (id: string) =>
     fetchWithAuth(`/wallet/reject-withdrawal/${id}`, { method: 'POST' }),
+  cancelDeposit: (id: string) =>
+    fetchWithAuth(`/wallet/cancel-deposit/${id}`, { method: 'POST' }),
+  cancelWithdrawal: (id: string) =>
+    fetchWithAuth(`/wallet/cancel-withdrawal/${id}`, { method: 'POST' }),
+  adminAdjustment: (userId: string, amount: number, reason: string) =>
+    fetchWithAuth(`/wallet/admin-adjustment/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, reason }),
+    }),
 };
 
 

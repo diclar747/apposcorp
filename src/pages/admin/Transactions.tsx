@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2, Check, X, Eye, MoreHorizontal } from 'lucide-react';
-import { walletApi } from '@/lib/api';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, Download, Loader2, Check, X, Eye, MoreHorizontal, Wallet, UserCircle } from 'lucide-react';
+import { walletApi, usersApi } from '@/lib/api';
 import { cn, formatCurrency, formatDateTime, getTransactionTypeInfo, getTransactionStatusInfo, generateReportPDF } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +49,72 @@ export default function AdminTransactions() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
+
+  // Manual balance adjustment (superadmin only)
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [adjustmentSearch, setAdjustmentSearch] = useState('');
+  const [adjustmentResults, setAdjustmentResults] = useState<any[]>([]);
+  const [adjustmentSearching, setAdjustmentSearching] = useState(false);
+  const [adjustmentUser, setAdjustmentUser] = useState<any | null>(null);
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
+  const [adjustmentSign, setAdjustmentSign] = useState<'add' | 'subtract'>('add');
+  const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
+
+  const resetAdjustmentForm = () => {
+    setAdjustmentSearch('');
+    setAdjustmentResults([]);
+    setAdjustmentUser(null);
+    setAdjustmentAmount('');
+    setAdjustmentSign('add');
+    setAdjustmentReason('');
+  };
+
+  const handleAdjustmentSearch = async () => {
+    if (!adjustmentSearch || adjustmentSearch.length < 3) {
+      toast.error('Ingresá al menos 3 caracteres para buscar');
+      return;
+    }
+    try {
+      setAdjustmentSearching(true);
+      const results = await usersApi.search(adjustmentSearch);
+      setAdjustmentResults(results);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al buscar usuarios');
+    } finally {
+      setAdjustmentSearching(false);
+    }
+  };
+
+  const handleSubmitAdjustment = async () => {
+    if (!adjustmentUser) {
+      toast.error('Seleccioná un usuario');
+      return;
+    }
+    const rawAmount = Number(adjustmentAmount.replace(/\D/g, ''));
+    if (!rawAmount) {
+      toast.error('Ingresá un monto válido');
+      return;
+    }
+    if (!adjustmentReason.trim()) {
+      toast.error('El motivo del ajuste es obligatorio');
+      return;
+    }
+
+    try {
+      setAdjustmentSubmitting(true);
+      const signedAmount = adjustmentSign === 'add' ? rawAmount : -rawAmount;
+      await walletApi.adminAdjustment(adjustmentUser.id, signedAmount, adjustmentReason.trim());
+      toast.success('Ajuste aplicado correctamente');
+      setAdjustmentOpen(false);
+      resetAdjustmentForm();
+      fetchTransactions();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al aplicar el ajuste');
+    } finally {
+      setAdjustmentSubmitting(false);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -192,10 +258,20 @@ export default function AdminTransactions() {
           <h1 className="text-2xl font-bold text-gray-900">Transacciones</h1>
           <p className="text-gray-500">Historial de todas las transacciones</p>
         </div>
-        <Button variant="outline" onClick={exportToPDF}>
-          <Download className="w-4 h-4 mr-2" />
-          Exportar PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400"
+            onClick={() => { resetAdjustmentForm(); setAdjustmentOpen(true); }}
+          >
+            <Wallet className="w-4 h-4 mr-2" />
+            Ajuste Manual
+          </Button>
+          <Button variant="outline" onClick={exportToPDF}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar PDF
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -490,6 +566,114 @@ export default function AdminTransactions() {
                 </Button>
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Balance Adjustment Dialog */}
+      <Dialog open={adjustmentOpen} onOpenChange={(open) => { setAdjustmentOpen(open); if (!open) resetAdjustmentForm(); }}>
+        <DialogContent className="max-w-md rounded-[2rem] border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">Ajuste Manual de Saldo</DialogTitle>
+            <p className="text-sm text-slate-500 font-medium">
+              Corrige el saldo de un usuario sin editar movimientos existentes. Queda registrado como un nuevo movimiento, con motivo.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            {!adjustmentUser ? (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Buscar por email, teléfono o nombre..."
+                    value={adjustmentSearch}
+                    onChange={(e) => setAdjustmentSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdjustmentSearch()}
+                  />
+                  <Button onClick={handleAdjustmentSearch} disabled={adjustmentSearching}>
+                    {adjustmentSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </Button>
+                </div>
+                <div className="space-y-1 max-h-56 overflow-y-auto">
+                  {adjustmentResults.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => setAdjustmentUser(u)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-left transition-colors"
+                    >
+                      <UserCircle className="w-8 h-8 text-slate-300" />
+                      <div>
+                        <p className="text-sm font-bold">{u.firstName} {u.lastName}</p>
+                        <p className="text-xs text-slate-400">{u.email}</p>
+                      </div>
+                    </button>
+                  ))}
+                  {adjustmentResults.length === 0 && adjustmentSearch && !adjustmentSearching && (
+                    <p className="text-xs text-slate-400 text-center py-4">Sin resultados. Buscá por email, teléfono o nombre.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <UserCircle className="w-8 h-8 text-indigo-400" />
+                    <div>
+                      <p className="text-sm font-bold">{adjustmentUser.firstName} {adjustmentUser.lastName}</p>
+                      <p className="text-xs text-slate-400">{adjustmentUser.email}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setAdjustmentUser(null)}>Cambiar</Button>
+                </div>
+
+                <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setAdjustmentSign('add')}
+                    className={cn("flex-1 rounded-lg font-bold", adjustmentSign === 'add' ? "bg-white dark:bg-slate-700 shadow-sm text-emerald-600" : "text-slate-500")}
+                  >
+                    Sumar (+)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setAdjustmentSign('subtract')}
+                    className={cn("flex-1 rounded-lg font-bold", adjustmentSign === 'subtract' ? "bg-white dark:bg-slate-700 shadow-sm text-rose-600" : "text-slate-500")}
+                  >
+                    Restar (-)
+                  </Button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Monto (₲)</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={adjustmentAmount}
+                    onChange={(e) => setAdjustmentAmount(e.target.value.replace(/\D/g, ''))}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Motivo del ajuste (obligatorio)</label>
+                  <Input
+                    placeholder="Ej: corrección de depósito duplicado"
+                    value={adjustmentReason}
+                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                  />
+                </div>
+
+                <Button
+                  className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold"
+                  disabled={adjustmentSubmitting}
+                  onClick={handleSubmitAdjustment}
+                >
+                  {adjustmentSubmitting ? 'Aplicando...' : 'Aplicar Ajuste'}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

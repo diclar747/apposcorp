@@ -250,6 +250,69 @@ router.post('/reject-deposit/:id', authenticate, authorize('superadmin'), async 
   }
 });
 
+// Cancel own pending deposit (Client) - deposit never touched balance, so no refund needed
+router.post('/cancel-deposit/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const transaction = await prisma.transaction.updateMany({
+      where: { id: id as string, userId: req.user!.userId, status: 'pending', type: 'deposit' },
+      data: { status: 'failed', description: 'Cancelado por el usuario' }
+    });
+
+    if (transaction.count === 0) {
+      return res.status(404).json({ error: 'Movimiento pendiente no encontrado o ya procesado' });
+    }
+
+    res.json({ success: true, message: 'Depósito cancelado' });
+  } catch (error) {
+    console.error('Error canceling deposit:', error);
+    res.status(500).json({ error: 'Error al cancelar el depósito' });
+  }
+});
+
+// Cancel own pending withdrawal (Client) - refunds the amount already debited at request time
+router.post('/cancel-withdrawal/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.findUnique({
+        where: { id: id as string },
+      });
+
+      if (!transaction || transaction.userId !== req.user!.userId || transaction.type !== 'withdrawal' || transaction.status !== 'pending') {
+        throw new Error('NOT_PENDING');
+      }
+
+      const amount = Math.abs(transaction.amount);
+
+      await tx.transaction.update({
+        where: { id: id as string },
+        data: { status: 'failed', description: `${transaction.description} (Cancelado por el usuario)` }
+      });
+
+      await tx.wallet.update({
+        where: { id: transaction.walletId },
+        data: {
+          balance: { increment: amount },
+          totalOut: { decrement: amount }
+        }
+      });
+
+      return transaction;
+    });
+
+    res.json({ success: true, message: 'Retiro cancelado y reembolsado a tu billetera' });
+  } catch (error: any) {
+    if (error.message === 'NOT_PENDING') {
+      return res.status(404).json({ error: 'Movimiento pendiente no encontrado o ya procesado' });
+    }
+    console.error('Error canceling withdrawal:', error);
+    res.status(500).json({ error: 'Error al cancelar el retiro' });
+  }
+});
+
 // Approve withdrawal (Admin only)
 router.post('/approve-withdrawal/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
@@ -333,6 +396,63 @@ router.post('/reject-withdrawal/:id', authenticate, authorize('superadmin'), asy
     }
     console.error('Error rejecting withdrawal:', error);
     res.status(500).json({ error: 'Error al rechazar retiro' });
+  }
+});
+
+// Manual balance adjustment (Superadmin only) - correct a completed transaction's
+// effect on a wallet without editing/deleting the original ledger entry.
+router.post('/admin-adjustment/:userId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, reason } = req.body;
+
+    const numericAmount = Number(amount);
+    if (!numericAmount || isNaN(numericAmount)) {
+      return res.status(400).json({ error: 'El monto del ajuste debe ser un número distinto de cero' });
+    }
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      return res.status(400).json({ error: 'El motivo del ajuste es obligatorio' });
+    }
+
+    const wallet = await prisma.wallet.findUnique({ where: { userId: userId as string } });
+    if (!wallet) {
+      return res.status(404).json({ error: 'Este usuario no tiene billetera' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedWallet = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: numericAmount > 0
+          ? { balance: { increment: numericAmount }, totalIn: { increment: numericAmount } }
+          : { balance: { increment: numericAmount }, totalOut: { increment: Math.abs(numericAmount) } },
+      });
+
+      const transaction = await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: userId as string,
+          type: 'adjustment',
+          amount: numericAmount,
+          status: 'completed',
+          description: `Ajuste manual: ${reason.trim()}`,
+          metadata: { adjustedBy: req.user!.userId, reason: reason.trim() },
+        },
+      });
+
+      return { wallet: updatedWallet, transaction };
+    });
+
+    sendPushToUser(userId as string, {
+      title: 'Ajuste en tu billetera',
+      body: `Se realizó un ajuste de ₲ ${numericAmount.toLocaleString()} en tu saldo. Motivo: ${reason.trim()}`,
+      url: '/app/wallet',
+      tag: 'wallet-adjustment'
+    }).catch(console.error);
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error applying wallet adjustment:', error);
+    res.status(500).json({ error: 'Error al aplicar el ajuste' });
   }
 });
 

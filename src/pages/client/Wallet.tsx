@@ -15,6 +15,8 @@ import {
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency, cn } from '@/lib/utils';
 import { generateQRValue } from '@/lib/qr';
+import { walletApi } from '@/lib/api';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VirtualCard } from '@/components/client/VirtualCard';
@@ -50,6 +52,7 @@ export default function ClientWallet() {
   }, [showBalance]);
   const [showAll, setShowAll] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [canceling, setCanceling] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -57,6 +60,32 @@ export default function ClientWallet() {
       fetchTransactions(user.walletId);
     }
   }, [user, fetchWallet, fetchTransactions]);
+
+  const handleCancelTransaction = async () => {
+    const raw = selectedTransaction?.raw;
+    if (!raw) return;
+
+    try {
+      setCanceling(true);
+      if (raw.type === 'deposit') {
+        await walletApi.cancelDeposit(raw.id);
+      } else if (raw.type === 'withdrawal') {
+        await walletApi.cancelWithdrawal(raw.id);
+      } else {
+        return;
+      }
+      toast.success('Movimiento cancelado');
+      setSelectedTransaction(null);
+      if (user) {
+        fetchWallet(user.id);
+        fetchTransactions(user.walletId);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cancelar el movimiento');
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   // Transform transactions for display
   const displayTransactions = (showAll ? transactions : transactions.slice(0, 10)).map(t => {
@@ -401,6 +430,18 @@ export default function ClientWallet() {
                     <span className="text-[9px] font-mono text-muted-foreground/60 font-bold break-all ml-4 text-right">{selectedTransaction.id}</span>
                   </div>
                 </div>
+
+                {selectedTransaction.status === 'pending' && ['deposit', 'withdrawal'].includes(selectedTransaction.raw?.type) && (
+                  <Button
+                    variant="outline"
+                    disabled={canceling}
+                    onClick={handleCancelTransaction}
+                    className="w-full h-12 rounded-2xl border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-500 font-bold gap-2"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    {canceling ? 'Cancelando...' : 'Cancelar movimiento'}
+                  </Button>
+                )}
             </div>
           )}
         </DialogContent>
