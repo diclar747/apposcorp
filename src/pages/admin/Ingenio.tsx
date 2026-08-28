@@ -141,8 +141,8 @@ function DashboardView({ onNavigate, visible }: { onNavigate: (tab: string) => v
             .finally(() => setLoading(false));
     }, []);
 
-    const netWorth = (summary?.totalAssets || 0) - (summary?.totalLiabilities || 0);
     const balance = summary?.totalIncome - summary?.totalExpenses || 0;
+    const netWorth = balance + (summary?.totalAssets || 0) - (summary?.totalLiabilities || 0);
 
     const kpis = [
         {

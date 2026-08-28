@@ -18,9 +18,13 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         const where: any = { userId };
 
         if (startDate && endDate) {
+            // endDate is inclusive: extend it to the end of that day so a record
+            // saved "today" (any time) is still matched when Desde = Hasta = today.
+            const end = new Date(endDate as string);
+            end.setHours(23, 59, 59, 999);
             where.date = {
                 gte: new Date(startDate as string),
-                lte: new Date(endDate as string),
+                lte: end,
             };
         } else if (month && year) {
             const start = new Date(Number(year), Number(month) - 1, 1);
@@ -73,9 +77,11 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
         const totalAssets = allRecords.filter(r => r.type === 'asset').reduce((sum, r) => sum + r.amount, 0);
         const totalLiabilities = allRecords.filter(r => r.type === 'liability').reduce((sum, r) => sum + r.amount, 0);
         
-        // Balance is Income - Expenses
+        // Balance is Income - Expenses (liquid cash on hand)
         const balance = totalIncome - totalExpenses;
-        const netWorth = totalAssets - totalLiabilities;
+        // Net worth = liquid cash + other assets - liabilities.
+        // A liability (debt) must reduce net worth against the cash you already have.
+        const netWorth = balance + totalAssets - totalLiabilities;
 
         // 2. Today's stats
         const today = new Date();

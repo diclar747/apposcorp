@@ -39,11 +39,26 @@ const EDIT_TYPE_LABELS: Record<string, string> = {
   liability: 'Pasivo',
 };
 
+const DEFAULT_RANGE_DAYS = 30;
+
+const toISODate = (d: Date) => d.toLocaleDateString('en-CA'); // YYYY-MM-DD (local)
+
+// When the user has not chosen a date range we default to the last 30 days
+// so the list is always populated without touching the calendar.
+const defaultRange = () => {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - DEFAULT_RANGE_DAYS);
+  return { startDate: toISODate(start), endDate: toISODate(end) };
+};
+
 export default function IngenioReports() {
   const [records, setRecords] = useState<any[]>([]);
+  const [budgetApplied, setBudgetApplied] = useState<any[]>([]);
   const [budgetRecords, setBudgetRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [usingDefaultRange, setUsingDefaultRange] = useState(true);
   const [activeTab, setActiveTab] = useState('movements');
   const [filters, setFilters] = useState({
     type: 'all',
@@ -59,6 +74,13 @@ export default function IngenioReports() {
   useEffect(() => {
     financesApi.getCategories().then(setCategories).catch(() => {});
   }, []);
+
+  // Auto-load the report as soon as the page opens and whenever the tab changes,
+  // so the user always sees their full history without having to pick a date range first.
+  useEffect(() => {
+    fetchReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const openEdit = (record: any) => {
     setEditingRecord(record);
@@ -102,14 +124,39 @@ export default function IngenioReports() {
     try {
       setLoading(true);
       if (activeTab === 'movements') {
+        const hasExplicitRange = !!(filters.startDate && filters.endDate);
+        const range = hasExplicitRange
+          ? { startDate: filters.startDate, endDate: filters.endDate }
+          : defaultRange();
+        setUsingDefaultRange(!hasExplicitRange);
+
         const params: any = {
           type: filters.type === 'all' ? undefined : filters.type,
-          startDate: filters.startDate || undefined,
-          endDate: filters.endDate || undefined,
+          startDate: range.startDate,
+          endDate: range.endDate,
           query: filters.query || undefined
         };
-        const data = await financesApi.getAll(params);
+        const now = new Date();
+        const [data, items] = await Promise.all([
+          financesApi.getAll(params),
+          financesApi.getBudgetItems(now.getMonth() + 1, now.getFullYear()).catch(() => [])
+        ]);
         setRecords(data);
+        // Progress applied to budget goals is not a financial record, but the user
+        // expects to see it in the same list. Surface it as read-only rows.
+        setBudgetApplied(
+          (items || [])
+            .filter((it: any) => Number(it.actualAmount) > 0)
+            .map((it: any) => ({
+              id: `budget-${it.id}`,
+              date: it.startDate,
+              type: it.type,
+              description: it.name,
+              notes: it.description || 'Aplicado a presupuesto',
+              amount: Number(it.actualAmount),
+              isBudget: true,
+            }))
+        );
       } else {
         // Fetch budget items with filters
         const date = new Date();
@@ -136,11 +183,16 @@ export default function IngenioReports() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!filters.startDate || !filters.endDate) {
-      toast.error('Por favor selecciona un rango de fechas');
-      return;
+    // Date range is optional. No dates -> last 30 days. Only one end -> warn but still run.
+    if ((filters.startDate && !filters.endDate) || (!filters.startDate && filters.endDate)) {
+      toast.info('Completá "Desde" y "Hasta" para acotar. Por ahora muestro los últimos 30 días.');
     }
     fetchReports();
+  };
+
+  const clearDateFilter = () => {
+    setFilters(f => ({ ...f, startDate: '', endDate: '' }));
+    setTimeout(fetchReports, 0);
   };
 
   const handleDelete = async (id: string) => {
@@ -280,6 +332,22 @@ export default function IngenioReports() {
       doc.save(`Reporte_Presupuestos_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  // Financial records (editable) + budget-goal progress (read-only), newest first.
+  const matchesQuery = (row: any) =>
+    !filters.query ||
+    (row.description || '').toLowerCase().includes(filters.query.toLowerCase()) ||
+    (row.notes || '').toLowerCase().includes(filters.query.toLowerCase());
+
+  const combinedRows = [
+    ...records.map((r: any) => ({ ...r, isBudget: false })),
+    ...budgetApplied.filter(
+      (b: any) => (filters.type === 'all' || b.type === filters.type) && matchesQuery(b)
+    ),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalIncome = combinedRows.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0);
+  const totalExpense = combinedRows.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+
   return (
     <div className="space-y-8 pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -391,15 +459,20 @@ export default function IngenioReports() {
         </CardContent>
       </Card>
 
-      {!hasSearched ? (
-        <Card className="border-none shadow-md bg-white/50 dark:bg-slate-900/30 rounded-[3rem] p-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800">
-           <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-slate-100 dark:shadow-none">
-             <Calendar className="w-10 h-10 text-indigo-600" />
-           </div>
-           <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Preparado para el análisis</h2>
-           <p className="text-slate-500 font-medium max-w-sm mx-auto">Selecciona los parámetros y pulsa **Buscar** para visualizar tus registros financieros.</p>
-        </Card>
-      ) : (
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-2">
+        <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 border-none font-black rounded-full px-3 h-7">
+          {usingDefaultRange ? 'Últimos 30 días' : `${filters.startDate} → ${filters.endDate}`}
+        </Badge>
+        <span className="text-sm font-bold text-slate-500">Ingresos <span className="text-emerald-500 font-black">{formatCurrency(totalIncome)}</span></span>
+        <span className="text-sm font-bold text-slate-500">Egresos <span className="text-rose-500 font-black">{formatCurrency(totalExpense)}</span></span>
+        <span className="text-sm font-bold text-slate-500">Neto <span className={cn("font-black", totalIncome - totalExpense >= 0 ? "text-emerald-500" : "text-rose-500")}>{formatCurrency(totalIncome - totalExpense)}</span></span>
+        {!usingDefaultRange && (
+          <Button type="button" variant="ghost" onClick={clearDateFilter} className="h-7 px-2 text-xs font-bold text-indigo-600 hover:text-indigo-700">
+            Ver últimos 30 días
+          </Button>
+        )}
+      </div>
+      {(
         <Card className="border-none shadow-2xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -414,7 +487,12 @@ export default function IngenioReports() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {records.map((r) => (
+                {loading && combinedRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse">Cargando movimientos...</TableCell>
+                  </TableRow>
+                )}
+                {combinedRows.map((r) => (
                   <TableRow key={r.id} className="border-slate-50 dark:border-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors group">
                     <TableCell className="py-6 px-8 font-bold text-slate-500">
                       {(() => {
@@ -423,14 +501,21 @@ export default function IngenioReports() {
                       })()}
                     </TableCell>
                     <TableCell className="py-6 px-8">
-                        <Badge className={cn(
-                          "font-bold uppercase tracking-widest text-[9px] px-2 py-0.5 rounded-full border-none",
-                          r.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 
-                          r.type === 'expense' ? 'bg-rose-500/10 text-rose-500' :
-                          r.type === 'asset' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'
-                        )}>
-                          {getTypeLabel(r.type)}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge className={cn(
+                            "font-bold uppercase tracking-widest text-[9px] px-2 py-0.5 rounded-full border-none w-fit",
+                            r.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' :
+                            r.type === 'expense' ? 'bg-rose-500/10 text-rose-500' :
+                            r.type === 'asset' ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'
+                          )}>
+                            {getTypeLabel(r.type)}
+                          </Badge>
+                          {r.isBudget && (
+                            <Badge className="font-bold uppercase tracking-widest text-[9px] px-2 py-0.5 rounded-full border-none w-fit bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                              Presupuesto
+                            </Badge>
+                          )}
+                        </div>
                     </TableCell>
                     <TableCell className="py-6 px-8">
                        <span className="font-black text-slate-900 dark:text-white uppercase tracking-tight">{r.description}</span>
@@ -444,6 +529,9 @@ export default function IngenioReports() {
                        </span>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-center">
+                      {r.isBudget ? (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">En Presupuesto</span>
+                      ) : (
                       <div className="flex items-center justify-center gap-1">
                       <Button
                         variant="ghost"
@@ -468,7 +556,7 @@ export default function IngenioReports() {
                           </AlertDialogHeader>
                           <AlertDialogFooter className="mt-4 gap-2">
                             <AlertDialogCancel className="rounded-2xl h-12 border-slate-100 font-bold">Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
+                            <AlertDialogAction
                               onClick={() => handleDelete(r.id)}
                               className="rounded-2xl h-12 bg-rose-500 hover:bg-rose-600 font-black px-6"
                             >
@@ -478,10 +566,11 @@ export default function IngenioReports() {
                         </AlertDialogContent>
                       </AlertDialog>
                       </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
-                {records.length === 0 && !loading && (
+                {combinedRows.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-20 text-center">
                        <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />

@@ -74,8 +74,8 @@ export default function IngenioDashboard() {
   const [showAdvancedType, setShowAdvancedType] = useState(false);
   const [newRecord, setNewRecord] = useState(emptyRecord());
 
-  // Movements list (tap Ingreso/Egreso card to review, edit or delete)
-  const [listType, setListType] = useState<'income' | 'expense' | null>(null);
+  // Movements list (tap Ingreso/Egreso/Patrimonio card to review, edit or delete)
+  const [listType, setListType] = useState<'income' | 'expense' | 'networth' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
@@ -119,13 +119,13 @@ export default function IngenioDashboard() {
     }
   };
 
-  const openCreate = (type: 'income' | 'expense') => {
+  const openCreate = (type: 'income' | 'expense' | 'asset' | 'liability') => {
     if (isReadOnly) {
       openPaywall();
       return;
     }
     setEditingId(null);
-    setShowAdvancedType(false);
+    setShowAdvancedType(type === 'asset' || type === 'liability');
     setNewRecord({ ...emptyRecord(), type });
     setIsFormOpen(true);
   };
@@ -200,10 +200,13 @@ export default function IngenioDashboard() {
     return <AccessDenied status={status} />;
   }
 
+  const isNetWorthList = listType === 'networth';
   const listRecords = monthRecords
-    .filter(r => r.type === listType)
+    .filter(r => isNetWorthList ? (r.type === 'asset' || r.type === 'liability') : r.type === listType)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const listTotal = listRecords.reduce((sum, r) => sum + r.amount, 0);
+  const listTotal = isNetWorthList
+    ? listRecords.reduce((sum, r) => sum + (r.type === 'asset' ? r.amount : -r.amount), 0)
+    : listRecords.reduce((sum, r) => sum + r.amount, 0);
 
   return (
     <div className="space-y-8 pb-10">
@@ -253,7 +256,10 @@ export default function IngenioDashboard() {
       </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white border-none shadow-2xl relative overflow-hidden rounded-[2rem]">
+        <Card
+          onClick={() => setListType('networth')}
+          className="bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white border-none shadow-2xl relative overflow-hidden rounded-[2rem] cursor-pointer active:scale-[0.99] transition-transform"
+        >
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32" />
           <CardContent className="p-8 relative z-10">
             <div className="flex justify-between items-start mb-10">
@@ -288,6 +294,7 @@ export default function IngenioDashboard() {
                 <p className="text-2xl font-black">{formatCurrency(summary.liabilities)}</p>
               </div>
             </div>
+            <p className="text-[11px] font-bold text-white/40 mt-6 uppercase tracking-widest">Toca para ver activos y pasivos</p>
           </CardContent>
         </Card>
 
@@ -516,46 +523,66 @@ export default function IngenioDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Movements list: tap Ingreso/Egreso card to review, edit or delete */}
+      {/* Movements list: tap Ingreso / Egreso / Patrimonio card to review, edit or delete */}
       <Sheet open={listType !== null} onOpenChange={(open) => !open && setListType(null)}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
           <SheetHeader className="p-6 border-b dark:border-slate-800 text-left">
             <SheetTitle className="text-2xl font-black">
-              {listType === 'income' ? 'Ingresos' : 'Egresos'} del Mes
+              {isNetWorthList ? 'Patrimonio Neto' : `${listType === 'income' ? 'Ingresos' : 'Egresos'} del Mes`}
             </SheetTitle>
-            <p className={cn("text-3xl font-black", listType === 'income' ? "text-emerald-500" : "text-rose-500")}>
-              {formatCurrency(listTotal)}
+            <p className={cn(
+              "text-3xl font-black",
+              isNetWorthList ? "text-indigo-500" : listType === 'income' ? "text-emerald-500" : "text-rose-500"
+            )}>
+              {formatCurrency(isNetWorthList ? summary.netWorth : listTotal)}
             </p>
+            {isNetWorthList && (
+              <p className="text-xs font-bold text-slate-400">
+                Activos {formatCurrency(summary.assets)} · Pasivos {formatCurrency(summary.liabilities)}
+              </p>
+            )}
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {listRecords.length === 0 && (
               <div className="py-16 text-center text-slate-400 font-medium">
-                Todavía no registraste {listType === 'income' ? 'ingresos' : 'gastos'} este mes.
+                {isNetWorthList
+                  ? 'No registraste activos ni pasivos este mes.'
+                  : `Todavía no registraste ${listType === 'income' ? 'ingresos' : 'gastos'} este mes.`}
               </div>
             )}
-            {listRecords.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 group">
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 dark:text-white truncate">{r.description}</p>
-                  <p className="text-xs text-slate-400 font-medium">
-                    {new Date(r.date).toLocaleDateString('es-PY', { day: '2-digit', month: 'short' })}
-                    {r.notes ? ` • ${r.notes}` : ''}
-                  </p>
+            {listRecords.map((r) => {
+              const isPositive = isNetWorthList ? r.type === 'asset' : listType === 'income';
+              return (
+                <div key={r.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 group">
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900 dark:text-white truncate">
+                      {r.description}
+                      {isNetWorthList && (
+                        <span className="ml-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          {r.type === 'asset' ? 'Activo' : 'Pasivo'}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {new Date(r.date).toLocaleDateString('es-PY', { day: '2-digit', month: 'short' })}
+                      {r.notes ? ` • ${r.notes}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <p className={cn("font-black mr-2", isPositive ? "text-emerald-500" : "text-rose-500")}>
+                      {isPositive ? '+' : '-'}{formatCurrency(r.amount)}
+                    </p>
+                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-indigo-500" onClick={() => openEdit(r)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-500" onClick={() => setDeleteTarget(r)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <p className={cn("font-black mr-2", listType === 'income' ? "text-emerald-500" : "text-rose-500")}>
-                    {listType === 'income' ? '+' : '-'}{formatCurrency(r.amount)}
-                  </p>
-                  <Button variant="ghost" size="icon" className="text-slate-400 hover:text-indigo-500" onClick={() => openEdit(r)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-500" onClick={() => setDeleteTarget(r)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-4 border-t dark:border-slate-800">
@@ -563,14 +590,16 @@ export default function IngenioDashboard() {
               onClick={() => {
                 const type = listType!;
                 setListType(null);
-                openCreate(type);
+                openCreate(type === 'networth' ? 'asset' : type);
               }}
               className={cn(
                 "w-full h-12 rounded-xl font-black text-lg",
-                listType === 'income' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
+                isNetWorthList ? "bg-indigo-600 hover:bg-indigo-700"
+                  : listType === 'income' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
               )}
             >
-              <Plus className="w-4 h-4 mr-2" /> Agregar {listType === 'income' ? 'Ingreso' : 'Gasto'}
+              <Plus className="w-4 h-4 mr-2" />
+              {isNetWorthList ? 'Agregar Activo o Pasivo' : `Agregar ${listType === 'income' ? 'Ingreso' : 'Gasto'}`}
             </Button>
           </div>
         </SheetContent>
