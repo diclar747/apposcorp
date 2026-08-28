@@ -191,6 +191,7 @@ async function main() {
         commissionRate: 5,
         isCommissionBased: true,
         isActive: true,
+        updatedAt: new Date(),
       },
       {
         name: 'Profesional',
@@ -204,6 +205,7 @@ async function main() {
         commissionRate: 0,
         isCommissionBased: false,
         isActive: true,
+        updatedAt: new Date(),
       },
       {
         name: 'Corporativo',
@@ -217,6 +219,7 @@ async function main() {
         commissionRate: 0,
         isCommissionBased: false,
         isActive: true,
+        updatedAt: new Date(),
       }
     ]
   });

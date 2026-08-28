@@ -4,17 +4,13 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  Target,
   Plus,
   ArrowUpRight,
   ArrowDownRight,
-  Home,
-  CreditCard,
   Lock,
-  ShieldCheck,
-  Clock,
-  PieChart as PieChartIcon,
-  AlertCircle
+  Pencil,
+  Trash2,
+  ChevronDown
 } from 'lucide-react';
 import { AccessDenied } from '@/components/ingenio/AccessDenied';
 import { useAuthStore } from '@/stores';
@@ -22,7 +18,18 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,6 +39,14 @@ import { financesApi } from '@/lib/api';
 import { useWalletStore } from '@/stores/walletStore';
 import { useIngenioSubscription } from '@/hooks/useIngenioSubscription';
 import { usePaywallStore } from '@/stores';
+
+const emptyRecord = () => ({
+  type: 'expense',
+  amount: '',
+  description: '',
+  notes: '',
+  date: new Date().toLocaleDateString('en-CA')
+});
 
 export default function IngenioDashboard() {
   const { user } = useAuthStore();
@@ -44,21 +59,24 @@ export default function IngenioDashboard() {
     netWorth: 0,
     netWorthGrowth: 0,
     todayBalance: 0,
+    todayIncome: 0,
+    todayExpenses: 0,
     balance: 0
   });
+  const [monthRecords, setMonthRecords] = useState<any[]>([]);
   const { status, isActive, isReadOnly, subscription } = useIngenioSubscription();
   const { openPaywall } = usePaywallStore();
   const [loading, setLoading] = useState(true);
 
-  // Form State
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newRecord, setNewRecord] = useState({
-    type: 'expense',
-    amount: '',
-    description: '',
-    notes: '',
-    date: new Date().toLocaleDateString('en-CA')
-  });
+  // Form State (used for both create and edit)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAdvancedType, setShowAdvancedType] = useState(false);
+  const [newRecord, setNewRecord] = useState(emptyRecord());
+
+  // Movements list (tap Ingreso/Egreso card to review, edit or delete)
+  const [listType, setListType] = useState<'income' | 'expense' | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -76,7 +94,11 @@ export default function IngenioDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await financesApi.getSummary();
+      const now = new Date();
+      const [data, records] = await Promise.all([
+        financesApi.getSummary(),
+        financesApi.getAll({ month: now.getMonth() + 1, year: now.getFullYear() })
+      ]);
       setSummary({
         income: data.monthIncome || 0,
         expenses: data.monthExpenses || 0,
@@ -85,8 +107,11 @@ export default function IngenioDashboard() {
         netWorth: data.netWorth || 0,
         netWorthGrowth: data.savingsRate || 0,
         todayBalance: data.todayBalance || 0,
+        todayIncome: data.todayIncome || 0,
+        todayExpenses: data.todayExpenses || 0,
         balance: data.balance || 0
       });
+      setMonthRecords(records || []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -94,7 +119,32 @@ export default function IngenioDashboard() {
     }
   };
 
-  const handleCreateRecord = async (e: React.FormEvent) => {
+  const openCreate = (type: 'income' | 'expense') => {
+    if (isReadOnly) {
+      openPaywall();
+      return;
+    }
+    setEditingId(null);
+    setShowAdvancedType(false);
+    setNewRecord({ ...emptyRecord(), type });
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (record: any) => {
+    setEditingId(record.id);
+    setShowAdvancedType(record.type === 'asset' || record.type === 'liability');
+    setNewRecord({
+      type: record.type,
+      amount: Number(record.amount).toLocaleString('es-PY'),
+      description: record.description || '',
+      notes: record.notes || '',
+      date: new Date(record.date).toLocaleDateString('en-CA')
+    });
+    setListType(null);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly) {
       openPaywall();
@@ -107,14 +157,22 @@ export default function IngenioDashboard() {
     }
 
     try {
-      await financesApi.create({
+      const payload = {
         ...newRecord,
         amount: Number(newRecord.amount.replace(/\D/g, ''))
-      });
+      };
 
-      toast.success('Registro guardado exitosamente');
-      setIsAddOpen(false);
-      setNewRecord({ type: 'expense', amount: '', description: '', notes: '', date: new Date().toLocaleDateString('en-CA') });
+      if (editingId) {
+        await financesApi.update(editingId, payload);
+        toast.success('Movimiento actualizado');
+      } else {
+        await financesApi.create(payload);
+        toast.success('Registro guardado exitosamente');
+      }
+
+      setIsFormOpen(false);
+      setEditingId(null);
+      setNewRecord(emptyRecord());
       fetchData();
     } catch (error: any) {
       if (error.message.includes('Suscripción requerida') || error.message.includes('REQUIRES_SUBSCRIPTION')) {
@@ -125,10 +183,27 @@ export default function IngenioDashboard() {
     }
   };
 
+  const handleDeleteConfirmed = async () => {
+    if (!deleteTarget) return;
+    try {
+      await financesApi.delete(deleteTarget.id);
+      toast.success('Movimiento eliminado');
+      setDeleteTarget(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar');
+    }
+  };
+
   if (loading) return <div className="p-8 animate-pulse text-slate-500">Optimizando tu tablero financiero...</div>;
   if (status !== 'ACTIVE') {
     return <AccessDenied status={status} />;
   }
+
+  const listRecords = monthRecords
+    .filter(r => r.type === listType)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const listTotal = listRecords.reduce((sum, r) => sum + r.amount, 0);
 
   return (
     <div className="space-y-8 pb-10">
@@ -137,100 +212,23 @@ export default function IngenioDashboard() {
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Finanzas Master</h1>
           <p className="text-slate-500 font-medium">Control absoluto sobre tu flujo de caja y patrimonio neto.</p>
         </div>
-        
-        <Dialog open={isAddOpen} onOpenChange={(open) => {
-          if (open && isReadOnly) {
-            openPaywall();
-            return;
-          }
-          setIsAddOpen(open);
-        }}>
-          <DialogTrigger asChild>
-            <Button className={cn(
-              "h-12 px-6 rounded-xl shadow-lg transition-all font-bold",
-              isReadOnly 
-                ? "bg-slate-400 dark:bg-slate-700 hover:bg-slate-500" 
-                : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none"
-            )}>
-              {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              Registrar Movimiento
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md rounded-3xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black">Nuevo Registro</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateRecord} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label className="font-bold">Tipo de Movimiento</Label>
-                <Select
-                  value={newRecord.type}
-                  onValueChange={(val) => setNewRecord({ ...newRecord, type: val })}
-                >
-                  <SelectTrigger className="h-12 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">Ingreso</SelectItem>
-                    <SelectItem value="expense">Gasto</SelectItem>
-                    <SelectItem value="asset">Activo (Suma Patrimonio)</SelectItem>
-                    <SelectItem value="liability">Pasivo (Resta Patrimonio)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="space-y-2">
-                <Label className="font-bold">Monto (₲)</Label>
-                <Input
-                  type="text"
-                  placeholder="0"
-                  value={newRecord.amount}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, '');
-                    if (!raw) {
-                      setNewRecord({ ...newRecord, amount: '' });
-                      return;
-                    }
-                    const num = parseInt(raw, 10);
-                    setNewRecord({ ...newRecord, amount: num.toLocaleString('es-PY') });
-                  }}
-                  className="h-12 rounded-xl text-lg font-medium"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold">Nomb. de Registro</Label>
-                <Input
-                  placeholder="Ej: Salario, Inversión, etc."
-                  value={newRecord.description}
-                  onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
-                  className="h-12 rounded-xl"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold">Descripción</Label>
-                <Input
-                  placeholder="Detalles adicionales..."
-                  value={newRecord.notes}
-                  onChange={(e) => setNewRecord({ ...newRecord, notes: e.target.value })}
-                  className="h-12 rounded-xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold">Fecha</Label>
-                <Input
-                  type="date"
-                  value={newRecord.date}
-                  onChange={(e) => setNewRecord({ ...newRecord, date: e.target.value })}
-                  className="h-12 rounded-xl"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-black text-lg">Guardar Registro</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-3">
+          <Button
+            onClick={() => openCreate('income')}
+            className="h-12 px-5 rounded-xl shadow-lg transition-all font-bold bg-emerald-600 hover:bg-emerald-700"
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            Ingreso
+          </Button>
+          <Button
+            onClick={() => openCreate('expense')}
+            className="h-12 px-5 rounded-xl shadow-lg transition-all font-bold bg-rose-600 hover:bg-rose-700"
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            Gasto
+          </Button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -294,32 +292,46 @@ export default function IngenioDashboard() {
         </Card>
 
         <div className="grid grid-cols-1 gap-6">
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl">
+          <Card
+            onClick={() => setListType('income')}
+            className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
+          >
             <div className="absolute left-0 top-0 bottom-0 w-2 bg-emerald-500" />
             <CardContent className="p-8 pl-10">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Ingresos del Mes</p>
                   <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.income)}</p>
+                  <p className="text-xs font-bold mt-2 text-emerald-500">
+                    Hoy: +{formatCurrency(summary.todayIncome)}
+                  </p>
                 </div>
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shadow-inner">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shadow-inner shrink-0">
                   <ArrowDownRight className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
+              <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl">
+          <Card
+            onClick={() => setListType('expense')}
+            className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
+          >
             <div className="absolute left-0 top-0 bottom-0 w-2 bg-rose-500" />
             <CardContent className="p-8 pl-10">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Egresos del Mes</p>
                   <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.expenses)}</p>
+                  <p className="text-xs font-bold mt-2 text-rose-500">
+                    Hoy: -{formatCurrency(summary.todayExpenses)}
+                  </p>
                 </div>
-                <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center shadow-inner">
+                <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center shadow-inner shrink-0">
                   <ArrowUpRight className="w-8 h-8 text-rose-600 dark:text-rose-400" />
                 </div>
               </div>
+              <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
           <Card className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl">
@@ -358,7 +370,7 @@ export default function IngenioDashboard() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: "#64748B", fontWeight: 700, fontSize: 12}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fill: "#94A3B8"}} tickFormatter={(val) => `₲${val / 1000}k`} />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(val: number) => formatCurrency(val)}
                       cursor={{fill: 'transparent'}}
                       contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', padding: '16px' }}
@@ -376,6 +388,214 @@ export default function IngenioDashboard() {
             </div>
           </CardContent>
         </Card>
+
+      {/* Create / Edit movement dialog */}
+      <Dialog open={isFormOpen} onOpenChange={(open) => {
+        if (open && isReadOnly) {
+          openPaywall();
+          return;
+        }
+        setIsFormOpen(open);
+        if (!open) setEditingId(null);
+      }}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">{editingId ? 'Editar Movimiento' : 'Nuevo Registro'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveRecord} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label className="font-bold">Tipo de Movimiento</Label>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setNewRecord({ ...newRecord, type: 'income' })}
+                  className={cn(
+                    "h-11 rounded-xl font-bold transition-all",
+                    newRecord.type === 'income' ? "bg-white dark:bg-slate-700 shadow-sm text-emerald-600" : "text-slate-500"
+                  )}
+                >
+                  Ingreso
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewRecord({ ...newRecord, type: 'expense' })}
+                  className={cn(
+                    "h-11 rounded-xl font-bold transition-all",
+                    newRecord.type === 'expense' ? "bg-white dark:bg-slate-700 shadow-sm text-rose-600" : "text-slate-500"
+                  )}
+                >
+                  Gasto
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvancedType(v => !v)}
+                className="flex items-center gap-1 text-xs font-bold text-indigo-500 hover:text-indigo-600 pt-1"
+              >
+                <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showAdvancedType && "rotate-180")} />
+                ¿Es un activo o una deuda (pasivo)?
+              </button>
+
+              {showAdvancedType && (
+                <div className="space-y-1 pt-1">
+                  <Select
+                    value={newRecord.type}
+                    onValueChange={(val) => setNewRecord({ ...newRecord, type: val })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="income">Ingreso</SelectItem>
+                      <SelectItem value="expense">Gasto</SelectItem>
+                      <SelectItem value="asset">Activo (Suma Patrimonio, no es gasto diario)</SelectItem>
+                      <SelectItem value="liability">Pasivo (Deuda a pagar luego, no es gasto diario)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Usá "Activo" o "Pasivo" solo para tu patrimonio (por ej. comprar un auto a crédito). Para tus gastos e ingresos del día a día usá "Ingreso" o "Gasto".
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold">Monto (₲)</Label>
+              <Input
+                type="text"
+                placeholder="0"
+                value={newRecord.amount}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  if (!raw) {
+                    setNewRecord({ ...newRecord, amount: '' });
+                    return;
+                  }
+                  const num = parseInt(raw, 10);
+                  setNewRecord({ ...newRecord, amount: num.toLocaleString('es-PY') });
+                }}
+                className="h-12 rounded-xl text-lg font-medium"
+                required
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">¿En qué? (Ej: Combustible, Carne, Salario...)</Label>
+              <Input
+                placeholder="Ej: Combustible, Salario, etc."
+                value={newRecord.description}
+                onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
+                className="h-12 rounded-xl"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">Descripción (opcional)</Label>
+              <Input
+                placeholder="Detalles adicionales..."
+                value={newRecord.notes}
+                onChange={(e) => setNewRecord({ ...newRecord, notes: e.target.value })}
+                className="h-12 rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">Fecha</Label>
+              <Input
+                type="date"
+                value={newRecord.date}
+                onChange={(e) => setNewRecord({ ...newRecord, date: e.target.value })}
+                className="h-12 rounded-xl"
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-black text-lg">
+              {editingId ? 'Guardar Cambios' : 'Guardar Registro'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Movements list: tap Ingreso/Egreso card to review, edit or delete */}
+      <Sheet open={listType !== null} onOpenChange={(open) => !open && setListType(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="p-6 border-b dark:border-slate-800 text-left">
+            <SheetTitle className="text-2xl font-black">
+              {listType === 'income' ? 'Ingresos' : 'Egresos'} del Mes
+            </SheetTitle>
+            <p className={cn("text-3xl font-black", listType === 'income' ? "text-emerald-500" : "text-rose-500")}>
+              {formatCurrency(listTotal)}
+            </p>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {listRecords.length === 0 && (
+              <div className="py-16 text-center text-slate-400 font-medium">
+                Todavía no registraste {listType === 'income' ? 'ingresos' : 'gastos'} este mes.
+              </div>
+            )}
+            {listRecords.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 group">
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 dark:text-white truncate">{r.description}</p>
+                  <p className="text-xs text-slate-400 font-medium">
+                    {new Date(r.date).toLocaleDateString('es-PY', { day: '2-digit', month: 'short' })}
+                    {r.notes ? ` • ${r.notes}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <p className={cn("font-black mr-2", listType === 'income' ? "text-emerald-500" : "text-rose-500")}>
+                    {listType === 'income' ? '+' : '-'}{formatCurrency(r.amount)}
+                  </p>
+                  <Button variant="ghost" size="icon" className="text-slate-400 hover:text-indigo-500" onClick={() => openEdit(r)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-500" onClick={() => setDeleteTarget(r)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 border-t dark:border-slate-800">
+            <Button
+              onClick={() => {
+                const type = listType!;
+                setListType(null);
+                openCreate(type);
+              }}
+              className={cn(
+                "w-full h-12 rounded-xl font-black text-lg",
+                listType === 'income' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
+              )}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Agregar {listType === 'income' ? 'Ingreso' : 'Gasto'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black">¿Eliminar movimiento?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 font-medium text-base">
+              Esta acción no se puede deshacer. Se borrará permanentemente "{deleteTarget?.description}" por {deleteTarget && formatCurrency(deleteTarget.amount)}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="rounded-2xl h-12 border-slate-100 font-bold">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirmed}
+              className="rounded-2xl h-12 bg-rose-500 hover:bg-rose-600 font-black px-6"
+            >
+              Confirmar Eliminación
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
