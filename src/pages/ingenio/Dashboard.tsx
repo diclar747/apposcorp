@@ -63,7 +63,7 @@ export default function IngenioDashboard() {
     todayExpenses: 0,
     balance: 0
   });
-  const [monthRecords, setMonthRecords] = useState<any[]>([]);
+  const [allRecords, setAllRecords] = useState<any[]>([]);
   const { status, isActive, isReadOnly, subscription } = useIngenioSubscription();
   const { openPaywall } = usePaywallStore();
   const [loading, setLoading] = useState(true);
@@ -75,8 +75,20 @@ export default function IngenioDashboard() {
   const [newRecord, setNewRecord] = useState(emptyRecord());
 
   // Movements list (tap Ingreso/Egreso/Patrimonio card to review, edit or delete)
-  const [listType, setListType] = useState<'income' | 'expense' | 'networth' | null>(null);
+  const [listType, setListType] = useState<'income' | 'expense' | 'networth' | 'balance' | null>(null);
+  // Income/expense lists default to the current month but can be switched to the full
+  // history: Saldo de Caja and Patrimonio Neto are all-time totals, so a record from a
+  // previous month still counts toward them and must stay reachable for edit/delete.
+  const [listScope, setListScope] = useState<'month' | 'all'>('month');
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+
+  const openList = (type: 'income' | 'expense' | 'networth' | 'balance') => {
+    // "Saldo de Caja" and "Patrimonio Neto" are all-time figures, so their drill-in
+    // opens on the full history (that's where a stuck older record would be). The
+    // "...del Mes" cards open on the current month, matching their headline number.
+    setListScope(type === 'balance' || type === 'networth' ? 'all' : 'month');
+    setListType(type);
+  };
 
   useEffect(() => {
     if (user) {
@@ -94,10 +106,11 @@ export default function IngenioDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const now = new Date();
       const [data, records] = await Promise.all([
         financesApi.getSummary(),
-        financesApi.getAll({ month: now.getMonth() + 1, year: now.getFullYear() })
+        // Pull every record, not just the current month: the drill-in lists have to
+        // reach older movements that still feed Saldo de Caja / Patrimonio Neto.
+        financesApi.getAll()
       ]);
       setSummary({
         income: data.monthIncome || 0,
@@ -111,7 +124,7 @@ export default function IngenioDashboard() {
         todayExpenses: data.todayExpenses || 0,
         balance: data.balance || 0
       });
-      setMonthRecords(records || []);
+      setAllRecords(Array.isArray(records) ? records : []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -201,11 +214,26 @@ export default function IngenioDashboard() {
   }
 
   const isNetWorthList = listType === 'networth';
-  const listRecords = monthRecords
-    .filter(r => isNetWorthList ? (r.type === 'asset' || r.type === 'liability') : r.type === listType)
+  const isBalanceList = listType === 'balance';
+  // Net worth is an all-time figure, so its list is always all-time. Income / expense /
+  // Saldo de Caja honour the "Este mes / Todo el historial" toggle.
+  const showAllScope = isNetWorthList || listScope === 'all';
+  const nowRef = new Date();
+  const matchesListType = (type: string) => {
+    if (isNetWorthList) return type === 'asset' || type === 'liability';
+    if (isBalanceList) return type === 'income' || type === 'expense';
+    return type === listType;
+  };
+  const listRecords = allRecords
+    .filter(r => matchesListType(r.type))
+    .filter(r => {
+      if (showAllScope) return true;
+      const d = new Date(r.date);
+      return d.getFullYear() === nowRef.getFullYear() && d.getMonth() === nowRef.getMonth();
+    })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const listTotal = isNetWorthList
-    ? listRecords.reduce((sum, r) => sum + (r.type === 'asset' ? r.amount : -r.amount), 0)
+  const listTotal = (isNetWorthList || isBalanceList)
+    ? listRecords.reduce((sum, r) => sum + ((r.type === 'asset' || r.type === 'income') ? r.amount : -r.amount), 0)
     : listRecords.reduce((sum, r) => sum + r.amount, 0);
 
   return (
@@ -257,7 +285,7 @@ export default function IngenioDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card
-          onClick={() => setListType('networth')}
+          onClick={() => openList('networth')}
           className="bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white border-none shadow-2xl relative overflow-hidden rounded-[2rem] cursor-pointer active:scale-[0.99] transition-transform"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32" />
@@ -300,7 +328,7 @@ export default function IngenioDashboard() {
 
         <div className="grid grid-cols-1 gap-6">
           <Card
-            onClick={() => setListType('income')}
+            onClick={() => openList('income')}
             className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
           >
             <div className="absolute left-0 top-0 bottom-0 w-2 bg-emerald-500" />
@@ -321,7 +349,7 @@ export default function IngenioDashboard() {
             </CardContent>
           </Card>
           <Card
-            onClick={() => setListType('expense')}
+            onClick={() => openList('expense')}
             className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
           >
             <div className="absolute left-0 top-0 bottom-0 w-2 bg-rose-500" />
@@ -341,7 +369,10 @@ export default function IngenioDashboard() {
               <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl">
+          <Card
+            onClick={() => openList('balance')}
+            className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
+          >
             <div className={cn("absolute left-0 top-0 bottom-0 w-2", summary.balance >= 0 ? "bg-indigo-500" : "bg-rose-500")} />
             <CardContent className="p-8 pl-10">
               <div className="flex justify-between items-center">
@@ -356,6 +387,7 @@ export default function IngenioDashboard() {
                   <Wallet className={cn("w-8 h-8", summary.balance >= 0 ? "text-indigo-600 dark:text-indigo-400" : "text-rose-600 dark:text-rose-400")} />
                 </div>
               </div>
+              <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
         </div>
@@ -523,23 +555,50 @@ export default function IngenioDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Movements list: tap Ingreso / Egreso / Patrimonio card to review, edit or delete */}
+      {/* Movements list: tap Ingreso / Egreso / Saldo / Patrimonio card to review, edit or delete */}
       <Sheet open={listType !== null} onOpenChange={(open) => !open && setListType(null)}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
           <SheetHeader className="p-6 border-b dark:border-slate-800 text-left">
             <SheetTitle className="text-2xl font-black">
-              {isNetWorthList ? 'Patrimonio Neto' : `${listType === 'income' ? 'Ingresos' : 'Egresos'} del Mes`}
+              {isNetWorthList
+                ? 'Patrimonio Neto'
+                : isBalanceList
+                  ? `Saldo de Caja${showAllScope ? '' : ' · Este mes'}`
+                  : `${listType === 'income' ? 'Ingresos' : 'Egresos'}${showAllScope ? '' : ' del Mes'}`}
             </SheetTitle>
             <p className={cn(
               "text-3xl font-black",
-              isNetWorthList ? "text-indigo-500" : listType === 'income' ? "text-emerald-500" : "text-rose-500"
+              isNetWorthList || isBalanceList ? "text-indigo-500" : listType === 'income' ? "text-emerald-500" : "text-rose-500"
             )}>
               {formatCurrency(isNetWorthList ? summary.netWorth : listTotal)}
             </p>
-            {isNetWorthList && (
+            {isNetWorthList ? (
               <p className="text-xs font-bold text-slate-400">
                 Activos {formatCurrency(summary.assets)} · Pasivos {formatCurrency(summary.liabilities)}
               </p>
+            ) : (
+              <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-full p-1 mt-1 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setListScope('month')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-bold rounded-full transition-all",
+                    listScope === 'month' ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"
+                  )}
+                >
+                  Este mes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setListScope('all')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-bold rounded-full transition-all",
+                    listScope === 'all' ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"
+                  )}
+                >
+                  Todo el historial
+                </button>
+              </div>
             )}
           </SheetHeader>
 
@@ -547,25 +606,29 @@ export default function IngenioDashboard() {
             {listRecords.length === 0 && (
               <div className="py-16 text-center text-slate-400 font-medium">
                 {isNetWorthList
-                  ? 'No registraste activos ni pasivos este mes.'
-                  : `Todavía no registraste ${listType === 'income' ? 'ingresos' : 'gastos'} este mes.`}
+                  ? 'No registraste activos ni pasivos todavía.'
+                  : `No hay ${listType === 'income' ? 'ingresos' : listType === 'expense' ? 'gastos' : 'movimientos'} ${showAllScope ? 'registrados' : 'este mes'}.`}
               </div>
             )}
             {listRecords.map((r) => {
-              const isPositive = isNetWorthList ? r.type === 'asset' : listType === 'income';
+              const isPositive = (isNetWorthList || isBalanceList)
+                ? (r.type === 'asset' || r.type === 'income')
+                : listType === 'income';
               return (
                 <div key={r.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 group">
                   <div className="min-w-0">
                     <p className="font-bold text-slate-900 dark:text-white truncate">
                       {r.description}
-                      {isNetWorthList && (
+                      {(isNetWorthList || isBalanceList) && (
                         <span className="ml-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {r.type === 'asset' ? 'Activo' : 'Pasivo'}
+                          {r.type === 'asset' ? 'Activo' : r.type === 'liability' ? 'Pasivo' : r.type === 'income' ? 'Ingreso' : 'Gasto'}
                         </span>
                       )}
                     </p>
                     <p className="text-xs text-slate-400 font-medium">
-                      {new Date(r.date).toLocaleDateString('es-PY', { day: '2-digit', month: 'short' })}
+                      {new Date(r.date).toLocaleDateString('es-PY', showAllScope
+                        ? { day: '2-digit', month: 'short', year: '2-digit' }
+                        : { day: '2-digit', month: 'short' })}
                       {r.notes ? ` • ${r.notes}` : ''}
                     </p>
                   </div>
@@ -590,16 +653,16 @@ export default function IngenioDashboard() {
               onClick={() => {
                 const type = listType!;
                 setListType(null);
-                openCreate(type === 'networth' ? 'asset' : type);
+                openCreate(type === 'networth' ? 'asset' : type === 'balance' ? 'income' : type);
               }}
               className={cn(
                 "w-full h-12 rounded-xl font-black text-lg",
-                isNetWorthList ? "bg-indigo-600 hover:bg-indigo-700"
+                isNetWorthList || isBalanceList ? "bg-indigo-600 hover:bg-indigo-700"
                   : listType === 'income' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
               )}
             >
               <Plus className="w-4 h-4 mr-2" />
-              {isNetWorthList ? 'Agregar Activo o Pasivo' : `Agregar ${listType === 'income' ? 'Ingreso' : 'Gasto'}`}
+              {isNetWorthList ? 'Agregar Activo o Pasivo' : isBalanceList ? 'Agregar Ingreso o Gasto' : `Agregar ${listType === 'income' ? 'Ingreso' : 'Gasto'}`}
             </Button>
           </div>
         </SheetContent>

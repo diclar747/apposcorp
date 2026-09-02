@@ -5,6 +5,19 @@ import { requireActiveSubscription } from '../middleware/ingenio.js';
 
 const router = Router();
 
+// The client sends dates as date-only strings ("YYYY-MM-DD"). `new Date("2026-09-01")`
+// parses to UTC midnight, which in a negative-offset zone (Paraguay is UTC-3) lands on
+// the previous day — so a movement can silently jump to the previous month and vanish
+// from month-scoped views while still counting in the all-time totals. Pin date-only
+// values to 12:00 UTC so no real-world offset can push them across a day boundary.
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseClientDate(input?: string | null): Date {
+    if (!input) return new Date();
+    if (DATE_ONLY.test(input)) return new Date(`${input}T12:00:00.000Z`);
+    return new Date(input);
+}
+
 // Get all financial records
 router.get('/', authenticate, async (req: AuthRequest, res) => {
     try {
@@ -18,13 +31,12 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         const where: any = { userId };
 
         if (startDate && endDate) {
-            // endDate is inclusive: extend it to the end of that day so a record
-            // saved "today" (any time) is still matched when Desde = Hasta = today.
-            const end = new Date(endDate as string);
-            end.setHours(23, 59, 59, 999);
+            // Treat the range as a full UTC day span [start 00:00Z, end 23:59:59Z] so
+            // records stored at noon UTC are matched regardless of the server's zone,
+            // and endDate stays inclusive (Desde = Hasta = today still returns today).
             where.date = {
-                gte: new Date(startDate as string),
-                lte: end,
+                gte: new Date(`${(startDate as string).slice(0, 10)}T00:00:00.000Z`),
+                lte: new Date(`${(endDate as string).slice(0, 10)}T23:59:59.999Z`),
             };
         } else if (month && year) {
             const start = new Date(Number(year), Number(month) - 1, 1);
@@ -164,7 +176,7 @@ router.post('/', authenticate, requireActiveSubscription, async (req: AuthReques
                 notes,
                 type,
                 categoryId: finalCategoryId,
-                date: date ? new Date(date) : new Date(),
+                date: parseClientDate(date),
             },
             include: {
                 category: true
@@ -193,7 +205,7 @@ router.put('/:id', authenticate, requireActiveSubscription, async (req: AuthRequ
                 ...(notes !== undefined && { notes }),
                 ...(type !== undefined && { type }),
                 ...(categoryId !== undefined && { categoryId }),
-                ...(date !== undefined && { date: new Date(date) }),
+                ...(date !== undefined && { date: parseClientDate(date) }),
             },
             include: {
                 category: true

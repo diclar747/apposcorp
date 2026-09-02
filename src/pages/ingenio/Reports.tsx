@@ -195,6 +195,17 @@ export default function IngenioReports() {
     setTimeout(fetchReports, 0);
   };
 
+  // Widest possible range: surfaces every movement, including ones older than the
+  // 30-day default (which otherwise stay hidden yet keep counting in Saldo de Caja).
+  const ALL_HISTORY_START = '2000-01-01';
+  const ALL_HISTORY_END = '2100-12-31';
+  const isViewingAllHistory =
+    filters.startDate === ALL_HISTORY_START && filters.endDate === ALL_HISTORY_END;
+  const showAllHistory = () => {
+    setFilters(f => ({ ...f, startDate: ALL_HISTORY_START, endDate: ALL_HISTORY_END }));
+    setTimeout(fetchReports, 0);
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await financesApi.delete(id);
@@ -461,7 +472,11 @@ export default function IngenioReports() {
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-2">
         <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 border-none font-black rounded-full px-3 h-7">
-          {usingDefaultRange ? 'Últimos 30 días' : `${filters.startDate} → ${filters.endDate}`}
+          {usingDefaultRange
+            ? 'Últimos 30 días'
+            : isViewingAllHistory
+              ? 'Todo el historial'
+              : `${filters.startDate} → ${filters.endDate}`}
         </Badge>
         <span className="text-sm font-bold text-slate-500">Ingresos <span className="text-emerald-500 font-black">{formatCurrency(totalIncome)}</span></span>
         <span className="text-sm font-bold text-slate-500">Egresos <span className="text-rose-500 font-black">{formatCurrency(totalExpense)}</span></span>
@@ -469,6 +484,11 @@ export default function IngenioReports() {
         {!usingDefaultRange && (
           <Button type="button" variant="ghost" onClick={clearDateFilter} className="h-7 px-2 text-xs font-bold text-indigo-600 hover:text-indigo-700">
             Ver últimos 30 días
+          </Button>
+        )}
+        {!isViewingAllHistory && (
+          <Button type="button" variant="ghost" onClick={showAllHistory} className="h-7 px-2 text-xs font-bold text-indigo-600 hover:text-indigo-700">
+            Ver todo el historial
           </Button>
         )}
       </div>
