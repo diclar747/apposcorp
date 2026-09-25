@@ -34,6 +34,7 @@ import mediaRoutes from './routes/media.js';
 import { ensureAffiliateSettings, startAffiliateScheduler } from './services/affiliateService.js';
 import { backfillProductSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
+import { ensureSchema } from './utils/ensureSchema.js';
 import { prisma } from './utils/prisma.js';
 import webpush from 'web-push';
 import { checkMaintenanceMode } from './middleware/maintenance.js';
@@ -401,8 +402,11 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Siempre escuchar (tanto en desarrollo como en producción en el VPS)
-app.listen(PORT, () => {
+// Siempre escuchar (tanto en desarrollo como en producción en el VPS).
+// Antes, se crea en la base lo que falte para esta versión (solo agrega; ver utils/ensureSchema.ts).
+ensureSchema()
+  .catch((e) => console.error('[esquema] error al verificar la base:', e))
+  .finally(() => app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   // Afiliados: claves de configuración por defecto, slugs de productos viejos y liberación de comisiones
   ensureAffiliateSettings()
@@ -413,7 +417,7 @@ app.listen(PORT, () => {
   if (process.env.NODE_ENV === 'production') {
     console.log(`🌐 Frontend servido desde /dist`);
   }
-});
+}));
 
 // Export for compatibility
 export default app;
