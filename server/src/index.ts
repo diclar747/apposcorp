@@ -29,9 +29,15 @@ import ingenioRoutes from './routes/ingenio.js';
 import uploadRoutes from './routes/upload.js';
 import planRoutes from './routes/plans.js';
 import reviewRoutes from './routes/reviews.js';
+import affiliateRoutes from './routes/affiliates.js';
+import mediaRoutes from './routes/media.js';
+import { ensureAffiliateSettings, startAffiliateScheduler } from './services/affiliateService.js';
+import { backfillProductSlugs } from './utils/slug.js';
+import { renderSharePreview } from './services/sharePreview.js';
 import { prisma } from './utils/prisma.js';
 import webpush from 'web-push';
 import { checkMaintenanceMode } from './middleware/maintenance.js';
+import { assertJwtConfigured } from './utils/jwt.js';
 
 // Configure Web Push if keys are present
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -46,6 +52,9 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   console.log('🔔 Web Push configurado correctamente');
   console.log('🗝️ VAPID Public Key (start):', publicKey.substring(0, 10) + '...');
 }
+
+// Falla al arrancar (y no en el primer login) si falta JWT_SECRET en producción
+assertJwtConfigured();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,59 +89,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Database check
+// Database check: solo confirma conectividad, sin exponer datos de usuarios
 app.get('/api/health/db', async (req, res) => {
   try {
-    const userCount = await prisma.user.count();
-    const users = await prisma.user.findMany({
-      select: { id: true, email: true, roles: true, firstName: true }
-    });
-    res.json({
-      status: 'ok',
-      userCount,
-      users,
-      databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
-    });
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok' });
   } catch (error: any) {
-    res.status(500).json({
-      status: 'error',
-      error: error.message,
-      databaseUrl: process.env.DATABASE_URL ? 'Configurado' : 'Não configurado'
-    });
-  }
-});
-
-// Diagnostic endpoint - TEMPORARY (test login query)
-app.get('/api/health/test-login-query', async (req, res) => {
-  try {
-    const email = (req.query.email as string) || 'admin@oscorp.com';
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        wallet: true,
-        virtualCard: true,
-        sellerProfile: {
-          include: {
-            plan: true
-          }
-        },
-        bankData: true,
-        ingenioSubscription: true,
-      }
-    });
-    if (!user) {
-      return res.json({ status: 'user_not_found', email });
-    }
-    const { password: _, ...userWithoutPassword } = user;
-    res.json({ status: 'ok', user: userWithoutPassword });
-  } catch (error: any) {
-    res.status(500).json({
-      status: 'error',
-      message: error?.message,
-      code: error?.code,
-      meta: error?.meta,
-      name: error?.name,
-    });
+    res.status(500).json({ status: 'error' });
   }
 });
 
@@ -165,9 +128,15 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/ingenio', ingenioRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/affiliates', affiliateRoutes);
+app.use('/api/media', mediaRoutes);
 
-// Setup endpoint - cria todos os usuários de teste
+// Setup endpoint - crea usuarios de prueba. Solo en desarrollo y con ENABLE_DEV_SETUP=true:
+// resetea contraseñas a '123456', así que nunca debe quedar expuesto en producción.
 app.get('/api/setup', async (req, res) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_SETUP !== 'true') {
+    return res.status(404).json({ error: 'Not found' });
+  }
   try {
     const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash('123456', 10);
@@ -414,7 +383,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 const distPath = path.join(process.cwd(), 'dist');
 if (process.env.NODE_ENV === 'production') {
   if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { index: false }));
+    const indexHtml = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8');
+    // Vista previa al compartir en WhatsApp/Facebook
+    app.get(['/producto/:slug', '/tienda/:slug'], async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const html = await renderSharePreview(req, indexHtml);
+      if (!html) return next();
+      res.type('html').send(html);
+    });
     app.use((req: express.Request, res: express.Response) => {
       if (req.path.startsWith('/api') || req.path.startsWith('/health')) return res.status(404).json({ error: 'Not found' });
       res.sendFile(path.join(distPath, 'index.html'));
@@ -428,6 +404,11 @@ if (process.env.NODE_ENV === 'production') {
 // Siempre escuchar (tanto en desarrollo como en producción en el VPS)
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  // Afiliados: claves de configuración por defecto, slugs de productos viejos y liberación de comisiones
+  ensureAffiliateSettings()
+    .then(() => backfillProductSlugs())
+    .catch((e) => console.error('[afiliados] inicialización:', e));
+  startAffiliateScheduler();
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
   if (process.env.NODE_ENV === 'production') {
     console.log(`🌐 Frontend servido desde /dist`);

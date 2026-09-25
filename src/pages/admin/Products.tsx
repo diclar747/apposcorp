@@ -42,6 +42,7 @@ import { toast } from 'sonner';
 import type { Product, ProductType, ProductVisibility } from '@/types';
 import { useAuthStore } from '@/stores';
 import { usersApi } from '@/lib/api';
+import { ImageGalleryField } from '@/components/shared/ImageField';
 
 const PRODUCT_CATEGORIES = [
   'Tecnología',
@@ -151,7 +152,7 @@ export default function AdminProducts() {
         type: 'physical',
         visibility: 'both',
         status: 'active',
-        images: ['https://images.unsplash.com/photo-1586769852836-bc069f19e1b6?w=600&h=600&fit=crop']
+        images: []
       });
     }
     setIsModalOpen(true);
@@ -192,8 +193,8 @@ export default function AdminProducts() {
       }
       setIsModalOpen(false);
       fetchProducts();
-    } catch (error) {
-      toast.error('Error al guardar el producto');
+    } catch (error: any) {
+      toast.error(error?.message || 'Error al guardar el producto');
       console.error(error);
     }
   };
@@ -394,6 +395,11 @@ export default function AdminProducts() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe las características principales..."
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Imágenes del producto</Label>
+              <ImageGalleryField value={formData.images || []} onChange={(images) => setFormData({ ...formData, images })} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

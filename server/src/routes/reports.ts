@@ -85,13 +85,20 @@ router.get('/financial', authenticate, authorize('superadmin'), async (req: Auth
     // --- Balance General ---
     const incomeTypes = ['deposit', 'sale', 'transfer_in', 'income', 'credit'];
     const expenseTypes = ['withdrawal', 'purchase', 'transfer_out', 'expense', 'fee'];
+    // Tipos que pueden ir en los dos sentidos: cuentan como ingreso o egreso según el signo.
+    // 'affiliate_commission' es la comisión de afiliado (no la de plataforma, que es 'commission').
+    const signedTypes = ['refund', 'affiliate_commission', 'affiliate_reversal'];
+    const isIncome = (t: { type: string; amount: number }) =>
+      incomeTypes.includes(t.type) || (signedTypes.includes(t.type) && t.amount > 0);
+    const isExpense = (t: { type: string; amount: number }) =>
+      expenseTypes.includes(t.type) || (signedTypes.includes(t.type) && t.amount < 0);
 
     const totalIncome = allTransactions
-      .filter(t => incomeTypes.includes(t.type) && t.status === 'completed')
+      .filter(t => isIncome(t) && t.status === 'completed')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const totalExpenses = allTransactions
-      .filter(t => expenseTypes.includes(t.type) && t.status === 'completed')
+      .filter(t => isExpense(t) && t.status === 'completed')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const totalCommissions = allTransactions
@@ -138,7 +145,7 @@ router.get('/financial', authenticate, authorize('superadmin'), async (req: Auth
       if (!dailyMap[dayKey]) {
         dailyMap[dayKey] = { date: dayKey, income: 0, expenses: 0 };
       }
-      if (incomeTypes.includes(tx.type)) {
+      if (isIncome(tx)) {
         dailyMap[dayKey].income += Math.abs(tx.amount);
       } else {
         dailyMap[dayKey].expenses += Math.abs(tx.amount);

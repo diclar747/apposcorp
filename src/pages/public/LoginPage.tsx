@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { GoogleSignInButton } from '@/components/shared/GoogleSignInButton';
+import { consumePostLoginRedirect } from '@/lib/redirect';
 
 const loginSchema = z.object({
   email: z.string().email('Formato de email inválido'),
@@ -41,6 +42,14 @@ export default function LoginPage() {
    const { login } = useAuthStore();
    const { settings } = useSettingsStore();
   const hasVerified = useRef(false);
+
+  // Si llegó desde una página (producto, tienda, checkout), vuelve ahí después del login
+  const goToRedirect = () => {
+    const target = consumePostLoginRedirect(searchParams.get('redirect'));
+    if (!target) return false;
+    navigate(target, { replace: true });
+    return true;
+  };
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -84,6 +93,7 @@ export default function LoginPage() {
 
       // Redirect based on role
       setTimeout(() => {
+        if (goToRedirect()) return;
         const currentUser = useAuthStore.getState().user;
         if (currentUser?.roles.includes('superadmin')) {
           navigate('/admin');
@@ -112,6 +122,7 @@ export default function LoginPage() {
   const handleGoogleSuccess = () => {
     toast.success('¡Bienvenido!');
     setTimeout(() => {
+      if (goToRedirect()) return;
       const currentUser = useAuthStore.getState().user;
       if (currentUser?.roles.includes('superadmin')) {
         navigate('/admin');
@@ -150,6 +161,7 @@ export default function LoginPage() {
     if (success) {
       toast.success('¡Bienvenido de vuelta!');
       setTimeout(() => {
+        if (goToRedirect()) return;
         const currentUser = useAuthStore.getState().user;
         if (currentUser?.roles.includes('superadmin')) {
           navigate('/admin');

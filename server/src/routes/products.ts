@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
+import { generateProductSlug } from '../utils/slug.js';
+import { getAffiliateConfig, getEffectiveRate, parseRateInput, parseTriState } from '../services/affiliateService.js';
 
 const router = Router();
 
@@ -11,10 +13,13 @@ router.get('/', async (req, res) => {
 
     const where: any = {};
 
-    // When a specific seller requests their products, show all statuses
-    // For public/general listing, only show active products
+    // Solo la tienda dueña (o un superadmin) ve sus productos inactivos; el resto ve solo los activos
     if (sellerId && sellerId !== 'undefined' && sellerId !== 'null') {
       where.sellerId = sellerId as string;
+      const viewer = await getOptionalUser(req);
+      const isOwner = viewer && (viewer.roles.includes('superadmin') ||
+        !!(await prisma.sellerProfile.findFirst({ where: { id: sellerId as string, userId: viewer.userId }, select: { id: true } })));
+      if (!isOwner) where.status = 'active';
     } else {
       where.status = 'active';
     }
@@ -74,6 +79,57 @@ router.get('/featured', async (req, res) => {
 
     res.json(products);
   } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Public product page by slug (or id). Solo productos activos, con datos públicos de la tienda
+// y la comisión de afiliado si participa.
+router.get('/public/:slug', async (req, res) => {
+  try {
+    const slug = req.params.slug as string;
+    const product = await prisma.product.findFirst({
+      where: { OR: [{ slug }, { id: slug }], status: 'active' },
+      include: {
+        seller: {
+          select: {
+            id: true, userId: true, storeName: true, storeSlug: true, logo: true, whatsappNumber: true,
+            isVerified: true, rating: true, reviewCount: true, address: true,
+            affiliateEnabled: true, affiliateDefaultRate: true, affiliateAllProducts: true, affiliateBlocked: true,
+            user: { select: { isActive: true } },
+            plan: { select: { name: true, features: true } },
+          },
+        },
+        variants: true,
+        attributes: true,
+      },
+    });
+
+    if (!product || !product.seller.user.isActive) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    const [cfg, viewer] = await Promise.all([getAffiliateConfig(), getOptionalUser(req)]);
+    const rate = getEffectiveRate(product.seller, product, cfg);
+
+    const { cost: _cost, profitPercentage: _profit, supplierId: _supplier, ...publicProduct } = product;
+    const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan, ...seller } = product.seller;
+    // Misma regla que la página de tienda: plan con "Tienda Online" que no sea el Básico
+    const planName = (plan?.name || '').toLowerCase();
+    const onlineSales = !!plan && !planName.includes('básico') && !planName.includes('basic') &&
+      (plan.features || []).some((f) => f.toLowerCase().includes('tienda online')) && product.visibility !== 'local';
+
+    res.json({
+      ...publicProduct,
+      seller,
+      onlineSales,
+      affiliate: {
+        participates: rate !== null,
+        rate: rate !== null && (cfg.showRatePublic || viewer) ? rate : null,
+      },
+    });
+  } catch (error) {
+    console.error('Get public product error:', error);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
@@ -161,8 +217,18 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       status,
       variants,
       attributes,
-      supplierId
+      supplierId,
+      affiliateEnabled,
+      affiliateRate,
     } = req.body;
+
+    let parsedAffiliateRate: number | null;
+    try {
+      parsedAffiliateRate = parseRateInput(affiliateRate, await getAffiliateConfig());
+    } catch {
+      const cfg = await getAffiliateConfig();
+      return res.status(400).json({ error: `El % de afiliado debe estar entre ${cfg.minRate}% y ${cfg.maxRate}%` });
+    }
 
     // Validate SKU uniqueness
     const finalSku = sku || `SKU-${Date.now()}`;
@@ -187,6 +253,9 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       status: status || 'active',
       images: Array.isArray(images) ? images : [],
       supplierId: supplierId || null,
+      slug: await generateProductSlug(name),
+      affiliateEnabled: parseTriState(affiliateEnabled),
+      affiliateRate: parsedAffiliateRate,
     };
 
     // Add optional fields if they exist
@@ -251,6 +320,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
       name, description, price, cost, profitPercentage, comparePrice,
       stock, sku, category, subcategory, images, type, visibility,
       status, weight, dimensions, tags, isFeatured, supplierId,
+      affiliateEnabled, affiliateRate, affiliateBlocked,
     } = req.body;
 
     const updateData: Record<string, any> = {};
@@ -273,6 +343,18 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (tags !== undefined) updateData.tags = tags;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
     if (supplierId !== undefined) updateData.supplierId = supplierId || null;
+    if (affiliateEnabled !== undefined) updateData.affiliateEnabled = parseTriState(affiliateEnabled);
+    if (affiliateRate !== undefined) {
+      const cfg = await getAffiliateConfig();
+      try {
+        updateData.affiliateRate = parseRateInput(affiliateRate, cfg);
+      } catch {
+        return res.status(400).json({ error: `El % de afiliado debe estar entre ${cfg.minRate}% y ${cfg.maxRate}%` });
+      }
+    }
+    // Solo el superadmin puede apagar afiliados en un producto
+    if (affiliateBlocked !== undefined && req.user!.roles.includes('superadmin')) updateData.affiliateBlocked = !!affiliateBlocked;
+    if (!product.slug) updateData.slug = await generateProductSlug(updateData.name ?? product.name);
 
     const updatedProduct = await prisma.product.update({
       where: { id },
@@ -305,6 +387,13 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
 
     if (!req.user!.roles.includes('superadmin') && product.seller.userId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    // Un producto con ventas no se puede borrar (los pedidos lo referencian): se desactiva
+    const hasSales = await prisma.orderItem.count({ where: { productId: id } });
+    if (hasSales > 0) {
+      await prisma.product.update({ where: { id }, data: { status: 'inactive' } });
+      return res.json({ message: 'El producto tiene ventas, así que se desactivó en lugar de eliminarse', deactivated: true });
     }
 
     await prisma.product.delete({

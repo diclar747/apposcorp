@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
+import { getOptionalUser } from '../middleware/auth.js';
+import { getAffiliateConfig, getEffectiveRate, storeParticipates } from '../services/affiliateService.js';
 
 const router = Router();
 
@@ -102,6 +104,15 @@ router.get('/:slug', async (req, res) => {
       return res.status(404).json({ error: 'Tienda no encontrada' });
     }
 
+    const [cfg, viewer] = await Promise.all([getAffiliateConfig(), getOptionalUser(req)]);
+    const showRate = cfg.showRatePublic || !!viewer;
+    const storeAccepts = storeParticipates(store, cfg);
+    const products = store.products.map(({ cost: _cost, profitPercentage: _profit, ...p }) => {
+      const rate = getEffectiveRate(store, p, cfg);
+      return { ...p, affiliateParticipates: rate !== null, affiliateRate: rate !== null && showRate ? rate : null };
+    });
+    const productRates = products.map((p) => p.affiliateRate).filter((r): r is number => r !== null);
+
     const storeData = {
       id: store.id,
       userId: store.userId,
@@ -125,13 +136,17 @@ router.get('/:slug', async (req, res) => {
       category: store.store?.category || 'General',
       businessHours: store.businessHours,
       socialLinks: store.socialLinks,
-      products: store.products,
+      products,
       owner: {
         firstName: store.user.firstName,
         lastName: store.user.lastName,
         avatar: store.user.avatar,
       },
-      plan: store.plan
+      plan: store.plan,
+      affiliate: {
+        participates: storeAccepts && products.some((p) => p.affiliateParticipates),
+        maxRate: showRate && productRates.length ? Math.max(...productRates) : null,
+      },
     };
 
     res.json(storeData);

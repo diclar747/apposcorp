@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest, invalidateUserActiveCache } from '../middleware/auth.js';
+import { createUserAccount, sanitizeRoles, validatePassword, ALL_ROLES, EMAIL_REGEX } from '../services/userService.js';
 
 const router = Router();
 
@@ -91,6 +92,48 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
     res.json(usersWithoutPassword);
   } catch (error) {
     res.status(500).json({ error: 'Erro no servidor' });
+  }
+});
+
+// Create user (admin only). A diferencia de /auth/register, puede asignar cualquier rol
+// (incluido superadmin) y no inicia sesión como el usuario creado.
+router.post('/', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, phone, address, city, roles } = req.body;
+
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: 'Campos obligatorios faltantes (email, password, firstName, lastName)' });
+    }
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Formato de email inválido' });
+    }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+    const finalRoles = sanitizeRoles(roles, ALL_ROLES);
+    if (!finalRoles) {
+      return res.status(400).json({ error: 'Rol inválido' });
+    }
+    if (await prisma.user.findUnique({ where: { email } })) {
+      return res.status(400).json({ error: 'El email ya está registrado' });
+    }
+
+    const created = await createUserAccount({
+      email, password, firstName, lastName, phone, address, city,
+      roles: finalRoles,
+      isVerified: true,
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: created.id },
+      include: { wallet: true, sellerProfile: { include: { plan: true } } },
+    });
+    const { password: _password, ...userWithoutPassword } = user!;
+    res.status(201).json({ user: userWithoutPassword });
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    res.status(500).json({ error: 'Error al crear el usuario' });
   }
 });
 
@@ -348,6 +391,7 @@ router.patch('/:id/status', authenticate, authorize('superadmin'), async (req, r
       where: { id },
       data: { isActive },
     });
+    invalidateUserActiveCache(id);
 
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
@@ -390,6 +434,7 @@ router.put('/:id', authenticate, authorize('superadmin'), async (req, res) => {
       data: updateData,
       include: { wallet: true, virtualCard: true }
     });
+    invalidateUserActiveCache(id);
 
     // Create virtual card if we just created a wallet
     if (roles?.includes('client') && oldUser && !oldUser.wallet && user.wallet) {

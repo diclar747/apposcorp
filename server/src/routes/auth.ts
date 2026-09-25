@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { createUserAccount, sanitizeRoles, validatePassword, PUBLIC_ROLES } from '../services/userService.js';
 
 const router = Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -169,9 +170,15 @@ router.post('/register', async (req, res) => {
     }
 
     // 3. Password strength validation (min 8 chars, 1 number, 1 letter)
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]/;
-    if (password.length < 8 || !passwordRegex.test(password)) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres, incluir una letra y un número' });
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
+    // Solo roles públicos: 'superadmin' nunca se obtiene registrándose
+    const finalRoles = sanitizeRoles(roles, PUBLIC_ROLES);
+    if (!finalRoles) {
+      return res.status(400).json({ error: 'Rol inválido' });
     }
 
     // 4. Duplicate email validation
@@ -199,78 +206,25 @@ router.post('/register', async (req, res) => {
 
     const isVerifiedInitially = requireEmailVerification?.value === 'false';
 
-    const hashedPassword = await hash(password, 10);
-
     // 5. Generate verification token and expiration
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    const cardNumber = `OSC${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-
-    const includesWallet = roles?.includes('client') || roles?.includes('seller');
-    const includesIngenio = roles?.includes('ingenio');
-    const finalRoles = roles || ['client'];
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        phone,
-        address,
-        city,
-        roles: finalRoles,
-        initialInterface: initialInterface || 'OSCORP',
-        ingenioAccess: false,
-        avatar: null,
-        isVerified: isVerifiedInitially,
-        verificationToken: isVerifiedInitially ? null : verificationToken,
-        verificationTokenExpires: isVerifiedInitially ? null : verificationTokenExpires,
-        ...(includesWallet ? {
-          wallet: {
-            create: {
-              balance: 0,
-              currency: 'USD',
-            },
-          },
-        } : {}),
-      },
-      include: {
-        wallet: true,
-        virtualCard: true,
-      },
+    // Crea usuario, billetera/tarjeta (client o seller) y perfil de vendedor en una sola transacción
+    const user = await createUserAccount({
+      email,
+      password,
+      firstName,
+      lastName,
+      phone,
+      address,
+      city,
+      roles: finalRoles,
+      initialInterface,
+      isVerified: isVerifiedInitially,
+      verificationToken,
+      verificationTokenExpires,
     });
-
-    if (includesWallet && user.wallet) {
-      await prisma.virtualCard.create({
-        data: {
-          userId: user.id,
-          walletId: user.wallet.id,
-          cardNumber,
-          qrData: JSON.stringify({ userId: user.id, cardNumber }),
-          design: 'gradient_blue',
-        },
-      });
-    }
-
-    // If seller, create seller profile with 7-day trial
-    if (roles?.includes('seller')) {
-      await prisma.sellerProfile.create({
-        data: {
-          userId: user.id,
-          storeName: `${firstName}'s Store`,
-          storeSlug: `store-${Date.now()}`,
-          description: '',
-          address: address || '',
-          phone: phone || '',
-          email,
-          whatsappNumber: phone || '',
-          planActive: false,
-          planExpiryDate: null,
-        },
-      });
-    }
 
     // Re-fetch full user with all relations
     const fullUser = await prisma.user.findUnique({

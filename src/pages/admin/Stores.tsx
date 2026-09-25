@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Filter, MoreHorizontal, Store, MapPin, Phone, Star, CheckCircle, XCircle, Loader2, Camera, Facebook, Instagram } from 'lucide-react';
-import { usersApi, authApi } from '@/lib/api';
+import { usersApi } from '@/lib/api';
+import { SingleImageField } from '@/components/shared/ImageField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -197,11 +198,15 @@ export default function AdminStores() {
 
       if (!userId) {
         // 1. Create User (Only if not editing)
-        const registerRes: any = await authApi.register({
+        if (!formData.password) {
+          toast.error('Ingresa una contraseña para el nuevo vendedor (mínimo 8 caracteres, con letras y números)');
+          return;
+        }
+        const registerRes: any = await usersApi.create({
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          password: formData.password || '123456', // Default password if not provided
+          password: formData.password,
           phone: formData.phone,
           address: formData.address,
           roles: ['seller']
@@ -408,27 +413,13 @@ export default function AdminStores() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Logo (URL)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={formData.logo}
-                      onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                      placeholder="https://..."
-                    />
-                    {formData.logo && <img src={formData.logo} alt="Preview" className="w-10 h-10 rounded object-cover border" />}
-                  </div>
+                  <Label>Logo</Label>
+                  <SingleImageField value={formData.logo} onChange={(logo) => setFormData({ ...formData, logo })} shape="square" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Banner (URL)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={formData.banner}
-                      onChange={(e) => setFormData({ ...formData, banner: e.target.value })}
-                      placeholder="https://..."
-                    />
-                    {formData.banner && <img src={formData.banner} alt="Preview" className="w-16 h-10 rounded object-cover border" />}
-                  </div>
+                  <Label>Banner</Label>
+                  <SingleImageField value={formData.banner} onChange={(banner) => setFormData({ ...formData, banner })} shape="wide" />
                 </div>
 
                 <div className="space-y-2">

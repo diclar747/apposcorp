@@ -10,7 +10,8 @@ import {
   MoreHorizontal,
   Eye,
   EyeOff,
-  XCircle
+  XCircle,
+  Banknote
 } from 'lucide-react';
 import { useAuthStore, useWalletStore } from '@/stores';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ const quickActions = [
   { icon: ArrowDownLeft, label: 'Recibir', href: '/app/tarjeta', color: 'bg-green-500', bgColor: 'bg-green-100 dark:bg-green-500/20' },
   { icon: Wallet, label: 'Préstamos', href: '/app/creditos', color: 'bg-purple-500', bgColor: 'bg-purple-100 dark:bg-purple-500/20' },
   { icon: QrCode, label: 'Cargar', href: '/app/wallet/recargar', color: 'bg-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
+  { icon: Banknote, label: 'Retirar', href: '/app/wallet/retirar', color: 'bg-emerald-500', bgColor: 'bg-emerald-100 dark:bg-emerald-500/20' },
 ];
 
 export default function ClientWallet() {
@@ -97,6 +99,9 @@ export default function ClientWallet() {
       withdrawal: 'wallet',
       transfer_in: 'wallet',
       transfer_out: 'wallet',
+      refund: 'store',
+      affiliate_commission: 'store',
+      affiliate_reversal: 'store',
     };
     return {
       id: t.id,
@@ -174,7 +179,7 @@ export default function ClientWallet() {
 
       {/* Quick Actions */}
       <div className="glass-premium p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-2">
           {quickActions.map((action, index) => (
             <Link key={action.label} to={action.href}>
               <motion.div

@@ -27,7 +27,8 @@ import {
   Sparkles,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Megaphone,
 } from 'lucide-react';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
@@ -54,6 +55,7 @@ const sidebarItems = [
   { icon: Users, label: 'Usuarios', href: '/admin/usuarios' },
   { icon: Package, label: 'Productos', href: '/admin/productos' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos' },
+  { icon: Megaphone, label: 'Afiliados', href: '/admin/afiliados' },
   { icon: TrendingUp, label: 'Finanzas', href: '/admin/finanzas' },
   { icon: Wallet, label: 'Transacciones', href: '/admin/transacciones' },
   { icon: DollarSign, label: 'Retiros', href: '/admin/retiros' },

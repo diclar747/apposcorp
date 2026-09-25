@@ -53,6 +53,8 @@ model User {
   virtualCard              VirtualCard?
   wallet                   Wallet?
   ingenioReferrals         IngenioStudent[]     @relation("StudentReferrals")
+  affiliateProfile         AffiliateProfile?
+  affiliateBuyerCommissions AffiliateCommission[] @relation("AffiliateCommissionBuyer")
 
   @@map("users")
 }
@@ -99,6 +101,11 @@ model SellerProfile {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   ruc              String?
+  // Programa de afiliados (comisión de afiliado, distinta de la comisión de plataforma commissionRate)
+  affiliateEnabled     Boolean @default(false)
+  affiliateDefaultRate Float?
+  affiliateAllProducts Boolean @default(false)
+  affiliateBlocked     Boolean @default(false) // el superadmin apaga afiliados para esta tienda
   customers        Customer[]
   products         Product[]
   purchases        Purchase[]
@@ -279,6 +286,11 @@ model Product {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   supplierId       String?
+  slug             String?            @unique
+  // null = "como la tienda" (participa si la tienda marcó todos sus productos)
+  affiliateEnabled Boolean?
+  affiliateRate    Float?
+  affiliateBlocked Boolean            @default(false)
   cartItems        CartItem[]
   orderItems       OrderItem[]
   attributes       ProductAttribute[]
@@ -394,7 +406,10 @@ model Order {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   isPosSale         Boolean         @default(false)
+  affiliateAmount   Float           @default(0)
+  checkoutGroup     String?
   items             OrderItem[]
+  affiliateCommissions AffiliateCommission[]
   buyer             User            @relation("BuyerOrders", fields: [buyerId], references: [id])
   seller            User            @relation("SellerOrders", fields: [sellerId], references: [id])
   trackingHistory   TrackingEvent[]
@@ -1007,4 +1022,105 @@ enum TransactionType {
   credit
   fee
   adjustment
+  refund
+  affiliate_commission
+  affiliate_reversal
+}
+
+enum AffiliateStatus {
+  pending
+  active
+  suspended
+}
+
+enum AffiliateCommissionStatus {
+  pending
+  approved
+  paid
+  cancelled
+  reversed
+}
+
+model AffiliateProfile {
+  id              String                @id @default(uuid())
+  userId          String                @unique
+  code            String                @unique
+  status          AffiliateStatus       @default(active)
+  termsAcceptedAt DateTime
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links           AffiliateLink[]
+  clicks          AffiliateClick[]
+  commissions     AffiliateCommission[]
+
+  @@map("affiliate_profiles")
+}
+
+model AffiliateLink {
+  id          String           @id @default(uuid())
+  affiliateId String
+  sellerId    String // SellerProfile.id
+  productId   String? // null = enlace de tienda
+  createdAt   DateTime         @default(now())
+  affiliate   AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  clicks      AffiliateClick[]
+
+  @@unique([affiliateId, sellerId, productId])
+  @@index([sellerId])
+  @@map("affiliate_links")
+}
+
+model AffiliateClick {
+  id          String           @id @default(uuid())
+  affiliateId String
+  linkId      String?
+  sellerId    String // SellerProfile.id
+  productId   String?
+  visitorId   String
+  userId      String?
+  ipHash      String?
+  createdAt   DateTime         @default(now())
+  affiliate   AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  link        AffiliateLink?   @relation(fields: [linkId], references: [id], onDelete: SetNull)
+
+  @@index([visitorId, createdAt])
+  @@index([userId, createdAt])
+  @@index([affiliateId, createdAt])
+  @@map("affiliate_clicks")
+}
+
+model AffiliateCommission {
+  id          String                    @id @default(uuid())
+  affiliateId String
+  orderId     String
+  orderItemId String                    @unique // una sola comisión por producto de cada pedido
+  sellerId    String // SellerProfile.id
+  productId   String?
+  productName String
+  buyerId     String
+  clickId     String?
+  source      String // product | store
+  baseAmount  Float
+  rate        Float
+  amount      Float
+  status      AffiliateCommissionStatus @default(pending)
+  // Contra entrega: la comisión se cobra a la tienda al entregar. Con billetera ya está cubierta al comprar.
+  funded      Boolean                   @default(false)
+  availableAt DateTime?
+  walletTxId  String?
+  note        String?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  affiliate   AffiliateProfile          @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
+  order       Order                     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  buyer       User                      @relation("AffiliateCommissionBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+
+  @@index([affiliateId, status])
+  @@index([sellerId])
+  @@index([status, availableAt])
+  @@map("affiliate_commissions")
 }

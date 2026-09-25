@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
 });
 
 // Admin: Get all plans (including inactive)
-router.get('/all', authenticate, async (req, res) => {
+router.get('/all', authenticate, authorize('superadmin'), async (req, res) => {
   try {
     const plans = await prisma.subscriptionPlan.findMany({
       orderBy: { createdAt: 'desc' }
@@ -31,7 +31,7 @@ router.get('/all', authenticate, async (req, res) => {
 });
 
 // Admin: Create a new plan
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize('superadmin'), async (req, res) => {
   try {
     const { 
       name, tier, description, features, price, prices, 
@@ -65,7 +65,7 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 // Admin: Update a plan
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize('superadmin'), async (req, res) => {
   try {
     const id = req.params.id as string;
     const planData = req.body;
@@ -103,7 +103,7 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // Admin: Delete a plan
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize('superadmin'), async (req, res) => {
   try {
     const id = req.params.id as string;
     await prisma.subscriptionPlan.delete({

@@ -87,6 +87,11 @@ export const authApi = {
 export const usersApi = {
   getAll: () => fetchWithAuth('/users'),
   getById: (id: string) => fetchWithAuth(`/users/${id}`),
+  create: (data: any) =>
+    fetchWithAuth('/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   updateStatus: (id: string, isActive: boolean) =>
     fetchWithAuth(`/users/${id}/status`, {
       method: 'PATCH',
@@ -183,6 +188,8 @@ export const productsApi = {
   },
   getFeatured: () => fetchWithAuth('/products/featured'),
   getById: (id: string) => fetchWithAuth(`/products/${id}`),
+  // Página pública del producto (por slug o id)
+  getPublic: (slug: string) => fetchWithAuth(`/products/public/${encodeURIComponent(slug)}`),
   create: (data: any) =>
     fetchWithAuth('/products', {
       method: 'POST',
@@ -204,6 +211,12 @@ export const ordersApi = {
   getAll: (as: 'buyer' | 'seller' | 'admin' = 'buyer') =>
     fetchWithAuth(`/orders?as=${as}`),
   getById: (id: string) => fetchWithAuth(`/orders/${id}`),
+  // Compra online: un pedido por tienda
+  checkout: (data: any) =>
+    fetchWithAuth('/orders/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   create: (data: any) =>
     fetchWithAuth('/orders', {
       method: 'POST',
@@ -839,4 +852,57 @@ export default {
   reports: reportsApi,
   plans: plansApi,
   sellerSubscriptions: sellerSubscriptionsApi,
+};
+
+// Programa de afiliados (comisión de afiliado; no confundir con la comisión de plataforma)
+export const affiliatesApi = {
+  getProgram: () => fetchWithAuth('/affiliates/program'),
+  track: (data: { code: string; visitorId: string; productSlug?: string; storeSlug?: string }) =>
+    fetchWithAuth('/affiliates/track', { method: 'POST', body: JSON.stringify(data) }),
+  getMe: () => fetchWithAuth('/affiliates/me'),
+  join: (visitorId?: string) =>
+    fetchWithAuth('/affiliates/join', { method: 'POST', body: JSON.stringify({ acceptTerms: true, visitorId }) }),
+  claimVisitor: (visitorId: string) =>
+    fetchWithAuth('/affiliates/claim-visitor', { method: 'POST', body: JSON.stringify({ visitorId }) }),
+  createLink: (data: { productId?: string; storeSlug?: string }) =>
+    fetchWithAuth('/affiliates/links', { method: 'POST', body: JSON.stringify(data) }),
+  getLinks: () => fetchWithAuth('/affiliates/links'),
+  explore: (search?: string) => fetchWithAuth(`/affiliates/explore${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  getCommissions: () => fetchWithAuth('/affiliates/commissions'),
+  getStats: (days = 30) => fetchWithAuth(`/affiliates/stats?days=${days}`),
+
+  // Vendedor
+  getSellerSettings: () => fetchWithAuth('/affiliates/seller/settings'),
+  updateSellerSettings: (data: { affiliateEnabled?: boolean; affiliateDefaultRate?: number | null; affiliateAllProducts?: boolean }) =>
+    fetchWithAuth('/affiliates/seller/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  getSellerReport: () => fetchWithAuth('/affiliates/seller/report'),
+
+  // Super admin
+  adminGetAffiliates: () => fetchWithAuth('/affiliates/admin/affiliates'),
+  adminSetAffiliateStatus: (id: string, status: 'pending' | 'active' | 'suspended') =>
+    fetchWithAuth(`/affiliates/admin/affiliates/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminGetCommissions: (status?: string) => fetchWithAuth(`/affiliates/admin/commissions${status ? `?status=${status}` : ''}`),
+  adminApproveCommissions: (ids: string[]) =>
+    fetchWithAuth('/affiliates/admin/commissions/approve', { method: 'POST', body: JSON.stringify({ ids }) }),
+  adminCancelCommissions: (ids: string[], reason?: string) =>
+    fetchWithAuth('/affiliates/admin/commissions/cancel', { method: 'POST', body: JSON.stringify({ ids, reason }) }),
+  adminReleaseNow: () => fetchWithAuth('/affiliates/admin/release-now', { method: 'POST' }),
+  adminGetPayouts: () => fetchWithAuth('/affiliates/admin/payouts'),
+  adminExportPayouts: async () => {
+    const token = getToken();
+    const response = await fetch(`${API_URL}/affiliates/admin/payouts/export`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) throw new Error('No se pudo exportar');
+    return response.blob();
+  },
+  adminGetReports: (days = 30) => fetchWithAuth(`/affiliates/admin/reports?days=${days}`),
+  adminGetStores: () => fetchWithAuth('/affiliates/admin/stores'),
+  adminBlockStore: (id: string, affiliateBlocked: boolean) =>
+    fetchWithAuth(`/affiliates/admin/stores/${id}`, { method: 'PATCH', body: JSON.stringify({ affiliateBlocked }) }),
+  adminBlockProduct: (id: string, affiliateBlocked: boolean) =>
+    fetchWithAuth(`/affiliates/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify({ affiliateBlocked }) }),
+  adminGetConfig: () => fetchWithAuth('/affiliates/admin/config'),
+  adminUpdateConfig: (data: Record<string, unknown>) =>
+    fetchWithAuth('/affiliates/admin/config', { method: 'PUT', body: JSON.stringify(data) }),
 };

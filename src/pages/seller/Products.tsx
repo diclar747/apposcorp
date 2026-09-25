@@ -43,6 +43,7 @@ import {
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageUtils';
 import type { Product, ProductType, ProductVisibility } from '@/types';
+import { getAffiliateProgram, marginAfterCommissions, type AffiliateProgram } from '@/lib/affiliate';
 
 const MAX_PRODUCT_IMAGES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -127,6 +128,11 @@ export default function SellerProducts() {
 
   // Image management state
   const [imageUrl, setImageUrl] = useState('');
+  const [affiliateProgram, setAffiliateProgram] = useState<AffiliateProgram | null>(null);
+
+  useEffect(() => {
+    getAffiliateProgram().then(setAffiliateProgram);
+  }, []);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -215,7 +221,9 @@ export default function SellerProducts() {
         visibility: 'both',
         status: 'active',
         images: [],
-        supplierId: null
+        supplierId: null,
+        affiliateEnabled: null,
+        affiliateRate: null,
       });
     }
     setIsModalOpen(true);
@@ -252,8 +260,8 @@ export default function SellerProducts() {
       }
       setIsModalOpen(false);
       fetchProducts();
-    } catch (error) {
-      toast.error('Error al guardar el producto');
+    } catch (error: any) {
+      toast.error(error?.message || 'Error al guardar el producto');
       console.error(error);
     }
   };
@@ -699,6 +707,59 @@ export default function SellerProducts() {
                 </Select>
               </div>
             </div>
+
+            {affiliateProgram?.enabled && (() => {
+              const seller = user?.sellerProfile;
+              const participation = formData.affiliateEnabled === true ? 'yes' : formData.affiliateEnabled === false ? 'no' : 'inherit';
+              const storeRate = seller?.affiliateDefaultRate ?? null;
+              const effectiveRate = participation === 'no' ? null : (formData.affiliateRate ?? (participation === 'yes' || seller?.affiliateAllProducts ? storeRate : null));
+              const platformRate = seller?.planId ? 0 : (seller?.commissionRate ?? 5);
+              const margin = effectiveRate ? marginAfterCommissions(formData.price || 0, formData.cost, effectiveRate, platformRate) : null;
+              return (
+                <div className="rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-950/20 p-4 space-y-3">
+                  <div>
+                    <Label>Habilitar para afiliados (reventa)</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Quien recomiende este producto cobra este % de cada venta; se descuenta de lo que cobrás.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select
+                      value={participation}
+                      onValueChange={(v) => setFormData({ ...formData, affiliateEnabled: v === 'inherit' ? null : v === 'yes' })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inherit">Como la tienda</SelectItem>
+                        <SelectItem value="yes">Participa</SelectItem>
+                        <SelectItem value="no">No participa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min={affiliateProgram.minRate}
+                      max={affiliateProgram.maxRate}
+                      step="0.5"
+                      disabled={participation === 'no'}
+                      placeholder={storeRate ? `% tienda (${storeRate}%)` : '% propio'}
+                      value={formData.affiliateRate ?? ''}
+                      onChange={(e) => setFormData({ ...formData, affiliateRate: e.target.value === '' ? null : Number(e.target.value) })}
+                    />
+                  </div>
+                  {margin !== null && margin < 0 && (
+                    <p className="text-xs text-red-600">
+                      Atención: con {effectiveRate}% de afiliado y {platformRate}% de plataforma, este producto deja una pérdida de {formatCurrency(Math.abs(margin))} por unidad.
+                    </p>
+                  )}
+                  {effectiveRate && (margin === null || margin >= 0) && (
+                    <p className="text-xs text-muted-foreground">
+                      Comisión por venta: {formatCurrency(Math.floor(((formData.price || 0) * effectiveRate) / 100))} ({effectiveRate}%).
+                      {' '}La tienda tiene que tener los afiliados activos en <a href="/vendedor/afiliados" className="underline">Afiliados</a>.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <DialogFooter>

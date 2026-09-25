@@ -37,7 +37,7 @@ const statusFilters = [
   { value: 'confirmed', label: 'Confirmados', icon: CheckCircle },
   { value: 'preparing', label: 'En preparación', icon: Package },
   { value: 'ready', label: 'Listos', icon: CheckCircle },
-  { value: 'shipped', label: 'En camino', icon: Truck },
+  { value: 'in_transit', label: 'En camino', icon: Truck },
   { value: 'delivered', label: 'Entregados', icon: CheckCircle },
   { value: 'cancelled', label: 'Cancelados', icon: XCircle },
 ];
@@ -415,8 +415,8 @@ export default function AdminOrders() {
                                     {order.status === 'pending' && <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'confirmed')}>Confirmar</Button>}
                                     {order.status === 'confirmed' && <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'preparing')}>Preparar</Button>}
                                     {order.status === 'preparing' && <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'ready')}>Listo</Button>}
-                                    {order.status === 'ready' && <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'shipped')}>Enviar</Button>}
-                                    {order.status === 'shipped' && <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(order.id, 'delivered')}>Entregado</Button>}
+                                    {order.status === 'ready' && <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'in_transit')}>Enviar</Button>}
+                                    {order.status === 'in_transit' && <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(order.id, 'delivered')}>Entregado</Button>}
                                     {order.status !== 'delivered' && order.status !== 'cancelled' && (
                                       <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus(order.id, 'cancelled')}>Cancelar</Button>
                                     )}

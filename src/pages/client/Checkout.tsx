@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Wallet, CreditCard, Truck, Check } from 'lucide-react';
 import { useAuthStore, useCartStore, useWalletStore } from '@/stores';
 import { ordersApi } from '@/lib/api';
+import { getVisitorId } from '@/lib/affiliate';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +34,21 @@ export default function ClientCheckout() {
   const selectedDelivery = deliveryMethods.find(d => d.id === deliveryMethod);
   const finalTotal = total + (selectedDelivery?.price || 0);
 
+  // Un pedido por tienda: el carrito puede mezclar productos de varias
+  const storeGroups = useMemo(() => {
+    const groups = new Map<string, { storeName: string; items: typeof items; subtotal: number }>();
+    for (const item of items) {
+      const product: any = item.product;
+      const key = product.sellerId || product.seller?.id || 'tienda';
+      const storeName = product.seller?.storeName || product.storeName || 'Tienda';
+      const group = groups.get(key) || { storeName, items: [] as typeof items, subtotal: 0 };
+      group.items.push(item);
+      group.subtotal += item.product.price * item.quantity;
+      groups.set(key, group);
+    }
+    return [...groups.values()];
+  }, [items]);
+
   const handleCheckout = async () => {
     if (paymentMethod === 'wallet' && (wallet?.balance || 0) < finalTotal) {
       toast.error('Saldo insuficiente en tu wallet');
@@ -43,12 +59,11 @@ export default function ClientCheckout() {
 
     try {
       const orderData = {
-        sellerId: items[0]?.product.sellerId,
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          variant: null
         })),
+        visitorId: getVisitorId(), // atribución de afiliados (el servidor valida los clics)
         deliveryType: deliveryMethod,
         deliveryAddress: {
           street: user?.address || '',
@@ -59,10 +74,12 @@ export default function ClientCheckout() {
         paymentMethod,
       };
 
-      await ordersApi.create(orderData);
+      const { orders } = await ordersApi.checkout(orderData);
 
       clearCart();
-      toast.success('¡Compra realizada con éxito!');
+      toast.success(orders.length > 1
+        ? `¡Compra realizada! Se generaron ${orders.length} pedidos, uno por tienda.`
+        : '¡Compra realizada con éxito!');
       navigate('/app/pedidos');
 
       if (paymentMethod === 'wallet') {
@@ -101,16 +118,28 @@ export default function ClientCheckout() {
         <Card>
           <CardContent className="p-4">
             <h3 className="font-semibold text-foreground mb-3">Resumen de productos</h3>
-            <div className="space-y-2">
-              {items.map((item) => (
-                <div key={item.product.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{item.quantity}x</span>
-                    <span className="text-sm text-foreground line-clamp-1">{item.product.name}</span>
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {formatCurrency(item.product.price * item.quantity)}
-                  </span>
+            {storeGroups.length > 1 && (
+              <p className="text-xs text-muted-foreground mb-3">
+                Tu carrito tiene productos de {storeGroups.length} tiendas: se va a generar un pedido para cada una.
+              </p>
+            )}
+            <div className="space-y-4">
+              {storeGroups.map((group, idx) => (
+                <div key={idx} className="space-y-2">
+                  {storeGroups.length > 1 && (
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.storeName}</p>
+                  )}
+                  {group.items.map((item) => (
+                    <div key={item.product.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{item.quantity}x</span>
+                        <span className="text-sm text-foreground line-clamp-1">{item.product.name}</span>
+                      </div>
+                      <span className="text-sm font-medium text-foreground">
+                        {formatCurrency(item.product.price * item.quantity)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

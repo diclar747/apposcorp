@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
+import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
+import { trackReferral } from '@/lib/affiliate';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -73,6 +75,11 @@ export default function StorePage() {
     };
     fetchStore();
   }, [slug]);
+
+  // Visita desde un enlace de afiliado (?ref=CODIGO)
+  useEffect(() => {
+    if (slug && !isPreview) trackReferral({ storeSlug: slug }, location.search);
+  }, [slug, location.search, isPreview]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/tienda/${slug}`;
@@ -291,6 +298,27 @@ export default function StorePage() {
         </div>
       </div>
 
+      {store.affiliate?.participates && !isPreview && (
+        <div className="max-w-7xl mx-auto px-6 mt-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/70 dark:bg-violet-950/20 p-5">
+            <div>
+              <p className="font-black text-violet-900 dark:text-violet-200">Esta tienda paga comisión a sus afiliados</p>
+              <p className="text-sm text-violet-800/80 dark:text-violet-300/80">
+                {store.affiliate.maxRate
+                  ? `Recomendá sus productos y ganá hasta ${store.affiliate.maxRate}% por cada venta.`
+                  : 'Recomendá sus productos y ganá una comisión por cada venta.'}
+              </p>
+            </div>
+            <PromoteButton
+              kind="store"
+              storeSlug={store.slug}
+              title={store.name}
+              className="shrink-0 h-11 rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:border-violet-800 dark:hover:bg-violet-900/40"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-6 mt-12">
         <Tabs defaultValue="productos" className="w-full">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-12">
@@ -465,7 +493,7 @@ export default function StorePage() {
                         <ProductCard
                           key={product.id}
                           product={product}
-                          onAddToCart={() => addItem(product, 1)}
+                          onAddToCart={() => addItem({ ...product, storeName: store.name }, 1)}
                           onViewProduct={() => {
                             setSelectedProduct(product);
                             setActiveImageIndex(0);
@@ -837,6 +865,27 @@ export default function StorePage() {
                       </span>
                     )}
                   </div>
+                  {selectedProduct.affiliateRate && !isPreview && (
+                    <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/20 p-4 space-y-3">
+                      <AffiliateBadge rate={selectedProduct.affiliateRate} />
+                      <PromoteButton
+                        kind="product"
+                        productId={selectedProduct.id}
+                        title={selectedProduct.name}
+                        rate={selectedProduct.affiliateRate}
+                        size="sm"
+                        className="w-full rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:border-violet-800"
+                      />
+                    </div>
+                  )}
+                  {selectedProduct.slug && (
+                    <Link
+                      to={`/producto/${selectedProduct.slug}`}
+                      className="inline-block mb-4 text-sm font-bold text-blue-600 hover:underline"
+                    >
+                      Ver página del producto →
+                    </Link>
+                  )}
                   <div className="space-y-4">
                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Descripción</h4>
                     <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
@@ -861,7 +910,7 @@ export default function StorePage() {
                     <Button 
                       disabled={isPreview || !canPurchase || selectedProduct.stock <= 0}
                       onClick={() => {
-                        addItem(selectedProduct, 1);
+                        addItem({ ...selectedProduct, storeName: store.name }, 1);
                         setSelectedProduct(null);
                         toast.success('Producto añadido al carrito');
                       }}
@@ -968,6 +1017,7 @@ function ProductCard({
               {product.name}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 line-clamp-2 mb-6 font-light leading-relaxed">{product.description}</p>
+            {!isPreview && <AffiliateBadge rate={product.affiliateRate} className="mb-4" />}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="space-y-0.5">
@@ -1111,6 +1161,7 @@ function ProductCard({
         >
           {product.name}
         </h4>
+        {!isPreview && <AffiliateBadge rate={product.affiliateRate} className="self-start mb-3" />}
 
         <div className="mt-auto flex items-end justify-between">
           <div className="flex flex-col">

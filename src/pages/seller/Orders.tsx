@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Eye, ArrowRight, Loader2 } from 'lucide-react';
+import { Search, Eye, ArrowRight, Loader2, XCircle } from 'lucide-react';
 import { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDateTime, getOrderStatusInfo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -99,6 +99,23 @@ export default function SellerOrders() {
     }
   };
 
+  const cancelOrder = async (order: any) => {
+    const refund = order.paymentMethod === 'wallet' && order.paymentStatus === 'paid' && !order.isPosSale
+      ? `\n\nSe le devolverán ${formatCurrency(order.total)} al cliente y se descontarán ${formatCurrency(order.sellerEarnings)} de tu billetera.`
+      : '';
+    if (!window.confirm(`¿Cancelar el pedido ${order.orderNumber}? Se repone el stock y se anulan las comisiones de afiliado.${refund}`)) return;
+    try {
+      setUpdatingOrderId(order.id);
+      await ordersApi.updateStatus(order.id, 'cancelled', 'Pedido cancelado por la tienda');
+      toast.success('Pedido cancelado');
+      await fetchOrders();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cancelar el pedido');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -191,7 +208,8 @@ export default function SellerOrders() {
                   const buyer = order.buyer;
                   const statusInfo = getOrderStatusInfo(order.status);
                   const currentStatusIndex = statusOptions.findIndex(s => s.value === order.status);
-                  const nextStatus = statusOptions[currentStatusIndex + 1];
+                  // Cancelado no está en la lista (índice -1): sin botón de avance
+                  const nextStatus = currentStatusIndex >= 0 ? statusOptions[currentStatusIndex + 1] : undefined;
 
                   return (
                     <motion.tr
@@ -242,6 +260,18 @@ export default function SellerOrders() {
                                   <ArrowRight className="w-4 h-4 sm:ml-1" />
                                 </>
                               )}
+                            </Button>
+                          )}
+                          {order.status !== 'cancelled' && order.status !== 'refunded' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="px-2.5 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              onClick={() => cancelOrder(order)}
+                              disabled={updatingOrderId === order.id}
+                              title="Cancelar pedido"
+                            >
+                              <XCircle className="w-4 h-4" />
                             </Button>
                           )}
                           <Dialog>
@@ -296,6 +326,12 @@ export default function SellerOrders() {
                                     <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                                       <span>Comisión plataforma</span>
                                       <span>-{formatCurrency(order.commissionAmount)}</span>
+                                    </div>
+                                  )}
+                                  {(order as any).affiliateAmount > 0 && (
+                                    <div className="flex justify-between text-sm text-violet-600 dark:text-violet-300">
+                                      <span>Comisión afiliado</span>
+                                      <span>-{formatCurrency((order as any).affiliateAmount)}</span>
                                     </div>
                                   )}
                                   <div className="flex justify-between text-lg font-bold mt-2">

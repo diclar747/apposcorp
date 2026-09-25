@@ -46,6 +46,7 @@ import AdminSellerSubscriptions from '@/pages/admin/SellerSubscriptions';
 import AdminSettings from '@/pages/admin/Settings';
 import AdminProfile from '@/pages/admin/Profile';
 import AdminManual from '@/pages/admin/Manual';
+import AdminAffiliates from '@/pages/admin/Affiliates';
 
 // Seller Pages
 import SellerDashboard from '@/pages/seller/Dashboard';
@@ -64,6 +65,7 @@ import SellerProfile from '@/pages/seller/Profile';
 import SellerSettings from '@/pages/seller/Settings';
 import SellerPlans from '@/pages/seller/SellerPlans';
 import SellerManual from '@/pages/seller/Manual';
+import SellerAffiliates from '@/pages/seller/Affiliates';
 
 // Client Pages
 import ClientDashboard from '@/pages/client/Home';
@@ -87,6 +89,9 @@ import ClientProduct from '@/pages/client/Product';
 import ClientCart from '@/pages/client/Cart';
 import ClientCheckout from '@/pages/client/Checkout';
 import ClientManual from '@/pages/client/Manual';
+import ClientAffiliates from '@/pages/client/Affiliates';
+import { affiliatesApi } from '@/lib/api';
+import { getVisitorId } from '@/lib/affiliate';
 
 // Ingenio Pages
 import IngenioDashboard from '@/pages/ingenio/Dashboard';
@@ -98,13 +103,18 @@ import IngenioCourseDetail from '@/pages/ingenio/CourseDetail';
 import IngenioProfile from '@/pages/ingenio/Profile';
 
 function App() {
-  const { fetchCurrentUser, isHydrated, activeRole } = useAuthStore();
+  const { fetchCurrentUser, isHydrated, activeRole, user } = useAuthStore();
   const { fetchSettings, settings } = useSettingsStore();
 
   useEffect(() => {
     fetchCurrentUser();
     fetchSettings();
   }, [fetchCurrentUser, fetchSettings]);
+
+  // Afiliados: los clics hechos antes de iniciar sesión en este navegador quedan asociados al usuario
+  useEffect(() => {
+    if (user?.id) affiliatesApi.claimVisitor(getVisitorId()).catch(() => {});
+  }, [user?.id]);
 
   // Splash Screen Logic
   useEffect(() => {
@@ -180,6 +190,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="usuarios" element={<AdminUsers />} />
           <Route path="productos" element={<AdminProducts />} />
           <Route path="pedidos" element={<AdminOrders />} />
+          <Route path="afiliados" element={<AdminAffiliates />} />
           <Route path="finanzas" element={<AdminFinances />} />
           <Route path="transacciones" element={<AdminTransactions />} />
           <Route path="retiros" element={<AdminWithdrawals />} />
@@ -211,6 +222,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="productos" element={<SellerProducts />} />
           <Route path="pedidos" element={<SellerOrders />} />
           <Route path="ventas" element={<SellerSales />} />
+          <Route path="afiliados" element={<SellerAffiliates />} />
           <Route path="pos" element={<SellerPOS />} />
           <Route path="retiros" element={<SellerWithdrawals />} />
           <Route path="reportes" element={<SellerReports />} />
@@ -244,6 +256,8 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="wallet" element={<ClientWallet />} />
           <Route path="wallet/transferir" element={<TransferMoney />} />
           <Route path="wallet/recargar" element={<DepositPage />} />
+          <Route path="wallet/retirar" element={<SellerWithdrawals />} />
+          <Route path="afiliados" element={<ClientAffiliates />} />
           <Route path="tarjeta" element={<ClientCard />} />
           <Route path="pedidos" element={<ClientOrders />} />
           <Route path="pedidos/:id" element={<ClientOrderDetail />} />

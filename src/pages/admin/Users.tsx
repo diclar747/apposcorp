@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
-import { usersApi, plansApi, coursesApi, ingenioApi, authApi } from '@/lib/api';
+import { usersApi, plansApi, coursesApi, ingenioApi } from '@/lib/api';
 import type { SubscriptionPlan, BillingCycle, Course, UserCourse } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -388,7 +388,7 @@ export default function AdminUsers() {
 
     try {
       setLoading(true);
-      await authApi.register({
+      await usersApi.create({
         ...createData,
         roles: [createData.role]
       });

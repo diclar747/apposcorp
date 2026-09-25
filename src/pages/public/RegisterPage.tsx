@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { authApi } from '@/lib/api';
+import { consumePostLoginRedirect } from '@/lib/redirect';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -88,6 +89,11 @@ export default function RegisterPage() {
   const handleGoogleSuccess = () => {
     toast.success('¡Cuenta creada con Google!');
     setTimeout(() => {
+      const target = consumePostLoginRedirect(null);
+      if (target) {
+        navigate(target, { replace: true });
+        return;
+      }
       const currentUser = useAuthStore.getState().user;
       if (currentUser?.roles.includes('seller')) {
         navigate('/vendedor');

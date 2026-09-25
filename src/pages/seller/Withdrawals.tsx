@@ -64,12 +64,13 @@ export default function SellerWithdrawals() {
       await walletApi.withdraw(numericAmount, 'Retiro de ganancias');
       
       // WhatsApp message generation
-      const storeName = user?.sellerProfile?.storeName || 'Mi Tienda';
+      // Esta pantalla la usan vendedores y (desde /app/wallet/retirar) clientes y afiliados
+      const storeName = user?.sellerProfile?.storeName;
       const userName = `${user?.firstName} ${user?.lastName}`;
       const bankInfo = `Banco: ${user.bankData.bankName}\nCuenta: ${user.bankData.accountNumber}\nTitular: ${user.bankData.holderName}\nDocumento: ${user.bankData.documentId}`;
       
       const message = `Hola Oscorp, solicito un retiro de ${formatCurrency(numericAmount)}.\n\n` +
-                      `Tienda: ${storeName}\n` +
+                      (storeName ? `Tienda: ${storeName}\n` : '') +
                       `Usuario: ${userName} (${user?.email})\n\n` +
                       `*Datos Bancarios*:\n${bankInfo}`;
       

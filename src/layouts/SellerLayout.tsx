@@ -23,7 +23,8 @@ import {
   Sun,
   Moon,
   Wallet,
-  BookOpen
+  BookOpen,
+  Megaphone,
 } from 'lucide-react';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { useThemeStore } from '@/stores/themeStore';
@@ -50,6 +51,7 @@ const sidebarItems = [
   { icon: FileText, label: 'Compras', href: '/vendedor/compras' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/vendedor/pedidos' },
   { icon: TrendingUp, label: 'Ventas', href: '/vendedor/ventas' },
+  { icon: Megaphone, label: 'Afiliados', href: '/vendedor/afiliados' },
   { icon: Wallet, label: 'Retiros', href: '/vendedor/retiros' },
   { icon: DollarSign, label: 'Gestión', href: '/vendedor/gestion' },
   { icon: BarChart3, label: 'Reportes', href: '/vendedor/reportes' },

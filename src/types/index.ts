@@ -119,6 +119,11 @@ export interface SellerProfile {
   planExpiryDate?: Date;
   planBillingCycle?: BillingCycle;
   commissionRate: number; // For commission-based model
+  // Programa de afiliados (comisión de afiliado, distinta de commissionRate)
+  affiliateEnabled?: boolean;
+  affiliateDefaultRate?: number | null;
+  affiliateAllProducts?: boolean;
+  affiliateBlocked?: boolean;
   totalSales: number;
   totalRevenue: number;
   rating: number;
@@ -225,6 +230,10 @@ export interface Product {
   variants?: ProductVariant[];
   stockMovements?: StockMovement[];
   supplierId?: string | null;
+  // Programa de afiliados: null = "como la tienda"
+  affiliateEnabled?: boolean | null;
+  affiliateRate?: number | null;
+  affiliateBlocked?: boolean;
   supplier?: Supplier;
   weight?: number;
   dimensions?: Dimensions;

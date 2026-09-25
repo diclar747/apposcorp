@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
 import type { UserRole } from '@/types';
+import { loginUrlFor } from '@/lib/redirect';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={loginUrlFor(location.pathname + location.search)} state={{ from: location }} replace />;
   }
 
   if (allowedRoles && activeRole && !allowedRoles.includes(activeRole)) {

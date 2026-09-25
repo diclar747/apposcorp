@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
@@ -73,10 +73,8 @@ router.post('/subscribe', authenticate, async (req: AuthRequest, res) => {
         url: receiptUrl,
         date: new Date().toISOString()
       });
-    } else if (paymentMethod === 'WALLET') {
-      status = 'ACTIVE';
-      // Here you would deduct from wallet
     }
+    // 'WALLET' ya no activa el plan sin cobrar: queda PENDING_PAYMENT hasta que un admin lo apruebe.
 
     const sub = await prisma.sellerSubscription.upsert({
       where: { userId },
@@ -137,7 +135,7 @@ router.post('/subscribe', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Admin: Get all seller subscriptions
-router.get('/all', authenticate, async (req: AuthRequest, res) => {
+router.get('/all', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     // Before returning, check for expirations
     const now = new Date();
@@ -205,7 +203,7 @@ router.get('/all', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Admin: Approve subscription
-router.post('/:id/approve', authenticate, async (req: AuthRequest, res) => {
+router.post('/:id/approve', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { amountPaid } = req.body;
@@ -269,7 +267,7 @@ router.post('/:id/approve', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Admin: Revoke subscription
-router.post('/:id/revoke', authenticate, async (req: AuthRequest, res) => {
+router.post('/:id/revoke', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -311,7 +309,7 @@ router.post('/:id/revoke', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Admin: Delete subscription
-router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
+router.delete('/:id', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     
