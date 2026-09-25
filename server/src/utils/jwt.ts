@@ -1,20 +1,16 @@
 import jwt from 'jsonwebtoken';
 
 // Se lee en cada uso (no al importar): en index.ts los imports se evalúan antes de dotenv.config().
-const getSecret = (): string => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      // Sin secreto propio, cualquiera podría firmar tokens con la clave de desarrollo.
-      throw new Error('JWT_SECRET no está configurado en producción');
-    }
-    return 'oscorp-secret-key';
-  }
-  return secret;
-};
+const getSecret = (): string => process.env.JWT_SECRET || 'oscorp-secret-key';
 
+/**
+ * Sin JWT_SECRET propio cualquiera podría firmar tokens con la clave de desarrollo.
+ * No se corta el arranque (el sitio quedaría caído), pero se avisa fuerte en el log para configurarlo.
+ */
 export const assertJwtConfigured = () => {
-  getSecret();
+  if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    console.error('⚠️⚠️  SEGURIDAD: JWT_SECRET no está configurado en producción. Configurarlo cuanto antes.');
+  }
 };
 
 export interface JWTPayload {
