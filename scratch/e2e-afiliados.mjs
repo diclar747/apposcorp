@@ -139,14 +139,17 @@ async function main() {
 
   // Cancelación después de pagar → reversión y reembolso
   const beforeCancelBuyer = await balance(buyer.id);
-  const cancel = await call('PATCH', `/orders/${orderMain.id}/status`, seller.token, { status: 'cancelled' });
+  const sellerCancel = await call('PATCH', `/orders/${orderMain.id}/status`, seller.token, { status: 'cancelled' });
+  const sellerBack = await call('PATCH', `/orders/${orderMain.id}/status`, seller.token, { status: 'in_transit' });
+  check(sellerCancel.status === 403 && sellerBack.status === 403, 'La tienda no puede cancelar ni volver atrás un pedido entregado', [sellerCancel.status, sellerBack.status]);
+  const cancel = await call('PATCH', `/orders/${orderMain.id}/status`, admin.token, { status: 'cancelled' });
   check(cancel.status === 200, 'Cancelar pedido entregado', cancel.data?.status);
   check((await balance(buyer.id)) - beforeCancelBuyer === 1_100_000, 'Comprador recupera el total');
   check((await balance(affiliate.id)) === 0, 'Comisión revertida al afiliado');
   check((await balance(seller.id)) === 0, 'A la tienda se le descuenta lo cobrado');
   const stockA = (await prisma.product.findUnique({ where: { id: pA.id } })).stock;
   check(stockA === 50, 'Stock repuesto', stockA);
-  const cancelAgain = await call('PATCH', `/orders/${orderMain.id}/status`, seller.token, { status: 'cancelled' });
+  const cancelAgain = await call('PATCH', `/orders/${orderMain.id}/status`, admin.token, { status: 'cancelled' });
   check(cancelAgain.status === 400, 'No se cancela dos veces', cancelAgain.status);
 
   // ── Enlace de tienda + contra entrega sin saldo (queda retenida) ──

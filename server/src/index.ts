@@ -35,6 +35,7 @@ import { ensureAffiliateSettings, startAffiliateScheduler } from './services/aff
 import { backfillProductSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
 import { ensureSchema } from './utils/ensureSchema.js';
+import { externalizeBodyImages, migrateInlineImages } from './services/mediaStore.js';
 import { prisma } from './utils/prisma.js';
 import webpush from 'web-push';
 import { checkMaintenanceMode } from './middleware/maintenance.js';
@@ -107,8 +108,9 @@ app.use(checkMaintenanceMode);
 import campaignRoutes from './routes/campaigns.js';
 
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/products', productRoutes);
+// Productos, tiendas y avatares: las imágenes base64 se guardan en media_files y el campo queda con la URL
+app.use('/api/users', externalizeBodyImages, userRoutes);
+app.use('/api/products', externalizeBodyImages, productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/credits', creditRoutes);
@@ -412,6 +414,8 @@ ensureSchema()
   ensureAffiliateSettings()
     .then(() => backfillProductSlugs())
     .catch((e) => console.error('[afiliados] inicialización:', e));
+  // Imágenes guardadas en base64 antes de esta versión → media_files
+  migrateInlineImages().catch((e) => console.error('[imágenes] migración:', e));
   startAffiliateScheduler();
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
   if (process.env.NODE_ENV === 'production') {

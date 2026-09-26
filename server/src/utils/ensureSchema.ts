@@ -1,6 +1,6 @@
 import { prisma } from './prisma.js';
 
-// Al arrancar, crea en la base lo que falte para esta versión (programa de afiliados).
+// Al arrancar, crea en la base lo que falte para esta versión (programa de afiliados e imágenes).
 // Producción se actualiza con cada push y la base no, así que el servidor se encarga.
 //
 // REGLAS: solo sentencias que AGREGAN y con "si no existe". Nunca DROP, DELETE, TRUNCATE ni cambios
@@ -101,6 +101,15 @@ const STATEMENTS: string[] = [
     CONSTRAINT "affiliate_commissions_pkey" PRIMARY KEY ("id")
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "media_files" (
+    "id" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "data" BYTEA NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "media_files_pkey" PRIMARY KEY ("id")
+  )`,
+
   // Índices
   `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_profiles_userId_key" ON "affiliate_profiles"("userId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_profiles_code_key" ON "affiliate_profiles"("code")`,
@@ -146,6 +155,6 @@ export const ensureSchema = async () => {
     }
   }
   if (failed) console.error(`[esquema] ${failed} sentencia(s) fallaron; revisar el log de arriba`);
-  else console.log('🗄️  Esquema verificado (afiliados)');
+  else console.log('🗄️  Esquema verificado (afiliados, imágenes)');
   return { total: STATEMENTS.length, failed };
 };

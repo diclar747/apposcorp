@@ -712,7 +712,10 @@ export default function SellerProducts() {
               const seller = user?.sellerProfile;
               const participation = formData.affiliateEnabled === true ? 'yes' : formData.affiliateEnabled === false ? 'no' : 'inherit';
               const storeRate = seller?.affiliateDefaultRate ?? null;
-              const effectiveRate = participation === 'no' ? null : (formData.affiliateRate ?? (participation === 'yes' || seller?.affiliateAllProducts ? storeRate : null));
+              // Misma regla que el servidor (getEffectiveRate): "Como la tienda" participa solo si la tienda incluye todos sus productos
+              const participates = participation === 'yes' || (participation === 'inherit' && !!seller?.affiliateAllProducts);
+              const effectiveRate = participates ? (formData.affiliateRate ?? storeRate) : null;
+              const rateIgnored = !participates && participation === 'inherit' && formData.affiliateRate != null;
               const platformRate = seller?.planId ? 0 : (seller?.commissionRate ?? 5);
               const margin = effectiveRate ? marginAfterCommissions(formData.price || 0, formData.cost, effectiveRate, platformRate) : null;
               return (
@@ -746,6 +749,11 @@ export default function SellerProducts() {
                       onChange={(e) => setFormData({ ...formData, affiliateRate: e.target.value === '' ? null : Number(e.target.value) })}
                     />
                   </div>
+                  {rateIgnored && (
+                    <p className="text-xs text-amber-600">
+                      Tu tienda no incluye todos los productos, así que con "Como la tienda" este producto no participa. Elegí "Participa" para que se use este %.
+                    </p>
+                  )}
                   {margin !== null && margin < 0 && (
                     <p className="text-xs text-red-600">
                       Atención: con {effectiveRate}% de afiliado y {platformRate}% de plataforma, este producto deja una pérdida de {formatCurrency(Math.abs(margin))} por unidad.

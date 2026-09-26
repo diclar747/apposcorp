@@ -1124,3 +1124,15 @@ model AffiliateCommission {
   @@index([status, availableAt])
   @@map("affiliate_commissions")
 }
+
+// Imágenes subidas (productos, logos, banners, avatares). Los campos de imagen guardan la URL
+// /api/media/f/<id>; el id es el hash del contenido, así la misma imagen se guarda una sola vez.
+model MediaFile {
+  id        String   @id
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@map("media_files")
+}

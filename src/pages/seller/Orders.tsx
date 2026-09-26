@@ -262,7 +262,7 @@ export default function SellerOrders() {
                               )}
                             </Button>
                           )}
-                          {order.status !== 'cancelled' && order.status !== 'refunded' && (
+                          {!['cancelled', 'refunded', 'delivered'].includes(order.status) && (
                             <Button
                               variant="ghost"
                               size="sm"
