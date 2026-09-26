@@ -10,6 +10,8 @@ interface ImageUploadProps {
   shape?: 'circle' | 'rect';
   maxWidth?: number;
   maxHeight?: number;
+  /** Calidad JPEG (0-1). Mismo valor que usa ImageField, así una foto se ve igual sin importar quién la suba. */
+  quality?: number;
   label?: string;
   className?: string;
 }
@@ -22,6 +24,7 @@ export function ImageUpload({
   shape = 'circle',
   maxWidth = 300,
   maxHeight = 300,
+  quality = 0.82,
   label = 'Subir imagen',
   className,
 }: ImageUploadProps) {
@@ -40,7 +43,7 @@ export function ImageUpload({
 
     setLoading(true);
     try {
-      const compressed = await compressImage(file, maxWidth, maxHeight);
+      const compressed = await compressImage(file, maxWidth, maxHeight, quality);
       onChange(compressed);
     } catch {
       toast.error('Error al procesar la imagen');

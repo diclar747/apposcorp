@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest, invalidateUserActiveCache } from '../middleware/auth.js';
 import { createUserAccount, sanitizeRoles, validatePassword, ALL_ROLES, EMAIL_REGEX } from '../services/userService.js';
+import { generateStoreSlug } from '../utils/slug.js';
 
 const router = Router();
 
@@ -99,7 +100,7 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res) => {
 // (incluido superadmin) y no inicia sesión como el usuario creado.
 router.post('/', authenticate, authorize('superadmin'), async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone, address, city, roles } = req.body;
+    const { email, password, firstName, lastName, phone, address, city, roles, storeName } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ error: 'Campos obligatorios faltantes (email, password, firstName, lastName)' });
@@ -123,6 +124,7 @@ router.post('/', authenticate, authorize('superadmin'), async (req, res) => {
       email, password, firstName, lastName, phone, address, city,
       roles: finalRoles,
       isVerified: true,
+      storeName: typeof storeName === 'string' ? storeName : undefined,
     });
 
     const user = await prisma.user.findUnique({
@@ -241,7 +243,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
       create: {
         userId,
         storeName: storeName || `${user?.firstName || 'Mi'} Store`,
-        storeSlug: storeSlug || `store-${Date.now()}`,
+        storeSlug: storeSlug || await generateStoreSlug(storeName || `${user?.firstName || 'Mi'} Store`),
         description: description || '',
         address: address || '',
         latitude: latitude !== undefined && latitude !== null ? Number(latitude) : null,
@@ -321,7 +323,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
       create: {
         userId,
         storeName: storeName || `${user.firstName}'s Store`,
-        storeSlug: `store-${Date.now()}`,
+        storeSlug: await generateStoreSlug(storeName || `${user.firstName}'s Store`),
         description: description || '',
         address: address || '',
         latitude: latitude !== undefined && latitude !== null ? Number(latitude) : null,
@@ -703,7 +705,7 @@ const assignPlanHandler = async (req: any, res: any) => {
       create: {
         userId,
         storeName: 'Mi Tienda', // Default
-        storeSlug: `store-${userId.slice(0, 8)}`,
+        storeSlug: await generateStoreSlug('Mi Tienda'),
         description: '',
         address: '',
         phone: '',

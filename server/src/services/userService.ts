@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import pkg from 'bcryptjs';
 import type { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
+import { generateStoreSlug } from '../utils/slug.js';
 const { hash } = pkg;
 
 // Roles que alguien puede elegir al registrarse solo. 'superadmin' únicamente lo asigna otro superadmin.
@@ -67,6 +68,8 @@ export interface CreateUserInput {
   isVerified: boolean;
   verificationToken?: string | null;
   verificationTokenExpires?: Date | null;
+  /** Solo para roles con 'seller': nombre real de la tienda, si ya se conoce (así el enlace sale legible desde el inicio). */
+  storeName?: string;
 }
 
 /** Crea el usuario con billetera, tarjeta y perfil de vendedor según sus roles. */
@@ -97,11 +100,12 @@ export const createUserAccount = async (input: CreateUserInput) => {
     if (needsWallet) await ensureWallet(user.id, tx);
 
     if (input.roles.includes('seller')) {
+      const storeName = input.storeName?.trim() || `${input.firstName}'s Store`;
       await tx.sellerProfile.create({
         data: {
           userId: user.id,
-          storeName: `${input.firstName}'s Store`,
-          storeSlug: `store-${Date.now()}`,
+          storeName,
+          storeSlug: await generateStoreSlug(storeName),
           description: '',
           address: input.address || '',
           phone: input.phone || '',

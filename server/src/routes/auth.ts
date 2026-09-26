@@ -7,6 +7,7 @@ import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { createUserAccount, sanitizeRoles, validatePassword, PUBLIC_ROLES } from '../services/userService.js';
+import { generateStoreSlug } from '../utils/slug.js';
 
 const router = Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -387,7 +388,7 @@ router.post('/google', async (req, res) => {
             data: {
               userId: created.id,
               storeName: `${firstName}'s Store`,
-              storeSlug: `store-${Date.now()}`,
+              storeSlug: await generateStoreSlug(`${firstName}'s Store`),
               description: '',
               address: '',
               phone: '',

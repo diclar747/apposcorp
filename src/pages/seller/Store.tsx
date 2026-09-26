@@ -218,8 +218,8 @@ export default function SellerStore() {
                   value={formData.logo || null}
                   onChange={(val) => setFormData({ ...formData, logo: val || '' })}
                   shape="circle"
-                  maxWidth={300}
-                  maxHeight={300}
+                  maxWidth={500}
+                  maxHeight={500}
                   label="Logo"
                 />
               </div>
@@ -229,8 +229,8 @@ export default function SellerStore() {
                   value={formData.banner || null}
                   onChange={(val) => setFormData({ ...formData, banner: val || '' })}
                   shape="rect"
-                  maxWidth={800}
-                  maxHeight={400}
+                  maxWidth={1600}
+                  maxHeight={600}
                   label="Banner"
                 />
               </div>
@@ -305,8 +305,8 @@ export default function SellerStore() {
               value={formData.banner || null}
               onChange={(val) => setFormData({ ...formData, banner: val || '' })}
               shape="rect"
-              maxWidth={800}
-              maxHeight={400}
+              maxWidth={1600}
+              maxHeight={600}
               label="Cambiar Banner"
             />
           </div>
@@ -334,8 +334,8 @@ export default function SellerStore() {
                     value={formData.logo || null}
                     onChange={(val) => setFormData({ ...formData, logo: val || '' })}
                     shape="circle"
-                    maxWidth={300}
-                    maxHeight={300}
+                    maxWidth={500}
+                    maxHeight={500}
                     label="Logo"
                   />
                 </div>

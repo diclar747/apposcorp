@@ -131,7 +131,7 @@ export default function Purchases() {
         try {
             const [purchasesData, productsData, suppliersData] = await Promise.all([
                 purchasesApi.getAll(),
-                productsApi.getAll(),
+                productsApi.getAll({ sellerId: user?.sellerProfile?.id }),
                 suppliersApi.getAll()
             ]);
 

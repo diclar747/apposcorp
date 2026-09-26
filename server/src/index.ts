@@ -32,7 +32,7 @@ import reviewRoutes from './routes/reviews.js';
 import affiliateRoutes from './routes/affiliates.js';
 import mediaRoutes from './routes/media.js';
 import { ensureAffiliateSettings, startAffiliateScheduler } from './services/affiliateService.js';
-import { backfillProductSlugs } from './utils/slug.js';
+import { backfillProductSlugs, backfillStoreSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
 import { ensureSchema } from './utils/ensureSchema.js';
 import { externalizeBodyImages, migrateInlineImages } from './services/mediaStore.js';
@@ -410,9 +410,10 @@ ensureSchema()
   .catch((e) => console.error('[esquema] error al verificar la base:', e))
   .finally(() => app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  // Afiliados: claves de configuración por defecto, slugs de productos viejos y liberación de comisiones
+  // Afiliados: claves de configuración por defecto, slugs viejos de productos y tiendas, liberación de comisiones
   ensureAffiliateSettings()
     .then(() => backfillProductSlugs())
+    .then(() => backfillStoreSlugs())
     .catch((e) => console.error('[afiliados] inicialización:', e));
   // Imágenes guardadas en base64 antes de esta versión → media_files
   migrateInlineImages().catch((e) => console.error('[imágenes] migración:', e));

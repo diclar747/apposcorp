@@ -209,7 +209,8 @@ export default function AdminStores() {
           password: formData.password,
           phone: formData.phone,
           address: formData.address,
-          roles: ['seller']
+          roles: ['seller'],
+          storeName: formData.storeName, // así el enlace de la tienda sale legible desde el inicio
         });
         userId = registerRes.user.id;
       }

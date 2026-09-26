@@ -79,7 +79,9 @@ async function main() {
 
   // Productos: vendedor crea (con slug), borrar con ventas desactiva
   const sp = await prisma.sellerProfile.findUnique({ where: { userId: regS.data.user.id } });
-  await prisma.sellerProfile.update({ where: { id: sp.id }, data: { planActive: true } });
+  // El checkout online exige un plan con "Tienda Online" (que no sea el Básico): mismo requisito que en producción
+  const onlinePlan = await prisma.subscriptionPlan.create({ data: { name: `Plan Reg ${run}`, description: '', features: ['Tienda Online'] } });
+  await prisma.sellerProfile.update({ where: { id: sp.id }, data: { planActive: true, planId: onlinePlan.id } });
   const prod = await call('POST', '/products', sellerTok, { name: 'Café Molido Ñandutí', description: 'x', price: 25000, stock: 10, category: 'General', type: 'physical', visibility: 'both' });
   check(prod.status === 201 && /^cafe-molido-nanduti-/.test(prod.data.slug), 'Producto nuevo con slug legible', prod.data?.slug);
   const pos = await call('POST', '/orders', sellerTok, { isPosSale: true, sellerId: sp.id, items: [{ productId: prod.data.id, quantity: 2, price: 1 }], paymentMethod: 'cash', paymentStatus: 'paid', orderNumber: 'V-1234' });

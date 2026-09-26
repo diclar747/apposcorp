@@ -59,8 +59,10 @@ async function main() {
   const planRes = await call('POST', '/plans', seller.token, { name: 'hack', tier: 'x' });
   check(planRes.status === 403, 'Vendedor no puede crear planes', planRes.status);
 
-  const sp = await prisma.sellerProfile.create({ data: { userId: seller.id, storeName: `Tienda E2E ${run}`, storeSlug: `e2e-tienda-${run}`, description: '', address: '', phone: '', email: seller.email, whatsappNumber: '', commissionRate: 5 } });
-  const sp2 = await prisma.sellerProfile.create({ data: { userId: seller2.id, storeName: `Otra E2E ${run}`, storeSlug: `e2e-otra-${run}`, description: '', address: '', phone: '', email: seller2.email, whatsappNumber: '', commissionRate: 5 } });
+  // El checkout exige un plan con "Tienda Online" (que no sea el Básico): mismo requisito que en producción
+  const onlinePlan = await prisma.subscriptionPlan.create({ data: { name: `Plan E2E ${run}`, description: '', features: ['Tienda Online'] } });
+  const sp = await prisma.sellerProfile.create({ data: { userId: seller.id, storeName: `Tienda E2E ${run}`, storeSlug: `e2e-tienda-${run}`, description: '', address: '', phone: '', email: seller.email, whatsappNumber: '', commissionRate: 5, planId: onlinePlan.id } });
+  const sp2 = await prisma.sellerProfile.create({ data: { userId: seller2.id, storeName: `Otra E2E ${run}`, storeSlug: `e2e-otra-${run}`, description: '', address: '', phone: '', email: seller2.email, whatsappNumber: '', commissionRate: 5, planId: onlinePlan.id } });
   const mkProduct = (sellerId, name, price, extra = {}) => prisma.product.create({ data: { sellerId, name, description: 'e2e', price, stock: 50, sku: `E2E-${name}-${run}`, images: [], category: 'e2e', tags: [], slug: `e2e-${name.toLowerCase()}-${run}`, ...extra } });
   const pA = await mkProduct(sp.id, 'ProdA', 1_000_000, { affiliateEnabled: true, affiliateRate: 20 });
   const pB = await mkProduct(sp.id, 'ProdB', 100_000); // hereda: participa si la tienda marca "todos"
@@ -103,6 +105,12 @@ async function main() {
   // ── Validaciones de pedidos ──
   const neg = await call('POST', '/orders/checkout', buyer.token, { items: [{ productId: pA.id, quantity: -3 }], paymentMethod: 'wallet' });
   check(neg.status === 400, 'Cantidad negativa rechazada', neg.data);
+  // Sin plan con "Tienda Online" (o Básico) no se puede vender online, aunque el producto exista y tenga stock
+  const noPlanSeller = await mkUser('sinplan', ['seller'], 0);
+  const spNoPlan = await prisma.sellerProfile.create({ data: { userId: noPlanSeller.id, storeName: `Sin Plan ${run}`, storeSlug: `e2e-sinplan-${run}`, description: '', address: '', phone: '', email: noPlanSeller.email, whatsappNumber: '', commissionRate: 5 } });
+  const pNoPlan = await mkProduct(spNoPlan.id, 'ProdSinPlan', 10_000);
+  const noOnline = await call('POST', '/orders/checkout', buyer.token, { items: [{ productId: pNoPlan.id, quantity: 1 }], paymentMethod: 'cash' });
+  check(noOnline.status === 400 && /venta online/.test(noOnline.data?.error || ''), 'Sin plan de Tienda Online no se puede comprar', noOnline.data);
   const fakePaid = await call('POST', '/orders', buyer.token, { items: [{ productId: pB.id, quantity: 1 }], paymentMethod: 'cash', paymentStatus: 'paid', sellerId: sp.id });
   check(fakePaid.status === 201 && fakePaid.data.paymentStatus === 'pending', '"paid" enviado por el navegador se ignora', fakePaid.data?.paymentStatus);
   const fakePos = await call('POST', '/orders', buyer.token, { items: [{ productId: pB.id, quantity: 1 }], isPosSale: true, sellerId: sp.id, paymentStatus: 'paid' });
@@ -121,12 +129,13 @@ async function main() {
   check(buy.status === 201 && buy.data.orders.length === 2, 'Carrito de 2 tiendas → 2 pedidos', buy.data?.orders?.map((o) => o.sellerId));
   const orderMain = buy.data.orders.find((o) => o.sellerId === seller.id);
   const orderOther = buy.data.orders.find((o) => o.sellerId === seller2.id);
-  check(orderOther && orderOther.affiliateAmount === 0 && orderOther.sellerEarnings === 190_000, 'Tienda 2 cobra lo suyo (sin afiliado)', orderOther);
+  // Con plan, la plataforma no cobra comisión por venta (paga suscripción en cambio)
+  check(orderOther && orderOther.affiliateAmount === 0 && orderOther.sellerEarnings === 200_000, 'Tienda 2 cobra lo suyo (sin afiliado)', orderOther);
   // Solo el enlace de producto A: comisión 20% de A; B no (el enlace de producto cubre solo ese producto)
   check(orderMain.affiliateAmount === 200_000, 'Comisión 20% solo del producto del enlace', orderMain.affiliateAmount);
-  check(orderMain.sellerEarnings === 1_100_000 - 55_000 - 200_000, 'Tienda cobra 1.100.000 − 5% − 200.000', orderMain.sellerEarnings);
+  check(orderMain.sellerEarnings === 1_100_000 - 200_000, 'Tienda cobra 1.100.000 sin comisión de plataforma (tiene plan) − 200.000 de afiliado', orderMain.sellerEarnings);
   check(buyerBefore - (await balance(buyer.id)) === 1_300_000, 'Comprador paga el total');
-  check((await balance(seller.id)) === 845_000, 'Saldo de la tienda', await balance(seller.id));
+  check((await balance(seller.id)) === 900_000, 'Saldo de la tienda', await balance(seller.id));
   const affTx = await prisma.transaction.findFirst({ where: { userId: affiliate.id, type: 'affiliate_commission' } });
   check(affTx?.status === 'pending' && (await balance(affiliate.id)) === 0, 'Afiliado ve Pendiente, no suma al saldo', affTx?.status);
 

@@ -2,9 +2,24 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
 import { generateProductSlug } from '../utils/slug.js';
+import { planAllowsOnlineSales } from '../utils/plans.js';
 import { getAffiliateConfig, getEffectiveRate, parseRateInput, parseTriState } from '../services/affiliateService.js';
 
 const router = Router();
+
+/** Costo, margen y proveedor son datos del negocio de la tienda: solo los ve su dueña o el superadmin. */
+const hidePrivateFields = async (req: any, products: any[], viewer?: Awaited<ReturnType<typeof getOptionalUser>>) => {
+  viewer = viewer !== undefined ? viewer : await getOptionalUser(req);
+  const isSuperadmin = !!viewer?.roles.includes('superadmin');
+  const ownSellerId = viewer && !isSuperadmin
+    ? (await prisma.sellerProfile.findUnique({ where: { userId: viewer.userId }, select: { id: true } }))?.id ?? null
+    : null;
+  return products.map((p) => {
+    if (isSuperadmin || p.sellerId === ownSellerId) return p;
+    const { cost: _cost, profitPercentage: _profit, supplier: _supplier, supplierId: _supplierId, ...rest } = p;
+    return rest;
+  });
+};
 
 // Get all products (public)
 router.get('/', async (req, res) => {
@@ -12,13 +27,14 @@ router.get('/', async (req, res) => {
     const { category, search, sellerId } = req.query;
 
     const where: any = {};
+    const viewer = await getOptionalUser(req);
+    const isSuperadmin = !!viewer?.roles.includes('superadmin');
 
     // Solo la tienda dueña (o un superadmin) ve sus productos inactivos; el resto ve solo los activos
     if (sellerId && sellerId !== 'undefined' && sellerId !== 'null') {
       where.sellerId = sellerId as string;
-      const viewer = await getOptionalUser(req);
-      const isOwner = viewer && (viewer.roles.includes('superadmin') ||
-        !!(await prisma.sellerProfile.findFirst({ where: { id: sellerId as string, userId: viewer.userId }, select: { id: true } })));
+      const isOwner = isSuperadmin ||
+        !!(viewer && await prisma.sellerProfile.findFirst({ where: { id: sellerId as string, userId: viewer.userId }, select: { id: true } }));
       if (!isOwner) where.status = 'active';
     } else {
       where.status = 'active';
@@ -56,7 +72,7 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json(products);
+    res.json(await hidePrivateFields(req, products, viewer));
   } catch (error) {
     console.error('Get products error:', error);
     res.status(500).json({ error: 'Error al obtener productos', details: String(error) });
@@ -77,7 +93,7 @@ router.get('/featured', async (req, res) => {
       take: 10,
     });
 
-    res.json(products);
+    res.json(await hidePrivateFields(req, products));
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -114,10 +130,7 @@ router.get('/public/:slug', async (req, res) => {
 
     const { cost: _cost, profitPercentage: _profit, supplierId: _supplier, ...publicProduct } = product;
     const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan, ...seller } = product.seller;
-    // Misma regla que la página de tienda: plan con "Tienda Online" que no sea el Básico
-    const planName = (plan?.name || '').toLowerCase();
-    const onlineSales = !!plan && !planName.includes('básico') && !planName.includes('basic') &&
-      (plan.features || []).some((f) => f.toLowerCase().includes('tienda online')) && product.visibility !== 'local';
+    const onlineSales = planAllowsOnlineSales(plan) && product.visibility !== 'local';
 
     res.json({
       ...publicProduct,
@@ -165,7 +178,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    res.json(product);
+    res.json((await hidePrivateFields(req, [product]))[0]);
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
