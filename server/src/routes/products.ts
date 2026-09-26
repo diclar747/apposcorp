@@ -139,8 +139,9 @@ router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id as string;
 
-    const product = await prisma.product.findUnique({
-      where: { id },
+    // Acepta id o slug: los enlaces del inicio usan el slug desde que todos los productos lo tienen
+    const product = await prisma.product.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
       include: {
         seller: {
           include: {
