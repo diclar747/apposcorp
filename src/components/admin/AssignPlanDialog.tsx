@@ -134,8 +134,8 @@ export function AssignPlanDialog({ open, onOpenChange, userId, storeName, onAssi
                 onWheel={(e) => (e.target as HTMLInputElement).blur()}
                 placeholder="Ej: 5"
               />
-              <p className="text-xs text-amber-600">
-                Sin plan fijo los clientes no pueden comprar online (solo consultar por WhatsApp). Para vender con carrito elegí un plan.
+              <p className="text-xs text-muted-foreground">
+                Sin cargo fijo: la plataforma cobra este % de cada venta. Los clientes pueden comprar online.
               </p>
             </div>
           )}

@@ -126,12 +126,7 @@ export default function StorePage() {
 
   const canPurchase = useMemo(() => {
     if (isPreview) return false;
-    if (!store?.plan) return false;
-    const planName = store.plan.name.toLowerCase();
-    if (planName.includes('básico') || planName.includes('basic')) return false;
-
-    const features = store.plan.features || [];
-    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+    return !!store?.onlineSales;
   }, [store, isPreview]);
 
   const categories = useMemo((): string[] => {

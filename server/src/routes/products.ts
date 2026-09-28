@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
 import { generateProductSlug } from '../utils/slug.js';
-import { planAllowsOnlineSales } from '../utils/plans.js';
+import { sellerAllowsOnlineSales } from '../utils/plans.js';
 import { getAffiliateConfig, getEffectiveRate, parseRateInput, parseTriState } from '../services/affiliateService.js';
 
 const router = Router();
@@ -114,6 +114,8 @@ router.get('/public/:slug', async (req, res) => {
             affiliateEnabled: true, affiliateDefaultRate: true, affiliateAllProducts: true, affiliateBlocked: true,
             user: { select: { isActive: true } },
             plan: { select: { name: true, features: true } },
+            planId: true,
+            planActive: true,
           },
         },
         variants: true,
@@ -129,8 +131,8 @@ router.get('/public/:slug', async (req, res) => {
     const rate = getEffectiveRate(product.seller, product, cfg);
 
     const { cost: _cost, profitPercentage: _profit, supplierId: _supplier, ...publicProduct } = product;
-    const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan, ...seller } = product.seller;
-    const onlineSales = planAllowsOnlineSales(plan) && product.visibility !== 'local';
+    const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan: _p, planId: _pi, planActive: _pa, ...seller } = product.seller;
+    const onlineSales = sellerAllowsOnlineSales(product.seller) && product.visibility !== 'local';
 
     res.json({
       ...publicProduct,

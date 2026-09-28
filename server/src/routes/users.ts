@@ -674,9 +674,9 @@ const assignPlanHandler = async (req: any, res: any) => {
     const { planId, billingCycle, customCommission, isCommissionBased } = req.body;
 
     // 1. Get plan details
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId }
-    });
+    const plan = !isCommissionBased && planId
+      ? await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
+      : null;
 
     if (!plan && !isCommissionBased) {
       return res.status(404).json({ error: 'Plan no encontrado' });

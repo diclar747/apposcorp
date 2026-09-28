@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { getOptionalUser } from '../middleware/auth.js';
 import { getAffiliateConfig, getEffectiveRate, storeParticipates } from '../services/affiliateService.js';
+import { sellerAllowsOnlineSales } from '../utils/plans.js';
 
 const router = Router();
 
@@ -143,6 +144,7 @@ router.get('/:slug', async (req, res) => {
         avatar: store.user.avatar,
       },
       plan: store.plan,
+      onlineSales: sellerAllowsOnlineSales(store),
       affiliate: {
         participates: storeAccepts && products.some((p) => p.affiliateParticipates),
         maxRate: showRate && productRates.length ? Math.max(...productRates) : null,

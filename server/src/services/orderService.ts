@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import type { OrderStatus, Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { ensureWallet } from './userService.js';
-import { planAllowsOnlineSales } from '../utils/plans.js';
+import { sellerAllowsOnlineSales } from '../utils/plans.js';
 import {
   getAffiliateConfig,
   createCommissionsForOrder,
@@ -84,7 +84,7 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
         throw new OrderError(400, `El producto "${p.name}" no está disponible para compra online.`);
       }
       if (p.seller.userId === buyerId) throw new OrderError(400, 'No puedes comprar productos de tu propia tienda.');
-      if (!planAllowsOnlineSales(p.seller.plan)) {
+      if (!sellerAllowsOnlineSales(p.seller)) {
         throw new OrderError(400, `La tienda "${p.seller.storeName}" no tiene habilitada la venta online.`);
       }
       if (!(p.price > 0)) throw new OrderError(400, `El producto "${p.name}" no tiene un precio válido.`);
