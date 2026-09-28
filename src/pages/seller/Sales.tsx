@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
+import { getManagedStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { TrendingUp, DollarSign, ShoppingCart, Calendar, Loader2 } from 'lucide-react';
 import { ordersApi } from '@/lib/api';
@@ -13,7 +14,7 @@ export default function SellerSales() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && user.sellerProfile && user.sellerProfile.planActive) {
+    if (user && user.sellerProfile && user.sellerProfile.planActive && !getManagedStore()) {
       const plan = user.sellerProfile.plan;
       const tier = plan?.tier?.toLowerCase() || 'basic';
       const features = plan?.features || [];

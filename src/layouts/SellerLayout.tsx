@@ -156,13 +156,14 @@ export default function SellerLayout() {
             const isActive = location.pathname === item.href ||
               (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
             
-            // Si el plan no está activo, bloqueamos visualmente casi todo
-            const isDisabled = !isPlanActive && item.href !== '/vendedor/planes';
+            // Si el plan no está activo, bloqueamos visualmente casi todo.
+            // El superadmin gestionando la tienda ve el menú completo, tenga o no plan.
+            const isDisabled = !managedStore && !isPlanActive && item.href !== '/vendedor/planes';
             
             if (isDisabled && !isOnPlansPage) return null;
 
             // Restricción por características del plan
-            if (isPlanActive) {
+            if (isPlanActive && !managedStore) {
                 const features = user?.sellerProfile?.plan?.features || [];
                 const tier = user?.sellerProfile?.plan?.tier?.toLowerCase() || 'basic';
                 const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
