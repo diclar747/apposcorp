@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { PriceFields } from '@/components/shared/PriceFields';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -57,17 +58,6 @@ const PRODUCT_CATEGORIES = [
   'Servicios',
   'Otros'
 ];
-
-// Helper to format currency display with dots
-const formatInputCurrency = (value: number | undefined) => {
-  if (value === undefined || value === null) return '';
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
-// Helper to parse currency input back to number
-const parseInputCurrency = (value: string) => {
-  return parseInt(value.replace(/\./g, '')) || 0;
-};
 
 export default function AdminProducts() {
   const { user } = useAuthStore();
@@ -156,17 +146,6 @@ export default function AdminProducts() {
       });
     }
     setIsModalOpen(true);
-  };
-
-  const handleCalculatePrice = (cost: number, margin: number) => {
-    const price = cost * (1 + margin / 100);
-    setFormData(prev => ({ ...prev, cost, profitPercentage: margin, price: Math.round(price) }));
-  };
-
-  const handleCalculateMargin = (cost: number, price: number) => {
-    if (cost === 0) return;
-    const margin = ((price - cost) / cost) * 100;
-    setFormData(prev => ({ ...prev, cost, price, profitPercentage: Math.round(margin * 100) / 100 }));
   };
 
   const handleSaveProduct = async () => {
@@ -442,80 +421,12 @@ export default function AdminProducts() {
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Package className="w-4 h-4" /> Gestión Financiera
               </h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cost">Costo (Compra)</Label>
-                  <Input
-                    id="cost"
-                    type="text"
-                    inputMode="numeric"
-                    value={formatInputCurrency(formData.cost)}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        setFormData(prev => ({ ...prev, cost: undefined, price: undefined, profitPercentage: undefined }));
-                        return;
-                      }
-                      const cost = parseInputCurrency(rawValue);
-                      handleCalculatePrice(cost, formData.profitPercentage || 0);
-                    }}
-                    className="rounded-lg h-9 text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="profit">Ganancia (%)</Label>
-                  <Input
-                    id="profit"
-                    type="number"
-                    min="0"
-                    max="100"
-                    onWheel={(e) => (e.target as HTMLElement).blur()}
-                    value={formData.profitPercentage ?? ''}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        setFormData(prev => ({ ...prev, profitPercentage: undefined }));
-                        return;
-                      }
-                      let margin = parseFloat(rawValue) || 0;
-                      margin = Math.min(100, Math.max(0, margin));
-                      handleCalculatePrice(formData.cost || 0, margin);
-                    }}
-                    className="rounded-lg h-9 text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price" className="text-emerald-500 font-bold">Precio Total (Venta)</Label>
-                  <Input
-                    id="price"
-                    type="text"
-                    inputMode="numeric"
-                    className="border-emerald-200 focus-visible:ring-emerald-500 font-bold rounded-lg h-9 text-sm bg-emerald-50/10"
-                    value={formatInputCurrency(formData.price)}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        setFormData(prev => ({ ...prev, price: undefined, profitPercentage: undefined }));
-                        return;
-                      }
-                      let price = parseInputCurrency(rawValue);
-                      
-                      // Prevent price from being lower than cost or exceeding 100% profit
-                      const currentCost = formData.cost || 0;
-                      if (price < currentCost) {
-                        price = currentCost;
-                      }
-                      
-                      const maxPrice = currentCost * 2;
-                      if (currentCost > 0 && price > maxPrice) {
-                        price = maxPrice;
-                      }
-                      
-                      handleCalculateMargin(currentCost, price);
-                    }}
-                  />
-                </div>
-              </div>
+              <PriceFields
+                cost={formData.cost}
+                profitPercentage={formData.profitPercentage}
+                price={formData.price}
+                onChange={(v) => setFormData(prev => ({ ...prev, ...v }))}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

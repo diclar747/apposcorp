@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { PriceFields } from '@/components/shared/PriceFields';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -227,17 +228,6 @@ export default function SellerProducts() {
       });
     }
     setIsModalOpen(true);
-  };
-
-  const handleCalculatePrice = (cost: number, margin: number) => {
-    const price = cost * (1 + margin / 100);
-    setFormData(prev => ({ ...prev, cost, profitPercentage: margin, price: Math.round(price) }));
-  };
-
-  const handleCalculateMargin = (cost: number, price: number) => {
-    if (cost === 0) return;
-    const margin = ((price - cost) / cost) * 100;
-    setFormData(prev => ({ ...prev, cost, price, profitPercentage: Math.round(margin * 100) / 100 }));
   };
 
   const handleSaveProduct = async () => {
@@ -625,52 +615,12 @@ export default function SellerProducts() {
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 dark:text-white">
                 <Package className="w-4 h-4" /> Gestión Financiera
               </h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cost">Costo (Compra)</Label>
-                  <Input
-                    id="cost"
-                    type="text"
-                    value={formatNumber(formData.cost || 0)}
-                    onWheel={(e) => (e.target as HTMLElement).blur()}
-                    onChange={(e) => {
-                      const cost = parseFormattedNumber(e.target.value);
-                      handleCalculatePrice(cost, formData.profitPercentage || 0);
-                    }}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="profit">Ganancia (%)</Label>
-                  <Input
-                    id="profit"
-                    type="number"
-                    value={formData.profitPercentage}
-                    onChange={(e) => {
-                      const margin = parseFloat(e.target.value) || 0;
-                      handleCalculatePrice(formData.cost || 0, margin);
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price" className="text-green-600 dark:text-green-400 font-bold">Precio Total (Venta)</Label>
-                  <Input
-                    id="price"
-                    type="text"
-                    className="border-green-200 focus-visible:ring-green-500 font-bold"
-                    value={formatNumber(formData.price || 0)}
-                    onWheel={(e) => (e.target as HTMLElement).blur()}
-                    onChange={(e) => {
-                      const price = parseFormattedNumber(e.target.value);
-                      handleCalculateMargin(formData.cost || 0, price);
-                    }}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
-                * Ingresa Costo y % para obtener Precio, o Costo y Precio para obtener %.
-              </p>
+              <PriceFields
+                cost={formData.cost}
+                profitPercentage={formData.profitPercentage}
+                price={formData.price}
+                onChange={(v) => setFormData(prev => ({ ...prev, ...v }))}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
