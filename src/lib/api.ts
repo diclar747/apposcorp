@@ -76,6 +76,9 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  impersonate: (userId: string) =>
+    fetchWithAuth(`/auth/impersonate/${userId}`, { method: 'POST' }),
+
   changePassword: (currentPassword: string, newPassword: string) =>
     fetchWithAuth('/auth/me/password', {
       method: 'PUT',

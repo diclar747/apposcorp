@@ -17,10 +17,11 @@ export interface JWTPayload {
   userId: string;
   email: string;
   roles: string[];
+  /** Id del superadmin que está gestionando la cuenta de una tienda (modo "Gestionar tienda"). */
+  impersonatedBy?: string;
 }
 
-export const generateToken = (payload: JWTPayload): string => {
-  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
+export const generateToken = (payload: JWTPayload, expiresIn: string = process.env.JWT_EXPIRES_IN || '7d'): string => {
   return jwt.sign(payload, getSecret(), { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
 };
 

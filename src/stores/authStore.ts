@@ -40,7 +40,29 @@ interface AuthState {
   addRole: (role: UserRole) => Promise<boolean>;
   fetchCurrentUser: () => Promise<void>;
   changePassword: (current: string, newPass: string) => Promise<boolean>;
+  // "Gestionar tienda": el superadmin entra al panel de una tienda y después vuelve al suyo
+  startManagingStore: (sellerUserId: string, storeName: string) => Promise<boolean>;
+  stopManagingStore: () => Promise<void>;
 }
+
+// Mientras el superadmin gestiona una tienda, su propio token queda guardado aparte para volver
+const ADMIN_TOKEN_KEY = 'oscorp-admin-token';
+const MANAGED_STORE_KEY = 'oscorp-managed-store';
+
+const clearManagedStore = () => {
+  for (const storage of [localStorage, sessionStorage]) {
+    storage.removeItem(ADMIN_TOKEN_KEY);
+    storage.removeItem(MANAGED_STORE_KEY);
+  }
+};
+
+const tokenStorage = () => (localStorage.getItem('oscorp-token') ? localStorage : sessionStorage);
+
+/** Nombre de la tienda que el superadmin está gestionando, o null si no está en ese modo. */
+export const getManagedStore = (): string | null => {
+  const storage = tokenStorage();
+  return storage.getItem(ADMIN_TOKEN_KEY) ? storage.getItem(MANAGED_STORE_KEY) || 'la tienda' : null;
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -62,6 +84,7 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const response = await authApi.login(email, password);
+          clearManagedStore();
 
           // Save token based on remember preference
           if (remember) {
@@ -101,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const response = await authApi.loginWithGoogle(credential, role);
+          clearManagedStore();
 
           if (remember) {
             localStorage.setItem('oscorp-token', response.token);
@@ -169,6 +193,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('oscorp-token');
         sessionStorage.removeItem('oscorp-token');
+        clearManagedStore();
         set({
           user: null,
           isAuthenticated: false,
@@ -296,6 +321,43 @@ export const useAuthStore = create<AuthState>()(
       hasRole: (roles: UserRole[]) => {
         const { user } = get();
         return user?.roles ? user.roles.some((r: UserRole) => roles.includes(r)) : false;
+      },
+
+      startManagingStore: async (sellerUserId: string, storeName: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const storage = tokenStorage();
+          const adminToken = storage.getItem('oscorp-token');
+          if (!adminToken) throw new Error('Sesión no encontrada');
+          const response = await authApi.impersonate(sellerUserId);
+
+          storage.setItem(ADMIN_TOKEN_KEY, adminToken);
+          storage.setItem(MANAGED_STORE_KEY, storeName);
+          storage.setItem('oscorp-token', response.token);
+          set({ user: response.user, token: response.token, activeRole: 'seller', isLoading: false });
+          // Recarga completa: así ningún dato del admin queda en memoria dentro del panel de la tienda
+          window.location.href = '/vendedor';
+          return true;
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message || 'No se pudo abrir la tienda' });
+          return false;
+        }
+      },
+
+      stopManagingStore: async () => {
+        const storage = tokenStorage();
+        const adminToken = storage.getItem(ADMIN_TOKEN_KEY);
+        storage.removeItem(ADMIN_TOKEN_KEY);
+        storage.removeItem(MANAGED_STORE_KEY);
+        if (!adminToken) {
+          get().logout();
+          window.location.href = '/login';
+          return;
+        }
+        storage.setItem('oscorp-token', adminToken);
+        set({ token: adminToken, user: null, activeRole: 'superadmin' });
+        await get().fetchCurrentUser();
+        window.location.href = '/admin/tiendas';
       },
 
       changePassword: async (current: string, newPass: string) => {

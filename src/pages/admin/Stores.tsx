@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, Store, MapPin, Phone, Star, CheckCircle, XCircle, Loader2, Camera, Facebook, Instagram } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Store, MapPin, Phone, Star, CheckCircle, XCircle, Loader2, Camera, Facebook, Instagram, LayoutDashboard } from 'lucide-react';
 import { usersApi } from '@/lib/api';
+import { useAuthStore } from '@/stores';
 import { SingleImageField } from '@/components/shared/ImageField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -252,6 +253,23 @@ export default function AdminStores() {
       logo: '', banner: '', facebook: '', instagram: ''
     });
     setEditingId(null);
+  };
+
+  const { startManagingStore } = useAuthStore();
+  const [managingId, setManagingId] = useState<string | null>(null);
+
+  // Abre el panel de vendedor de esta tienda con control completo (productos, pedidos, afiliados...)
+  const handleManage = async (store: StoreData) => {
+    if (!store.isActive) {
+      toast.error('La tienda está desactivada. Activala antes de gestionarla.');
+      return;
+    }
+    setManagingId(store.id);
+    const ok = await startManagingStore(store.id, store.name);
+    if (!ok) {
+      toast.error(useAuthStore.getState().error || 'No se pudo abrir la tienda');
+      setManagingId(null);
+    }
   };
 
   const handleEditClick = (store: StoreData) => {
@@ -571,6 +589,7 @@ export default function AdminStores() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="font-semibold text-blue-600" onClick={() => handleManage(store)}>Gestionar tienda</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setViewingStore(store)}>Ver detalles</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEditClick(store)}>Editar tienda</DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteClick(store.id)}>Eliminar tienda</DropdownMenuItem>
@@ -621,6 +640,15 @@ export default function AdminStores() {
                       <span>{store.phone || 'Sin teléfono'}</span>
                     </div>
                   </div>
+
+                  <Button
+                    className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleManage(store)}
+                    disabled={managingId === store.id}
+                  >
+                    {managingId === store.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LayoutDashboard className="w-4 h-4 mr-2" />}
+                    Gestionar tienda
+                  </Button>
 
                   {/* Footer */}
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">

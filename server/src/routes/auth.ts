@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
-import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { createUserAccount, sanitizeRoles, validatePassword, PUBLIC_ROLES } from '../services/userService.js';
 import { generateStoreSlug } from '../utils/slug.js';
 
@@ -492,6 +492,37 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Get /me error:', error);
     res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// "Gestionar tienda": el superadmin entra al panel de una tienda como si fuera el dueño.
+// El token dura poco, lleva quién lo abrió (impersonatedBy) y el middleware bloquea las acciones
+// personales del dueño (billetera, contraseña, datos bancarios...).
+router.post('/impersonate/:userId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const target = await findUserWithRelations({ id: req.params.userId as string });
+    if (!target) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const roles = (target.roles as string[]) || [];
+    if (!roles.includes('seller') || roles.includes('superadmin')) {
+      return res.status(400).json({ error: 'Solo se pueden gestionar cuentas de tiendas' });
+    }
+    if (!target.isActive) {
+      return res.status(400).json({ error: 'La tienda está desactivada. Activala antes de gestionarla.' });
+    }
+
+    const token = generateToken(
+      { userId: target.id, email: target.email, roles, impersonatedBy: req.user!.userId },
+      '4h',
+    );
+    console.log(`[gestionar-tienda] ${req.user!.email} abrió la tienda de ${target.email} (${target.id})`);
+
+    const { password: _, ...userWithoutPassword } = target;
+    res.json({ token, user: userWithoutPassword });
+  } catch (error) {
+    console.error('Impersonate error:', error);
+    res.status(500).json({ error: 'Error al abrir la gestión de la tienda' });
   }
 });
 
