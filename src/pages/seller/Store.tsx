@@ -14,6 +14,20 @@ import { usersApi } from '@/lib/api';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 
+// Horario inicial. Las tiendas creadas sin horario guardan {} y el editor no mostraba ningún día:
+// se completa cada día que falte con este valor.
+const DEFAULT_BUSINESS_HOURS = {
+  monday: { isOpen: true, open: '08:00', close: '18:00' },
+  tuesday: { isOpen: true, open: '08:00', close: '18:00' },
+  wednesday: { isOpen: true, open: '08:00', close: '18:00' },
+  thursday: { isOpen: true, open: '08:00', close: '18:00' },
+  friday: { isOpen: true, open: '08:00', close: '18:00' },
+  saturday: { isOpen: true, open: '08:00', close: '13:00' },
+  sunday: { isOpen: false, open: '00:00', close: '00:00' },
+};
+
+const withDefaultHours = (saved: unknown) => ({ ...DEFAULT_BUSINESS_HOURS, ...((saved as object) || {}) });
+
 export default function SellerStore() {
   const { user, fetchCurrentUser } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
@@ -42,15 +56,7 @@ export default function SellerStore() {
     banner: '',
     facebook: '',
     instagram: '',
-    businessHours: {
-      monday: { isOpen: true, open: '08:00', close: '18:00' },
-      tuesday: { isOpen: true, open: '08:00', close: '18:00' },
-      wednesday: { isOpen: true, open: '08:00', close: '18:00' },
-      thursday: { isOpen: true, open: '08:00', close: '18:00' },
-      friday: { isOpen: true, open: '08:00', close: '18:00' },
-      saturday: { isOpen: true, open: '08:00', close: '13:00' },
-      sunday: { isOpen: false, open: '00:00', close: '00:00' },
-    }
+    businessHours: DEFAULT_BUSINESS_HOURS,
   });
 
   // Load user data into form
@@ -71,15 +77,7 @@ export default function SellerStore() {
         banner: p.banner || '',
         facebook: (p.socialLinks as any)?.facebook || '',
         instagram: (p.socialLinks as any)?.instagram || '',
-        businessHours: (p.businessHours as any) || {
-          monday: { isOpen: true, open: '08:00', close: '18:00' },
-          tuesday: { isOpen: true, open: '08:00', close: '18:00' },
-          wednesday: { isOpen: true, open: '08:00', close: '18:00' },
-          thursday: { isOpen: true, open: '08:00', close: '18:00' },
-          friday: { isOpen: true, open: '08:00', close: '18:00' },
-          saturday: { isOpen: true, open: '08:00', close: '13:00' },
-          sunday: { isOpen: false, open: '00:00', close: '00:00' },
-        },
+        businessHours: withDefaultHours(p.businessHours),
       });
     }
   }, [user]);
@@ -128,7 +126,7 @@ export default function SellerStore() {
         banner: p.banner || '',
         facebook: (p.socialLinks as any)?.facebook || '',
         instagram: (p.socialLinks as any)?.instagram || '',
-        businessHours: (p.businessHours as any) || formData.businessHours,
+        businessHours: withDefaultHours(p.businessHours),
       });
     }
   };

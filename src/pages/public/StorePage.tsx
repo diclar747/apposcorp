@@ -185,7 +185,7 @@ export default function StorePage() {
     );
   }
 
-  const open = store.businessHours ? isStoreOpen(store.businessHours) : false;
+  const open = isStoreOpen(store.businessHours);
   const avgRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : "5.0";

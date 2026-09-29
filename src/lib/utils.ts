@@ -166,7 +166,8 @@ export function getInitials(firstName: string, lastName: string): string {
 
 // Verificar si una tienda está abierta
 export function isStoreOpen(businessHours: any): boolean {
-  if (!businessHours) return true; // Default to "open" when no hours configured
+  // Sin horario cargado ({} o null) se muestra abierta
+  if (!businessHours || Object.keys(businessHours).length === 0) return true;
 
   try {
     const now = new Date();
