@@ -96,10 +96,11 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
         const netWorth = balance + totalAssets - totalLiabilities;
 
         // 2. Today's stats
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        // "Hoy" / "mes" se calculan en hora de Paraguay (UTC-3), no en la hora del servidor (UTC),
+        // si no el día se reinicia a las 21:00 locales.
+        const pyToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date()); // YYYY-MM-DD
+        const today = new Date(`${pyToday}T03:00:00.000Z`);
+        const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
         const todayRecords = allRecords.filter(r => {
             const d = new Date(r.date);
@@ -111,9 +112,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
         const todayBalance = todayIncome - todayExpenses;
 
         // 3. Current Month Stats (for growth calculation)
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
-        const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+        const startOfMonth = new Date(`${pyToday.slice(0, 8)}01T03:00:00.000Z`);
 
         const monthlyRecords = allRecords.filter(r => new Date(r.date) >= startOfMonth);
         const monthIncome = monthlyRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
