@@ -375,6 +375,7 @@ export default function ClientIngenio() {
                     <Label>Meta de Ingresos</Label>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       placeholder="0"
                       value={newRecord.amount}
                       onChange={(e) => setNewRecord({ ...newRecord, amount: e.target.value })}
@@ -385,6 +386,7 @@ export default function ClientIngenio() {
                     <Label>Límite de Gastos</Label>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       placeholder="0"
                       value={newRecord.description}
                       onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
@@ -398,6 +400,7 @@ export default function ClientIngenio() {
                     <Label>Monto</Label>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       placeholder="0"
                       value={newRecord.amount}
                       onChange={(e) => setNewRecord({ ...newRecord, amount: e.target.value })}
@@ -696,6 +699,7 @@ function BudgetSection() {
                   <Label className="font-bold">Meta de Ingresos</Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     value={editForm.incomeGoal}
                     onChange={e => setEditForm({ ...editForm, incomeGoal: e.target.value })}
                     className="h-12 rounded-xl text-lg font-bold"
@@ -705,6 +709,7 @@ function BudgetSection() {
                   <Label className="font-bold">Límite de Gastos</Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     value={editForm.expenseLimit}
                     onChange={e => setEditForm({ ...editForm, expenseLimit: e.target.value })}
                     className="h-12 rounded-xl text-lg font-bold"

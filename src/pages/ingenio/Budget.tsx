@@ -333,6 +333,7 @@ export default function IngenioBudget() {
                   <Label className="font-bold">Monto (₲)</Label>
                   <Input
                     type="text"
+                    inputMode="numeric"
                     placeholder="0"
                     value={newBudgetItem.amount}
                     onChange={(e) => {
@@ -435,6 +436,7 @@ export default function IngenioBudget() {
                       <Label className="text-[10px] font-bold text-slate-400">Gasto %</Label>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         min={0}
                         max={100}
                         value={editForm.expensePercent}
@@ -446,6 +448,7 @@ export default function IngenioBudget() {
                       <Label className="text-[10px] font-bold text-slate-400">Activo %</Label>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         min={0}
                         max={100}
                         value={editForm.assetPercent}
@@ -457,6 +460,7 @@ export default function IngenioBudget() {
                       <Label className="text-[10px] font-bold text-slate-400">Pasivo %</Label>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         min={0}
                         max={100}
                         value={editForm.liabilityPercent}
@@ -707,7 +711,13 @@ export default function IngenioBudget() {
                     </div>
                   </div>
 
-                  {!isExpired && (
+                  {!isExpired && item.autoSynced && (
+                    <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Se actualiza solo con tus movimientos
+                    </p>
+                  )}
+
+                  {!isExpired && !item.autoSynced && (
                     <Button 
                       onClick={() => {
                         setLogId(item.id);
@@ -793,6 +803,7 @@ export default function IngenioBudget() {
                 <Label className="font-bold">Monto (₲)</Label>
                 <Input
                   type="text"
+                  inputMode="numeric"
                   value={editingItem.amount}
                   onChange={(e) => {
                     const raw = e.target.value.replace(/\D/g, '');
@@ -854,6 +865,7 @@ export default function IngenioBudget() {
               <Label className="font-bold">Monto (₲)</Label>
               <Input 
                 type="text" 
+                inputMode="numeric"
                 placeholder="0" 
                 value={logAmount}
                 onChange={e => {

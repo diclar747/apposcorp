@@ -896,6 +896,7 @@ export default function Gestion() {
                 <Label className="text-xs font-bold uppercase">Monto *</Label>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   placeholder="0"
                   className="h-11 text-lg font-bold"
                   value={movementForm.amount}

@@ -449,7 +449,31 @@ router.get('/budget/items', authenticate, async (req: AuthRequest, res) => {
             orderBy: { startDate: 'desc' }
         });
 
-        res.json(items);
+        // El avance de cada presupuesto sale de los movimientos reales (ingresos, gastos, activos
+        // y pasivos) del mismo tipo dentro del ciclo del presupuesto: no hay que cargarlo dos veces.
+        const pyDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(d);
+        const cycles = items.map(it => {
+            const [y, m, d] = pyDay(it.startDate).split('-').map(Number);
+            const from = new Date(Date.UTC(y, m - 1, d, 3, 0, 0));
+            const to = new Date(Date.UTC(y, m - 1 + (it.durationMonths || 1), d, 3, 0, 0));
+            return { from, to };
+        });
+        let records: { type: string; amount: number; date: Date }[] = [];
+        if (items.length > 0) {
+            const minFrom = new Date(Math.min(...cycles.map(c => c.from.getTime())));
+            records = await prisma.financialRecord.findMany({
+                where: { userId, date: { gte: minFrom } },
+                select: { type: true, amount: true, date: true }
+            });
+        }
+
+        res.json(items.map((it, i) => ({
+            ...it,
+            actualAmount: records
+                .filter(r => r.type === it.type && r.date >= cycles[i].from && r.date < cycles[i].to)
+                .reduce((sum, r) => sum + r.amount, 0),
+            autoSynced: true
+        })));
     } catch (error) {
         console.error('Get budget items error:', error);
         res.status(500).json({ error: 'Erro no servidor' });
