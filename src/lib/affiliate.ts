@@ -30,7 +30,7 @@ export const getVisitorId = (): string => {
 };
 
 /** Registra la visita si la URL trae ?ref=CODIGO. Falla en silencio: nunca debe romper la página. */
-export const trackReferral = async (target: { productSlug?: string; storeSlug?: string }, search: string) => {
+export const trackReferral = async (target: { productSlug?: string; storeSlug?: string; courseSlug?: string }, search: string) => {
   const code = new URLSearchParams(search).get('ref');
   if (!code || !/^[A-Za-z0-9]{4,16}$/.test(code)) return;
   try {

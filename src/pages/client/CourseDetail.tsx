@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
 import { coursesApi } from '@/lib/api';
+import { getVisitorId, trackReferral } from '@/lib/affiliate';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,9 +44,16 @@ export default function ClientCourseDetail() {
 
   const hasMembership = hasRole(['ingenio', 'superadmin']);
 
+  const location = useLocation();
+
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
+
+  // Visita desde el enlace de un afiliado (?ref=CODIGO)
+  useEffect(() => {
+    if (id) trackReferral({ courseSlug: id }, location.search);
+  }, [id, location.search]);
 
   const fetchData = async () => {
     try {
@@ -83,7 +91,7 @@ export default function ClientCourseDetail() {
     if (!course) return;
     setEnrolling(true);
     try {
-      await coursesApi.enroll(course.id);
+      await coursesApi.enroll(course.id, getVisitorId());
       toast.success('Inscripción exitosa');
       fetchData();
     } catch (error: any) {

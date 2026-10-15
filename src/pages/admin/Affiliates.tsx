@@ -39,6 +39,7 @@ export default function AdminAffiliates() {
           <TabsTrigger value="payouts">Pagos</TabsTrigger>
           <TabsTrigger value="reports">Reportes</TabsTrigger>
           <TabsTrigger value="stores">Tiendas y productos</TabsTrigger>
+          <TabsTrigger value="courses">Cursos</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
         <TabsContent value="commissions" className="mt-4"><CommissionsTab /></TabsContent>
@@ -46,6 +47,7 @@ export default function AdminAffiliates() {
         <TabsContent value="payouts" className="mt-4"><PayoutsTab /></TabsContent>
         <TabsContent value="reports" className="mt-4"><ReportsTab /></TabsContent>
         <TabsContent value="stores" className="mt-4"><StoresTab /></TabsContent>
+        <TabsContent value="courses" className="mt-4"><CoursesTab /></TabsContent>
         <TabsContent value="config" className="mt-4"><ConfigTab /></TabsContent>
       </Tabs>
     </div>
@@ -183,11 +185,17 @@ function CommissionsTab() {
                   </TableCell>
                   <TableCell>
                     <div className="line-clamp-1">{c.productName}</div>
-                    <div className="text-[11px] text-muted-foreground">{c.storeName} · enlace de {c.source === 'store' ? 'tienda' : 'producto'}</div>
+                    <div className="text-[11px] text-muted-foreground">{c.storeName} · {c.source === 'course' ? 'curso' : `enlace de ${c.source === 'store' ? 'tienda' : 'producto'}`}</div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <div className="font-mono text-xs">{c.order.orderNumber}</div>
-                    <div className="text-[11px] text-muted-foreground">{c.order.status} · {c.order.paymentMethod === 'wallet' ? 'billetera' : 'contra entrega'}</div>
+                    {c.order ? (
+                      <>
+                        <div className="font-mono text-xs">{c.order.orderNumber}</div>
+                        <div className="text-[11px] text-muted-foreground">{c.order.status} · {c.order.paymentMethod === 'wallet' ? 'billetera' : 'contra entrega'}</div>
+                      </>
+                    ) : (
+                      <div className="text-[11px] text-muted-foreground">Matrícula de curso · billetera</div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap tabular-nums">
                     {formatCurrency(c.amount)}
@@ -478,6 +486,73 @@ function StoresTab() {
   );
 }
 
+function CoursesTab() {
+  const [data, setData] = useState<{ mode: string; courses: any[] } | null>(null);
+  const [rates, setRates] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    affiliatesApi.adminGetCourses().then((d) => {
+      setData(d);
+      setRates(Object.fromEntries(d.courses.map((c: any) => [c.id, c.affiliateRate != null ? String(c.affiliateRate) : ''])));
+    }).catch((e) => toast.error(e.message));
+  }, []);
+  useEffect(load, [load]);
+
+  const save = async (c: any, patch: { affiliateEnabled?: boolean }) => {
+    setBusy(c.id);
+    try {
+      const raw = rates[c.id];
+      await affiliatesApi.adminUpdateCourse(c.id, { affiliateRate: raw === '' ? null : Number(raw), ...patch });
+      toast.success('Curso actualizado: vale para las próximas ventas');
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!data) return <Loading />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Comisiones de cursos</CardTitle>
+        <CardDescription>
+          Cada curso tiene su propio % y se activa por separado. Cambiar el % solo afecta ventas nuevas: las ya generadas conservan el que tenían.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.courses.length === 0 && <p className="text-sm text-muted-foreground">Todavía no hay cursos.</p>}
+        {data.courses.map((c) => (
+          <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(c.price)}{!c.isPublished && ' · sin publicar'} · {c.sales} ventas · {formatCurrency(c.commissionAmount)} en comisiones
+                </p>
+              </div>
+              <Switch checked={c.affiliateEnabled} disabled={busy === c.id} onCheckedChange={(v) => save(c, { affiliateEnabled: v })} aria-label="Afiliación activa" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative w-28">
+                <Input type="number" inputMode="decimal" min={0} value={rates[c.id] ?? ''} onChange={(e) => setRates({ ...rates, [c.id]: e.target.value })} className="pr-7" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+              </div>
+              <Button size="sm" variant="outline" disabled={busy === c.id} onClick={() => save(c, {})}>Guardar %</Button>
+              {rates[c.id] && Number(rates[c.id]) > 0 && (
+                <span className="text-xs text-muted-foreground">Gana {formatCurrency(Math.floor((c.price * Number(rates[c.id])) / 100))} por venta</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConfigTab() {
   const [cfg, setCfg] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -533,6 +608,19 @@ function ConfigTab() {
           {number('maxRate', '% máximo', 'El mayor % que puede fijar una tienda.', '%')}
           {number('cookieDays', 'Ventana de atribución', 'Días que dura un clic (gana el último).', 'días')}
           {number('holdDays', 'Plazo de garantía', 'Días después de la entrega antes de liberar la comisión. 0 = al entregar.', 'días')}
+          {number('courseHoldDays', 'Garantía de cursos', 'Días desde la compra de un curso antes de liberar la comisión.', 'días')}
+          <div className="space-y-1.5">
+            <Label>¿Quién puede promocionar un curso?</Label>
+            <Select value={cfg.courseMode} onValueChange={(v) => setCfg({ ...cfg, courseMode: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Cualquier afiliado activo</SelectItem>
+                <SelectItem value="enrolled">Solo estudiantes matriculados en ese curso</SelectItem>
+                <SelectItem value="completed">Solo quienes terminaron ese curso</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Terminar un curso solo habilita promocionar ese curso, no los demás.</p>
+          </div>
         </div>
         <div className="divide-y divide-border">
           {toggle('autoApprove', 'Aprobar afiliados al instante', 'Si está apagado, cada nuevo afiliado queda pendiente hasta que lo actives.')}

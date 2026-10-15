@@ -130,13 +130,15 @@ export default function ClientAffiliates() {
       </div>
 
       <Tabs defaultValue="explorar">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="explorar">Explorar</TabsTrigger>
+          <TabsTrigger value="cursos">Cursos</TabsTrigger>
           <TabsTrigger value="promociones">Promociones</TabsTrigger>
           <TabsTrigger value="estadisticas">Estadísticas</TabsTrigger>
           <TabsTrigger value="ganancias">Ganancias</TabsTrigger>
         </TabsList>
         <TabsContent value="explorar" className="mt-4"><ExploreTab /></TabsContent>
+        <TabsContent value="cursos" className="mt-4"><CoursesTab code={me?.profile?.code} /></TabsContent>
         <TabsContent value="promociones" className="mt-4"><LinksTab /></TabsContent>
         <TabsContent value="estadisticas" className="mt-4"><StatsTab /></TabsContent>
         <TabsContent value="ganancias" className="mt-4"><EarningsTab earnings={earnings} walletBalance={walletBalance} /></TabsContent>
@@ -216,6 +218,71 @@ function ExploreTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function CoursesTab({ code }: { code?: string }) {
+  const [data, setData] = useState<{ mode: string; courses: any[] } | null>(null);
+
+  useEffect(() => {
+    affiliatesApi.getCourses().then(setData).catch(() => setData({ mode: 'open', courses: [] }));
+  }, []);
+
+  const linkOf = (c: any) => `${window.location.origin}${c.path}?ref=${code}`;
+  const copy = async (c: any) => {
+    try {
+      await navigator.clipboard.writeText(linkOf(c));
+      toast.success('Enlace copiado');
+    } catch {
+      toast.error('No se pudo copiar');
+    }
+  };
+
+  if (!data) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (data.courses.length === 0) {
+    return <p className="text-center text-sm text-muted-foreground py-10">Todavía no hay cursos habilitados para promocionar.</p>;
+  }
+
+  const lockedText = data.mode === 'completed' ? 'Terminá este curso para poder promocionarlo.' : 'Matriculate en este curso para poder promocionarlo.';
+
+  return (
+    <div className="space-y-2">
+      {data.courses.map((c) => (
+        <Card key={c.id} className={cn(!c.allowed && 'opacity-70')}>
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-lg bg-muted overflow-hidden shrink-0">
+                {c.coverImage ? <img src={c.coverImage} alt="" className="w-full h-full object-cover" /> : <Package className="w-5 h-5 m-3 text-muted-foreground" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(c.price)} · {c.rate}% · ganás {formatCurrency(c.commissionPerSale)} por venta
+                </p>
+              </div>
+            </div>
+            {c.allowed ? (
+              <>
+                <div className="grid grid-cols-2 text-center text-xs">
+                  <div><p className="font-black text-base tabular-nums">{c.clicks}</p><p className="text-muted-foreground">Clics</p></div>
+                  <div><p className="font-black text-base tabular-nums">{c.sales}</p><p className="text-muted-foreground">Ventas</p></div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => copy(c)}><Copy className="w-3.5 h-3.5 mr-1.5" />Copiar enlace</Button>
+                  <Button size="sm" variant="outline" className="flex-1" asChild>
+                    <a href={`https://wa.me/?text=${encodeURIComponent(`${c.title} ${linkOf(c)}`)}`} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="w-3.5 h-3.5 mr-1.5" />WhatsApp
+                    </a>
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">{lockedText}</p>
+            )}
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

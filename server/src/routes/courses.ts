@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { createCommissionForCourseSale, cancelCommissionForCourseAccess, notifyNewCommissions } from '../services/affiliateService.js';
 
 const router = Router();
 
@@ -684,13 +685,15 @@ router.delete('/:id/access/:accessId', authenticate, authorize('superadmin'), as
       return res.status(404).json({ error: 'Acceso no encontrado' });
     }
 
-    await prisma.$transaction([
-      prisma.userCourse.delete({ where: { id: accessId } }),
-      prisma.course.update({
+    await prisma.$transaction(async (tx) => {
+      // Si el acceso se quita (reembolso/anulación), la comisión de afiliado de esa matrícula se anula o se revierte
+      await cancelCommissionForCourseAccess(tx, accessId, 'Acceso al curso quitado');
+      await tx.userCourse.delete({ where: { id: accessId } });
+      await tx.course.update({
         where: { id: userCourse.courseId },
         data: { enrolledCount: { decrement: 1 } },
-      }),
-    ]);
+      });
+    });
 
     res.json({ message: 'Acceso eliminado' });
   } catch (error) {
@@ -773,16 +776,27 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           data: { enrolledCount: { increment: 1 } },
         });
 
-        return tx.userCourse.create({
+        const created = await tx.userCourse.create({
           data: {
             userId: req.user!.userId,
             courseId: id,
             status: 'active',
           },
         });
+
+        // Si llegó por el enlace de un afiliado, se genera su comisión (pendiente hasta que termine la garantía)
+        const commission = await createCommissionForCourseSale(tx, {
+          userCourseId: created.id,
+          buyerId: req.user!.userId,
+          visitorId: typeof req.body?.visitorId === 'string' ? req.body.visitorId.slice(0, 64) : null,
+          course,
+          amountPaid: course.price,
+        });
+        return { created, commission };
       });
 
-      return res.status(201).json(userCourse);
+      if (userCourse.commission) notifyNewCommissions([userCourse.commission]);
+      return res.status(201).json(userCourse.created);
     } else {
       // Free course, just enroll
       await prisma.course.update({

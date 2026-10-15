@@ -468,6 +468,9 @@ model Course {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   updateYear       String?
+  // Programa de afiliados: cada curso tiene su propio % y se puede apagar por separado
+  affiliateEnabled Boolean      @default(false)
+  affiliateRate    Float?
   modules          Module[]
   resources        Resource[]
   userCourses      UserCourse[]
@@ -1077,6 +1080,7 @@ model AffiliateClick {
   linkId      String?
   sellerId    String // SellerProfile.id
   productId   String?
+  courseId    String? // clic de un enlace de curso (sellerId = COURSE_SELLER_ID)
   visitorId   String
   userId      String?
   ipHash      String?
@@ -1093,10 +1097,12 @@ model AffiliateClick {
 model AffiliateCommission {
   id          String                    @id @default(uuid())
   affiliateId String
-  orderId     String
-  orderItemId String                    @unique // una sola comisión por producto de cada pedido
-  sellerId    String // SellerProfile.id
+  orderId     String? // null en comisiones de cursos
+  orderItemId String?                   @unique // una sola comisión por producto de cada pedido
+  sellerId    String // SellerProfile.id; en cursos vale COURSE_SELLER_ID
   productId   String?
+  courseId    String? // comisión de un curso de Ingenio Millonario
+  userCourseId String?                  @unique // una sola comisión por matrícula
   productName String
   buyerId     String
   clickId     String?
@@ -1116,7 +1122,7 @@ model AffiliateCommission {
   createdAt   DateTime                  @default(now())
   updatedAt   DateTime                  @updatedAt
   affiliate   AffiliateProfile          @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
-  order       Order                     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order       Order?                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
   buyer       User                      @relation("AffiliateCommissionBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
 
   @@index([affiliateId, status])

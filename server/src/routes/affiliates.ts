@@ -13,6 +13,9 @@ import {
   adminCancelCommissions,
   releaseDueCommissions,
   parseRateInput,
+  getCourseEffectiveRate,
+  canPromoteCourse,
+  COURSE_MODES,
 } from '../services/affiliateService.js';
 
 const router = Router();
@@ -71,13 +74,14 @@ router.get('/program', async (_req, res) => {
 // Registrar la visita de un enlace ?ref=CODIGO
 router.post('/track', async (req, res) => {
   try {
-    const { code, visitorId, productSlug, storeSlug } = req.body || {};
+    const { code, visitorId, productSlug, storeSlug, courseSlug } = req.body || {};
     const viewer = await getOptionalUser(req);
     const click = await trackClick({
       code: String(code || ''),
       visitorId: String(visitorId || ''),
       productSlug: productSlug ? String(productSlug) : undefined,
       storeSlug: storeSlug ? String(storeSlug) : undefined,
+      courseSlug: courseSlug ? String(courseSlug) : undefined,
       userId: viewer?.userId ?? null,
       ip: req.ip,
     });
@@ -320,7 +324,7 @@ router.get('/commissions', authenticate, async (req: AuthRequest, res) => {
     });
     res.json(commissions.map(({ buyerId: _b, clickId: _c, walletTxId: _w, ...c }) => ({
       ...c,
-      storeName: sellers.find((s) => s.id === c.sellerId)?.storeName || '',
+      storeName: c.courseId ? 'Ingenio Millonario' : sellers.find((s) => s.id === c.sellerId)?.storeName || '',
     })));
   } catch (error) {
     serverError(res, error, 'commissions');
@@ -339,12 +343,12 @@ router.get('/stats', authenticate, async (req: AuthRequest, res) => {
       prisma.affiliateClick.findMany({ where: { affiliateId: profile.id, createdAt: { gte: since } }, select: { visitorId: true, createdAt: true } }),
       prisma.affiliateCommission.findMany({
         where: { affiliateId: profile.id, createdAt: { gte: since }, status: { notIn: ['cancelled', 'reversed'] } },
-        select: { orderId: true, amount: true, createdAt: true },
+        select: { id: true, orderId: true, amount: true, createdAt: true },
       }),
     ]);
 
     const visitors = new Set(clicks.map((c) => c.visitorId)).size;
-    const orders = new Set(commissions.map((c) => c.orderId)).size;
+    const orders = new Set(commissions.map((c) => c.orderId ?? c.id)).size;
 
     const series: Record<string, { date: string; clicks: number; sales: number; earned: number }> = {};
     for (let i = days - 1; i >= 0; i--) {
@@ -360,7 +364,8 @@ router.get('/stats', authenticate, async (req: AuthRequest, res) => {
       const d = c.createdAt.toISOString().slice(0, 10);
       if (!series[d]) continue;
       series[d].earned += c.amount;
-      if (!seenOrders.has(c.orderId)) { seenOrders.add(c.orderId); series[d].sales++; }
+      const key = c.orderId ?? c.id;
+      if (!seenOrders.has(key)) { seenOrders.add(key); series[d].sales++; }
     }
 
     res.json({
@@ -481,7 +486,7 @@ router.get('/seller/report', authenticate, authorize('seller', 'superadmin'), as
         commission: 0,
       };
       if (c.status !== 'cancelled' && c.status !== 'reversed') {
-        row.orders.add(c.orderId);
+        row.orders.add(c.orderId ?? c.id);
         row.sales += c.baseAmount;
         row.commission += c.amount;
       }
@@ -495,8 +500,8 @@ router.get('/seller/report', authenticate, authorize('seller', 'superadmin'), as
       commissions: commissions.map((c) => ({
         id: c.id,
         createdAt: c.createdAt,
-        orderNumber: c.order.orderNumber,
-        orderStatus: c.order.status,
+        orderNumber: c.order?.orderNumber ?? '',
+        orderStatus: c.order?.status ?? '',
         productName: c.productName,
         affiliateCode: c.affiliate.code,
         affiliateName: `${c.affiliate.user.firstName} ${c.affiliate.user.lastName}`,
@@ -565,7 +570,10 @@ router.get('/admin/commissions', ...admin, async (req: AuthRequest, res) => {
       where: { id: { in: [...new Set(commissions.map((c) => c.sellerId))] } },
       select: { id: true, storeName: true },
     });
-    res.json(commissions.map((c) => ({ ...c, storeName: sellers.find((s) => s.id === c.sellerId)?.storeName || '' })));
+    res.json(commissions.map((c) => ({
+      ...c,
+      storeName: c.courseId ? 'Ingenio Millonario' : sellers.find((s) => s.id === c.sellerId)?.storeName || '',
+    })));
   } catch (error) {
     serverError(res, error, 'admin commissions');
   }
@@ -751,7 +759,10 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
     for (const s of AFFILIATE_SETTINGS) {
       if (body[s.field] === undefined) continue;
       if (s.type === 'bool') next[s.field] = !!body[s.field];
-      else {
+      else if (s.type === 'text') {
+        if (!COURSE_MODES.includes(body[s.field])) return res.status(400).json({ error: 'Modalidad de cursos inválida' });
+        next[s.field] = body[s.field];
+      } else {
         const n = Number(body[s.field]);
         if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: `Valor inválido para ${s.description}` });
         next[s.field] = n;
@@ -761,6 +772,7 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'El rango de % debe cumplir 0 < mínimo ≤ máximo ≤ 100' });
     }
     if (next.cookieDays < 1 || next.cookieDays > 365) return res.status(400).json({ error: 'La ventana de atribución debe ser de 1 a 365 días' });
+    if (next.courseHoldDays > 365) return res.status(400).json({ error: 'El plazo de garantía de cursos no puede superar 365 días' });
     if (next.holdDays > 365) return res.status(400).json({ error: 'El plazo de garantía no puede superar 365 días' });
 
     await prisma.$transaction(AFFILIATE_SETTINGS.map((s) =>
@@ -773,6 +785,101 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
     res.json({ config: await getAffiliateConfig() });
   } catch (error) {
     serverError(res, error, 'admin config update');
+  }
+});
+
+// ═══ Cursos de Ingenio Millonario ═════════════════════════════════════════════
+
+// Catálogo de cursos que puedo promocionar (según la modalidad del programa) con mi enlace
+router.get('/courses', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const profile = await requireAffiliate(req, res);
+    if (!profile) return;
+    const cfg = await getAffiliateConfig();
+    const courses = await prisma.course.findMany({
+      where: { isPublished: true, affiliateEnabled: true },
+      orderBy: { title: 'asc' },
+    });
+    const out = [];
+    for (const c of courses) {
+      const rate = getCourseEffectiveRate(c, cfg);
+      if (rate === null) continue;
+      const allowed = await canPromoteCourse(profile.userId, c.id, cfg);
+      const [clicks, sales] = await Promise.all([
+        prisma.affiliateClick.count({ where: { affiliateId: profile.id, courseId: c.id } }),
+        prisma.affiliateCommission.count({ where: { affiliateId: profile.id, courseId: c.id, status: { notIn: ['cancelled', 'reversed'] } } }),
+      ]);
+      out.push({
+        id: c.id,
+        title: c.title,
+        slug: c.slug,
+        coverImage: c.coverImage,
+        price: c.price,
+        rate,
+        commissionPerSale: Math.floor((c.price * rate) / 100),
+        allowed,
+        mode: cfg.courseMode,
+        path: `/app/cursos/${c.id}`,
+        clicks,
+        sales,
+      });
+    }
+    res.json({ mode: cfg.courseMode, courses: out });
+  } catch (error) {
+    serverError(res, error, 'courses');
+  }
+});
+
+router.get('/admin/courses', ...admin, async (_req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    const courses = await prisma.course.findMany({
+      select: { id: true, title: true, price: true, isPublished: true, affiliateEnabled: true, affiliateRate: true },
+      orderBy: { title: 'asc' },
+    });
+    const sold = await prisma.affiliateCommission.groupBy({
+      by: ['courseId'],
+      where: { courseId: { not: null }, status: { notIn: ['cancelled', 'reversed'] } },
+      _sum: { amount: true, baseAmount: true },
+      _count: { _all: true },
+    });
+    res.json({
+      mode: cfg.courseMode,
+      courses: courses.map((c) => {
+        const s = sold.find((x) => x.courseId === c.id);
+        return {
+          ...c,
+          effectiveRate: getCourseEffectiveRate(c, cfg),
+          estimatedCommission: c.affiliateRate ? Math.floor((c.price * c.affiliateRate) / 100) : 0,
+          sales: s?._count._all ?? 0,
+          salesAmount: s?._sum.baseAmount ?? 0,
+          commissionAmount: s?._sum.amount ?? 0,
+        };
+      }),
+    });
+  } catch (error) {
+    serverError(res, error, 'admin courses');
+  }
+});
+
+// Activa/desactiva la afiliación de un curso y fija su %. Solo afecta ventas nuevas: las ya generadas conservan su %.
+router.patch('/admin/courses/:id', ...admin, async (req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    const data: { affiliateEnabled?: boolean; affiliateRate?: number | null } = {};
+    if (req.body?.affiliateEnabled !== undefined) data.affiliateEnabled = !!req.body.affiliateEnabled;
+    if (req.body?.affiliateRate !== undefined) data.affiliateRate = parseRateInput(req.body.affiliateRate, cfg);
+    const next = await prisma.course.findUnique({ where: { id: String(req.params.id) }, select: { affiliateRate: true } });
+    if (!next) return res.status(404).json({ error: 'Curso no encontrado' });
+    if (data.affiliateEnabled && (data.affiliateRate ?? next.affiliateRate) == null) {
+      return res.status(400).json({ error: 'Definí el % de comisión antes de activar la afiliación del curso' });
+    }
+    const course = await prisma.course.update({ where: { id: String(req.params.id) }, data });
+    console.log(`[afiliados] curso ${course.id} actualizado por ${req.user!.userId}:`, JSON.stringify(data));
+    res.json({ course });
+  } catch (error: any) {
+    if (error.message === 'RATE_OUT_OF_RANGE') return res.status(400).json({ error: 'El % está fuera del rango permitido' });
+    serverError(res, error, 'admin course update');
   }
 });
 

@@ -512,9 +512,10 @@ export const coursesApi = {
     fetchWithAuth(`/courses/${id}`, {
       method: 'DELETE',
     }),
-  enroll: (id: string) =>
+  enroll: (id: string, visitorId?: string) =>
     fetchWithAuth(`/courses/${id}/enroll`, {
       method: 'POST',
+      body: JSON.stringify({ visitorId }),
     }),
   requestAccess: (id: string) =>
     fetchWithAuth(`/courses/${id}/request`, {
@@ -860,7 +861,7 @@ export default {
 // Programa de afiliados (comisión de afiliado; no confundir con la comisión de plataforma)
 export const affiliatesApi = {
   getProgram: () => fetchWithAuth('/affiliates/program'),
-  track: (data: { code: string; visitorId: string; productSlug?: string; storeSlug?: string }) =>
+  track: (data: { code: string; visitorId: string; productSlug?: string; storeSlug?: string; courseSlug?: string }) =>
     fetchWithAuth('/affiliates/track', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => fetchWithAuth('/affiliates/me'),
   join: (visitorId?: string) =>
@@ -872,6 +873,7 @@ export const affiliatesApi = {
   getLinks: () => fetchWithAuth('/affiliates/links'),
   explore: (search?: string) => fetchWithAuth(`/affiliates/explore${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   getCommissions: () => fetchWithAuth('/affiliates/commissions'),
+  getCourses: () => fetchWithAuth('/affiliates/courses'),
   getStats: (days = 30) => fetchWithAuth(`/affiliates/stats?days=${days}`),
 
   // Vendedor
@@ -884,6 +886,9 @@ export const affiliatesApi = {
   adminGetAffiliates: () => fetchWithAuth('/affiliates/admin/affiliates'),
   adminSetAffiliateStatus: (id: string, status: 'pending' | 'active' | 'suspended') =>
     fetchWithAuth(`/affiliates/admin/affiliates/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminGetCourses: () => fetchWithAuth('/affiliates/admin/courses'),
+  adminUpdateCourse: (id: string, data: { affiliateEnabled?: boolean; affiliateRate?: number | null }) =>
+    fetchWithAuth(`/affiliates/admin/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   adminGetCommissions: (status?: string) => fetchWithAuth(`/affiliates/admin/commissions${status ? `?status=${status}` : ''}`),
   adminApproveCommissions: (ids: string[]) =>
     fetchWithAuth('/affiliates/admin/commissions/approve', { method: 'POST', body: JSON.stringify({ ids }) }),

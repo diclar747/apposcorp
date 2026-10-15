@@ -18,12 +18,22 @@ export interface AffiliateConfig {
   autoRelease: boolean;
   showRatePublic: boolean;
   codEnabled: boolean;
+  /** Quién puede promocionar un curso: open = cualquier afiliado activo, enrolled = matriculados, completed = quienes lo terminaron */
+  courseMode: CourseMode;
+  /** Plazo de garantía de un curso comprado antes de liberar la comisión (días) */
+  courseHoldDays: number;
 }
+
+export type CourseMode = 'open' | 'enrolled' | 'completed';
+export const COURSE_MODES: CourseMode[] = ['open', 'enrolled', 'completed'];
+
+/** Los clics y comisiones de cursos guardan este valor en sellerId (no es una tienda real). */
+export const COURSE_SELLER_ID = 'ingenio-cursos';
 
 export const AFFILIATE_SETTINGS: {
   key: string;
   field: keyof AffiliateConfig;
-  type: 'bool' | 'number';
+  type: 'bool' | 'number' | 'text';
   default: string;
   isPublic: boolean;
   description: string;
@@ -37,6 +47,8 @@ export const AFFILIATE_SETTINGS: {
   { key: 'affiliate_auto_release', field: 'autoRelease', type: 'bool', default: 'true', isPublic: false, description: 'Acreditar solas las comisiones vencidas (si no, el admin las paga)' },
   { key: 'affiliate_show_rate_public', field: 'showRatePublic', type: 'bool', default: 'true', isPublic: true, description: 'Mostrar el % de comisión a todos (si no, solo a usuarios logueados)' },
   { key: 'affiliate_cod_enabled', field: 'codEnabled', type: 'bool', default: 'true', isPublic: false, description: 'El pago contra entrega genera comisión (se cobra a la tienda al entregar)' },
+  { key: 'affiliate_course_mode', field: 'courseMode', type: 'text', default: 'open', isPublic: false, description: 'Quién puede promocionar cursos: open (cualquier afiliado), enrolled (matriculados) o completed (quienes terminaron el curso)' },
+  { key: 'affiliate_course_hold_days', field: 'courseHoldDays', type: 'number', default: '7', isPublic: false, description: 'Plazo de garantía de un curso comprado antes de liberar la comisión (días)' },
 ];
 
 export const getAffiliateConfig = async (tx: Tx = prisma): Promise<AffiliateConfig> => {
@@ -47,8 +59,9 @@ export const getAffiliateConfig = async (tx: Tx = prisma): Promise<AffiliateConf
   const cfg: any = {};
   for (const s of AFFILIATE_SETTINGS) {
     const raw = byKey.get(s.key) ?? s.default;
-    cfg[s.field] = s.type === 'bool' ? raw === 'true' : Number(raw);
+    cfg[s.field] = s.type === 'bool' ? raw === 'true' : s.type === 'text' ? raw : Number(raw);
     if (s.type === 'number' && !Number.isFinite(cfg[s.field])) cfg[s.field] = Number(s.default);
+    if (s.field === 'courseMode' && !COURSE_MODES.includes(cfg[s.field])) cfg[s.field] = 'open';
   }
   return cfg as AffiliateConfig;
 };
@@ -122,6 +135,29 @@ export const parseTriState = (value: unknown): boolean | null => {
 export const storeParticipates = (seller: SellerAffiliateFields, cfg: AffiliateConfig) =>
   cfg.enabled && seller.affiliateEnabled && !seller.affiliateBlocked;
 
+interface CourseAffiliateFields {
+  affiliateEnabled: boolean;
+  affiliateRate: number | null;
+  isPublished: boolean;
+}
+
+/** Porcentaje de comisión de afiliado de un curso, o null si no participa. */
+export const getCourseEffectiveRate = (course: CourseAffiliateFields, cfg: AffiliateConfig): number | null => {
+  if (!cfg.enabled || !course.affiliateEnabled || !course.isPublished) return null;
+  const rate = course.affiliateRate;
+  if (rate === null || rate === undefined || !(rate > 0)) return null;
+  return clampRate(rate, cfg);
+};
+
+/** ¿Este afiliado puede promocionar este curso según la modalidad configurada? Terminar un curso no habilita los demás. */
+export const canPromoteCourse = async (affiliateUserId: string, courseId: string, cfg: AffiliateConfig, tx: Tx = prisma) => {
+  if (cfg.courseMode === 'open') return true;
+  const enrollment = await tx.userCourse.findUnique({ where: { userId_courseId: { userId: affiliateUserId, courseId } } });
+  if (!enrollment) return false;
+  if (cfg.courseMode === 'enrolled') return true;
+  return enrollment.completedAt !== null || enrollment.status === 'completed';
+};
+
 // ─── Perfil de afiliado ───────────────────────────────────────────────────────
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -184,6 +220,8 @@ export interface TrackInput {
   visitorId: string;
   productSlug?: string;
   productId?: string;
+  courseId?: string;
+  courseSlug?: string;
   storeSlug?: string;
   userId?: string | null;
   ip?: string;
@@ -201,8 +239,17 @@ export const trackClick = async (input: TrackInput) => {
 
   let sellerId: string;
   let productId: string | null = null;
+  let courseId: string | null = null;
 
-  if (input.productSlug || input.productId) {
+  if (input.courseSlug || input.courseId) {
+    const course = await prisma.course.findFirst({
+      where: input.courseSlug ? { OR: [{ slug: input.courseSlug }, { id: input.courseSlug }] } : { id: input.courseId },
+    });
+    if (!course || getCourseEffectiveRate(course, cfg) === null) return null;
+    if (!(await canPromoteCourse(affiliate.userId, course.id, cfg))) return null;
+    sellerId = COURSE_SELLER_ID;
+    courseId = course.id;
+  } else if (input.productSlug || input.productId) {
     const product = await prisma.product.findFirst({
       where: input.productSlug ? { OR: [{ slug: input.productSlug }, { id: input.productSlug }] } : { id: input.productId },
       include: { seller: true },
@@ -227,6 +274,7 @@ export const trackClick = async (input: TrackInput) => {
       affiliateId: affiliate.id,
       sellerId,
       productId,
+      courseId,
       createdAt: { gte: new Date(now - CLICK_DEDUPE_MS) },
     },
     orderBy: { createdAt: 'desc' },
@@ -243,10 +291,9 @@ export const trackClick = async (input: TrackInput) => {
   });
   if (clicksToday >= MAX_CLICKS_PER_VISITOR_PER_DAY) return null;
 
-  const link = await prisma.affiliateLink.findFirst({
-    where: { affiliateId: affiliate.id, sellerId, productId },
-    select: { id: true },
-  });
+  const link = courseId
+    ? null
+    : await prisma.affiliateLink.findFirst({ where: { affiliateId: affiliate.id, sellerId, productId }, select: { id: true } });
 
   return prisma.affiliateClick.create({
     data: {
@@ -254,6 +301,7 @@ export const trackClick = async (input: TrackInput) => {
       linkId: link?.id ?? null,
       sellerId,
       productId,
+      courseId,
       visitorId: input.visitorId,
       userId: input.userId ?? null,
       ipHash: hashIp(input.ip),
@@ -374,9 +422,90 @@ export const createCommissionsForOrder = async (tx: Prisma.TransactionClient, in
   return { total, commissions: created };
 };
 
+interface CourseSaleInput {
+  userCourseId: string;
+  buyerId: string;
+  visitorId?: string | null;
+  course: { id: string; title: string; price: number } & CourseAffiliateFields;
+  amountPaid: number;
+}
+
+/**
+ * Comisión por la compra de un curso (pago con billetera ya confirmado). Corre dentro de la transacción de la compra.
+ * Gana el último clic válido del enlace de ESE curso dentro de la ventana de atribución. El % queda fijado en la
+ * comisión: cambiarlo después en el curso no altera lo ya generado. Una sola comisión por matrícula (userCourseId único).
+ */
+export const createCommissionForCourseSale = async (tx: Prisma.TransactionClient, input: CourseSaleInput) => {
+  const cfg = await getAffiliateConfig(tx);
+  const rate = getCourseEffectiveRate(input.course, cfg);
+  if (rate === null || !(input.amountPaid > 0)) return null;
+
+  const since = new Date(Date.now() - cfg.cookieDays * 24 * 60 * 60 * 1000);
+  const visitorFilter: Prisma.AffiliateClickWhereInput[] = [{ userId: input.buyerId }];
+  if (input.visitorId) visitorFilter.push({ visitorId: input.visitorId });
+
+  const clicks = await tx.affiliateClick.findMany({
+    where: { courseId: input.course.id, createdAt: { gte: since }, OR: visitorFilter },
+    orderBy: { createdAt: 'desc' },
+    include: { affiliate: true },
+    take: 50,
+  });
+
+  for (const click of clicks) {
+    if (click.affiliate.status !== 'active') continue;
+    if (click.affiliate.userId === input.buyerId) continue; // compra propia
+    if (!(await canPromoteCourse(click.affiliate.userId, input.course.id, cfg, tx))) continue;
+
+    const amount = Math.floor((input.amountPaid * rate) / 100);
+    if (amount <= 0) return null;
+
+    const affiliateWallet = await ensureWallet(click.affiliate.userId, tx);
+    const walletTx = await tx.transaction.create({
+      data: {
+        walletId: affiliateWallet.id,
+        userId: click.affiliate.userId,
+        type: 'affiliate_commission',
+        amount,
+        description: `Comisión de afiliado - Curso: ${input.course.title}`,
+        status: 'pending',
+        metadata: { source: 'affiliate', rate, courseId: input.course.id },
+      },
+    });
+    const commission = await tx.affiliateCommission.create({
+      data: {
+        affiliateId: click.affiliateId,
+        sellerId: COURSE_SELLER_ID,
+        courseId: input.course.id,
+        userCourseId: input.userCourseId,
+        productName: input.course.title,
+        buyerId: input.buyerId,
+        clickId: click.id,
+        source: 'course',
+        baseAmount: input.amountPaid,
+        rate,
+        amount,
+        status: 'pending',
+        funded: true, // el curso se pagó con billetera: ya está cubierto
+        availableAt: addDays(new Date(), cfg.courseHoldDays),
+        walletTxId: walletTx.id,
+      },
+    });
+    return { ...commission, affiliateUserId: click.affiliate.userId };
+  }
+  return null;
+};
+
+/** Cuando se quita o reembolsa una matrícula: anula o revierte su comisión. */
+export const cancelCommissionForCourseAccess = async (tx: Prisma.TransactionClient, userCourseId: string, reason: string) => {
+  const c = await tx.affiliateCommission.findUnique({ where: { userCourseId }, include: { affiliate: true } });
+  if (!c || !['pending', 'approved', 'paid'].includes(c.status)) return false;
+  await cancelOneCommission(tx, c, { orderNumber: c.productName, sellerId: '', paymentMethod: 'wallet' }, reason);
+  return true;
+};
+
 export const notifyNewCommissions = (commissions: { affiliateUserId: string; amount: number; productName: string }[]) => {
   for (const c of commissions) {
-    const body = `Vendiste ${c.productName}. Tu comisión de ₲ ${c.amount.toLocaleString('es-PY')} queda pendiente hasta la entrega.`;
+    const body = `Vendiste ${c.productName}. Tu comisión de ₲ ${c.amount.toLocaleString('es-PY')} queda pendiente hasta que termine el plazo de garantía.`;
     prisma.notification
       .create({ data: { userId: c.affiliateUserId, title: '¡Nueva comisión!', message: body, type: 'success', actionUrl: '/app/afiliados' } })
       .catch(() => {});
@@ -428,7 +557,7 @@ export const onOrderDelivered = async (tx: Prisma.TransactionClient, order: { id
   const availableAt = addDays(new Date(), cfg.holdDays);
   for (const c of commissions) {
     await tx.affiliateCommission.update({ where: { id: c.id }, data: { availableAt } });
-    if (!c.funded) await fundFromSeller(tx, c, order.sellerId);
+    if (!c.funded) await fundFromSeller(tx, { ...c, orderId: order.id }, order.sellerId);
   }
 };
 
@@ -461,7 +590,7 @@ export const payCommission = async (commissionId: string) => {
           amount: c.amount,
           description: `Comisión de afiliado - ${c.productName}`,
           status: 'completed',
-          relatedOrderId: c.orderId,
+          relatedOrderId: c.orderId ?? undefined,
         },
       });
       await tx.affiliateCommission.update({ where: { id: c.id }, data: { walletTxId: t.id } });
@@ -493,7 +622,9 @@ export const releaseDueCommissions = async () => {
     take: 200,
   });
   for (const c of unfunded) {
-    await prisma.$transaction((tx) => fundFromSeller(tx, c, c.order.sellerId)).catch((e) => console.error('[afiliados] cobro retenido', c.id, e));
+    if (!c.order || !c.orderId) continue; // las de cursos nacen cubiertas
+    const orderId = c.orderId;
+    await prisma.$transaction((tx) => fundFromSeller(tx, { ...c, orderId }, c.order!.sellerId)).catch((e) => console.error('[afiliados] cobro retenido', c.id, e));
   }
 
   // 2. Vencidas: pasan a aprobadas y, si la liberación automática está activa, se acreditan
@@ -522,7 +653,7 @@ export const approveCommissions = async (ids: string[]) => {
     if (!c) { results.push({ id, ok: false, reason: 'No existe' }); continue; }
     if (c.status === 'paid') { results.push({ id, ok: true, reason: 'Ya estaba pagada' }); continue; }
     if (c.status !== 'pending' && c.status !== 'approved') { results.push({ id, ok: false, reason: `Estado ${c.status}` }); continue; }
-    if (c.order.status !== 'delivered') { results.push({ id, ok: false, reason: 'El pedido todavía no se entregó' }); continue; }
+    if (c.order && c.order.status !== 'delivered') { results.push({ id, ok: false, reason: 'El pedido todavía no se entregó' }); continue; }
     if (!c.funded) { results.push({ id, ok: false, reason: 'Retenida: la tienda no cubrió la comisión' }); continue; }
     const paid = await payCommission(id);
     if (paid) notifyPaid(paid);
@@ -554,7 +685,7 @@ export const cancelCommissionsForOrder = async (
 
 const cancelOneCommission = async (
   tx: Prisma.TransactionClient,
-  c: { id: string; status: string; amount: number; funded: boolean; walletTxId: string | null; productName: string; orderId: string; affiliate: { userId: string } },
+  c: { id: string; status: string; amount: number; funded: boolean; walletTxId: string | null; productName: string; orderId: string | null; affiliate: { userId: string } },
   order: { orderNumber: string; sellerId: string; paymentMethod: string },
   reason: string,
 ) => {
@@ -580,7 +711,7 @@ const cancelOneCommission = async (
         amount: -c.amount,
         description: `Reversión de comisión - ${c.productName} - ${order.orderNumber}`,
         status: 'completed',
-        relatedOrderId: c.orderId,
+        relatedOrderId: c.orderId ?? undefined,
         metadata: { commissionId: c.id, reason },
       },
     });
@@ -603,7 +734,7 @@ const cancelOneCommission = async (
         amount: c.amount,
         description: `Devolución de comisión de afiliado - ${c.productName} - ${order.orderNumber}`,
         status: 'completed',
-        relatedOrderId: c.orderId,
+        relatedOrderId: c.orderId ?? undefined,
         metadata: { commissionId: c.id },
       },
     });
@@ -621,10 +752,17 @@ export const adminCancelCommissions = async (ids: string[], reason: string) => {
           include: { affiliate: true, order: { select: { orderNumber: true, sellerId: true, paymentMethod: true } } },
         });
         if (!c || !['pending', 'approved', 'paid'].includes(c.status)) return false;
-        await cancelOneCommission(tx, c, c.order, reason);
+        if (!c.order || !c.orderId) {
+          // Comisión de un curso: no hay pedido ni tienda a la que devolverle nada
+          await cancelOneCommission(tx, c, { orderNumber: c.productName, sellerId: '', paymentMethod: 'wallet' }, reason);
+          return true;
+        }
+        const order = c.order;
+        const orderId = c.orderId;
+        await cancelOneCommission(tx, c, order, reason);
         // La comisión deja de descontarse a la tienda en pedidos con billetera: se le devuelve
-        if (c.order.paymentMethod === 'wallet') {
-          const sellerWallet = await ensureWallet(c.order.sellerId, tx);
+        if (order.paymentMethod === 'wallet') {
+          const sellerWallet = await ensureWallet(order.sellerId, tx);
           await tx.wallet.update({
             where: { id: sellerWallet.id },
             data: { balance: { increment: c.amount }, totalIn: { increment: c.amount } },
@@ -632,17 +770,17 @@ export const adminCancelCommissions = async (ids: string[], reason: string) => {
           await tx.transaction.create({
             data: {
               walletId: sellerWallet.id,
-              userId: c.order.sellerId,
+              userId: order.sellerId,
               type: 'affiliate_reversal',
               amount: c.amount,
-              description: `Comisión de afiliado anulada - ${c.productName} - ${c.order.orderNumber}`,
+              description: `Comisión de afiliado anulada - ${c.productName} - ${order.orderNumber}`,
               status: 'completed',
-              relatedOrderId: c.orderId,
+              relatedOrderId: orderId,
               metadata: { commissionId: c.id },
             },
           });
           await tx.order.update({
-            where: { id: c.orderId },
+            where: { id: orderId },
             data: { affiliateAmount: { decrement: c.amount }, sellerEarnings: { increment: c.amount } },
           });
         }

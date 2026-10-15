@@ -33,6 +33,14 @@ const STATEMENTS: string[] = [
   // Columnas nuevas en tablas existentes (opcionales o con valor por defecto)
   `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "affiliateAmount" DOUBLE PRECISION NOT NULL DEFAULT 0`,
   `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "checkoutGroup" TEXT`,
+  // Cursos de Ingenio Millonario en el mismo motor de afiliados (solo columnas nuevas)
+  // Aparte, a mano y con respaldo: database/afiliados_cursos.sql (vuelve opcional orderId/orderItemId)
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
+  `ALTER TABLE "affiliate_clicks" ADD COLUMN IF NOT EXISTS "courseId" TEXT`,
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "courseId" TEXT`,
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "userCourseId" TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_commissions_userCourseId_key" ON "affiliate_commissions"("userCourseId")`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateBlocked" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
