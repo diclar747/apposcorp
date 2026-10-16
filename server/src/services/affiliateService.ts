@@ -27,6 +27,11 @@ export interface AffiliateConfig {
   tutorMaxRate: number;
   /** Los tutores quedan activos al pedirlo (si no, los aprueba el admin) */
   tutorAutoApprove: boolean;
+  /** Encargado de tiendas: rango del % sobre lo que paga cada tienda, tope de tiendas y garantía antes de liberar */
+  managerMinRate: number;
+  managerMaxRate: number;
+  managerMaxStores: number;
+  managerHoldDays: number;
 }
 
 export type CourseMode = 'open' | 'enrolled' | 'completed';
@@ -56,6 +61,10 @@ export const AFFILIATE_SETTINGS: {
   { key: 'affiliate_course_hold_days', field: 'courseHoldDays', type: 'number', default: '7', isPublic: false, description: 'Plazo de garantía de un curso comprado antes de liberar la comisión (días)' },
   { key: 'affiliate_tutor_min_rate', field: 'tutorMinRate', type: 'number', default: '40', isPublic: false, description: '% mínimo de comisión de un tutor certificado' },
   { key: 'affiliate_tutor_max_rate', field: 'tutorMaxRate', type: 'number', default: '45', isPublic: false, description: '% máximo de comisión de un tutor certificado' },
+  { key: 'affiliate_manager_min_rate', field: 'managerMinRate', type: 'number', default: '40', isPublic: false, description: '% mínimo que cobra un encargado sobre lo que paga cada tienda' },
+  { key: 'affiliate_manager_max_rate', field: 'managerMaxRate', type: 'number', default: '50', isPublic: false, description: '% máximo que cobra un encargado sobre lo que paga cada tienda' },
+  { key: 'affiliate_manager_max_stores', field: 'managerMaxStores', type: 'number', default: '10', isPublic: false, description: 'Máximo de tiendas que puede administrar un encargado' },
+  { key: 'affiliate_manager_hold_days', field: 'managerHoldDays', type: 'number', default: '7', isPublic: false, description: 'Días desde que se confirma el pago de una tienda antes de liberar la comisión del encargado' },
   { key: 'affiliate_tutor_auto_approve', field: 'tutorAutoApprove', type: 'bool', default: 'false', isPublic: false, description: 'Los tutores quedan activos al pedirlo (si no, los aprueba el admin)' },
 ];
 
@@ -545,6 +554,84 @@ export const createCommissionForCourseSale = async (tx: Prisma.TransactionClient
     return { ...commission, affiliateUserId: click.affiliate.userId };
   }
   return null;
+};
+
+// ─── Encargados de tiendas ────────────────────────────────────────────────────
+
+export const MANAGER_SOURCE = 'store_manager';
+
+/**
+ * Se llama cuando el admin CONFIRMA el pago de una suscripción de tienda. Si la tienda tiene un encargado activo,
+ * genera su comisión (% de lo que se pagó). Una sola comisión por pago (refKey único); se libera tras la garantía.
+ * Devuelve null si no corresponde (programa apagado, tienda sin encargado, encargado suspendido…).
+ */
+export const createManagerCommissionForPayment = async (payment: { subscriptionId: string; storeUserId: string; paidAt: Date; amount: number; planName: string }) => {
+  const cfg = await getAffiliateConfig();
+  if (!cfg.enabled || !(payment.amount > 0)) return null;
+
+  const seller = await prisma.sellerProfile.findUnique({ where: { userId: payment.storeUserId }, select: { id: true, storeName: true } });
+  if (!seller) return null;
+  const assignment = await prisma.storeManagerAssignment.findUnique({ where: { sellerId: seller.id }, include: { manager: true } });
+  if (!assignment || assignment.manager.status !== 'active') return null;
+  if (assignment.manager.userId === payment.storeUserId) return null; // nadie cobra por su propia tienda
+
+  const affiliate = await prisma.affiliateProfile.findUnique({ where: { userId: assignment.manager.userId } });
+  if (!affiliate || affiliate.status !== 'active') return null;
+
+  const rate = Math.min(cfg.managerMaxRate, Math.max(cfg.managerMinRate, assignment.manager.rate));
+  const amount = Math.floor((payment.amount * rate) / 100);
+  if (amount <= 0) return null;
+  const refKey = `${payment.subscriptionId}:${payment.paidAt.getTime()}`;
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const wallet = await ensureWallet(affiliate.userId, tx);
+      const walletTx = await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: affiliate.userId,
+          type: 'affiliate_commission',
+          amount,
+          description: `Comisión de encargado - ${seller.storeName} (${payment.planName})`,
+          status: 'pending',
+          metadata: { source: 'affiliate', kind: MANAGER_SOURCE, rate, subscriptionId: payment.subscriptionId },
+        },
+      });
+      const commission = await tx.affiliateCommission.create({
+        data: {
+          affiliateId: affiliate.id,
+          sellerId: seller.id,
+          productName: `Mensualidad de ${seller.storeName}`,
+          buyerId: payment.storeUserId,
+          source: MANAGER_SOURCE,
+          baseAmount: payment.amount,
+          rate,
+          amount,
+          status: 'pending',
+          funded: true, // el pago de la tienda ya está confirmado por el admin
+          availableAt: addDays(new Date(), cfg.managerHoldDays),
+          walletTxId: walletTx.id,
+          refKey,
+        },
+      });
+      return { ...commission, affiliateUserId: affiliate.userId };
+    });
+  } catch (e: any) {
+    if (e?.code === 'P2002') return null; // el mismo pago ya generó su comisión
+    throw e;
+  }
+};
+
+/** Si se revoca la suscripción, se anula (o revierte, si ya se pagó) la comisión de su último pago. */
+export const cancelManagerCommissionForSubscription = async (subscriptionId: string, reason: string) => {
+  const latest = await prisma.affiliateCommission.findFirst({
+    where: { source: MANAGER_SOURCE, refKey: { startsWith: `${subscriptionId}:` }, status: { in: ['pending', 'approved', 'paid'] } },
+    include: { affiliate: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!latest) return false;
+  await prisma.$transaction((tx) => cancelOneCommission(tx, latest, { orderNumber: latest.productName, sellerId: '', paymentMethod: 'wallet' }, reason));
+  return true;
 };
 
 /** Cuando se quita o reembolsa una matrícula: anula o revierte su comisión. */

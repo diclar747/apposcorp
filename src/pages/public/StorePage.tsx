@@ -24,6 +24,8 @@ import { Slider } from '@/components/ui/slider';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
 import { AuctionCardBadge } from '@/components/auction/AuctionCardBadge';
+import { OfferCountdown } from '@/components/offer/OfferCountdown';
+import { FavoriteButton } from '@/components/shared/FavoriteButton';
 import { trackReferral } from '@/lib/affiliate';
 
 export default function StorePage() {
@@ -919,7 +921,7 @@ export default function StorePage() {
                       </Button>
                     ) : (
                     <Button 
-                      disabled={isPreview || !canPurchase || selectedProduct.stock <= 0}
+                      disabled={isPreview || !canPurchase || selectedProduct.stock <= 0 || !!selectedProduct.offer?.expired}
                       onClick={() => {
                         addItem({ ...selectedProduct, storeName: store.name }, 1);
                         setSelectedProduct(null);
@@ -932,8 +934,10 @@ export default function StorePage() {
                           : "bg-gray-100 text-gray-400 border border-gray-200"
                       )}
                     >
-                      {isPreview 
+ {isPreview 
                         ? 'VISTA PREVIA - CARRITO DESACTIVADO' 
+                        : selectedProduct.offer?.expired
+                        ? 'Oferta terminada'
                         : selectedProduct.stock <= 0 
                         ? 'SIN STOCK' 
                         : canPurchase 
@@ -988,6 +992,7 @@ function ProductCard({
   isPreview?: boolean
 }) {
   const isAuction = !!product.auctionStatus;
+  const offerOver = !isAuction && !!product.offer?.expired; // una oferta vencida no se compra hasta que la tienda la renueve
   const navigate = useNavigate();
   const goAuction = () => navigate(`/producto/${product.slug || product.id}`);
   const isOutOfStock = !isAuction && product.stock <= 0; // un remate cerrado se muestra como tal, no como "sin stock"
@@ -1004,7 +1009,9 @@ function ProductCard({
         <div className="w-full md:w-60 h-60 rounded-3xl overflow-hidden relative bg-gray-50 dark:bg-slate-800">
           <img src={product.images[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
           {isAuction && <AuctionCardBadge status={product.auctionStatus} endsAt={product.auctionEndsAt} className="absolute top-4 left-4 shadow-lg" />}
-          {!isAuction && product.comparePrice && (
+          <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-10" />
+          {!isAuction && product.offer && <OfferCountdown offer={product.offer} className="absolute top-4 left-4 shadow-lg" />}
+          {!isAuction && !product.offer && product.comparePrice && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
               -{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
             </div>
@@ -1053,7 +1060,10 @@ function ProductCard({
                   {product.auctionStatus === 'open' ? 'Ver remate y ofertar' : 'Ver remate'}
                 </Button>
               )}
-              {!isPreview && !isAuction && (
+              {!isPreview && offerOver && (
+                <Button disabled className="h-14 px-8 rounded-2xl font-black text-lg min-w-[200px] bg-gray-100 text-gray-400 border border-gray-200">Oferta terminada</Button>
+              )}
+              {!isPreview && !isAuction && !offerOver && (
                 <>
                   <Button
                     disabled={!canPurchase || isOutOfStock}
@@ -1121,7 +1131,9 @@ function ProductCard({
         </div>
 
         {isAuction && <AuctionCardBadge status={product.auctionStatus} endsAt={product.auctionEndsAt} className="absolute top-4 left-4 z-10 shadow-lg" />}
-        {!isAuction && product.comparePrice && (
+        <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-20" />
+        {!isAuction && product.offer && <OfferCountdown offer={product.offer} className="absolute top-4 left-4 z-10 shadow-lg" />}
+        {!isAuction && !product.offer && product.comparePrice && (
           <div className="absolute top-4 left-4 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
             SALE
           </div>
@@ -1136,7 +1148,9 @@ function ProductCard({
         )}
 
         <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2 z-20">
-          {isPreview ? null : isAuction ? (
+          {isPreview ? null : offerOver ? (
+            <Button disabled className="w-full h-14 bg-white/95 text-gray-400 rounded-2xl font-black shadow-2xl border-0">Oferta terminada</Button>
+          ) : isAuction ? (
             <Button
               onClick={goAuction}
               className="w-full h-14 bg-[#0B1F4B] text-white hover:bg-[#13306E] rounded-2xl font-black shadow-2xl border-0"
@@ -1203,7 +1217,7 @@ function ProductCard({
               {formatCurrency(product.price)}
             </span>
           </div>
-          {canPurchase && !isPreview && !isAuction && (
+          {canPurchase && !isPreview && !isAuction && !offerOver && (
             <button
               onClick={onAddToCart}
               className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"

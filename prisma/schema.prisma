@@ -300,6 +300,11 @@ model Product {
   auctionWinnerId     String?
   auctionPayBy        DateTime?
   auctionBids         AuctionBid[]
+  // Ofertas (categoría "Ofertas"): comparePrice es el precio anterior; la oferta vence en offerEndsAt
+  offerEndsAt         DateTime?
+  offerBlocked        Boolean  @default(false) // el superadmin oculta el precio anterior si no es verificable
+  offerAlertSent      Boolean  @default(false) // ya se avisó a los favoritos que está por vencer
+  favorites           ProductFavorite[]
   cartItems        CartItem[]
   orderItems       OrderItem[]
   attributes       ProductAttribute[]
@@ -311,6 +316,18 @@ model Product {
   stockMovements   StockMovement[]
 
   @@map("products")
+}
+
+model ProductFavorite {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("product_favorites")
 }
 
 model AuctionBid {
@@ -1128,6 +1145,7 @@ model AffiliateCommission {
   productId   String?
   courseId    String? // comisión de un curso de Ingenio Millonario
   userCourseId String?                  @unique // una sola comisión por matrícula
+  refKey      String?                   @unique // una sola comisión por pago de suscripción de tienda (encargados)
   productName String
   buyerId     String
   clickId     String?
@@ -1154,6 +1172,32 @@ model AffiliateCommission {
   @@index([sellerId])
   @@index([status, availableAt])
   @@map("affiliate_commissions")
+}
+
+// Encargado de tiendas: administra y promociona hasta N tiendas y cobra un % de cada mensualidad que esas tiendas pagan.
+model StoreManager {
+  id          String                   @id @default(uuid())
+  userId      String                   @unique
+  status      String                   @default("active") // active | suspended
+  rate        Float                    @default(40) // % de lo que paga cada tienda
+  maxStores   Int                      @default(10)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  assignments StoreManagerAssignment[]
+
+  @@map("store_managers")
+}
+
+// Una tienda tiene un solo encargado.
+model StoreManagerAssignment {
+  id        String       @id @default(uuid())
+  managerId String
+  sellerId  String       @unique // SellerProfile.id
+  createdAt DateTime     @default(now())
+  manager   StoreManager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@index([managerId])
+  @@map("store_manager_assignments")
 }
 
 // Tutor certificado de un curso: terminó el curso y el admin lo autorizó a enseñarlo y cobrar la comisión de tutor.

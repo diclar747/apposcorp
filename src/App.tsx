@@ -74,6 +74,7 @@ import ClientStores from '@/pages/client/Stores';
 import ClientStoreDetail from '@/pages/client/Store';
 import ClientScan from '@/pages/client/Scan';
 import ClientWallet from '@/pages/client/Wallet';
+import ClientFavorites from '@/pages/client/Favorites';
 import TransferMoney from '@/pages/client/TransferMoney';
 import DepositPage from '@/pages/client/Deposit';
 import ClientCard from '@/pages/client/Card';
@@ -260,6 +261,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="wallet/recargar" element={<DepositPage />} />
           <Route path="wallet/retirar" element={<SellerWithdrawals />} />
           <Route path="afiliados" element={<ClientAffiliates />} />
+          <Route path="favoritos" element={<ClientFavorites />} />
           <Route path="tarjeta" element={<ClientCard />} />
           <Route path="pedidos" element={<ClientOrders />} />
           <Route path="pedidos/:id" element={<ClientOrderDetail />} />

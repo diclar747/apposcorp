@@ -40,6 +40,7 @@ export default function AdminAffiliates() {
           <TabsTrigger value="reports">Reportes</TabsTrigger>
           <TabsTrigger value="stores">Tiendas y productos</TabsTrigger>
           <TabsTrigger value="courses">Cursos</TabsTrigger>
+          <TabsTrigger value="managers">Encargados</TabsTrigger>
           <TabsTrigger value="tutors">Tutores</TabsTrigger>
           <TabsTrigger value="audit">Auditoría</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
@@ -50,6 +51,7 @@ export default function AdminAffiliates() {
         <TabsContent value="reports" className="mt-4"><ReportsTab /></TabsContent>
         <TabsContent value="stores" className="mt-4"><StoresTab /></TabsContent>
         <TabsContent value="courses" className="mt-4"><CoursesTab /></TabsContent>
+        <TabsContent value="managers" className="mt-4"><ManagersTab /></TabsContent>
         <TabsContent value="tutors" className="mt-4"><TutorsTab /></TabsContent>
         <TabsContent value="audit" className="mt-4"><AuditTab /></TabsContent>
         <TabsContent value="config" className="mt-4"><ConfigTab /></TabsContent>
@@ -569,6 +571,131 @@ function CoursesTab() {
   );
 }
 
+function ManagersTab() {
+  const [data, setData] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [rate, setRate] = useState('40');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pick, setPick] = useState<Record<string, string>>({});
+
+  const load = useCallback(() => {
+    affiliatesApi.adminGetManagers().then((d) => { setData(d); setRate(String(d.minRate)); }).catch((e) => toast.error(e.message));
+  }, []);
+  useEffect(load, [load]);
+
+  const run = async (key: string, fn: () => Promise<any>, ok: string) => {
+    setBusy(key);
+    try {
+      await fn();
+      toast.success(ok);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!data) return <Loading />;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Encargados de tiendas</CardTitle>
+          <CardDescription>
+            Una persona administra hasta {data.maxStores} tiendas y cobra {data.minRate}% a {data.maxRate}% de cada mensualidad que la tienda paga. La comisión se genera al confirmar el pago de la suscripción
+            y se libera tras la garantía. Se registra aparte de sus ventas como afiliado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="mgr-email">Correo de la persona</Label>
+            <Input id="mgr-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" className="w-64" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mgr-rate">Comisión (%)</Label>
+            <Input id="mgr-rate" type="number" inputMode="decimal" min={data.minRate} max={data.maxRate} value={rate} onChange={(e) => setRate(e.target.value)} className="w-24" />
+          </div>
+          <Button
+            disabled={!email || busy === 'new'}
+            onClick={() => run('new', async () => { await affiliatesApi.adminCreateManager({ email, rate: Number(rate) }); setEmail(''); }, 'Encargado creado')}
+          >
+            Crear encargado
+          </Button>
+        </CardContent>
+      </Card>
+
+      {data.managers.length === 0 && <p className="text-sm text-muted-foreground">Todavía no hay encargados.</p>}
+      {data.managers.map((m: any) => {
+        const active = m.stores.filter((s: any) => s.subscriptionStatus === 'ACTIVE');
+        const monthly = active.reduce((t: number, s: any) => t + s.estimatedMonthly, 0);
+        const platform = active.reduce((t: number, s: any) => t + s.monthlyFee, 0) - monthly;
+        return (
+          <Card key={m.id}>
+            <CardContent className="space-y-3 pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{m.user ? `${m.user.firstName} ${m.user.lastName}` : m.userId}</p>
+                  <p className="text-xs text-muted-foreground">{m.user?.email} · {m.rate}% · {m.stores.length} de {m.maxStores} tiendas · {m.status === 'active' ? 'Activo' : 'Suspendido'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    defaultValue={m.rate}
+                    min={data.minRate}
+                    max={data.maxRate}
+                    className="h-8 w-20"
+                    aria-label="Comisión del encargado"
+                    onBlur={(e) => Number(e.target.value) !== m.rate && run(m.id, () => affiliatesApi.adminUpdateManager(m.id, { rate: Number(e.target.value) }), 'Comisión actualizada: vale para los próximos pagos')}
+                  />
+                  <Button size="sm" variant="outline" disabled={busy === m.id} onClick={() => run(m.id, () => affiliatesApi.adminUpdateManager(m.id, { status: m.status === 'active' ? 'suspended' : 'active' }), 'Estado actualizado')}>
+                    {m.status === 'active' ? 'Suspender' : 'Activar'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+                Con las tiendas activas pagando la mensualidad completa: el encargado gana <strong className="text-foreground">{formatCurrency(monthly)}</strong> por mes y la plataforma <strong className="text-foreground">{formatCurrency(platform)}</strong>.
+                Estimación sin descuentos, impuestos ni otros costos.
+              </div>
+
+              <div className="divide-y divide-border rounded-lg border border-border">
+                {m.stores.length === 0 && <p className="p-3 text-sm text-muted-foreground">Sin tiendas asignadas.</p>}
+                {m.stores.map((s: any) => (
+                  <div key={s.sellerId} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium">{s.storeName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {s.subscriptionStatus === 'ACTIVE' ? `Suscripción activa${s.subscriptionExpiresAt ? ` hasta ${new Date(s.subscriptionExpiresAt).toLocaleDateString('es-PY')}` : ''}` : `Suscripción: ${s.subscriptionStatus || 'sin suscripción'}`}
+                        {' · '}{s.activeProducts} publicaciones · {formatCurrency(s.earnedPaid)} pagado · {formatCurrency(s.earnedPending)} pendiente
+                      </p>
+                    </div>
+                    <Button size="sm" variant="ghost" disabled={busy === s.sellerId} onClick={() => run(s.sellerId, () => affiliatesApi.adminUnassignStore(m.id, s.sellerId), 'Tienda quitada')}>Quitar</Button>
+                  </div>
+                ))}
+              </div>
+
+              {m.stores.length < m.maxStores && (
+                <div className="flex items-center gap-2">
+                  <Select value={pick[m.id] || ''} onValueChange={(v) => setPick({ ...pick, [m.id]: v })}>
+                    <SelectTrigger className="w-64"><SelectValue placeholder="Elegí una tienda sin encargado" /></SelectTrigger>
+                    <SelectContent>
+                      {data.unassignedStores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.storeName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" disabled={!pick[m.id] || busy === `a${m.id}`} onClick={() => run(`a${m.id}`, async () => { await affiliatesApi.adminAssignStore(m.id, pick[m.id]); setPick({ ...pick, [m.id]: '' }); }, 'Tienda asignada')}>Asignar</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function TutorsTab() {
   const [rows, setRows] = useState<any[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -707,6 +834,10 @@ function ConfigTab() {
           {number('holdDays', 'Plazo de garantía', 'Días después de la entrega antes de liberar la comisión. 0 = al entregar.', 'días')}
           {number('tutorMinRate', '% mínimo de tutor', 'Mínimo que se puede fijar a un tutor certificado.', '%')}
           {number('tutorMaxRate', '% máximo de tutor', 'Máximo que se puede fijar a un tutor certificado.', '%')}
+          {number('managerMinRate', '% mínimo de encargado', 'Mínimo sobre lo que paga cada tienda.', '%')}
+          {number('managerMaxRate', '% máximo de encargado', 'Máximo sobre lo que paga cada tienda.', '%')}
+          {number('managerMaxStores', 'Tiendas por encargado', 'Máximo de tiendas que administra una persona.', 'tiendas')}
+          {number('managerHoldDays', 'Garantía de encargados', 'Días desde que se confirma el pago de la tienda antes de liberar la comisión.', 'días')}
           {number('courseHoldDays', 'Garantía de cursos', 'Días desde la compra de un curso antes de liberar la comisión.', 'días')}
           <div className="space-y-1.5">
             <Label>¿Quién puede promocionar un curso?</Label>

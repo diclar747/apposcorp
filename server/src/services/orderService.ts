@@ -3,6 +3,7 @@ import type { OrderStatus, Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { ensureWallet } from './userService.js';
 import { sellerAllowsOnlineSales } from '../utils/plans.js';
+import { offerExpired } from './offerService.js';
 import {
   getAffiliateConfig,
   createCommissionsForOrder,
@@ -88,6 +89,9 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
         throw new OrderError(400, `La tienda "${p.seller.storeName}" no tiene habilitada la venta online.`);
       }
       if (!(p.price > 0)) throw new OrderError(400, `El producto "${p.name}" no tiene un precio válido.`);
+
+      // Ofertas: una oferta vencida no se vende hasta que la tienda la renueve
+      if (offerExpired(p)) throw new OrderError(400, `La oferta de "${p.name}" ya terminó.`);
 
       // Remates: solo el ganador compra, una unidad, al precio ganador y dentro del plazo. Se marca vendido al instante.
       if (p.auctionStatus !== null) {

@@ -34,6 +34,8 @@ import mediaRoutes from './routes/media.js';
 import { ensureAffiliateSettings, startAffiliateScheduler } from './services/affiliateService.js';
 import { startAuctionScheduler } from './services/auctionService.js';
 import auctionRoutes from './routes/auctions.js';
+import favoriteRoutes from './routes/favorites.js';
+import { startOfferScheduler } from './services/offerService.js';
 import { backfillProductSlugs, backfillStoreSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
 import { ensureSchema } from './utils/ensureSchema.js';
@@ -135,6 +137,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/affiliates', affiliateRoutes);
 app.use('/api/auctions', auctionRoutes);
+app.use('/api/favorites', favoriteRoutes);
 app.use('/api/media', mediaRoutes);
 
 // Setup endpoint - crea usuarios de prueba. Solo en desarrollo y con ENABLE_DEV_SETUP=true:
@@ -422,6 +425,7 @@ ensureSchema()
   migrateInlineImages().catch((e) => console.error('[imágenes] migración:', e));
   startAffiliateScheduler();
   startAuctionScheduler();
+  startOfferScheduler();
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
   if (process.env.NODE_ENV === 'production') {
     console.log(`🌐 Frontend servido desde /dist`);

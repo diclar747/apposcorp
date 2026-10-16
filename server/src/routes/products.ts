@@ -4,6 +4,7 @@ import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middle
 import { generateProductSlug } from '../utils/slug.js';
 import { sellerAllowsOnlineSales } from '../utils/plans.js';
 import { getAffiliateConfig, getEffectiveRate, parseRateInput, parseTriState } from '../services/affiliateService.js';
+import { OfferError, decorateOffer, isOfferCategory, notifyFavoritesPriceDrop, parseOfferInput } from '../services/offerService.js';
 import { AuctionError, closeDueAuctions, getAuctionView, isAuctionCategory, parseAuctionInput, stripAuctionPrivate } from '../services/auctionService.js';
 
 const router = Router();
@@ -16,9 +17,10 @@ const hidePrivateFields = async (req: any, products: any[], viewer?: Awaited<Ret
     ? (await prisma.sellerProfile.findUnique({ where: { userId: viewer.userId }, select: { id: true } }))?.id ?? null
     : null;
   return products.map((p) => {
-    if (isSuperadmin || p.sellerId === ownSellerId) return p;
+    // La tienda dueña y el superadmin ven el precio anterior real (para editar); el público, solo si la oferta está vigente
+    if (isSuperadmin || p.sellerId === ownSellerId) return { ...p, offer: decorateOffer(p).offer };
     const { cost: _cost, profitPercentage: _profit, supplier: _supplier, supplierId: _supplierId, ...rest } = p;
-    return stripAuctionPrivate(rest, false);
+    return decorateOffer(stripAuctionPrivate(rest, false));
   });
 };
 
@@ -137,7 +139,7 @@ router.get('/public/:slug', async (req, res) => {
     const { cost: _cost, profitPercentage: _profit, supplierId: _supplier, ...publicProduct0 } = { ...product, ...(fresh ? {
       price: fresh.price, auctionStatus: fresh.auctionStatus, auctionEndsAt: fresh.auctionEndsAt, auctionWinnerId: fresh.auctionWinnerId, auctionPayBy: fresh.auctionPayBy,
     } : {}) };
-    const publicProduct = stripAuctionPrivate(publicProduct0, false);
+    const publicProduct = decorateOffer(stripAuctionPrivate(publicProduct0, false));
     const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan: _p, planId: _pi, planActive: _pa, ...seller } = product.seller;
     const onlineSales = sellerAllowsOnlineSales(product.seller) && product.visibility !== 'local';
 
@@ -269,6 +271,17 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       }
     }
 
+    // Oferta: la categoría "Ofertas" exige precio anterior real y fecha de vencimiento
+    let offerData: Record<string, any> = {};
+    if (isOfferCategory(category)) {
+      try {
+        offerData = parseOfferInput({ price: parseFloat(price), comparePrice, offerEndsAt: req.body.offerEndsAt });
+      } catch (e) {
+        if (e instanceof OfferError) return res.status(e.status).json({ error: e.message });
+        throw e;
+      }
+    }
+
     // Validate SKU uniqueness
     const finalSku = sku || `SKU-${Date.now()}`;
     const existingSku = await prisma.product.findUnique({ where: { sku: finalSku } });
@@ -298,8 +311,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     };
 
     // Add optional fields if they exist
-    if (comparePrice !== undefined) productData.comparePrice = parseFloat(comparePrice);
-    Object.assign(productData, auctionData);
+    if (comparePrice !== undefined) productData.comparePrice = comparePrice === null || comparePrice === '' ? null : (parseFloat(comparePrice) || null);
+    Object.assign(productData, auctionData, offerData);
     if (auctionData.auctionStatus) delete productData.comparePrice; // un remate no tiene "precio anterior"
 
     // Handle relations
@@ -370,7 +383,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (price !== undefined) updateData.price = parseFloat(price) || 0;
     if (cost !== undefined) updateData.cost = parseFloat(cost) || 0;
     if (profitPercentage !== undefined) updateData.profitPercentage = parseFloat(profitPercentage) || 0;
-    if (comparePrice !== undefined) updateData.comparePrice = parseFloat(comparePrice);
+    if (comparePrice !== undefined) updateData.comparePrice = comparePrice === null || comparePrice === '' ? null : (parseFloat(comparePrice) || null);
     if (stock !== undefined) updateData.stock = parseInt(stock) || 0;
     if (sku !== undefined) updateData.sku = sku;
     if (category !== undefined) updateData.category = category;
@@ -395,6 +408,38 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     }
     // Solo el superadmin puede apagar afiliados en un producto
     if (affiliateBlocked !== undefined && req.user!.roles.includes('superadmin')) updateData.affiliateBlocked = !!affiliateBlocked;
+    // Ofertas: se valida de nuevo solo si cambió algo de la oferta (editar la descripción de una oferta vencida no obliga a renovarla)
+    {
+      const body = req.body || {};
+      const willBeOffer = isOfferCategory(updateData.category ?? product.category);
+      const wasOffer = isOfferCategory(product.category);
+      if (willBeOffer) {
+        const sameEnd = body.offerEndsAt === undefined || (product.offerEndsAt && new Date(body.offerEndsAt).getTime() === product.offerEndsAt.getTime());
+        const changes = !wasOffer || !sameEnd ||
+          (updateData.price !== undefined && updateData.price !== product.price) ||
+          (updateData.comparePrice !== undefined && updateData.comparePrice !== product.comparePrice);
+        if (changes) {
+          try {
+            Object.assign(updateData, parseOfferInput({
+              price: updateData.price ?? product.price,
+              comparePrice: updateData.comparePrice ?? product.comparePrice,
+              offerEndsAt: body.offerEndsAt ?? product.offerEndsAt,
+            }));
+          } catch (e) {
+            if (e instanceof OfferError) return res.status(e.status).json({ error: e.message });
+            throw e;
+          }
+        }
+        if (body.offerBlocked !== undefined && req.user!.roles.includes('superadmin')) updateData.offerBlocked = !!body.offerBlocked;
+      } else if (wasOffer) {
+        Object.assign(updateData, { offerEndsAt: null, offerAlertSent: false, offerBlocked: false, comparePrice: null });
+      }
+      // Bajó el precio: se avisa a quienes lo tienen en favoritos
+      if (updateData.price !== undefined && updateData.price < product.price && product.auctionStatus === null) {
+        notifyFavoritesPriceDrop(product.id, updateData.name ?? product.name, product.slug, product.price, updateData.price).catch(() => {});
+      }
+    }
+
     // Remates: con ofertas (o ya cerrado) solo se editan textos e imágenes; sin ofertas se puede reconfigurar
     const wasAuction = product.auctionStatus !== null;
     const willBeAuction = isAuctionCategory(updateData.category ?? product.category);

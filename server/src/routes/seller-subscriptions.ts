@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { createManagerCommissionForPayment, cancelManagerCommissionForSubscription, notifyNewCommissions } from '../services/affiliateService.js';
 import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
@@ -216,6 +217,11 @@ router.post('/:id/approve', authenticate, authorize('superadmin'), async (req: A
       return res.status(404).json({ error: 'Suscripción no encontrada' });
     }
 
+    // Aprobar dos veces el mismo pago (doble clic) sumaría el cobro dos veces: una suscripción ya activa no se vuelve a aprobar
+    if (currentSub.status === 'ACTIVE') {
+      return res.status(409).json({ error: 'Esta suscripción ya está aprobada. Si es una renovación, el vendedor debe enviar un nuevo pago.' });
+    }
+
     const expiresAt = new Date();
     switch (currentSub.billingCycle) {
       case 'annual': expiresAt.setFullYear(expiresAt.getFullYear() + 1); break;
@@ -234,6 +240,21 @@ router.post('/:id/approve', authenticate, authorize('superadmin'), async (req: A
       },
       include: { user: true, plan: true }
     });
+
+    // Pago confirmado: si la tienda tiene encargado, se genera su comisión (una por pago)
+    try {
+      const paid = Number(amountPaid) > 0 ? Number(amountPaid) : currentSub.totalAmount;
+      const mc = await createManagerCommissionForPayment({
+        subscriptionId: sub.id,
+        storeUserId: sub.userId,
+        paidAt: sub.approvedAt ?? new Date(),
+        amount: paid,
+        planName: sub.plan?.name || 'plan',
+      });
+      if (mc) notifyNewCommissions([{ affiliateUserId: mc.affiliateUserId, amount: mc.amount, productName: mc.productName }]);
+    } catch (managerError) {
+      console.error('Failed to create store manager commission:', managerError);
+    }
 
     // Also update SellerProfile planActive if exists
     const sellerProfile = await prisma.sellerProfile.findUnique({
@@ -275,6 +296,9 @@ router.post('/:id/revoke', authenticate, authorize('superadmin'), async (req: Au
       where: { id: id as string },
       data: { status: 'REVOKED' }
     });
+
+    // El pago se anula: la comisión del encargado por ese pago también
+    await cancelManagerCommissionForSubscription(sub.id, 'Suscripción de la tienda revocada').catch((e) => console.error('manager commission cancel', e));
 
     // Also update SellerProfile planActive if exists
     await prisma.sellerProfile.updateMany({

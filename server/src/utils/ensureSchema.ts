@@ -37,6 +37,30 @@ const STATEMENTS: string[] = [
   // Aparte, a mano y con respaldo: database/afiliados_cursos.sql (vuelve opcional orderId/orderItemId)
   `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
+  // Encargados de tiendas
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "refKey" TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_commissions_refKey_key" ON "affiliate_commissions"("refKey")`,
+  `CREATE TABLE IF NOT EXISTS "store_managers" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'active',
+    "rate" DOUBLE PRECISION NOT NULL DEFAULT 40,
+    "maxStores" INTEGER NOT NULL DEFAULT 10,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "store_managers_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "store_managers_userId_key" ON "store_managers"("userId")`,
+  `CREATE TABLE IF NOT EXISTS "store_manager_assignments" (
+    "id" TEXT NOT NULL,
+    "managerId" TEXT NOT NULL,
+    "sellerId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "store_manager_assignments_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "store_manager_assignments_sellerId_key" ON "store_manager_assignments"("sellerId")`,
+  `CREATE INDEX IF NOT EXISTS "store_manager_assignments_managerId_idx" ON "store_manager_assignments"("managerId")`,
+  addForeignKey('store_manager_assignments_managerId_fkey', 'store_manager_assignments', `FOREIGN KEY ("managerId") REFERENCES "store_managers"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
   `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "tutorEnabled" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "tutorRate" DOUBLE PRECISION`,
   `CREATE TABLE IF NOT EXISTS "course_tutors" (
@@ -67,6 +91,20 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "courseId" TEXT`,
   `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "userCourseId" TEXT`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_commissions_userCourseId_key" ON "affiliate_commissions"("userCourseId")`,
+  // Ofertas y favoritos
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerEndsAt" TIMESTAMP(3)`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerBlocked" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerAlertSent" BOOLEAN NOT NULL DEFAULT false`,
+  `CREATE TABLE IF NOT EXISTS "product_favorites" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "product_favorites_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "product_favorites_userId_productId_key" ON "product_favorites"("userId", "productId")`,
+  `CREATE INDEX IF NOT EXISTS "product_favorites_productId_idx" ON "product_favorites"("productId")`,
+  addForeignKey('product_favorites_productId_fkey', 'product_favorites', `FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
   // Remates
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionStatus" TEXT`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionEndsAt" TIMESTAMP(3)`,

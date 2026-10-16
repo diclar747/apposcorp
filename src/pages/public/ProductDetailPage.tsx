@@ -14,6 +14,8 @@ import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
 import { AuctionPanel } from '@/components/auction/AuctionPanel';
+import { OfferCountdown } from '@/components/offer/OfferCountdown';
+import { FavoriteButton } from '@/components/shared/FavoriteButton';
 
 interface PublicProduct {
   id: string;
@@ -39,6 +41,7 @@ interface PublicProduct {
   };
   affiliate: { participates: boolean; rate: number | null };
   auction: any | null;
+  offer: { active: boolean; expired: boolean; endsAt: string | null; discountPercent: number } | null;
 }
 
 export default function ProductDetailPage() {
@@ -93,7 +96,7 @@ export default function ProductDetailPage() {
   }
 
   const outOfStock = product.stock <= 0;
-  const canBuy = product.onlineSales && !isPreview && !outOfStock;
+  const canBuy = product.onlineSales && !isPreview && !outOfStock && !product.offer?.expired;
   const images = product.images.length ? product.images : [];
   const maxQty = Math.max(1, product.stock - inCart);
 
@@ -161,6 +164,7 @@ export default function ProductDetailPage() {
                 <span className="absolute -top-0.5 -right-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{inCart}</span>
               </Button>
             )}
+            <FavoriteButton productId={product.id} className="shadow-none" />
             <Button variant="ghost" size="icon" onClick={handleShare} aria-label="Compartir">
               <Share2 className="w-5 h-5" />
             </Button>
@@ -211,6 +215,7 @@ export default function ProductDetailPage() {
           </div>
           <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-tight">{product.name}</h1>
 
+          {product.offer && <OfferCountdown offer={product.offer} className="mt-3 self-start" />}
           {!product.auction && (
           <div className="flex items-end gap-3 mt-4">
             <span className="text-3xl md:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">

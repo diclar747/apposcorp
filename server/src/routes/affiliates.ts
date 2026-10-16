@@ -14,6 +14,7 @@ import {
   releaseDueCommissions,
   parseRateInput,
   getCourseEffectiveRate,
+  MANAGER_SOURCE,
   getTutorRate,
   isActiveTutor,
   canPromoteCourse,
@@ -345,7 +346,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res) => {
     const [clicks, commissions] = await Promise.all([
       prisma.affiliateClick.findMany({ where: { affiliateId: profile.id, createdAt: { gte: since } }, select: { visitorId: true, createdAt: true } }),
       prisma.affiliateCommission.findMany({
-        where: { affiliateId: profile.id, createdAt: { gte: since }, status: { notIn: ['cancelled', 'reversed'] } },
+        where: { affiliateId: profile.id, createdAt: { gte: since }, status: { notIn: ['cancelled', 'reversed'] }, source: { not: 'store_manager' } },
         select: { id: true, orderId: true, amount: true, createdAt: true },
       }),
     ]);
@@ -469,7 +470,7 @@ router.get('/seller/report', authenticate, authorize('seller', 'superadmin'), as
     const seller = await getSellerProfile(req, res);
     if (!seller) return;
     const commissions = await prisma.affiliateCommission.findMany({
-      where: { sellerId: seller.id },
+      where: { sellerId: seller.id, source: { in: ['product', 'store'] } }, // las comisiones de encargado no son ventas de esta tienda
       include: {
         affiliate: { select: { code: true, user: { select: { firstName: true, lastName: true } } } },
         order: { select: { orderNumber: true, status: true } },
@@ -674,11 +675,12 @@ router.get('/admin/reports', ...admin, async (req: AuthRequest, res) => {
     const days = Math.min(3650, Math.max(1, Number(req.query.days) || 30));
     const since = new Date(Date.now() - days * DAY_MS);
     const where = { createdAt: { gte: since }, status: { notIn: ['cancelled', 'reversed'] as any } };
+    const storeWhere = { ...where, source: { in: ['product', 'store'] } }; // tiendas y productos: solo ventas de tienda
 
     const [byAffiliate, bySeller, byProduct, totals, clicks] = await Promise.all([
       prisma.affiliateCommission.groupBy({ by: ['affiliateId'], where, _sum: { amount: true, baseAmount: true }, _count: { _all: true }, orderBy: { _sum: { baseAmount: 'desc' } }, take: 10 }),
-      prisma.affiliateCommission.groupBy({ by: ['sellerId'], where, _sum: { amount: true, baseAmount: true }, _count: { _all: true }, orderBy: { _sum: { baseAmount: 'desc' } }, take: 10 }),
-      prisma.affiliateCommission.groupBy({ by: ['productId', 'productName'], where, _sum: { amount: true, baseAmount: true }, _count: { _all: true }, orderBy: { _sum: { baseAmount: 'desc' } }, take: 10 }),
+      prisma.affiliateCommission.groupBy({ by: ['sellerId'], where: storeWhere, _sum: { amount: true, baseAmount: true }, _count: { _all: true }, orderBy: { _sum: { baseAmount: 'desc' } }, take: 10 }),
+      prisma.affiliateCommission.groupBy({ by: ['productId', 'productName'], where: storeWhere, _sum: { amount: true, baseAmount: true }, _count: { _all: true }, orderBy: { _sum: { baseAmount: 'desc' } }, take: 10 }),
       prisma.affiliateCommission.aggregate({ where, _sum: { amount: true, baseAmount: true }, _count: { _all: true } }),
       prisma.affiliateClick.count({ where: { createdAt: { gte: since } } }),
     ]);
@@ -783,6 +785,11 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
     if (next.tutorMinRate <= 0 || next.tutorMaxRate > 100 || next.tutorMinRate > next.tutorMaxRate) {
       return res.status(400).json({ error: 'El rango de % de tutores debe cumplir 0 < mínimo ≤ máximo ≤ 100' });
     }
+    if (next.managerMinRate <= 0 || next.managerMaxRate > 100 || next.managerMinRate > next.managerMaxRate) {
+      return res.status(400).json({ error: 'El rango de % de encargados debe cumplir 0 < mínimo ≤ máximo ≤ 100' });
+    }
+    if (next.managerMaxStores < 1 || next.managerMaxStores > 100) return res.status(400).json({ error: 'El máximo de tiendas por encargado debe ser de 1 a 100' });
+    if (next.managerHoldDays > 365) return res.status(400).json({ error: 'El plazo de garantía de encargados no puede superar 365 días' });
     if (next.courseHoldDays > 365) return res.status(400).json({ error: 'El plazo de garantía de cursos no puede superar 365 días' });
     if (next.holdDays > 365) return res.status(400).json({ error: 'El plazo de garantía no puede superar 365 días' });
 
@@ -1011,6 +1018,167 @@ router.get('/admin/audit', ...admin, async (_req: AuthRequest, res) => {
     res.json(logs.map((l) => ({ ...l, actorName: (() => { const a = actors.find((x) => x.id === l.actorId); return a ? `${a.firstName} ${a.lastName}` : l.actorId; })() })));
   } catch (error) {
     serverError(res, error, 'admin audit');
+  }
+});
+
+// ═══ Encargados de tiendas ═════════════════════════════════════════════════════
+
+const managerStoreRows = async (managerId: string, rate: number) => {
+  const assignments = await prisma.storeManagerAssignment.findMany({ where: { managerId }, orderBy: { createdAt: 'asc' } });
+  const sellerIds = assignments.map((a) => a.sellerId);
+  const [sellers, subs, productCounts, commissions] = await Promise.all([
+    prisma.sellerProfile.findMany({ where: { id: { in: sellerIds } }, select: { id: true, userId: true, storeName: true, storeSlug: true, planActive: true, planExpiryDate: true, totalSales: true, totalRevenue: true, plan: { select: { name: true, price: true } } } }),
+    prisma.sellerSubscription.findMany({ where: { user: { sellerProfile: { id: { in: sellerIds } } } }, select: { userId: true, status: true, expiresAt: true, totalAmount: true, billingCycle: true } }),
+    prisma.product.groupBy({ by: ['sellerId'], where: { sellerId: { in: sellerIds }, status: 'active' }, _count: { _all: true } }),
+    prisma.affiliateCommission.groupBy({ by: ['sellerId', 'status'], where: { source: MANAGER_SOURCE, sellerId: { in: sellerIds } }, _sum: { amount: true } }),
+  ]);
+  return assignments.map((a) => {
+    const s = sellers.find((x) => x.id === a.sellerId);
+    const sub = subs.find((x) => x.userId === s?.userId);
+    const earned = (st: string[]) => commissions.filter((c) => c.sellerId === a.sellerId && st.includes(c.status)).reduce((t, c) => t + (c._sum.amount || 0), 0);
+    return {
+      sellerId: a.sellerId,
+      storeName: s?.storeName ?? '—',
+      storeSlug: s?.storeSlug ?? '',
+      planName: s?.plan?.name ?? null,
+      subscriptionStatus: sub?.status ?? null,
+      subscriptionExpiresAt: sub?.expiresAt ?? null,
+      monthlyFee: sub?.totalAmount ?? s?.plan?.price ?? 0,
+      activeProducts: productCounts.find((p) => p.sellerId === a.sellerId)?._count._all ?? 0,
+      totalSales: s?.totalSales ?? 0,
+      totalRevenue: s?.totalRevenue ?? 0,
+      estimatedMonthly: Math.floor(((sub?.totalAmount ?? s?.plan?.price ?? 0) * rate) / 100),
+      earnedPending: earned(['pending', 'approved']),
+      earnedPaid: earned(['paid']),
+    };
+  });
+};
+
+// Mi panel de encargado: tiendas asignadas, suscripciones, publicaciones, ventas y comisiones (aparte de mis ventas como afiliado)
+router.get('/manager/me', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    const manager = await prisma.storeManager.findUnique({ where: { userId: req.user!.userId } });
+    if (!manager) return res.json({ manager: null });
+    const stores = await managerStoreRows(manager.id, manager.rate);
+    res.json({
+      manager: { ...manager, rate: Math.min(cfg.managerMaxRate, Math.max(cfg.managerMinRate, manager.rate)) },
+      stores,
+      totals: {
+        stores: stores.length,
+        activeSubscriptions: stores.filter((s) => s.subscriptionStatus === 'ACTIVE').length,
+        estimatedMonthly: stores.filter((s) => s.subscriptionStatus === 'ACTIVE').reduce((t, s) => t + s.estimatedMonthly, 0),
+        earnedPending: stores.reduce((t, s) => t + s.earnedPending, 0),
+        earnedPaid: stores.reduce((t, s) => t + s.earnedPaid, 0),
+      },
+    });
+  } catch (error) {
+    serverError(res, error, 'manager me');
+  }
+});
+
+router.get('/admin/managers', ...admin, async (_req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    const managers = await prisma.storeManager.findMany({ orderBy: { createdAt: 'desc' }, include: { _count: { select: { assignments: true } } } });
+    const users = await prisma.user.findMany({ where: { id: { in: managers.map((m) => m.userId) } }, select: { id: true, firstName: true, lastName: true, email: true } });
+    const unassigned = await prisma.sellerProfile.findMany({
+      where: { id: { notIn: (await prisma.storeManagerAssignment.findMany({ select: { sellerId: true } })).map((a) => a.sellerId) } },
+      select: { id: true, storeName: true },
+      orderBy: { storeName: 'asc' },
+    });
+    const out = [];
+    for (const m of managers) {
+      out.push({ ...m, user: users.find((u) => u.id === m.userId) ?? null, stores: await managerStoreRows(m.id, m.rate) });
+    }
+    res.json({ minRate: cfg.managerMinRate, maxRate: cfg.managerMaxRate, maxStores: cfg.managerMaxStores, managers: out, unassignedStores: unassigned });
+  } catch (error) {
+    serverError(res, error, 'admin managers');
+  }
+});
+
+router.post('/admin/managers', ...admin, async (req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ error: 'No hay ningún usuario con ese correo' });
+    if (await prisma.storeManager.findUnique({ where: { userId: user.id } })) return res.status(400).json({ error: 'Esa persona ya es encargada' });
+    const rate = Number(req.body?.rate ?? cfg.managerMinRate);
+    if (!Number.isFinite(rate) || rate < cfg.managerMinRate || rate > cfg.managerMaxRate) {
+      return res.status(400).json({ error: `El % debe estar entre ${cfg.managerMinRate}% y ${cfg.managerMaxRate}%` });
+    }
+    const maxStores = Math.min(cfg.managerMaxStores, Math.max(1, Math.floor(Number(req.body?.maxStores ?? cfg.managerMaxStores)) || cfg.managerMaxStores));
+    await joinAffiliateProgram(user.id); // el encargado cobra con su perfil de afiliado y su billetera
+    const manager = await prisma.storeManager.create({ data: { userId: user.id, rate: Math.round(rate * 100) / 100, maxStores } });
+    auditAffiliate(req.user!.userId, 'manager.create', 'store_manager', manager.id, { userId: user.id, rate: manager.rate, maxStores });
+    res.status(201).json({ manager });
+  } catch (error: any) {
+    if (error.message === 'PROGRAM_DISABLED') return res.status(403).json({ error: 'Activá el programa de afiliados antes de crear encargados' });
+    serverError(res, error, 'admin manager create');
+  }
+});
+
+router.patch('/admin/managers/:id', ...admin, async (req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    const id = String(req.params.id);
+    const data: { status?: string; rate?: number; maxStores?: number } = {};
+    if (req.body?.status !== undefined) {
+      if (!['active', 'suspended'].includes(req.body.status)) return res.status(400).json({ error: 'Estado inválido' });
+      data.status = req.body.status;
+    }
+    if (req.body?.rate !== undefined) {
+      const rate = Number(req.body.rate);
+      if (!Number.isFinite(rate) || rate < cfg.managerMinRate || rate > cfg.managerMaxRate) {
+        return res.status(400).json({ error: `El % debe estar entre ${cfg.managerMinRate}% y ${cfg.managerMaxRate}%` });
+      }
+      data.rate = Math.round(rate * 100) / 100;
+    }
+    if (req.body?.maxStores !== undefined) {
+      const n = Math.floor(Number(req.body.maxStores));
+      if (!Number.isFinite(n) || n < 1 || n > cfg.managerMaxStores) return res.status(400).json({ error: `Entre 1 y ${cfg.managerMaxStores} tiendas` });
+      const current = await prisma.storeManagerAssignment.count({ where: { managerId: id } });
+      if (n < current) return res.status(400).json({ error: `Ya administra ${current} tiendas: quitá alguna antes de bajar el límite` });
+      data.maxStores = n;
+    }
+    const before = await prisma.storeManager.findUnique({ where: { id } });
+    if (!before) return res.status(404).json({ error: 'Encargado no encontrado' });
+    const manager = await prisma.storeManager.update({ where: { id }, data });
+    auditAffiliate(req.user!.userId, 'manager.update', 'store_manager', id, { before: { status: before.status, rate: before.rate, maxStores: before.maxStores }, after: data });
+    res.json({ manager });
+  } catch (error) {
+    serverError(res, error, 'admin manager update');
+  }
+});
+
+router.post('/admin/managers/:id/stores', ...admin, async (req: AuthRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const sellerId = String(req.body?.sellerId || '');
+    const manager = await prisma.storeManager.findUnique({ where: { id }, include: { _count: { select: { assignments: true } } } });
+    if (!manager) return res.status(404).json({ error: 'Encargado no encontrado' });
+    const seller = await prisma.sellerProfile.findUnique({ where: { id: sellerId }, select: { id: true, userId: true } });
+    if (!seller) return res.status(404).json({ error: 'Tienda no encontrada' });
+    if (seller.userId === manager.userId) return res.status(400).json({ error: 'Un encargado no puede administrar su propia tienda' });
+    if (manager._count.assignments >= manager.maxStores) return res.status(400).json({ error: `Ya administra el máximo de ${manager.maxStores} tiendas` });
+    if (await prisma.storeManagerAssignment.findUnique({ where: { sellerId } })) return res.status(400).json({ error: 'Esa tienda ya tiene un encargado' });
+    const a = await prisma.storeManagerAssignment.create({ data: { managerId: id, sellerId } });
+    auditAffiliate(req.user!.userId, 'manager.assign', 'store_manager', id, { sellerId });
+    res.status(201).json({ assignment: a });
+  } catch (error) {
+    serverError(res, error, 'admin manager assign');
+  }
+});
+
+router.delete('/admin/managers/:id/stores/:sellerId', ...admin, async (req: AuthRequest, res) => {
+  try {
+    const r = await prisma.storeManagerAssignment.deleteMany({ where: { managerId: String(req.params.id), sellerId: String(req.params.sellerId) } });
+    if (r.count === 0) return res.status(404).json({ error: 'La tienda no está asignada a este encargado' });
+    auditAffiliate(req.user!.userId, 'manager.unassign', 'store_manager', String(req.params.id), { sellerId: req.params.sellerId });
+    res.json({ ok: true });
+  } catch (error) {
+    serverError(res, error, 'admin manager unassign');
   }
 });
 

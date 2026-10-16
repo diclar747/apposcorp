@@ -184,6 +184,13 @@ export const plansApi = {
 };
 
 // Products API
+export const favoritesApi = {
+  ids: () => fetchWithAuth('/favorites/ids'),
+  list: () => fetchWithAuth('/favorites'),
+  add: (productId: string) => fetchWithAuth(`/favorites/${productId}`, { method: 'POST' }),
+  remove: (productId: string) => fetchWithAuth(`/favorites/${productId}`, { method: 'DELETE' }),
+};
+
 export const auctionsApi = {
   get: (productId: string) => fetchWithAuth(`/auctions/${productId}`),
   bid: (productId: string, amount: number) =>
@@ -884,6 +891,16 @@ export const affiliatesApi = {
   explore: (search?: string) => fetchWithAuth(`/affiliates/explore${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   getCommissions: () => fetchWithAuth('/affiliates/commissions'),
   getCourses: () => fetchWithAuth('/affiliates/courses'),
+  managerMe: () => fetchWithAuth('/affiliates/manager/me'),
+  adminGetManagers: () => fetchWithAuth('/affiliates/admin/managers'),
+  adminCreateManager: (data: { email: string; rate?: number; maxStores?: number }) =>
+    fetchWithAuth('/affiliates/admin/managers', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateManager: (id: string, data: { status?: 'active' | 'suspended'; rate?: number; maxStores?: number }) =>
+    fetchWithAuth(`/affiliates/admin/managers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  adminAssignStore: (id: string, sellerId: string) =>
+    fetchWithAuth(`/affiliates/admin/managers/${id}/stores`, { method: 'POST', body: JSON.stringify({ sellerId }) }),
+  adminUnassignStore: (id: string, sellerId: string) =>
+    fetchWithAuth(`/affiliates/admin/managers/${id}/stores/${sellerId}`, { method: 'DELETE' }),
   requestTutor: (courseId: string) => fetchWithAuth(`/affiliates/courses/${courseId}/tutor-request`, { method: 'POST' }),
   getStats: (days = 30) => fetchWithAuth(`/affiliates/stats?days=${days}`),
 

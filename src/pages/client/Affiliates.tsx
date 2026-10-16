@@ -31,6 +31,12 @@ function StatTile({ label, value, hint, className }: { label: string; value: str
 export default function ClientAffiliates() {
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<any>(null);
+  const [isManager, setIsManager] = useState(false);
+
+  // La pestaña "Tiendas" solo aparece si la persona es encargada de tiendas
+  useEffect(() => {
+    affiliatesApi.managerMe().then((d) => setIsManager(!!d.manager)).catch(() => setIsManager(false));
+  }, []);
   const [program, setProgram] = useState<AffiliateProgram | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -131,15 +137,17 @@ export default function ClientAffiliates() {
       </div>
 
       <Tabs defaultValue="explorar">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className={cn('grid w-full', isManager ? 'grid-cols-6' : 'grid-cols-5')}>
           <TabsTrigger value="explorar">Explorar</TabsTrigger>
           <TabsTrigger value="cursos">Cursos</TabsTrigger>
+          {isManager && <TabsTrigger value="tiendas">Tiendas</TabsTrigger>}
           <TabsTrigger value="promociones">Promociones</TabsTrigger>
           <TabsTrigger value="estadisticas">Estadísticas</TabsTrigger>
           <TabsTrigger value="ganancias">Ganancias</TabsTrigger>
         </TabsList>
         <TabsContent value="explorar" className="mt-4"><ExploreTab /></TabsContent>
         <TabsContent value="cursos" className="mt-4"><CoursesTab code={me?.profile?.code} /></TabsContent>
+        {isManager && <TabsContent value="tiendas" className="mt-4"><ManagerTab /></TabsContent>}
         <TabsContent value="promociones" className="mt-4"><LinksTab /></TabsContent>
         <TabsContent value="estadisticas" className="mt-4"><StatsTab /></TabsContent>
         <TabsContent value="ganancias" className="mt-4"><EarningsTab earnings={earnings} walletBalance={walletBalance} /></TabsContent>
@@ -219,6 +227,75 @@ function ExploreTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ManagerTab() {
+  const [data, setData] = useState<any>(null);
+  const [sim, setSim] = useState({ stores: '10', fee: '100.000' });
+
+  useEffect(() => {
+    affiliatesApi.managerMe().then(setData).catch(() => setData({ manager: null }));
+  }, []);
+
+  if (!data) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (!data.manager) return <p className="text-center text-sm text-muted-foreground py-10">Todavía no administrás tiendas.</p>;
+
+  const { manager, stores, totals } = data;
+  const n = Math.max(0, Math.min(manager.maxStores, Number(sim.stores) || 0));
+  const fee = Number(sim.fee.replace(/\D/g, '')) || 0;
+  const mine = Math.floor((n * fee * manager.rate) / 100);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2">
+        <StatTile label="Tiendas" value={`${totals.stores} de ${manager.maxStores}`} hint={`${totals.activeSubscriptions} con suscripción activa`} />
+        <StatTile label="Por mes (estimado)" value={formatCurrency(totals.estimatedMonthly)} hint={`${manager.rate}% de cada mensualidad`} />
+        <StatTile label="Pagado" value={formatCurrency(totals.earnedPaid)} hint="ya en tu billetera" />
+        <StatTile label="Pendiente" value={formatCurrency(totals.earnedPending)} hint="se libera tras la garantía" />
+      </div>
+      <p className="text-xs text-muted-foreground">Esto es aparte de lo que ganás por tus ventas como afiliado. Cada comisión se genera solo cuando la tienda paga su mensualidad.</p>
+
+      {stores.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-6">Todavía no tenés tiendas asignadas.</p>
+      ) : (
+        <div className="space-y-2">
+          {stores.map((s: any) => (
+            <Card key={s.sellerId}>
+              <CardContent className="space-y-2 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-sm">{s.storeName}</p>
+                  <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', s.subscriptionStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+                    {s.subscriptionStatus === 'ACTIVE' ? 'Suscripción activa' : s.subscriptionStatus === 'PENDING_APPROVAL' ? 'Pago en revisión' : 'Sin pagar'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 text-center text-xs">
+                  <div><p className="font-black text-base tabular-nums">{s.activeProducts}</p><p className="text-muted-foreground">Publicaciones</p></div>
+                  <div><p className="font-black text-base tabular-nums">{s.totalSales}</p><p className="text-muted-foreground">Ventas</p></div>
+                  <div><p className="font-black text-base tabular-nums">{formatCurrency(s.earnedPaid)}</p><p className="text-muted-foreground">Ganado</p></div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{s.subscriptionExpiresAt ? `Vence el ${new Date(s.subscriptionExpiresAt).toLocaleDateString('es-PY')}` : ''}</span>
+                  <Link to={`/tienda/${s.storeSlug}`} className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline">Ver tienda <ExternalLink className="w-3 h-3" /></Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2 rounded-md bg-muted/50 p-3 text-xs">
+        <p className="font-semibold text-sm">Simulador de ingresos</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input type="number" inputMode="numeric" min={0} max={manager.maxStores} value={sim.stores} onChange={(e) => setSim({ ...sim, stores: e.target.value })} className="h-8 w-16" aria-label="Cantidad de tiendas" />
+          <span className="text-muted-foreground">tiendas × Gs.</span>
+          <Input type="text" inputMode="numeric" value={sim.fee} onChange={(e) => { const r = e.target.value.replace(/\D/g, ''); setSim({ ...sim, fee: r ? Number(r).toLocaleString('es-PY') : '' }); }} className="h-8 w-28" aria-label="Mensualidad por tienda" />
+          <span className="text-muted-foreground">al {manager.rate}% =</span>
+          <span className="font-black tabular-nums">{formatCurrency(mine)} por mes</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground">Estimación suponiendo que todas las tiendas pagan la mensualidad completa, sin descuentos, impuestos ni otros costos.</p>
+      </div>
     </div>
   );
 }
@@ -459,7 +536,7 @@ function StatsTab() {
 
 function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance: number }) {
   const [commissions, setCommissions] = useState<any[] | null>(null);
-  const [kind, setKind] = useState<'all' | 'product' | 'course'>('all');
+  const [kind, setKind] = useState<'all' | 'product' | 'course' | 'manager'>('all');
   const [status, setStatus] = useState<string>('all');
   const [period, setPeriod] = useState<'all' | '7' | '30' | '90'>('all');
 
@@ -505,6 +582,7 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
                   <SelectItem value="all">Todo</SelectItem>
                   <SelectItem value="product">Productos</SelectItem>
                   <SelectItem value="course">Cursos</SelectItem>
+                  <SelectItem value="manager">Encargado de tiendas</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={status} onValueChange={setStatus}>
@@ -525,7 +603,12 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
               </Select>
             </div>
             {commissions
-              .filter((c) => kind === 'all' || (kind === 'course') === !!c.courseId)
+              .filter((c) => {
+                if (kind === 'all') return true;
+                if (kind === 'manager') return c.source === 'store_manager';
+                if (kind === 'course') return !!c.courseId;
+                return !c.courseId && c.source !== 'store_manager';
+              })
               .filter((c) => status === 'all' || c.status === status)
               .filter((c) => period === 'all' || new Date(c.createdAt).getTime() >= Date.now() - Number(period) * 86400000)
               .map((c) => (
@@ -539,10 +622,11 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
                     {c.status === 'pending' && c.availableAt && (
                       <p className="text-[11px] text-muted-foreground">Se libera el {shortDate(c.availableAt)}</p>
                     )}
-                    {c.status === 'pending' && !c.availableAt && !c.courseId && (
+                    {c.status === 'pending' && !c.availableAt && !c.courseId && c.source !== 'store_manager' && (
                       <p className="text-[11px] text-muted-foreground">Esperando la entrega del pedido</p>
                     )}
                     {c.source === 'course_tutor' && <p className="text-[11px] text-muted-foreground">Comisión de tutor</p>}
+                    {c.source === 'store_manager' && <p className="text-[11px] text-muted-foreground">Comisión de encargado de tiendas</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-black tabular-nums">{formatCurrency(c.amount)}</p>

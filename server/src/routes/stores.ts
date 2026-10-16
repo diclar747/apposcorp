@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { getOptionalUser } from '../middleware/auth.js';
 import { getAffiliateConfig, getEffectiveRate, storeParticipates } from '../services/affiliateService.js';
+import { decorateOffer } from '../services/offerService.js';
 import { sellerAllowsOnlineSales } from '../utils/plans.js';
 
 const router = Router();
@@ -110,7 +111,7 @@ router.get('/:slug', async (req, res) => {
     const storeAccepts = storeParticipates(store, cfg);
     const products = store.products.map(({ cost: _cost, profitPercentage: _profit, auctionWinnerId: _aw, auctionPayBy: _ap, ...p }) => {
       const rate = getEffectiveRate(store, p, cfg);
-      return { ...p, affiliateParticipates: rate !== null, affiliateRate: rate !== null && showRate ? rate : null };
+      return { ...decorateOffer(p), affiliateParticipates: rate !== null, affiliateRate: rate !== null && showRate ? rate : null };
     });
     const productRates = products.map((p) => p.affiliateRate).filter((r): r is number => r !== null);
 

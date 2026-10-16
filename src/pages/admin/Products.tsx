@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Gavel, Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye } from 'lucide-react';
 import { AuctionFormFields, defaultAuctionEnd, toLocalInput } from '@/components/auction/AuctionFormFields';
 import { AuctionBiddersDialog } from '@/components/auction/AuctionBiddersDialog';
+import { OfferFormFields } from '@/components/offer/OfferFormFields';
 import { productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -135,6 +136,11 @@ export default function AdminProducts() {
       const auction = product as any;
       setFormData({
         ...product,
+        ...(product.category === 'Ofertas' ? {
+          offerCompare: product.comparePrice ? Number(product.comparePrice).toLocaleString('es-PY') : '',
+          offerEndsAt: toLocalInput((product as any).offerEndsAt),
+          offerBlocked: !!(product as any).offerBlocked,
+        } : {}),
         ...(auction.auctionStatus ? {
           auctionEndsAt: toLocalInput(auction.auctionEndsAt),
           auctionMinIncrement: (auction.auctionMinIncrement ?? 10000).toLocaleString('es-PY'),
@@ -185,6 +191,20 @@ export default function AdminProducts() {
       delete payload.auctionEndsAt;
       delete payload.auctionMinIncrement;
     }
+    // Oferta: precio anterior y vencimiento
+    if (formData.category === 'Ofertas') {
+      const compare = Number(String(fd.offerCompare || '').replace(/\D/g, ''));
+      if (!compare || !fd.offerEndsAt) {
+        toast.error('Completá el precio anterior y cuándo vence la oferta');
+        return;
+      }
+      payload.comparePrice = compare;
+      payload.offerEndsAt = new Date(fd.offerEndsAt).toISOString();
+    } else {
+      delete payload.offerEndsAt;
+      delete payload.offerBlocked;
+    }
+    delete payload.offerCompare;
 
     try {
       if (editingProduct) {
@@ -420,6 +440,9 @@ export default function AdminProducts() {
                   onValueChange={(value) => setFormData({
                     ...formData,
                     category: value,
+                    ...(value === 'Ofertas' && !(formData as any).offerEndsAt
+                      ? { offerEndsAt: toLocalInput(new Date(Date.now() + 7 * 24 * 3600_000)), offerCompare: '' }
+                      : {}),
                     ...(value === 'Remates' && !(formData as any).auctionEndsAt
                       ? { auctionEndsAt: defaultAuctionEnd(), auctionMinIncrement: '10.000', stock: 1 }
                       : {}),
@@ -460,6 +483,16 @@ export default function AdminProducts() {
                 minIncrement={(formData as any).auctionMinIncrement || ''}
                 locked={!!editingProduct && ['ended', 'sold', 'unpaid'].includes((editingProduct as any).auctionStatus)}
                 onChange={(v) => setFormData({ ...formData, ...v } as any)}
+              />
+            )}
+            {formData.category === 'Ofertas' && (
+              <OfferFormFields
+                price={Number(formData.price) || 0}
+                comparePrice={(formData as any).offerCompare || ''}
+                endsAt={(formData as any).offerEndsAt || ''}
+                blocked={!!(formData as any).offerBlocked}
+                isAdmin={true}
+                onChange={(v) => setFormData({ ...formData, ...(v.comparePrice !== undefined ? { offerCompare: v.comparePrice } : {}), ...(v.offerEndsAt !== undefined ? { offerEndsAt: v.offerEndsAt } : {}), ...(v.offerBlocked !== undefined ? { offerBlocked: v.offerBlocked } : {}) } as any)}
               />
             )}
 
