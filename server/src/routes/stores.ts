@@ -108,7 +108,7 @@ router.get('/:slug', async (req, res) => {
     const [cfg, viewer] = await Promise.all([getAffiliateConfig(), getOptionalUser(req)]);
     const showRate = cfg.showRatePublic || !!viewer;
     const storeAccepts = storeParticipates(store, cfg);
-    const products = store.products.map(({ cost: _cost, profitPercentage: _profit, ...p }) => {
+    const products = store.products.map(({ cost: _cost, profitPercentage: _profit, auctionWinnerId: _aw, auctionPayBy: _ap, ...p }) => {
       const rate = getEffectiveRate(store, p, cfg);
       return { ...p, affiliateParticipates: rate !== null, affiliateRate: rate !== null && showRate ? rate : null };
     });

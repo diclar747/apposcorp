@@ -184,6 +184,15 @@ export const plansApi = {
 };
 
 // Products API
+export const auctionsApi = {
+  get: (productId: string) => fetchWithAuth(`/auctions/${productId}`),
+  bid: (productId: string, amount: number) =>
+    fetchWithAuth(`/auctions/${productId}/bids`, { method: 'POST', body: JSON.stringify({ amount }) }),
+  mine: () => fetchWithAuth('/auctions/mine'),
+  bidders: (productId: string) => fetchWithAuth(`/auctions/${productId}/bidders`),
+  list: () => fetchWithAuth('/auctions'),
+};
+
 export const productsApi = {
   getAll: (params?: { category?: string; search?: string; sellerId?: string }) => {
     const query = new URLSearchParams(params as Record<string, string>).toString();
@@ -497,6 +506,7 @@ export const purchasesApi = {
 export const coursesApi = {
   getAll: (all?: boolean) => fetchWithAuth(`/courses${all ? '?all=true' : ''}`),
   getById: (id: string) => fetchWithAuth(`/courses/${id}`),
+  getPublic: (slug: string) => fetchWithAuth(`/courses/public/${encodeURIComponent(slug)}`),
   getMyCourses: () => fetchWithAuth('/courses/my/enrollments'),
   create: (data: any) =>
     fetchWithAuth('/courses', {
@@ -874,6 +884,7 @@ export const affiliatesApi = {
   explore: (search?: string) => fetchWithAuth(`/affiliates/explore${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   getCommissions: () => fetchWithAuth('/affiliates/commissions'),
   getCourses: () => fetchWithAuth('/affiliates/courses'),
+  requestTutor: (courseId: string) => fetchWithAuth(`/affiliates/courses/${courseId}/tutor-request`, { method: 'POST' }),
   getStats: (days = 30) => fetchWithAuth(`/affiliates/stats?days=${days}`),
 
   // Vendedor
@@ -887,7 +898,11 @@ export const affiliatesApi = {
   adminSetAffiliateStatus: (id: string, status: 'pending' | 'active' | 'suspended') =>
     fetchWithAuth(`/affiliates/admin/affiliates/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   adminGetCourses: () => fetchWithAuth('/affiliates/admin/courses'),
-  adminUpdateCourse: (id: string, data: { affiliateEnabled?: boolean; affiliateRate?: number | null }) =>
+  adminGetTutors: () => fetchWithAuth('/affiliates/admin/tutors'),
+  adminSetTutorStatus: (id: string, status: 'pending' | 'active' | 'suspended') =>
+    fetchWithAuth(`/affiliates/admin/tutors/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminGetAudit: () => fetchWithAuth('/affiliates/admin/audit'),
+  adminUpdateCourse: (id: string, data: { affiliateEnabled?: boolean; affiliateRate?: number | null; tutorEnabled?: boolean; tutorRate?: number | null }) =>
     fetchWithAuth(`/affiliates/admin/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   adminGetCommissions: (status?: string) => fetchWithAuth(`/affiliates/admin/commissions${status ? `?status=${status}` : ''}`),
   adminApproveCommissions: (ids: string[]) =>

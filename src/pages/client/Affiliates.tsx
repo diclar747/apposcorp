@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PromoteButton } from '@/components/affiliate/PromoteButton';
 
 const shortDate = (d: string) => new Date(d).toLocaleDateString('es-PY', { day: 'numeric', month: 'short' });
@@ -224,10 +225,13 @@ function ExploreTab() {
 
 function CoursesTab({ code }: { code?: string }) {
   const [data, setData] = useState<{ mode: string; courses: any[] } | null>(null);
+  const [sims, setSims] = useState<Record<string, string>>({});
+  const [requesting, setRequesting] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     affiliatesApi.getCourses().then(setData).catch(() => setData({ mode: 'open', courses: [] }));
   }, []);
+  useEffect(load, [load]);
 
   const linkOf = (c: any) => `${window.location.origin}${c.path}?ref=${code}`;
   const copy = async (c: any) => {
@@ -236,6 +240,18 @@ function CoursesTab({ code }: { code?: string }) {
       toast.success('Enlace copiado');
     } catch {
       toast.error('No se pudo copiar');
+    }
+  };
+  const requestTutor = async (c: any) => {
+    setRequesting(c.id);
+    try {
+      await affiliatesApi.requestTutor(c.id);
+      toast.success('Solicitud enviada');
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRequesting(null);
     }
   };
 
@@ -248,41 +264,80 @@ function CoursesTab({ code }: { code?: string }) {
 
   return (
     <div className="space-y-2">
-      {data.courses.map((c) => (
-        <Card key={c.id} className={cn(!c.allowed && 'opacity-70')}>
-          <CardContent className="p-3 space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-lg bg-muted overflow-hidden shrink-0">
-                {c.coverImage ? <img src={c.coverImage} alt="" className="w-full h-full object-cover" /> : <Package className="w-5 h-5 m-3 text-muted-foreground" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(c.price)} · {c.rate}% · ganás {formatCurrency(c.commissionPerSale)} por venta
-                </p>
-              </div>
-            </div>
-            {c.allowed ? (
-              <>
-                <div className="grid grid-cols-2 text-center text-xs">
-                  <div><p className="font-black text-base tabular-nums">{c.clicks}</p><p className="text-muted-foreground">Clics</p></div>
-                  <div><p className="font-black text-base tabular-nums">{c.sales}</p><p className="text-muted-foreground">Ventas</p></div>
+      {data.courses.map((c) => {
+        const sales = Math.max(0, Math.min(10000, Number(sims[c.id] ?? 10) || 0));
+        return (
+          <Card key={c.id} className={cn(!c.allowed && 'opacity-90')}>
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-lg bg-muted overflow-hidden shrink-0">
+                  {c.coverImage ? <img src={c.coverImage} alt="" className="w-full h-full object-cover" /> : <Package className="w-5 h-5 m-3 text-muted-foreground" />}
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => copy(c)}><Copy className="w-3.5 h-3.5 mr-1.5" />Copiar enlace</Button>
-                  <Button size="sm" variant="outline" className="flex-1" asChild>
-                    <a href={`https://wa.me/?text=${encodeURIComponent(`${c.title} ${linkOf(c)}`)}`} target="_blank" rel="noopener noreferrer">
-                      <MessageCircle className="w-3.5 h-3.5 mr-1.5" />WhatsApp
-                    </a>
-                  </Button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(c.price)}
+                    {c.allowed
+                      ? ` · ${c.role === 'tutor' ? 'Tutor' : 'Promotor'} ${c.rate}% · ganás ${formatCurrency(c.commissionPerSale)} por venta`
+                      : c.promoterRate ? ` · promotor ${c.promoterRate}%` : ''}
+                  </p>
                 </div>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">{lockedText}</p>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              </div>
+
+              {c.allowed ? (
+                <>
+                  <div className="grid grid-cols-2 text-center text-xs">
+                    <div><p className="font-black text-base tabular-nums">{c.clicks}</p><p className="text-muted-foreground">Clics</p></div>
+                    <div><p className="font-black text-base tabular-nums">{c.sales}</p><p className="text-muted-foreground">Ventas</p></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => copy(c)}><Copy className="w-3.5 h-3.5 mr-1.5" />Copiar enlace</Button>
+                    <Button size="sm" variant="outline" className="flex-1" asChild>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(`${c.title} ${linkOf(c)}`)}`} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="w-3.5 h-3.5 mr-1.5" />WhatsApp
+                      </a>
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 p-2 text-xs">
+                    <span className="text-muted-foreground">Simulador:</span>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={sims[c.id] ?? '10'}
+                      onChange={(e) => setSims({ ...sims, [c.id]: e.target.value })}
+                      className="h-7 w-16 px-2 text-xs"
+                      aria-label="Ventas simuladas"
+                    />
+                    <span className="text-muted-foreground">ventas =</span>
+                    <span className="font-black tabular-nums">{formatCurrency(sales * c.commissionPerSale)}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Simulación sin descuentos, reembolsos ni cargos. El porcentaje definitivo lo configura el administrador.</p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">{lockedText}</p>
+              )}
+
+              {c.tutorRate && (
+                <div className="rounded-md border border-border p-2 text-xs flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">
+                    Tutor certificado: {c.tutorRate}% por alumno
+                    {c.tutorStatus === 'pending' && ' · solicitud en revisión'}
+                    {c.tutorStatus === 'suspended' && ' · suspendido'}
+                    {c.tutorStatus === 'active' && ' · activo'}
+                    {!c.tutorStatus && !c.completed && ' · terminá el curso para pedirlo'}
+                  </span>
+                  {c.canRequestTutor && (
+                    <Button size="sm" disabled={requesting === c.id} onClick={() => requestTutor(c)}>
+                      {requesting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Quiero ser tutor'}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -404,6 +459,9 @@ function StatsTab() {
 
 function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance: number }) {
   const [commissions, setCommissions] = useState<any[] | null>(null);
+  const [kind, setKind] = useState<'all' | 'product' | 'course'>('all');
+  const [status, setStatus] = useState<string>('all');
+  const [period, setPeriod] = useState<'all' | '7' | '30' | '90'>('all');
 
   useEffect(() => {
     affiliatesApi.getCommissions().then(setCommissions).catch(() => setCommissions([]));
@@ -440,7 +498,37 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
           <p className="text-sm text-muted-foreground text-center py-8">Todavía no tenés comisiones.</p>
         ) : (
           <div className="space-y-2">
-            {commissions.map((c) => (
+            <div className="grid grid-cols-3 gap-2">
+              <Select value={kind} onValueChange={(v) => setKind(v as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todo</SelectItem>
+                  <SelectItem value="product">Productos</SelectItem>
+                  <SelectItem value="course">Cursos</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Cualquier estado</SelectItem>
+                  {Object.entries(COMMISSION_STATUS_LABELS).map(([k, label]) => <SelectItem key={k} value={k}>{label as string}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todo el tiempo</SelectItem>
+                  <SelectItem value="7">7 días</SelectItem>
+                  <SelectItem value="30">30 días</SelectItem>
+                  <SelectItem value="90">90 días</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {commissions
+              .filter((c) => kind === 'all' || (kind === 'course') === !!c.courseId)
+              .filter((c) => status === 'all' || c.status === status)
+              .filter((c) => period === 'all' || new Date(c.createdAt).getTime() >= Date.now() - Number(period) * 86400000)
+              .map((c) => (
               <Card key={c.id}>
                 <CardContent className="p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -451,9 +539,10 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
                     {c.status === 'pending' && c.availableAt && (
                       <p className="text-[11px] text-muted-foreground">Se libera el {shortDate(c.availableAt)}</p>
                     )}
-                    {c.status === 'pending' && !c.availableAt && (
+                    {c.status === 'pending' && !c.availableAt && !c.courseId && (
                       <p className="text-[11px] text-muted-foreground">Esperando la entrega del pedido</p>
                     )}
+                    {c.source === 'course_tutor' && <p className="text-[11px] text-muted-foreground">Comisión de tutor</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-black tabular-nums">{formatCurrency(c.amount)}</p>

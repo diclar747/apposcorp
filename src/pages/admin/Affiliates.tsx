@@ -40,6 +40,8 @@ export default function AdminAffiliates() {
           <TabsTrigger value="reports">Reportes</TabsTrigger>
           <TabsTrigger value="stores">Tiendas y productos</TabsTrigger>
           <TabsTrigger value="courses">Cursos</TabsTrigger>
+          <TabsTrigger value="tutors">Tutores</TabsTrigger>
+          <TabsTrigger value="audit">Auditoría</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
         <TabsContent value="commissions" className="mt-4"><CommissionsTab /></TabsContent>
@@ -48,6 +50,8 @@ export default function AdminAffiliates() {
         <TabsContent value="reports" className="mt-4"><ReportsTab /></TabsContent>
         <TabsContent value="stores" className="mt-4"><StoresTab /></TabsContent>
         <TabsContent value="courses" className="mt-4"><CoursesTab /></TabsContent>
+        <TabsContent value="tutors" className="mt-4"><TutorsTab /></TabsContent>
+        <TabsContent value="audit" className="mt-4"><AuditTab /></TabsContent>
         <TabsContent value="config" className="mt-4"><ConfigTab /></TabsContent>
       </Tabs>
     </div>
@@ -185,7 +189,7 @@ function CommissionsTab() {
                   </TableCell>
                   <TableCell>
                     <div className="line-clamp-1">{c.productName}</div>
-                    <div className="text-[11px] text-muted-foreground">{c.storeName} · {c.source === 'course' ? 'curso' : `enlace de ${c.source === 'store' ? 'tienda' : 'producto'}`}</div>
+                    <div className="text-[11px] text-muted-foreground">{c.storeName} · {c.source === 'course_tutor' ? 'curso · tutor' : c.source?.startsWith('course') ? 'curso · promotor' : `enlace de ${c.source === 'store' ? 'tienda' : 'producto'}`}</div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {c.order ? (
@@ -487,23 +491,30 @@ function StoresTab() {
 }
 
 function CoursesTab() {
-  const [data, setData] = useState<{ mode: string; courses: any[] } | null>(null);
+  const [data, setData] = useState<{ mode: string; tutorMinRate: number; tutorMaxRate: number; courses: any[] } | null>(null);
   const [rates, setRates] = useState<Record<string, string>>({});
+  const [tutorRates, setTutorRates] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(() => {
     affiliatesApi.adminGetCourses().then((d) => {
       setData(d);
       setRates(Object.fromEntries(d.courses.map((c: any) => [c.id, c.affiliateRate != null ? String(c.affiliateRate) : ''])));
+      setTutorRates(Object.fromEntries(d.courses.map((c: any) => [c.id, c.tutorRate != null ? String(c.tutorRate) : ''])));
     }).catch((e) => toast.error(e.message));
   }, []);
   useEffect(load, [load]);
 
-  const save = async (c: any, patch: { affiliateEnabled?: boolean }) => {
+  const save = async (c: any, patch: { affiliateEnabled?: boolean; tutorEnabled?: boolean }) => {
     setBusy(c.id);
     try {
       const raw = rates[c.id];
-      await affiliatesApi.adminUpdateCourse(c.id, { affiliateRate: raw === '' ? null : Number(raw), ...patch });
+      const tRaw = tutorRates[c.id];
+      await affiliatesApi.adminUpdateCourse(c.id, {
+        affiliateRate: raw === '' ? null : Number(raw),
+        tutorRate: tRaw === '' ? null : Number(tRaw),
+        ...patch,
+      });
       toast.success('Curso actualizado: vale para las próximas ventas');
       load();
     } catch (e: any) {
@@ -520,34 +531,120 @@ function CoursesTab() {
       <CardHeader>
         <CardTitle>Comisiones de cursos</CardTitle>
         <CardDescription>
-          Cada curso tiene su propio % y se activa por separado. Cambiar el % solo afecta ventas nuevas: las ya generadas conservan el que tenían.
+          Cada curso tiene su % de promotor y su % de tutor ({data.tutorMinRate}% a {data.tutorMaxRate}%, todo incluido: captar y enseñar). Un alumno genera una sola comisión:
+          si lo trae un tutor certificado cobra el tutor; si no, el promotor. Cambiar un % solo afecta ventas nuevas.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {data.courses.length === 0 && <p className="text-sm text-muted-foreground">Todavía no hay cursos.</p>}
         {data.courses.map((c) => (
-          <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(c.price)}{!c.isPublished && ' · sin publicar'} · {c.sales} ventas · {formatCurrency(c.commissionAmount)} en comisiones
-                </p>
-              </div>
-              <Switch checked={c.affiliateEnabled} disabled={busy === c.id} onCheckedChange={(v) => save(c, { affiliateEnabled: v })} aria-label="Afiliación activa" />
+          <div key={c.id} className="rounded-lg border border-border p-3 space-y-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(c.price)}{!c.isPublished && ' · sin publicar (no participa)'} · {c.sales} ventas · {formatCurrency(c.commissionAmount)} en comisiones
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative w-28">
-                <Input type="number" inputMode="decimal" min={0} value={rates[c.id] ?? ''} onChange={(e) => setRates({ ...rates, [c.id]: e.target.value })} className="pr-7" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+            {([
+              { key: 'affiliateEnabled', label: 'Promotor', on: c.affiliateEnabled, vals: rates, set: setRates },
+              { key: 'tutorEnabled', label: 'Tutor', on: c.tutorEnabled, vals: tutorRates, set: setTutorRates },
+            ] as const).map((row) => (
+              <div key={row.key} className="flex flex-wrap items-center gap-2">
+                <Switch checked={row.on} disabled={busy === c.id} onCheckedChange={(v) => save(c, { [row.key]: v })} aria-label={`${row.label} activo`} />
+                <span className="w-16 text-sm font-medium">{row.label}</span>
+                <div className="relative w-28">
+                  <Input type="number" inputMode="decimal" min={0} value={row.vals[c.id] ?? ''} onChange={(e) => row.set({ ...row.vals, [c.id]: e.target.value })} className="pr-7" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                </div>
+                <Button size="sm" variant="outline" disabled={busy === c.id} onClick={() => save(c, {})}>Guardar</Button>
+                {row.vals[c.id] && Number(row.vals[c.id]) > 0 && (
+                  <span className="text-xs text-muted-foreground">Gana {formatCurrency(Math.floor((c.price * Number(row.vals[c.id])) / 100))} por venta</span>
+                )}
               </div>
-              <Button size="sm" variant="outline" disabled={busy === c.id} onClick={() => save(c, {})}>Guardar %</Button>
-              {rates[c.id] && Number(rates[c.id]) > 0 && (
-                <span className="text-xs text-muted-foreground">Gana {formatCurrency(Math.floor((c.price * Number(rates[c.id])) / 100))} por venta</span>
-              )}
+            ))}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TutorsTab() {
+  const [rows, setRows] = useState<any[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(() => {
+    affiliatesApi.adminGetTutors().then(setRows).catch((e) => toast.error(e.message));
+  }, []);
+  useEffect(load, [load]);
+
+  const setStatus = async (id: string, status: 'pending' | 'active' | 'suspended') => {
+    setBusy(id);
+    try {
+      await affiliatesApi.adminSetTutorStatus(id, status);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!rows) return <Loading />;
+  const LABEL: Record<string, string> = { pending: 'Pendiente', active: 'Activo', suspended: 'Suspendido' };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Tutores certificados</CardTitle>
+        <CardDescription>Estudiantes que terminaron un curso y piden enseñarlo. Solo cobran la comisión de tutor mientras estén activos y con el curso terminado.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {rows.length === 0 && <p className="text-sm text-muted-foreground">Todavía no hay solicitudes.</p>}
+        {rows.map((t) => (
+          <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-sm">{t.user ? `${t.user.firstName} ${t.user.lastName}` : t.userId}</p>
+              <p className="text-xs text-muted-foreground">{t.courseTitle} · {t.completed ? 'curso terminado' : 'curso sin terminar'} · {LABEL[t.status] || t.status}</p>
+            </div>
+            <div className="flex gap-2">
+              {t.status !== 'active' && <Button size="sm" disabled={busy === t.id} onClick={() => setStatus(t.id, 'active')}>Aprobar</Button>}
+              {t.status !== 'suspended' && <Button size="sm" variant="outline" disabled={busy === t.id} onClick={() => setStatus(t.id, 'suspended')}>Suspender</Button>}
             </div>
           </div>
         ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AuditTab() {
+  const [rows, setRows] = useState<any[] | null>(null);
+  useEffect(() => {
+    affiliatesApi.adminGetAudit().then(setRows).catch((e) => toast.error(e.message));
+  }, []);
+  if (!rows) return <Loading />;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Auditoría</CardTitle>
+        <CardDescription>Quién cambió porcentajes, tutores, configuración o comisiones. Últimos 300 movimientos.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? <p className="text-sm text-muted-foreground">Todavía no hay movimientos.</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Quién</TableHead><TableHead>Acción</TableHead><TableHead>Detalle</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {rows.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell className="whitespace-nowrap text-xs">{new Date(l.createdAt).toLocaleString('es-PY')}</TableCell>
+                  <TableCell className="text-xs">{l.actorName}</TableCell>
+                  <TableCell className="font-mono text-xs">{l.action}</TableCell>
+                  <TableCell className="max-w-[320px] truncate font-mono text-[11px] text-muted-foreground" title={JSON.stringify(l.details)}>{l.details ? JSON.stringify(l.details) : ''}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
@@ -608,6 +705,8 @@ function ConfigTab() {
           {number('maxRate', '% máximo', 'El mayor % que puede fijar una tienda.', '%')}
           {number('cookieDays', 'Ventana de atribución', 'Días que dura un clic (gana el último).', 'días')}
           {number('holdDays', 'Plazo de garantía', 'Días después de la entrega antes de liberar la comisión. 0 = al entregar.', 'días')}
+          {number('tutorMinRate', '% mínimo de tutor', 'Mínimo que se puede fijar a un tutor certificado.', '%')}
+          {number('tutorMaxRate', '% máximo de tutor', 'Máximo que se puede fijar a un tutor certificado.', '%')}
           {number('courseHoldDays', 'Garantía de cursos', 'Días desde la compra de un curso antes de liberar la comisión.', 'días')}
           <div className="space-y-1.5">
             <Label>¿Quién puede promocionar un curso?</Label>
@@ -624,6 +723,7 @@ function ConfigTab() {
         </div>
         <div className="divide-y divide-border">
           {toggle('autoApprove', 'Aprobar afiliados al instante', 'Si está apagado, cada nuevo afiliado queda pendiente hasta que lo actives.')}
+          {toggle('tutorAutoApprove', 'Aprobar tutores al instante', 'Si está apagado, cada pedido de tutor (con el curso terminado) lo revisás vos.')}
           {toggle('autoRelease', 'Pagar comisiones automáticamente', 'Al vencer el plazo se acreditan solas. Si está apagado, quedan aprobadas hasta que las pagues.')}
           {toggle('codEnabled', 'El pago contra entrega genera comisión', 'Se descuenta de la billetera de la tienda al marcar "Entregado".')}
           {toggle('showRatePublic', 'Mostrar el % a todos', 'Si está apagado, solo lo ven los usuarios con sesión iniciada.')}

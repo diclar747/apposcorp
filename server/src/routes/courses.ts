@@ -1,9 +1,40 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
 import { createCommissionForCourseSale, cancelCommissionForCourseAccess, notifyNewCommissions } from '../services/affiliateService.js';
 
 const router = Router();
+
+/**
+ * Los endpoints públicos de un curso no pueden regalar el contenido de pago ni los datos de los alumnos.
+ * Superadmin ve todo. El resto ve la lista de alumnos vacía y, si no está matriculado, solo las lecciones
+ * de vista previa (sin video ni materiales de las demás).
+ */
+const sanitizeCourseForViewer = async (course: any, req: any) => {
+  const viewer = await getOptionalUser(req);
+  if (viewer?.roles?.includes('superadmin')) return course;
+  // Acceso: matriculado en el curso, o miembro activo de Ingenio (las pantallas de Ingenio le abren todo el contenido)
+  let hasAccess = false;
+  if (viewer) {
+    const [enrolled, subscription, user] = await Promise.all([
+      prisma.userCourse.findUnique({ where: { userId_courseId: { userId: viewer.userId, courseId: course.id } } }),
+      prisma.ingenioSubscription.findUnique({ where: { userId: viewer.userId }, select: { status: true } }),
+      prisma.user.findUnique({ where: { id: viewer.userId }, select: { ingenioAccess: true } }),
+    ]);
+    hasAccess = !!enrolled || subscription?.status === 'ACTIVE' || !!user?.ingenioAccess;
+  }
+  return {
+    ...course,
+    userCourses: [],
+    resources: hasAccess ? course.resources : [],
+    modules: (course.modules || []).map((m: any) => ({
+      ...m,
+      lessons: (m.lessons || []).map((l: any) =>
+        hasAccess || l.isPreview ? l : { ...l, videoUrl: null, resources: [] },
+      ),
+    })),
+  };
+};
 
 // Get all courses (public gets published only, admin gets all)
 router.get('/', async (req: any, res) => {
@@ -64,6 +95,28 @@ router.get('/', async (req: any, res) => {
   }
 });
 
+// Página pública de venta del curso: solo datos para mostrar (nada del contenido de pago ni de los alumnos)
+router.get('/public/:slug', async (req, res) => {
+  try {
+    const course = await prisma.course.findFirst({
+      where: { OR: [{ slug: String(req.params.slug) }, { id: String(req.params.slug) }], isPublished: true },
+      select: {
+        id: true, title: true, slug: true, description: true, shortDescription: true, coverImage: true, previewVideo: true,
+        instructorName: true, category: true, level: true, price: true, comparePrice: true, duration: true,
+        enrolledCount: true, rating: true, reviewCount: true,
+        modules: {
+          orderBy: { order: 'asc' },
+          select: { id: true, title: true, lessons: { orderBy: { order: 'asc' }, select: { id: true, title: true, duration: true } } },
+        },
+      },
+    });
+    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // Get course by slug (public)
 router.get('/slug/:slug', async (req, res) => {
   try {
@@ -97,7 +150,7 @@ router.get('/slug/:slug', async (req, res) => {
       return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
-    res.json(course);
+    res.json(await sanitizeCourseForViewer(course, req));
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -224,7 +277,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
-    res.json(course);
+    res.json(await sanitizeCourseForViewer(course, req));
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }

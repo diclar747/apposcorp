@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
+import { AuctionPanel } from '@/components/auction/AuctionPanel';
 
 interface PublicProduct {
   id: string;
@@ -37,6 +38,7 @@ interface PublicProduct {
     isVerified: boolean;
   };
   affiliate: { participates: boolean; rate: number | null };
+  auction: any | null;
 }
 
 export default function ProductDetailPage() {
@@ -209,6 +211,7 @@ export default function ProductDetailPage() {
           </div>
           <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-tight">{product.name}</h1>
 
+          {!product.auction && (
           <div className="flex items-end gap-3 mt-4">
             <span className="text-3xl md:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
               {formatCurrency(product.price)}
@@ -218,6 +221,9 @@ export default function ProductDetailPage() {
             )}
           </div>
 
+          )}
+
+          {!product.auction && (
           <p className="mt-2 text-sm font-semibold">
             {outOfStock ? (
               <span className="text-red-500">Sin stock</span>
@@ -225,13 +231,25 @@ export default function ProductDetailPage() {
               <span className="text-emerald-600">Disponible ({product.stock})</span>
             )}
           </p>
+          )}
 
           {product.description && (
             <p className="mt-5 text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">{product.description}</p>
           )}
 
           <div className="mt-auto pt-6 space-y-3">
-            {canBuy ? (
+            {product.auction ? (
+              <AuctionPanel
+                productId={product.id}
+                initial={product.auction}
+                readOnly={isPreview}
+                onPay={() => {
+                  // El servidor deja pagar solo al ganador, al precio ganador
+                  if (!inCart) addItem({ ...(product as any), sellerId: product.sellerId }, 1);
+                  navigate('/app/checkout');
+                }}
+              />
+            ) : canBuy ? (
               <>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground">Cantidad</span>

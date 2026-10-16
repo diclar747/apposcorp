@@ -291,6 +291,15 @@ model Product {
   affiliateEnabled Boolean?
   affiliateRate    Float?
   affiliateBlocked Boolean            @default(false)
+  // Remates (categoría "Remates"): price es la oferta más alta actual (o el precio inicial si nadie ofertó).
+  // null = no es un remate. open → ended (hay ganador, tiene plazo para pagar) → sold | unpaid; sin ofertas → unsold.
+  auctionStatus       String?
+  auctionEndsAt       DateTime?
+  auctionStartPrice   Float?
+  auctionMinIncrement Float?
+  auctionWinnerId     String?
+  auctionPayBy        DateTime?
+  auctionBids         AuctionBid[]
   cartItems        CartItem[]
   orderItems       OrderItem[]
   attributes       ProductAttribute[]
@@ -302,6 +311,19 @@ model Product {
   stockMovements   StockMovement[]
 
   @@map("products")
+}
+
+model AuctionBid {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  amount    Float
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, amount])
+  @@index([userId])
+  @@map("auction_bids")
 }
 
 model ProductVariant {
@@ -471,6 +493,9 @@ model Course {
   // Programa de afiliados: cada curso tiene su propio % y se puede apagar por separado
   affiliateEnabled Boolean      @default(false)
   affiliateRate    Float?
+  // Tutores certificados: quienes terminaron el curso y lo enseñan a nuevos alumnos (40%-45%, todo incluido)
+  tutorEnabled     Boolean      @default(false)
+  tutorRate        Float?
   modules          Module[]
   resources        Resource[]
   userCourses      UserCourse[]
@@ -1129,6 +1154,36 @@ model AffiliateCommission {
   @@index([sellerId])
   @@index([status, availableAt])
   @@map("affiliate_commissions")
+}
+
+// Tutor certificado de un curso: terminó el curso y el admin lo autorizó a enseñarlo y cobrar la comisión de tutor.
+model CourseTutor {
+  id         String    @id @default(uuid())
+  userId     String
+  courseId   String
+  status     String    @default("pending") // pending | active | suspended
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@map("course_tutors")
+}
+
+// Quién cambió qué en el programa de afiliados (porcentajes, tutores, configuración, pagos).
+model AffiliateAuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("affiliate_audit_logs")
 }
 
 // Imágenes subidas (productos, logos, banners, avatares). Los campos de imagen guardan la URL

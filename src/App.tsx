@@ -19,6 +19,7 @@ import LoginPage from '@/pages/public/LoginPage';
 import RegisterPage from '@/pages/public/RegisterPage';
 import StorePage from '@/pages/public/StorePage';
 import ProductDetailPage from '@/pages/public/ProductDetailPage';
+import CoursePublicPage from '@/pages/public/CoursePublicPage';
 import PricingPage from '@/pages/public/PricingPage';
 import PresentacionE1 from '@/pages/public/PresentacionE1';
 import PresentacionE2 from '@/pages/public/PresentacionE2';
@@ -170,6 +171,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/tienda/:slug" element={<StorePage />} />
         <Route path="/producto/:slug" element={<ProductDetailPage />} />
+        <Route path="/curso/:slug" element={<CoursePublicPage />} />
         <Route path="/precios" element={<PricingPage />} />
         <Route path="/presentacion-e1" element={<PresentacionE1 />} />
         <Route path="/presentacion-e2" element={<PresentacionE2 />} />

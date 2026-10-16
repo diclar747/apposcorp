@@ -14,7 +14,10 @@ import {
   releaseDueCommissions,
   parseRateInput,
   getCourseEffectiveRate,
+  getTutorRate,
+  isActiveTutor,
   canPromoteCourse,
+  auditAffiliate,
   COURSE_MODES,
 } from '../services/affiliateService.js';
 
@@ -546,6 +549,7 @@ router.patch('/admin/affiliates/:id', ...admin, async (req: AuthRequest, res) =>
     const { status } = req.body || {};
     if (!['pending', 'active', 'suspended'].includes(status)) return res.status(400).json({ error: 'Estado inválido' });
     const profile = await prisma.affiliateProfile.update({ where: { id: req.params.id as string }, data: { status } });
+    auditAffiliate(req.user!.userId, 'affiliate.status', 'affiliate', profile.id, { status });
     res.json(profile);
   } catch (error) {
     serverError(res, error, 'admin affiliate status');
@@ -588,7 +592,9 @@ router.post('/admin/commissions/approve', ...admin, async (req: AuthRequest, res
   try {
     const ids = parseIds(req.body);
     if (!ids) return res.status(400).json({ error: 'Lista de comisiones inválida' });
-    res.json({ results: await approveCommissions(ids) });
+    const results = await approveCommissions(ids);
+    auditAffiliate(req.user!.userId, 'commission.approve', 'commission', null, { ids, results });
+    res.json({ results });
   } catch (error) {
     serverError(res, error, 'admin approve');
   }
@@ -599,7 +605,9 @@ router.post('/admin/commissions/cancel', ...admin, async (req: AuthRequest, res)
     const ids = parseIds(req.body);
     if (!ids) return res.status(400).json({ error: 'Lista de comisiones inválida' });
     const reason = typeof req.body.reason === 'string' && req.body.reason.trim() ? req.body.reason.trim().slice(0, 200) : 'Cancelada por el administrador';
-    res.json({ results: await adminCancelCommissions(ids, reason) });
+    const results = await adminCancelCommissions(ids, reason);
+    auditAffiliate(req.user!.userId, 'commission.cancel', 'commission', null, { ids, reason, results });
+    res.json({ results });
   } catch (error) {
     serverError(res, error, 'admin cancel');
   }
@@ -772,6 +780,9 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'El rango de % debe cumplir 0 < mínimo ≤ máximo ≤ 100' });
     }
     if (next.cookieDays < 1 || next.cookieDays > 365) return res.status(400).json({ error: 'La ventana de atribución debe ser de 1 a 365 días' });
+    if (next.tutorMinRate <= 0 || next.tutorMaxRate > 100 || next.tutorMinRate > next.tutorMaxRate) {
+      return res.status(400).json({ error: 'El rango de % de tutores debe cumplir 0 < mínimo ≤ máximo ≤ 100' });
+    }
     if (next.courseHoldDays > 365) return res.status(400).json({ error: 'El plazo de garantía de cursos no puede superar 365 días' });
     if (next.holdDays > 365) return res.status(400).json({ error: 'El plazo de garantía no puede superar 365 días' });
 
@@ -782,6 +793,7 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
         create: { key: s.key, value: String(next[s.field]), group: 'afiliados', isPublic: s.isPublic, description: s.description },
       }),
     ));
+    auditAffiliate(req.user!.userId, 'config.update', 'config', null, { before: current, after: next });
     res.json({ config: await getAffiliateConfig() });
   } catch (error) {
     serverError(res, error, 'admin config update');
@@ -790,21 +802,32 @@ router.put('/admin/config', ...admin, async (req: AuthRequest, res) => {
 
 // ═══ Cursos de Ingenio Millonario ═════════════════════════════════════════════
 
-// Catálogo de cursos que puedo promocionar (según la modalidad del programa) con mi enlace
+// Catálogo de cursos que puedo promocionar o enseñar, con mi enlace y lo que gano en cada caso
 router.get('/courses', authenticate, async (req: AuthRequest, res) => {
   try {
     const profile = await requireAffiliate(req, res);
     if (!profile) return;
     const cfg = await getAffiliateConfig();
     const courses = await prisma.course.findMany({
-      where: { isPublished: true, affiliateEnabled: true },
+      where: { isPublished: true, OR: [{ affiliateEnabled: true }, { tutorEnabled: true }] },
       orderBy: { title: 'asc' },
     });
+    const ids = courses.map((c) => c.id);
+    const [enrollments, tutors] = await Promise.all([
+      prisma.userCourse.findMany({ where: { userId: profile.userId, courseId: { in: ids } } }),
+      prisma.courseTutor.findMany({ where: { userId: profile.userId, courseId: { in: ids } } }),
+    ]);
     const out = [];
     for (const c of courses) {
-      const rate = getCourseEffectiveRate(c, cfg);
-      if (rate === null) continue;
-      const allowed = await canPromoteCourse(profile.userId, c.id, cfg);
+      const promoterRate = getCourseEffectiveRate(c, cfg);
+      const tutorRate = getTutorRate(c, cfg);
+      if (promoterRate === null && tutorRate === null) continue;
+      const enrollment = enrollments.find((e) => e.courseId === c.id);
+      const completed = !!enrollment && (enrollment.completedAt !== null || enrollment.status === 'completed');
+      const tutor = tutors.find((t) => t.courseId === c.id);
+      const asTutor = tutorRate !== null && (await isActiveTutor(profile.userId, c.id));
+      const asPromoter = promoterRate !== null && (await canPromoteCourse(profile.userId, c.id, cfg));
+      const myRate = asTutor ? tutorRate : asPromoter ? promoterRate : null;
       const [clicks, sales] = await Promise.all([
         prisma.affiliateClick.count({ where: { affiliateId: profile.id, courseId: c.id } }),
         prisma.affiliateCommission.count({ where: { affiliateId: profile.id, courseId: c.id, status: { notIn: ['cancelled', 'reversed'] } } }),
@@ -815,11 +838,17 @@ router.get('/courses', authenticate, async (req: AuthRequest, res) => {
         slug: c.slug,
         coverImage: c.coverImage,
         price: c.price,
-        rate,
-        commissionPerSale: Math.floor((c.price * rate) / 100),
-        allowed,
+        promoterRate,
+        tutorRate,
+        role: asTutor ? 'tutor' : asPromoter ? 'promoter' : null,
+        rate: myRate,
+        commissionPerSale: myRate ? Math.floor((c.price * myRate) / 100) : 0,
+        allowed: myRate !== null,
         mode: cfg.courseMode,
-        path: `/app/cursos/${c.id}`,
+        tutorStatus: tutor?.status ?? null,
+        canRequestTutor: tutorRate !== null && completed && !tutor,
+        completed,
+        path: `/curso/${c.slug}`,
         clicks,
         sales,
       });
@@ -830,11 +859,41 @@ router.get('/courses', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Pedir ser tutor certificado de un curso (hay que haberlo terminado)
+router.post('/courses/:id/tutor-request', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const cfg = await getAffiliateConfig();
+    if (!cfg.enabled) return res.status(403).json({ error: 'El programa de afiliados no está activo' });
+    const course = await prisma.course.findUnique({ where: { id: String(req.params.id) } });
+    if (!course || getTutorRate(course, cfg) === null) return res.status(404).json({ error: 'Este curso no tiene tutores' });
+    const userId = req.user!.userId;
+    const enrollment = await prisma.userCourse.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
+    if (!enrollment || !(enrollment.completedAt !== null || enrollment.status === 'completed')) {
+      return res.status(400).json({ error: 'Tenés que terminar el curso para pedir ser tutor' });
+    }
+    const existing = await prisma.courseTutor.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
+    if (existing) return res.json({ tutor: existing });
+    await joinAffiliateProgram(userId); // el tutor usa su código de afiliado
+    const tutor = await prisma.courseTutor.create({
+      data: {
+        userId,
+        courseId: course.id,
+        status: cfg.tutorAutoApprove ? 'active' : 'pending',
+        approvedAt: cfg.tutorAutoApprove ? new Date() : null,
+      },
+    });
+    auditAffiliate(userId, 'tutor.request', 'course_tutor', tutor.id, { courseId: course.id, status: tutor.status });
+    res.status(201).json({ tutor });
+  } catch (error) {
+    serverError(res, error, 'tutor request');
+  }
+});
+
 router.get('/admin/courses', ...admin, async (_req: AuthRequest, res) => {
   try {
     const cfg = await getAffiliateConfig();
     const courses = await prisma.course.findMany({
-      select: { id: true, title: true, price: true, isPublished: true, affiliateEnabled: true, affiliateRate: true },
+      select: { id: true, title: true, price: true, isPublished: true, affiliateEnabled: true, affiliateRate: true, tutorEnabled: true, tutorRate: true },
       orderBy: { title: 'asc' },
     });
     const sold = await prisma.affiliateCommission.groupBy({
@@ -845,11 +904,14 @@ router.get('/admin/courses', ...admin, async (_req: AuthRequest, res) => {
     });
     res.json({
       mode: cfg.courseMode,
+      tutorMinRate: cfg.tutorMinRate,
+      tutorMaxRate: cfg.tutorMaxRate,
       courses: courses.map((c) => {
         const s = sold.find((x) => x.courseId === c.id);
         return {
           ...c,
           effectiveRate: getCourseEffectiveRate(c, cfg),
+          effectiveTutorRate: getTutorRate(c, cfg),
           estimatedCommission: c.affiliateRate ? Math.floor((c.price * c.affiliateRate) / 100) : 0,
           sales: s?._count._all ?? 0,
           salesAmount: s?._sum.baseAmount ?? 0,
@@ -862,24 +924,93 @@ router.get('/admin/courses', ...admin, async (_req: AuthRequest, res) => {
   }
 });
 
-// Activa/desactiva la afiliación de un curso y fija su %. Solo afecta ventas nuevas: las ya generadas conservan su %.
+// Activa/desactiva la afiliación y los tutores de un curso y fija sus %. Solo afecta ventas nuevas: las ya generadas conservan su %.
 router.patch('/admin/courses/:id', ...admin, async (req: AuthRequest, res) => {
   try {
     const cfg = await getAffiliateConfig();
-    const data: { affiliateEnabled?: boolean; affiliateRate?: number | null } = {};
-    if (req.body?.affiliateEnabled !== undefined) data.affiliateEnabled = !!req.body.affiliateEnabled;
-    if (req.body?.affiliateRate !== undefined) data.affiliateRate = parseRateInput(req.body.affiliateRate, cfg);
-    const next = await prisma.course.findUnique({ where: { id: String(req.params.id) }, select: { affiliateRate: true } });
-    if (!next) return res.status(404).json({ error: 'Curso no encontrado' });
-    if (data.affiliateEnabled && (data.affiliateRate ?? next.affiliateRate) == null) {
+    const id = String(req.params.id);
+    const before = await prisma.course.findUnique({
+      where: { id },
+      select: { affiliateEnabled: true, affiliateRate: true, tutorEnabled: true, tutorRate: true },
+    });
+    if (!before) return res.status(404).json({ error: 'Curso no encontrado' });
+
+    const data: { affiliateEnabled?: boolean; affiliateRate?: number | null; tutorEnabled?: boolean; tutorRate?: number | null } = {};
+    const b = req.body || {};
+    if (b.affiliateEnabled !== undefined) data.affiliateEnabled = !!b.affiliateEnabled;
+    if (b.affiliateRate !== undefined) data.affiliateRate = parseRateInput(b.affiliateRate, cfg);
+    if (b.tutorEnabled !== undefined) data.tutorEnabled = !!b.tutorEnabled;
+    if (b.tutorRate !== undefined) {
+      if (b.tutorRate === null || b.tutorRate === '') data.tutorRate = null;
+      else {
+        const t = Number(b.tutorRate);
+        if (!Number.isFinite(t) || t < cfg.tutorMinRate || t > cfg.tutorMaxRate) {
+          return res.status(400).json({ error: `El % del tutor debe estar entre ${cfg.tutorMinRate}% y ${cfg.tutorMaxRate}%` });
+        }
+        data.tutorRate = Math.round(t * 100) / 100;
+      }
+    }
+    if (data.affiliateEnabled && (data.affiliateRate ?? before.affiliateRate) == null) {
       return res.status(400).json({ error: 'Definí el % de comisión antes de activar la afiliación del curso' });
     }
-    const course = await prisma.course.update({ where: { id: String(req.params.id) }, data });
-    console.log(`[afiliados] curso ${course.id} actualizado por ${req.user!.userId}:`, JSON.stringify(data));
+    if (data.tutorEnabled && (data.tutorRate ?? before.tutorRate) == null) {
+      return res.status(400).json({ error: 'Definí el % del tutor antes de activar los tutores del curso' });
+    }
+    const course = await prisma.course.update({ where: { id }, data });
+    auditAffiliate(req.user!.userId, 'course.update', 'course', id, { before, after: data });
     res.json({ course });
   } catch (error: any) {
     if (error.message === 'RATE_OUT_OF_RANGE') return res.status(400).json({ error: 'El % está fuera del rango permitido' });
     serverError(res, error, 'admin course update');
+  }
+});
+
+// Tutores certificados: quién pidió, quién está activo
+router.get('/admin/tutors', ...admin, async (_req: AuthRequest, res) => {
+  try {
+    const tutors = await prisma.courseTutor.findMany({ orderBy: { createdAt: 'desc' }, take: 500 });
+    const [users, courses, enrollments] = await Promise.all([
+      prisma.user.findMany({ where: { id: { in: [...new Set(tutors.map((t) => t.userId))] } }, select: { id: true, firstName: true, lastName: true, email: true } }),
+      prisma.course.findMany({ where: { id: { in: [...new Set(tutors.map((t) => t.courseId))] } }, select: { id: true, title: true } }),
+      prisma.userCourse.findMany({ where: { OR: tutors.map((t) => ({ userId: t.userId, courseId: t.courseId })) }, select: { userId: true, courseId: true, progress: true, completedAt: true } }),
+    ]);
+    res.json(tutors.map((t) => ({
+      ...t,
+      user: users.find((u) => u.id === t.userId) ?? null,
+      courseTitle: courses.find((c) => c.id === t.courseId)?.title ?? '',
+      completed: !!enrollments.find((e) => e.userId === t.userId && e.courseId === t.courseId)?.completedAt,
+    })));
+  } catch (error) {
+    serverError(res, error, 'admin tutors');
+  }
+});
+
+router.patch('/admin/tutors/:id', ...admin, async (req: AuthRequest, res) => {
+  try {
+    const status = req.body?.status;
+    if (!['pending', 'active', 'suspended'].includes(status)) return res.status(400).json({ error: 'Estado inválido' });
+    const tutor = await prisma.courseTutor.update({
+      where: { id: String(req.params.id) },
+      data: { status, approvedAt: status === 'active' ? new Date() : undefined },
+    });
+    auditAffiliate(req.user!.userId, 'tutor.status', 'course_tutor', tutor.id, { status, courseId: tutor.courseId, userId: tutor.userId });
+    res.json({ tutor });
+  } catch (error) {
+    serverError(res, error, 'admin tutor status');
+  }
+});
+
+// Registro de cambios del programa
+router.get('/admin/audit', ...admin, async (_req: AuthRequest, res) => {
+  try {
+    const logs = await prisma.affiliateAuditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 300 });
+    const actors = await prisma.user.findMany({
+      where: { id: { in: [...new Set(logs.map((l) => l.actorId))] } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    res.json(logs.map((l) => ({ ...l, actorName: (() => { const a = actors.find((x) => x.id === l.actorId); return a ? `${a.firstName} ${a.lastName}` : l.actorId; })() })));
+  } catch (error) {
+    serverError(res, error, 'admin audit');
   }
 });
 

@@ -22,6 +22,11 @@ export interface AffiliateConfig {
   courseMode: CourseMode;
   /** Plazo de garantía de un curso comprado antes de liberar la comisión (días) */
   courseHoldDays: number;
+  /** Rango del % de un tutor certificado (todo incluido: captar y enseñar) */
+  tutorMinRate: number;
+  tutorMaxRate: number;
+  /** Los tutores quedan activos al pedirlo (si no, los aprueba el admin) */
+  tutorAutoApprove: boolean;
 }
 
 export type CourseMode = 'open' | 'enrolled' | 'completed';
@@ -49,6 +54,9 @@ export const AFFILIATE_SETTINGS: {
   { key: 'affiliate_cod_enabled', field: 'codEnabled', type: 'bool', default: 'true', isPublic: false, description: 'El pago contra entrega genera comisión (se cobra a la tienda al entregar)' },
   { key: 'affiliate_course_mode', field: 'courseMode', type: 'text', default: 'open', isPublic: false, description: 'Quién puede promocionar cursos: open (cualquier afiliado), enrolled (matriculados) o completed (quienes terminaron el curso)' },
   { key: 'affiliate_course_hold_days', field: 'courseHoldDays', type: 'number', default: '7', isPublic: false, description: 'Plazo de garantía de un curso comprado antes de liberar la comisión (días)' },
+  { key: 'affiliate_tutor_min_rate', field: 'tutorMinRate', type: 'number', default: '40', isPublic: false, description: '% mínimo de comisión de un tutor certificado' },
+  { key: 'affiliate_tutor_max_rate', field: 'tutorMaxRate', type: 'number', default: '45', isPublic: false, description: '% máximo de comisión de un tutor certificado' },
+  { key: 'affiliate_tutor_auto_approve', field: 'tutorAutoApprove', type: 'bool', default: 'false', isPublic: false, description: 'Los tutores quedan activos al pedirlo (si no, los aprueba el admin)' },
 ];
 
 export const getAffiliateConfig = async (tx: Tx = prisma): Promise<AffiliateConfig> => {
@@ -149,6 +157,34 @@ export const getCourseEffectiveRate = (course: CourseAffiliateFields, cfg: Affil
   return clampRate(rate, cfg);
 };
 
+interface CourseTutorFields {
+  tutorEnabled: boolean;
+  tutorRate: number | null;
+  isPublished: boolean;
+}
+
+/** % de comisión de tutor de un curso, o null si el curso no tiene tutores. Incluye captar al alumno y enseñarle. */
+export const getTutorRate = (course: CourseTutorFields, cfg: AffiliateConfig): number | null => {
+  if (!cfg.enabled || !course.tutorEnabled || !course.isPublished) return null;
+  const rate = course.tutorRate;
+  if (rate === null || rate === undefined || !(rate > 0)) return null;
+  return Math.min(cfg.tutorMaxRate, Math.max(cfg.tutorMinRate, rate));
+};
+
+/** Tutor activo de ese curso: autorizado por el admin y con el curso terminado. */
+export const isActiveTutor = async (userId: string, courseId: string, tx: Tx = prisma) => {
+  const tutor = await tx.courseTutor.findUnique({ where: { userId_courseId: { userId, courseId } } });
+  if (!tutor || tutor.status !== 'active') return false;
+  const enrollment = await tx.userCourse.findUnique({ where: { userId_courseId: { userId, courseId } } });
+  return !!enrollment && (enrollment.completedAt !== null || enrollment.status === 'completed');
+};
+
+/** Registro de auditoría. Nunca debe romper la operación que se está auditando. */
+export const auditAffiliate = (actorId: string, action: string, entity: string, entityId: string | null, details?: unknown) =>
+  prisma.affiliateAuditLog
+    .create({ data: { actorId, action, entity, entityId, details: (details ?? undefined) as any } })
+    .catch((e) => console.error('[afiliados] auditoría', e));
+
 /** ¿Este afiliado puede promocionar este curso según la modalidad configurada? Terminar un curso no habilita los demás. */
 export const canPromoteCourse = async (affiliateUserId: string, courseId: string, cfg: AffiliateConfig, tx: Tx = prisma) => {
   if (cfg.courseMode === 'open') return true;
@@ -245,8 +281,10 @@ export const trackClick = async (input: TrackInput) => {
     const course = await prisma.course.findFirst({
       where: input.courseSlug ? { OR: [{ slug: input.courseSlug }, { id: input.courseSlug }] } : { id: input.courseId },
     });
-    if (!course || getCourseEffectiveRate(course, cfg) === null) return null;
-    if (!(await canPromoteCourse(affiliate.userId, course.id, cfg))) return null;
+    if (!course) return null;
+    const asPromoter = getCourseEffectiveRate(course, cfg) !== null && (await canPromoteCourse(affiliate.userId, course.id, cfg));
+    const asTutor = getTutorRate(course, cfg) !== null && (await isActiveTutor(affiliate.userId, course.id));
+    if (!asPromoter && !asTutor) return null;
     sellerId = COURSE_SELLER_ID;
     courseId = course.id;
   } else if (input.productSlug || input.productId) {
@@ -426,7 +464,7 @@ interface CourseSaleInput {
   userCourseId: string;
   buyerId: string;
   visitorId?: string | null;
-  course: { id: string; title: string; price: number } & CourseAffiliateFields;
+  course: { id: string; title: string; price: number } & CourseAffiliateFields & CourseTutorFields;
   amountPaid: number;
 }
 
@@ -437,8 +475,9 @@ interface CourseSaleInput {
  */
 export const createCommissionForCourseSale = async (tx: Prisma.TransactionClient, input: CourseSaleInput) => {
   const cfg = await getAffiliateConfig(tx);
-  const rate = getCourseEffectiveRate(input.course, cfg);
-  if (rate === null || !(input.amountPaid > 0)) return null;
+  const promoterRate = getCourseEffectiveRate(input.course, cfg);
+  const tutorRate = getTutorRate(input.course, cfg);
+  if ((promoterRate === null && tutorRate === null) || !(input.amountPaid > 0)) return null;
 
   const since = new Date(Date.now() - cfg.cookieDays * 24 * 60 * 60 * 1000);
   const visitorFilter: Prisma.AffiliateClickWhereInput[] = [{ userId: input.buyerId }];
@@ -454,7 +493,20 @@ export const createCommissionForCourseSale = async (tx: Prisma.TransactionClient
   for (const click of clicks) {
     if (click.affiliate.status !== 'active') continue;
     if (click.affiliate.userId === input.buyerId) continue; // compra propia
-    if (!(await canPromoteCourse(click.affiliate.userId, input.course.id, cfg, tx))) continue;
+
+    // Una sola comisión por matrícula. El tutor certificado cobra su % (incluye captar y enseñar); si no es tutor,
+    // cobra como promotor. Nadie más cobra por ese mismo alumno.
+    let rate: number;
+    let kind: 'course_tutor' | 'course_promoter';
+    if (tutorRate !== null && (await isActiveTutor(click.affiliate.userId, input.course.id, tx))) {
+      rate = tutorRate;
+      kind = 'course_tutor';
+    } else if (promoterRate !== null && (await canPromoteCourse(click.affiliate.userId, input.course.id, cfg, tx))) {
+      rate = promoterRate;
+      kind = 'course_promoter';
+    } else {
+      continue;
+    }
 
     const amount = Math.floor((input.amountPaid * rate) / 100);
     if (amount <= 0) return null;
@@ -466,9 +518,9 @@ export const createCommissionForCourseSale = async (tx: Prisma.TransactionClient
         userId: click.affiliate.userId,
         type: 'affiliate_commission',
         amount,
-        description: `Comisión de afiliado - Curso: ${input.course.title}`,
+        description: `Comisión de ${kind === 'course_tutor' ? 'tutor' : 'afiliado'} - Curso: ${input.course.title}`,
         status: 'pending',
-        metadata: { source: 'affiliate', rate, courseId: input.course.id },
+        metadata: { source: 'affiliate', kind, rate, courseId: input.course.id },
       },
     });
     const commission = await tx.affiliateCommission.create({
@@ -480,7 +532,7 @@ export const createCommissionForCourseSale = async (tx: Prisma.TransactionClient
         productName: input.course.title,
         buyerId: input.buyerId,
         clickId: click.id,
-        source: 'course',
+        source: kind,
         baseAmount: input.amountPaid,
         rate,
         amount,
@@ -506,9 +558,6 @@ export const cancelCommissionForCourseAccess = async (tx: Prisma.TransactionClie
 export const notifyNewCommissions = (commissions: { affiliateUserId: string; amount: number; productName: string }[]) => {
   for (const c of commissions) {
     const body = `Vendiste ${c.productName}. Tu comisión de ₲ ${c.amount.toLocaleString('es-PY')} queda pendiente hasta que termine el plazo de garantía.`;
-    prisma.notification
-      .create({ data: { userId: c.affiliateUserId, title: '¡Nueva comisión!', message: body, type: 'success', actionUrl: '/app/afiliados' } })
-      .catch(() => {});
     sendPushToUser(c.affiliateUserId, { title: '¡Nueva comisión!', body, url: '/app/afiliados', tag: 'affiliate-commission' }).catch(() => {});
   }
 };
@@ -601,9 +650,6 @@ export const payCommission = async (commissionId: string) => {
 
 const notifyPaid = (paid: { affiliateUserId: string; amount: number; productName: string }) => {
   const body = `Se acreditaron ₲ ${paid.amount.toLocaleString('es-PY')} por la venta de ${paid.productName}. Ya podés retirarlos.`;
-  prisma.notification
-    .create({ data: { userId: paid.affiliateUserId, title: 'Comisión disponible', message: body, type: 'success', actionUrl: '/app/afiliados' } })
-    .catch(() => {});
   sendPushToUser(paid.affiliateUserId, { title: 'Comisión disponible', body, url: '/app/afiliados', tag: 'affiliate-paid' }).catch(() => {});
 };
 

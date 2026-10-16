@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Upload, X, ImagePlus, Link2 } from 'lucide-react';
+import { Gavel, Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Upload, X, ImagePlus, Link2 } from 'lucide-react';
+import { AuctionFormFields, defaultAuctionEnd, toLocalInput } from '@/components/auction/AuctionFormFields';
+import { AuctionBiddersDialog } from '@/components/auction/AuctionBiddersDialog';
 import { useAuthStore } from '@/stores';
 import { productsApi, suppliersApi } from '@/lib/api';
 import { cn, formatCurrency, formatNumber, parseFormattedNumber } from '@/lib/utils';
@@ -50,6 +52,8 @@ const MAX_PRODUCT_IMAGES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const PRODUCT_CATEGORIES = [
+  'Ofertas',
+  'Remates',
   'Tecnología',
   'Ropa y Accesorios',
   'Hogar y Muebles',
@@ -109,6 +113,7 @@ export default function SellerProducts() {
   // State for modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [biddersFor, setBiddersFor] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<Partial<Product>>({
@@ -206,7 +211,14 @@ export default function SellerProducts() {
     setImageUrl('');
     if (product) {
       setEditingProduct(product);
-      setFormData(product);
+      const auction = product as any;
+      setFormData({
+        ...product,
+        ...(auction.auctionStatus ? {
+          auctionEndsAt: toLocalInput(auction.auctionEndsAt),
+          auctionMinIncrement: (auction.auctionMinIncrement ?? 10000).toLocaleString('es-PY'),
+        } : {}),
+      } as any);
     } else {
       setEditingProduct(null);
       setFormData({
@@ -236,13 +248,28 @@ export default function SellerProducts() {
       return;
     }
 
+    // Remate: la fecha local del formulario viaja como ISO y el incremento como número
+    const fd = formData as any;
+    const payload: any = { ...formData };
+    if (formData.category === 'Remates') {
+      if (!fd.auctionEndsAt) {
+        toast.error('Indicá cuándo termina el remate');
+        return;
+      }
+      payload.auctionEndsAt = new Date(fd.auctionEndsAt).toISOString();
+      payload.auctionMinIncrement = Number(String(fd.auctionMinIncrement || '').replace(/\D/g, '')) || undefined;
+    } else {
+      delete payload.auctionEndsAt;
+      delete payload.auctionMinIncrement;
+    }
+
     try {
       if (editingProduct) {
-        await productsApi.update(editingProduct.id, formData);
+        await productsApi.update(editingProduct.id, payload);
         toast.success('Producto actualizado correctamente');
       } else {
         await productsApi.create({
-          ...formData,
+          ...payload,
           sellerId: user?.sellerProfile?.id,
           storeId: user?.sellerProfile?.id || 'store-generic'
         });
@@ -420,6 +447,9 @@ export default function SellerProducts() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-slate-800">
                           <DropdownMenuItem onClick={() => handleOpenModal(product)} className="dark:text-gray-300 dark:hover:bg-slate-800"><Edit className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
+                          {(product as any).auctionStatus && (
+                            <DropdownMenuItem onClick={() => setBiddersFor(product.id)} className="dark:text-gray-300 dark:hover:bg-slate-800"><Gavel className="w-4 h-4 mr-2" /> Ver ofertas</DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="text-red-600 dark:text-red-400 dark:hover:bg-slate-800" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="w-4 h-4 mr-2" /> Eliminar</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -431,6 +461,8 @@ export default function SellerProducts() {
           </div>
         </CardContent>
       </Card>
+
+      <AuctionBiddersDialog productId={biddersFor} onClose={() => setBiddersFor(null)} />
 
       {/* Product Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -567,7 +599,13 @@ export default function SellerProducts() {
                 <Label htmlFor="category">Categoría *</Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  onValueChange={(value) => setFormData({
+                    ...formData,
+                    category: value,
+                    ...(value === 'Remates' && !(formData as any).auctionEndsAt
+                      ? { auctionEndsAt: defaultAuctionEnd(), auctionMinIncrement: '10.000', stock: 1 }
+                      : {}),
+                  } as any)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
@@ -592,6 +630,15 @@ export default function SellerProducts() {
                 />
               </div>
             </div>
+
+            {formData.category === 'Remates' && (
+              <AuctionFormFields
+                endsAt={(formData as any).auctionEndsAt || ''}
+                minIncrement={(formData as any).auctionMinIncrement || ''}
+                locked={!!editingProduct && ['ended', 'sold', 'unpaid'].includes((editingProduct as any).auctionStatus)}
+                onChange={(v) => setFormData({ ...formData, ...v } as any)}
+              />
+            )}
 
             <div className="space-y-2">
               <Label>Proveedor (Opcional)</Label>
