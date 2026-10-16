@@ -1026,11 +1026,13 @@ router.get('/admin/audit', ...admin, async (_req: AuthRequest, res) => {
 const managerStoreRows = async (managerId: string, rate: number) => {
   const assignments = await prisma.storeManagerAssignment.findMany({ where: { managerId }, orderBy: { createdAt: 'asc' } });
   const sellerIds = assignments.map((a) => a.sellerId);
-  const [sellers, subs, productCounts, commissions] = await Promise.all([
+  const dayFrom = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date(Date.now() - 30 * DAY_MS));
+  const [sellers, subs, productCounts, commissions, visits] = await Promise.all([
     prisma.sellerProfile.findMany({ where: { id: { in: sellerIds } }, select: { id: true, userId: true, storeName: true, storeSlug: true, planActive: true, planExpiryDate: true, totalSales: true, totalRevenue: true, plan: { select: { name: true, price: true } } } }),
     prisma.sellerSubscription.findMany({ where: { user: { sellerProfile: { id: { in: sellerIds } } } }, select: { userId: true, status: true, expiresAt: true, totalAmount: true, billingCycle: true } }),
     prisma.product.groupBy({ by: ['sellerId'], where: { sellerId: { in: sellerIds }, status: 'active' }, _count: { _all: true } }),
     prisma.affiliateCommission.groupBy({ by: ['sellerId', 'status'], where: { source: MANAGER_SOURCE, sellerId: { in: sellerIds } }, _sum: { amount: true } }),
+    prisma.storeVisit.groupBy({ by: ['sellerId'], where: { sellerId: { in: sellerIds }, day: { gte: dayFrom } }, _count: { _all: true } }),
   ]);
   return assignments.map((a) => {
     const s = sellers.find((x) => x.id === a.sellerId);
@@ -1045,6 +1047,7 @@ const managerStoreRows = async (managerId: string, rate: number) => {
       subscriptionExpiresAt: sub?.expiresAt ?? null,
       monthlyFee: sub?.totalAmount ?? s?.plan?.price ?? 0,
       activeProducts: productCounts.find((p) => p.sellerId === a.sellerId)?._count._all ?? 0,
+      visits30: visits.find((v) => v.sellerId === a.sellerId)?._count._all ?? 0,
       totalSales: s?.totalSales ?? 0,
       totalRevenue: s?.totalRevenue ?? 0,
       estimatedMonthly: Math.floor(((sub?.totalAmount ?? s?.plan?.price ?? 0) * rate) / 100),

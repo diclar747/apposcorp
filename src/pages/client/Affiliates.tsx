@@ -270,7 +270,8 @@ function ManagerTab() {
                     {s.subscriptionStatus === 'ACTIVE' ? 'Suscripción activa' : s.subscriptionStatus === 'PENDING_APPROVAL' ? 'Pago en revisión' : 'Sin pagar'}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 text-center text-xs">
+                <div className="grid grid-cols-4 text-center text-xs">
+                  <div><p className="font-black text-base tabular-nums">{s.visits30}</p><p className="text-muted-foreground">Visitas (30 d)</p></div>
                   <div><p className="font-black text-base tabular-nums">{s.activeProducts}</p><p className="text-muted-foreground">Publicaciones</p></div>
                   <div><p className="font-black text-base tabular-nums">{s.totalSales}</p><p className="text-muted-foreground">Ventas</p></div>
                   <div><p className="font-black text-base tabular-nums">{formatCurrency(s.earnedPaid)}</p><p className="text-muted-foreground">Ganado</p></div>

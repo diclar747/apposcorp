@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
-import { createCommissionForCourseSale, cancelCommissionForCourseAccess, notifyNewCommissions } from '../services/affiliateService.js';
+import { createCommissionForCourseSale, cancelCommissionForCourseAccess, notifyNewCommissions, auditAffiliate } from '../services/affiliateService.js';
+import { ensureWallet } from '../services/userService.js';
+import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
 
@@ -728,6 +730,61 @@ router.post('/:id/assign', authenticate, authorize('superadmin'), async (req: Au
   }
 });
 
+// Reembolso (admin): devuelve a la billetera lo que el alumno pagó, quita el acceso y revierte la comisión del afiliado o tutor
+router.post('/:id/access/:accessId/refund', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const accessId = req.params.accessId as string;
+    const userCourse = await prisma.userCourse.findUnique({ where: { id: accessId }, include: { course: { select: { id: true, title: true } } } });
+    if (!userCourse || userCourse.courseId !== req.params.id) return res.status(404).json({ error: 'Acceso no encontrado' });
+
+    const result = await prisma.$transaction(async (tx) => {
+      // La compra: por la matrícula (compras nuevas) o, en las anteriores, por el título del curso
+      const purchases = await tx.transaction.findMany({
+        where: { userId: userCourse.userId, type: 'purchase', status: 'completed', description: `Compra del curso: ${userCourse.course.title}` },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      });
+      const purchase = purchases.find((p) => (p.metadata as any)?.userCourseId === accessId) ?? purchases.find((p) => !(p.metadata as any)?.userCourseId);
+      if (!purchase) return { error: 'Este acceso no se compró con la billetera (lo asignó el administrador o viene de la suscripción): no hay nada que reembolsar. Podés quitar el acceso.' };
+
+      const already = await tx.transaction.findFirst({ where: { type: 'refund', metadata: { path: ['purchaseTxId'], equals: purchase.id } } });
+      if (already) return { error: 'Esta compra ya fue reembolsada' };
+
+      const amount = Math.abs(purchase.amount);
+      const wallet = await ensureWallet(userCourse.userId, tx);
+      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: amount }, totalIn: { increment: amount } } });
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: userCourse.userId,
+          type: 'refund',
+          amount,
+          description: `Reembolso del curso: ${userCourse.course.title}`,
+          status: 'completed',
+          metadata: { purchaseTxId: purchase.id, courseId: userCourse.courseId, userCourseId: accessId },
+        },
+      });
+      await cancelCommissionForCourseAccess(tx, accessId, 'Curso reembolsado');
+      await tx.userCourse.delete({ where: { id: accessId } });
+      await tx.course.update({ where: { id: userCourse.courseId }, data: { enrolledCount: { decrement: 1 } } });
+      return { amount };
+    });
+
+    if ('error' in result) return res.status(400).json({ error: result.error });
+    await auditAffiliate(req.user!.userId, 'course.refund', 'course', userCourse.courseId, { userId: userCourse.userId, amount: result.amount });
+    sendPushToUser(userCourse.userId, {
+      title: 'Te reembolsamos un curso',
+      body: `Se devolvieron Gs. ${result.amount.toLocaleString('es-PY')} a tu billetera por "${userCourse.course.title}".`,
+      url: '/app/wallet',
+      tag: 'refund',
+    }).catch(() => {});
+    res.json({ refunded: result.amount });
+  } catch (error) {
+    console.error('Refund course error:', error);
+    res.status(500).json({ error: 'Error al reembolsar' });
+  }
+});
+
 // Remove access (admin)
 router.delete('/:id/access/:accessId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
@@ -813,7 +870,7 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           },
         });
 
-        await tx.transaction.create({
+        const purchaseTx = await tx.transaction.create({
           data: {
             walletId: wallet.id,
             userId: req.user!.userId,
@@ -821,6 +878,7 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
             amount: -course.price,
             description: `Compra del curso: ${course.title}`,
             status: 'completed',
+            metadata: { courseId: id },
           },
         });
 
@@ -836,6 +894,9 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
             status: 'active',
           },
         });
+
+        // El pago queda ligado a la matrícula: así un reembolso sabe cuánto y a quién devolver
+        await tx.transaction.update({ where: { id: purchaseTx.id }, data: { metadata: { courseId: id, userCourseId: created.id } } });
 
         // Si llegó por el enlace de un afiliado, se genera su comisión (pendiente hasta que termine la garantía)
         const commission = await createCommissionForCourseSale(tx, {

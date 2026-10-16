@@ -91,6 +91,30 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "courseId" TEXT`,
   `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "userCourseId" TEXT`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_commissions_userCourseId_key" ON "affiliate_commissions"("userCourseId")`,
+  // Comentarios moderados y visitas de tiendas
+  `CREATE TABLE IF NOT EXISTS "product_comments" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "moderatedBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "product_comments_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE INDEX IF NOT EXISTS "product_comments_productId_status_idx" ON "product_comments"("productId", "status")`,
+  `CREATE INDEX IF NOT EXISTS "product_comments_status_createdAt_idx" ON "product_comments"("status", "createdAt")`,
+  addForeignKey('product_comments_productId_fkey', 'product_comments', `FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  `CREATE TABLE IF NOT EXISTS "store_visits" (
+    "id" TEXT NOT NULL,
+    "sellerId" TEXT NOT NULL,
+    "visitorId" TEXT NOT NULL,
+    "day" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "store_visits_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "store_visits_sellerId_visitorId_day_key" ON "store_visits"("sellerId", "visitorId", "day")`,
+  `CREATE INDEX IF NOT EXISTS "store_visits_sellerId_day_idx" ON "store_visits"("sellerId", "day")`,
   // Ofertas y favoritos
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerEndsAt" TIMESTAMP(3)`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerBlocked" BOOLEAN NOT NULL DEFAULT false`,

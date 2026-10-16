@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { productsApi } from '@/lib/api';
-import { trackReferral } from '@/lib/affiliate';
+import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
 import { AuctionPanel } from '@/components/auction/AuctionPanel';
+import { ProductComments } from '@/components/comments/ProductComments';
 import { OfferCountdown } from '@/components/offer/OfferCountdown';
 import { FavoriteButton } from '@/components/shared/FavoriteButton';
 
@@ -64,7 +65,11 @@ export default function ProductDetailPage() {
     setLoading(true);
     productsApi
       .getPublic(slug)
-      .then((data) => { if (!cancelled) setProduct(data); })
+      .then((data) => {
+        if (cancelled) return;
+        setProduct(data);
+        if (!isPreview && data?.seller?.storeSlug) trackStoreVisit(data.seller.storeSlug); // también cuenta como visita a la tienda
+      })
       .catch(() => { if (!cancelled) setProduct(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     // Visita desde un enlace de afiliado (?ref=CODIGO)
@@ -310,6 +315,9 @@ export default function ProductDetailPage() {
             </Link>
           </div>
         </div>
+      </div>
+      <div className="max-w-6xl mx-auto px-4 py-8 md:max-w-3xl">
+        <ProductComments productId={product.id} />
       </div>
     </div>
   );

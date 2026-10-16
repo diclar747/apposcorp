@@ -81,6 +81,23 @@ router.get('/', async (_req, res) => {
 });
 
 // GET /:slug - Get store by slug with all products (public)
+// Registra una visita única por visitante y día (para las estadísticas del encargado). Nunca falla la página.
+router.post('/:slug/visit', async (req, res) => {
+  try {
+    const visitorId = String(req.body?.visitorId || '');
+    if (!visitorId || visitorId.length > 64) return res.json({ counted: false });
+    const seller = await prisma.sellerProfile.findUnique({ where: { storeSlug: String(req.params.slug) }, select: { id: true, userId: true } });
+    if (!seller) return res.json({ counted: false });
+    const viewer = await getOptionalUser(req);
+    if (viewer?.userId === seller.userId) return res.json({ counted: false }); // la propia tienda no cuenta
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date());
+    const r = await prisma.storeVisit.createMany({ data: [{ sellerId: seller.id, visitorId, day }], skipDuplicates: true });
+    res.json({ counted: r.count > 0 });
+  } catch {
+    res.json({ counted: false });
+  }
+});
+
 router.get('/:slug', async (req, res) => {
   try {
     const slug = req.params.slug as string;

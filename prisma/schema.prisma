@@ -305,6 +305,7 @@ model Product {
   offerBlocked        Boolean  @default(false) // el superadmin oculta el precio anterior si no es verificable
   offerAlertSent      Boolean  @default(false) // ya se avisó a los favoritos que está por vencer
   favorites           ProductFavorite[]
+  comments            ProductComment[]
   cartItems        CartItem[]
   orderItems       OrderItem[]
   attributes       ProductAttribute[]
@@ -316,6 +317,35 @@ model Product {
   stockMovements   StockMovement[]
 
   @@map("products")
+}
+
+// Comentarios de compradores en un producto: se publican solo cuando la tienda o el superadmin los aprueban.
+model ProductComment {
+  id          String   @id @default(uuid())
+  productId   String
+  userId      String
+  body        String
+  status      String   @default("pending") // pending | approved | hidden
+  moderatedBy String?
+  createdAt   DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@index([status, createdAt])
+  @@map("product_comments")
+}
+
+// Visitas únicas por día a una tienda (visitante + día), para el panel del encargado.
+model StoreVisit {
+  id        String   @id @default(uuid())
+  sellerId  String
+  visitorId String
+  day       String // AAAA-MM-DD en hora de Paraguay
+  createdAt DateTime @default(now())
+
+  @@unique([sellerId, visitorId, day])
+  @@index([sellerId, day])
+  @@map("store_visits")
 }
 
 model ProductFavorite {

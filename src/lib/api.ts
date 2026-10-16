@@ -6,7 +6,7 @@ const API_URL = '/api';
 const getToken = () => localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token');
 
 // Generic fetch with auth
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
+export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = getToken();
 
   const headers: Record<string, string> = {
@@ -184,6 +184,15 @@ export const plansApi = {
 };
 
 // Products API
+export const commentsApi = {
+  list: (productId: string) => fetchWithAuth(`/comments/product/${productId}`),
+  create: (productId: string, body: string) =>
+    fetchWithAuth(`/comments/product/${productId}`, { method: 'POST', body: JSON.stringify({ body }) }),
+  moderation: () => fetchWithAuth('/comments/moderation'),
+  moderate: (id: string, status: 'approved' | 'hidden') =>
+    fetchWithAuth(`/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+};
+
 export const favoritesApi = {
   ids: () => fetchWithAuth('/favorites/ids'),
   list: () => fetchWithAuth('/favorites'),
@@ -586,6 +595,8 @@ export const coursesApi = {
       method: 'POST',
       body: JSON.stringify({ userId }),
     }),
+  refundAccess: (courseId: string, accessId: string) =>
+    fetchWithAuth(`/courses/${courseId}/access/${accessId}/refund`, { method: 'POST' }),
   removeAccess: (courseId: string, accessId: string) =>
     fetchWithAuth(`/courses/${courseId}/access/${accessId}`, {
       method: 'DELETE',

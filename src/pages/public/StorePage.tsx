@@ -26,7 +26,7 @@ import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteBut
 import { AuctionCardBadge } from '@/components/auction/AuctionCardBadge';
 import { OfferCountdown } from '@/components/offer/OfferCountdown';
 import { FavoriteButton } from '@/components/shared/FavoriteButton';
-import { trackReferral } from '@/lib/affiliate';
+import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -81,7 +81,10 @@ export default function StorePage() {
 
   // Visita desde un enlace de afiliado (?ref=CODIGO)
   useEffect(() => {
-    if (slug && !isPreview) trackReferral({ storeSlug: slug }, location.search);
+    if (slug && !isPreview) {
+      trackReferral({ storeSlug: slug }, location.search);
+      trackStoreVisit(slug);
+    }
   }, [slug, location.search, isPreview]);
 
   const handleShare = async () => {

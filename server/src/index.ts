@@ -35,6 +35,7 @@ import { ensureAffiliateSettings, startAffiliateScheduler } from './services/aff
 import { startAuctionScheduler } from './services/auctionService.js';
 import auctionRoutes from './routes/auctions.js';
 import favoriteRoutes from './routes/favorites.js';
+import commentRoutes from './routes/comments.js';
 import { startOfferScheduler } from './services/offerService.js';
 import { backfillProductSlugs, backfillStoreSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
@@ -138,6 +139,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/affiliates', affiliateRoutes);
 app.use('/api/auctions', auctionRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/comments', commentRoutes);
 app.use('/api/media', mediaRoutes);
 
 // Setup endpoint - crea usuarios de prueba. Solo en desarrollo y con ENABLE_DEV_SETUP=true:

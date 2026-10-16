@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Gavel, Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Upload, X, ImagePlus, Link2 } from 'lucide-react';
 import { AuctionFormFields, defaultAuctionEnd, toLocalInput } from '@/components/auction/AuctionFormFields';
 import { AuctionBiddersDialog } from '@/components/auction/AuctionBiddersDialog';
+import { CommentsModerationDialog } from '@/components/comments/CommentsModerationDialog';
 import { OfferFormFields } from '@/components/offer/OfferFormFields';
 import { useAuthStore } from '@/stores';
 import { productsApi, suppliersApi } from '@/lib/api';
@@ -115,6 +116,7 @@ export default function SellerProducts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [biddersFor, setBiddersFor] = useState<string | null>(null);
+  const [moderating, setModerating] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<Partial<Product>>({
@@ -339,6 +341,9 @@ export default function SellerProducts() {
               Gestiona tus productos ({products.length}/{productLimit || '∞'})
             </p>
           </div>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setModerating(true)}>
+            Comentarios
+          </Button>
           <Button 
             className={cn(
               "w-full sm:w-auto",
@@ -483,6 +488,7 @@ export default function SellerProducts() {
       </Card>
 
       <AuctionBiddersDialog productId={biddersFor} onClose={() => setBiddersFor(null)} />
+      <CommentsModerationDialog open={moderating} onClose={() => setModerating(false)} />
 
       {/* Product Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

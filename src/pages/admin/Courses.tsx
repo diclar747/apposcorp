@@ -51,7 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Undo2 } from 'lucide-react';
 
 // ============ Course List View ============
 function CourseListView({ onSelectCourse }: { onSelectCourse: (course: any) => void }) {
@@ -631,6 +631,17 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
     }
   };
 
+  const handleRefundEnrollment = async (enrollmentId: string) => {
+    if (!confirm('¿Reembolsar este curso? Se devuelve a la billetera del alumno lo que pagó, se quita su acceso y se revierte la comisión del afiliado.')) return;
+    try {
+      const r = await coursesApi.refundAccess(courseId, enrollmentId);
+      toast.success(`Reembolsado: ${formatCurrency(r.refunded)}`);
+      fetchCourse();
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo reembolsar');
+    }
+  };
+
   const handleRemoveEnrollment = async (enrollmentId: string) => {
     if (!confirm('¿Eliminar esta inscripción?')) return;
     try {
@@ -890,7 +901,10 @@ function CourseDetailView({ courseId, onBack }: { courseId: string; onBack: () =
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleRemoveEnrollment(enrollment.id)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600" onClick={() => handleRefundEnrollment(enrollment.id)} aria-label="Reembolsar" title="Reembolsar">
+                            <Undo2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleRemoveEnrollment(enrollment.id)} aria-label="Quitar acceso" title="Quitar acceso">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </TableCell>

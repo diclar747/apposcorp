@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Gavel, Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye } from 'lucide-react';
 import { AuctionFormFields, defaultAuctionEnd, toLocalInput } from '@/components/auction/AuctionFormFields';
 import { AuctionBiddersDialog } from '@/components/auction/AuctionBiddersDialog';
+import { CommentsModerationDialog } from '@/components/comments/CommentsModerationDialog';
 import { OfferFormFields } from '@/components/offer/OfferFormFields';
 import { productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -106,6 +107,7 @@ export default function AdminProducts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [biddersFor, setBiddersFor] = useState<string | null>(null);
+  const [moderating, setModerating] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Product>>({
@@ -244,6 +246,7 @@ export default function AdminProducts() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Productos</h1>
           <p className="text-gray-500 dark:text-gray-400">Gestiona todos los productos del marketplace</p>
         </div>
+        <Button variant="outline" onClick={() => setModerating(true)}>Comentarios</Button>
         <Button className="bg-blue-600" onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Producto
@@ -366,6 +369,7 @@ export default function AdminProducts() {
 
       {/* Product Modal */}
       <AuctionBiddersDialog productId={biddersFor} onClose={() => setBiddersFor(null)} />
+      <CommentsModerationDialog open={moderating} onClose={() => setModerating(false)} />
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
