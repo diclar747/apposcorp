@@ -103,7 +103,8 @@ export default function ClientIngenio() {
     try {
       setLoading(true);
       const data = await financesApi.getSummary();
-      setSummary(data);
+      // Mezcla con los valores por defecto: si el API no trae algún campo, no rompe el render.
+      setSummary({ income: 0, expenses: 0, assets: 0, liabilities: 0, netWorth: 0, netWorthGrowth: 0, ...(data || {}) });
     } catch (error) {
       console.error(error);
     } finally {
@@ -473,7 +474,7 @@ export default function ClientIngenio() {
                     summary.netWorthGrowth >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                   )}>
                     {summary.netWorthGrowth >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                    {summary.netWorthGrowth.toFixed(1)}%
+                    {(summary.netWorthGrowth ?? 0).toFixed(1)}%
                   </Badge>
                   <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">vs mes anterior</p>
                 </div>
