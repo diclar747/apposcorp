@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
+import { getAffiliateConfig, getCourseRate, createResourceCommission, notifyResourceCommission } from '../services/affiliateService.js';
 
 const router = Router();
 
@@ -781,6 +782,25 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           },
         });
       });
+
+      // Comisión de afiliado por curso pago (si vino de un enlace). Idempotente.
+      try {
+        const rate = getCourseRate(course, await getAffiliateConfig());
+        if (rate !== null) {
+          const commission = await createResourceCommission({
+            resourceType: 'course',
+            resourceId: course.id,
+            resourceName: course.title,
+            price: course.price,
+            rate,
+            buyerId: req.user!.userId,
+            visitorId: typeof req.body?.visitorId === 'string' ? req.body.visitorId : null,
+          });
+          notifyResourceCommission(commission);
+        }
+      } catch (e) {
+        console.error('[afiliados] comisión curso:', e);
+      }
 
       return res.status(201).json(userCourse);
     } else {

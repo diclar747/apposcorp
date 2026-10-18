@@ -12,6 +12,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { ingenioApi, usersApi } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getVisitorId } from '@/lib/affiliate';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 
 interface SubscriptionModalProps {
@@ -101,7 +102,8 @@ export function SubscriptionModal({ open, onOpenChange, onSuccess }: Subscriptio
       await ingenioApi.subscribe({
         installments: isPayingNextQuota ? sub!.installments : installments,
         paymentMethod,
-        receiptUrl: receipt || undefined
+        receiptUrl: receipt || undefined,
+        visitorId: getVisitorId(), // atribución de afiliados (el servidor valida los clics)
       });
       
       setStep('success');

@@ -18,6 +18,10 @@ export interface AffiliateConfig {
   autoRelease: boolean;
   showRatePublic: boolean;
   codEnabled: boolean;
+  // Cursos e Ingenio Millonario (los paga OSCORP, no una tienda)
+  ingenioEnabled: boolean;
+  ingenioRate: number;
+  coursesEnabled: boolean;
 }
 
 export const AFFILIATE_SETTINGS: {
@@ -37,7 +41,13 @@ export const AFFILIATE_SETTINGS: {
   { key: 'affiliate_auto_release', field: 'autoRelease', type: 'bool', default: 'true', isPublic: false, description: 'Acreditar solas las comisiones vencidas (si no, el admin las paga)' },
   { key: 'affiliate_show_rate_public', field: 'showRatePublic', type: 'bool', default: 'true', isPublic: true, description: 'Mostrar el % de comisión a todos (si no, solo a usuarios logueados)' },
   { key: 'affiliate_cod_enabled', field: 'codEnabled', type: 'bool', default: 'true', isPublic: false, description: 'El pago contra entrega genera comisión (se cobra a la tienda al entregar)' },
+  { key: 'affiliate_ingenio_enabled', field: 'ingenioEnabled', type: 'bool', default: 'false', isPublic: true, description: 'Pagar comisión por suscripciones a Ingenio Millonario (las paga OSCORP)' },
+  { key: 'affiliate_ingenio_rate', field: 'ingenioRate', type: 'number', default: '20', isPublic: true, description: '% de comisión por cada suscripción a Ingenio Millonario vendida' },
+  { key: 'affiliate_courses_enabled', field: 'coursesEnabled', type: 'bool', default: 'false', isPublic: true, description: 'Pagar comisión por cursos pagos habilitados para afiliados' },
 ];
+
+export const INGENIO_RESOURCE_ID = 'ingenio';
+export const INGENIO_RESOURCE_NAME = 'Suscripción Ingenio Millonario';
 
 export const getAffiliateConfig = async (tx: Tx = prisma): Promise<AffiliateConfig> => {
   const rows = await tx.systemSetting.findMany({
@@ -122,6 +132,31 @@ export const parseTriState = (value: unknown): boolean | null => {
 export const storeParticipates = (seller: SellerAffiliateFields, cfg: AffiliateConfig) =>
   cfg.enabled && seller.affiliateEnabled && !seller.affiliateBlocked;
 
+// ─── Cursos e Ingenio Millonario (recursos de OSCORP) ─────────────────────────
+
+interface CourseAffiliateFields {
+  price: number;
+  affiliateEnabled: boolean;
+  affiliateRate: number | null;
+  isPublished?: boolean;
+}
+
+/** % de comisión de un curso pago, o null si no participa. */
+export const getCourseRate = (course: CourseAffiliateFields, cfg: AffiliateConfig): number | null => {
+  if (!cfg.enabled || !cfg.coursesEnabled) return null;
+  if (!course.affiliateEnabled || !(course.price > 0)) return null;
+  const rate = course.affiliateRate;
+  if (rate === null || rate === undefined || !(rate > 0)) return null;
+  return clampRate(rate, cfg);
+};
+
+/** % de comisión de la suscripción a Ingenio Millonario, o null si no participa. */
+export const getIngenioRate = (cfg: AffiliateConfig): number | null => {
+  if (!cfg.enabled || !cfg.ingenioEnabled) return null;
+  if (!(cfg.ingenioRate > 0)) return null;
+  return clampRate(cfg.ingenioRate, cfg);
+};
+
 // ─── Perfil de afiliado ───────────────────────────────────────────────────────
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -185,6 +220,10 @@ export interface TrackInput {
   productSlug?: string;
   productId?: string;
   storeSlug?: string;
+  // Cursos / Ingenio Millonario
+  resourceType?: 'course' | 'ingenio';
+  courseSlug?: string;
+  courseId?: string;
   userId?: string | null;
   ip?: string;
 }
@@ -199,10 +238,23 @@ export const trackClick = async (input: TrackInput) => {
   if (!affiliate || affiliate.status !== 'active') return null;
   if (input.userId && input.userId === affiliate.userId) return null; // el afiliado visitando su propio enlace
 
-  let sellerId: string;
+  let sellerId: string | null = null;
   let productId: string | null = null;
+  let resourceType = 'product';
+  let resourceId: string | null = null;
 
-  if (input.productSlug || input.productId) {
+  if (input.resourceType === 'ingenio') {
+    if (!cfg.ingenioEnabled) return null;
+    resourceType = 'ingenio';
+    resourceId = INGENIO_RESOURCE_ID;
+  } else if (input.resourceType === 'course' || input.courseSlug || input.courseId) {
+    const course = await prisma.course.findFirst({
+      where: input.courseSlug ? { OR: [{ slug: input.courseSlug }, { id: input.courseSlug }] } : { id: input.courseId },
+    });
+    if (!course || getCourseRate(course, cfg) === null) return null;
+    resourceType = 'course';
+    resourceId = course.id;
+  } else if (input.productSlug || input.productId) {
     const product = await prisma.product.findFirst({
       where: input.productSlug ? { OR: [{ slug: input.productSlug }, { id: input.productSlug }] } : { id: input.productId },
       include: { seller: true },
@@ -227,6 +279,8 @@ export const trackClick = async (input: TrackInput) => {
       affiliateId: affiliate.id,
       sellerId,
       productId,
+      resourceType,
+      resourceId,
       createdAt: { gte: new Date(now - CLICK_DEDUPE_MS) },
     },
     orderBy: { createdAt: 'desc' },
@@ -244,7 +298,7 @@ export const trackClick = async (input: TrackInput) => {
   if (clicksToday >= MAX_CLICKS_PER_VISITOR_PER_DAY) return null;
 
   const link = await prisma.affiliateLink.findFirst({
-    where: { affiliateId: affiliate.id, sellerId, productId },
+    where: { affiliateId: affiliate.id, sellerId, productId, resourceType, resourceId },
     select: { id: true },
   });
 
@@ -254,6 +308,8 @@ export const trackClick = async (input: TrackInput) => {
       linkId: link?.id ?? null,
       sellerId,
       productId,
+      resourceType,
+      resourceId,
       visitorId: input.visitorId,
       userId: input.userId ?? null,
       ipHash: hashIp(input.ip),
@@ -382,6 +438,163 @@ export const notifyNewCommissions = (commissions: { affiliateUserId: string; amo
       .catch(() => {});
     sendPushToUser(c.affiliateUserId, { title: '¡Nueva comisión!', body, url: '/app/afiliados', tag: 'affiliate-commission' }).catch(() => {});
   }
+};
+
+// ─── Comisiones de cursos e Ingenio (recursos de OSCORP) ──────────────────────
+
+export interface ResourceSaleInput {
+  resourceType: 'course' | 'ingenio';
+  resourceId: string;
+  resourceName: string;
+  price: number;
+  rate: number;
+  buyerId: string;
+  visitorId?: string | null;
+}
+
+/**
+ * Crea la comisión de un curso o de la suscripción a Ingenio (los paga OSCORP).
+ * Corre después de confirmada la compra, en su propia transacción. Idempotente: una sola comisión
+ * por (recurso, comprador), así reintentos de pago o cuotas no duplican la comisión.
+ * La comisión queda "funded" (la cubre OSCORP) y se libera tras el plazo de garantía. Devuelve la
+ * comisión creada (con el userId del afiliado para notificar) o null si no corresponde.
+ */
+export const createResourceCommission = async (input: ResourceSaleInput) => {
+  const cfg = await getAffiliateConfig();
+  if (!cfg.enabled || !(input.price > 0) || !(input.rate > 0)) return null;
+
+  // Idempotencia: ¿ya hay comisión viva para este recurso y comprador?
+  const existing = await prisma.affiliateCommission.findFirst({
+    where: {
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      buyerId: input.buyerId,
+      status: { in: ['pending', 'approved', 'paid'] },
+    },
+  });
+  if (existing) return null;
+
+  const since = new Date(Date.now() - cfg.cookieDays * 24 * 60 * 60 * 1000);
+  const visitorFilter: Prisma.AffiliateClickWhereInput[] = [{ userId: input.buyerId }];
+  if (input.visitorId) visitorFilter.push({ visitorId: input.visitorId });
+
+  const clicks = await prisma.affiliateClick.findMany({
+    where: { resourceType: input.resourceType, resourceId: input.resourceId, createdAt: { gte: since }, OR: visitorFilter },
+    orderBy: { createdAt: 'desc' },
+    include: { affiliate: true },
+    take: 200,
+  });
+  const click = clicks.find((c) => c.affiliate.status === 'active' && c.affiliate.userId !== input.buyerId);
+  if (!click) return null;
+
+  const amount = Math.floor((input.price * input.rate) / 100);
+  if (amount <= 0) return null;
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Doble control dentro de la transacción (por si dos pagos entran a la vez)
+    const dup = await tx.affiliateCommission.findFirst({
+      where: {
+        resourceType: input.resourceType,
+        resourceId: input.resourceId,
+        buyerId: input.buyerId,
+        status: { in: ['pending', 'approved', 'paid'] },
+      },
+    });
+    if (dup) return null;
+
+    const affiliateWallet = await ensureWallet(click.affiliate.userId, tx);
+    const walletTx = await tx.transaction.create({
+      data: {
+        walletId: affiliateWallet.id,
+        userId: click.affiliate.userId,
+        type: 'affiliate_commission',
+        amount,
+        description: `Comisión de afiliado - ${input.resourceName}`,
+        status: 'pending',
+        metadata: { source: 'affiliate', resourceType: input.resourceType, rate: input.rate },
+      },
+    });
+
+    const commission = await tx.affiliateCommission.create({
+      data: {
+        affiliateId: click.affiliateId,
+        orderId: null,
+        orderItemId: null,
+        sellerId: null,
+        resourceType: input.resourceType,
+        resourceId: input.resourceId,
+        productId: null,
+        productName: input.resourceName,
+        buyerId: input.buyerId,
+        clickId: click.id,
+        source: input.resourceType,
+        baseAmount: input.price,
+        rate: input.rate,
+        amount,
+        status: 'pending',
+        funded: true, // la paga OSCORP
+        availableAt: addDays(new Date(), cfg.holdDays),
+        walletTxId: walletTx.id,
+      },
+    });
+    return { ...commission, affiliateUserId: click.affiliate.userId };
+  });
+
+  return result;
+};
+
+/** Notifica una comisión de recurso recién creada. */
+export const notifyResourceCommission = (c: { affiliateUserId: string; amount: number; productName: string } | null) => {
+  if (!c) return;
+  notifyNewCommissions([c]);
+};
+
+/**
+ * Revierte la comisión de un curso/Ingenio cuando la compra se reembolsa o la suscripción se revoca.
+ * OSCORP la había cubierto, así que no hay devolución a ninguna tienda.
+ */
+export const reverseResourceCommission = async (
+  resourceType: 'course' | 'ingenio',
+  resourceId: string,
+  buyerId: string,
+  reason: string,
+) => {
+  const c = await prisma.affiliateCommission.findFirst({
+    where: { resourceType, resourceId, buyerId, status: { in: ['pending', 'approved', 'paid'] } },
+    include: { affiliate: true },
+  });
+  if (!c) return false;
+
+  return prisma.$transaction(async (tx) => {
+    const wasPaid = c.status === 'paid';
+    const moved = await tx.affiliateCommission.updateMany({
+      where: { id: c.id, status: c.status },
+      data: { status: wasPaid ? 'reversed' : 'cancelled', cancelledAt: new Date(), note: reason },
+    });
+    if (moved.count === 0) return false;
+
+    if (wasPaid) {
+      const wallet = await ensureWallet(c.affiliate.userId, tx);
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { decrement: c.amount }, totalOut: { increment: c.amount } },
+      });
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: c.affiliate.userId,
+          type: 'affiliate_reversal',
+          amount: -c.amount,
+          description: `Reversión de comisión - ${c.productName}`,
+          status: 'completed',
+          metadata: { commissionId: c.id, reason },
+        },
+      });
+    } else if (c.walletTxId) {
+      await tx.transaction.updateMany({ where: { id: c.walletTxId, status: 'pending' }, data: { status: 'failed' } });
+    }
+    return true;
+  });
 };
 
 // ─── Entrega, liberación y cancelación ────────────────────────────────────────
@@ -522,7 +735,8 @@ export const approveCommissions = async (ids: string[]) => {
     if (!c) { results.push({ id, ok: false, reason: 'No existe' }); continue; }
     if (c.status === 'paid') { results.push({ id, ok: true, reason: 'Ya estaba pagada' }); continue; }
     if (c.status !== 'pending' && c.status !== 'approved') { results.push({ id, ok: false, reason: `Estado ${c.status}` }); continue; }
-    if (c.order.status !== 'delivered') { results.push({ id, ok: false, reason: 'El pedido todavía no se entregó' }); continue; }
+    // Cursos/Ingenio no tienen pedido: el acceso se habilita al pagar, así que se consideran "entregados"
+    if (c.order && c.order.status !== 'delivered') { results.push({ id, ok: false, reason: 'El pedido todavía no se entregó' }); continue; }
     if (!c.funded) { results.push({ id, ok: false, reason: 'Retenida: la tienda no cubrió la comisión' }); continue; }
     const paid = await payCommission(id);
     if (paid) notifyPaid(paid);
@@ -554,8 +768,8 @@ export const cancelCommissionsForOrder = async (
 
 const cancelOneCommission = async (
   tx: Prisma.TransactionClient,
-  c: { id: string; status: string; amount: number; funded: boolean; walletTxId: string | null; productName: string; orderId: string; affiliate: { userId: string } },
-  order: { orderNumber: string; sellerId: string; paymentMethod: string },
+  c: { id: string; status: string; amount: number; funded: boolean; walletTxId: string | null; productName: string; orderId: string | null; affiliate: { userId: string } },
+  order: { orderNumber: string; sellerId: string | null; paymentMethod: string },
   reason: string,
 ) => {
   const now = new Date();
@@ -589,7 +803,7 @@ const cancelOneCommission = async (
   }
 
   // Contra entrega ya cobrada a la tienda: se le devuelve
-  if (c.funded && order.paymentMethod !== 'wallet') {
+  if (c.funded && order.paymentMethod !== 'wallet' && order.sellerId) {
     const sellerWallet = await ensureWallet(order.sellerId, tx);
     await tx.wallet.update({
       where: { id: sellerWallet.id },
@@ -621,6 +835,19 @@ export const adminCancelCommissions = async (ids: string[], reason: string) => {
           include: { affiliate: true, order: { select: { orderNumber: true, sellerId: true, paymentMethod: true } } },
         });
         if (!c || !['pending', 'approved', 'paid'].includes(c.status)) return false;
+        // Comisiones de curso/Ingenio (sin pedido): las paga OSCORP, no hay tienda a la que devolver
+        if (!c.order || c.resourceType !== 'product') {
+          const wasPaid = c.status === 'paid';
+          await tx.affiliateCommission.updateMany({ where: { id: c.id, status: c.status }, data: { status: wasPaid ? 'reversed' : 'cancelled', cancelledAt: new Date(), note: reason } });
+          if (wasPaid) {
+            const w = await ensureWallet(c.affiliate.userId, tx);
+            await tx.wallet.update({ where: { id: w.id }, data: { balance: { decrement: c.amount }, totalOut: { increment: c.amount } } });
+            await tx.transaction.create({ data: { walletId: w.id, userId: c.affiliate.userId, type: 'affiliate_reversal', amount: -c.amount, description: `Reversión de comisión - ${c.productName}`, status: 'completed', metadata: { commissionId: c.id, reason } } });
+          } else if (c.walletTxId) {
+            await tx.transaction.updateMany({ where: { id: c.walletTxId, status: 'pending' }, data: { status: 'failed' } });
+          }
+          return true;
+        }
         await cancelOneCommission(tx, c, c.order, reason);
         // La comisión deja de descontarse a la tienda en pedidos con billetera: se le devuelve
         if (c.order.paymentMethod === 'wallet') {

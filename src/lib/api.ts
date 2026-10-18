@@ -762,7 +762,7 @@ export const ingenioApi = {
 
   // Subscription
   getConfig: () => fetchWithAuth('/ingenio/config'),
-  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER', receiptUrl?: string }) => 
+  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER', receiptUrl?: string, visitorId?: string }) => 
     fetchWithAuth('/ingenio/subscribe', { method: 'POST', body: JSON.stringify(data) }),
   getMySubscription: () => fetchWithAuth('/ingenio/me'),
   
@@ -864,7 +864,7 @@ export const affiliatesApi = {
     fetchWithAuth('/affiliates/join', { method: 'POST', body: JSON.stringify({ acceptTerms: true, visitorId }) }),
   claimVisitor: (visitorId: string) =>
     fetchWithAuth('/affiliates/claim-visitor', { method: 'POST', body: JSON.stringify({ visitorId }) }),
-  createLink: (data: { productId?: string; storeSlug?: string }) =>
+  createLink: (data: { productId?: string; storeSlug?: string; courseId?: string; resourceType?: 'ingenio' | 'course' }) =>
     fetchWithAuth('/affiliates/links', { method: 'POST', body: JSON.stringify(data) }),
   getLinks: () => fetchWithAuth('/affiliates/links'),
   explore: (search?: string) => fetchWithAuth(`/affiliates/explore${search ? `?search=${encodeURIComponent(search)}` : ''}`),

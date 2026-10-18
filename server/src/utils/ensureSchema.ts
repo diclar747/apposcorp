@@ -43,6 +43,24 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "googleId" TEXT`,
 
+  // v2 afiliados: cursos e Ingenio Millonario. Columnas nuevas + relajar NOT NULL (no borra datos).
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
+  `ALTER TABLE "affiliate_links" ADD COLUMN IF NOT EXISTS "resourceType" TEXT NOT NULL DEFAULT 'product'`,
+  `ALTER TABLE "affiliate_links" ADD COLUMN IF NOT EXISTS "resourceId" TEXT`,
+  `ALTER TABLE "affiliate_links" ALTER COLUMN "sellerId" DROP NOT NULL`,
+  `ALTER TABLE "affiliate_clicks" ADD COLUMN IF NOT EXISTS "resourceType" TEXT NOT NULL DEFAULT 'product'`,
+  `ALTER TABLE "affiliate_clicks" ADD COLUMN IF NOT EXISTS "resourceId" TEXT`,
+  `ALTER TABLE "affiliate_clicks" ALTER COLUMN "sellerId" DROP NOT NULL`,
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "resourceType" TEXT NOT NULL DEFAULT 'product'`,
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "resourceId" TEXT`,
+  `ALTER TABLE "affiliate_commissions" ALTER COLUMN "orderId" DROP NOT NULL`,
+  `ALTER TABLE "affiliate_commissions" ALTER COLUMN "orderItemId" DROP NOT NULL`,
+  `ALTER TABLE "affiliate_commissions" ALTER COLUMN "sellerId" DROP NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS "affiliate_links_affiliateId_resourceType_resourceId_idx" ON "affiliate_links"("affiliateId", "resourceType", "resourceId")`,
+  `CREATE INDEX IF NOT EXISTS "affiliate_clicks_resourceType_resourceId_createdAt_idx" ON "affiliate_clicks"("resourceType", "resourceId", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "affiliate_commissions_resourceType_resourceId_buyerId_idx" ON "affiliate_commissions"("resourceType", "resourceId", "buyerId")`,
+
   // Tablas nuevas
   `CREATE TABLE IF NOT EXISTS "affiliate_profiles" (
     "id" TEXT NOT NULL,
@@ -127,13 +145,21 @@ const STATEMENTS: string[] = [
 ];
 
 // Red de seguridad: si alguien agrega acá una sentencia destructiva, no se ejecuta.
-const FORBIDDEN = /\b(DROP|DELETE|TRUNCATE|RENAME|ALTER\s+COLUMN)\b/i;
+// Se bloquea borrar tablas/columnas/datos o cambiar el tipo de una columna.
+// "DROP NOT NULL" (relajar una regla) y "ON DELETE ..." (en relaciones nuevas) son seguros.
+const FORBIDDEN = /\b(DROP\s+(TABLE|COLUMN|CONSTRAINT|INDEX|DATABASE|SCHEMA|VIEW)|DELETE\s+FROM|TRUNCATE|RENAME|ALTER\s+COLUMN\s+"?\w+"?\s+TYPE|SET\s+DATA\s+TYPE)\b/i;
+
+const isDestructive = (sql: string) =>
+  FORBIDDEN.test(
+    sql
+      .replace(/ON\s+DELETE\s+(CASCADE|RESTRICT|SET\s+NULL)/gi, '')
+      .replace(/DROP\s+NOT\s+NULL/gi, ''),
+  );
 
 export const ensureSchema = async () => {
   let failed = 0;
   for (const sql of STATEMENTS) {
-    // "ON DELETE CASCADE/RESTRICT" en una relación nueva no borra nada: se ignora al revisar
-    if (FORBIDDEN.test(sql.replace(/ON\s+DELETE\s+(CASCADE|RESTRICT|SET\s+NULL)/gi, ''))) {
+    if (isDestructive(sql)) {
       console.error('[esquema] sentencia destructiva bloqueada:', sql.slice(0, 80));
       failed++;
       continue;

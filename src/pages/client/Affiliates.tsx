@@ -146,31 +146,65 @@ export default function ClientAffiliates() {
 }
 
 function ExploreTab() {
-  const [data, setData] = useState<{ products: any[]; stores: any[] } | null>(null);
+  const [data, setData] = useState<{ products: any[]; stores: any[]; resources?: any[] } | null>(null);
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'products' | 'stores'>('products');
+  const [view, setView] = useState<'products' | 'stores' | 'resources'>('products');
 
   useEffect(() => {
     const t = setTimeout(() => {
-      affiliatesApi.explore(search).then(setData).catch(() => setData({ products: [], stores: [] }));
+      affiliatesApi.explore(search).then(setData).catch(() => setData({ products: [], stores: [], resources: [] }));
     }, 250);
     return () => clearTimeout(t);
   }, [search]);
 
+  const resources = data?.resources || [];
+
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos" className="pl-9" />
         </div>
         <div className="flex rounded-md border border-border p-0.5">
           <Button size="sm" variant={view === 'products' ? 'secondary' : 'ghost'} onClick={() => setView('products')}>Productos</Button>
           <Button size="sm" variant={view === 'stores' ? 'secondary' : 'ghost'} onClick={() => setView('stores')}>Tiendas</Button>
+          {resources.length > 0 && (
+            <Button size="sm" variant={view === 'resources' ? 'secondary' : 'ghost'} onClick={() => setView('resources')}>Cursos</Button>
+          )}
         </div>
       </div>
 
-      {!data ? (
+      {view === 'resources' && data && (
+        <div className="space-y-2">
+          {resources.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-10">No hay cursos ni Ingenio para promocionar.</p>
+          ) : resources.map((r) => (
+            <Card key={`${r.type}-${r.id}`} className="border-violet-200 dark:border-violet-900/50">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="w-14 h-14 rounded-lg bg-violet-100 dark:bg-violet-900/40 overflow-hidden shrink-0 flex items-center justify-center">
+                  {r.image ? <img src={r.image} alt="" className="w-full h-full object-cover" /> : <Megaphone className="w-6 h-6 text-violet-600 dark:text-violet-300" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm line-clamp-1">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">{r.type === 'ingenio' ? 'Ingenio Millonario' : 'Curso'} · {formatCurrency(r.price)}</p>
+                  <p className="text-xs font-bold text-violet-600 dark:text-violet-300 mt-0.5">{r.rate}% · ganás {formatCurrency(r.commission)} por venta</p>
+                </div>
+                <PromoteButton
+                  kind={r.type === 'ingenio' ? 'ingenio' : 'course'}
+                  courseId={r.type === 'course' ? r.id : undefined}
+                  title={r.name}
+                  rate={r.rate}
+                  size="sm"
+                  className="shrink-0 [&>svg]:mr-0"
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {view !== 'resources' && (!data ? (
         <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : view === 'products' ? (
         data.products.length === 0 ? (
@@ -215,7 +249,7 @@ function ExploreTab() {
             </Card>
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 }

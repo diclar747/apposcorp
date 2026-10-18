@@ -13,6 +13,10 @@ import {
   adminCancelCommissions,
   releaseDueCommissions,
   parseRateInput,
+  getCourseRate,
+  getIngenioRate,
+  INGENIO_RESOURCE_ID,
+  INGENIO_RESOURCE_NAME,
 } from '../services/affiliateService.js';
 
 const router = Router();
@@ -62,6 +66,9 @@ router.get('/program', async (_req, res) => {
       holdDays: cfg.holdDays,
       showRatePublic: cfg.showRatePublic,
       codEnabled: cfg.codEnabled,
+      ingenioEnabled: cfg.ingenioEnabled,
+      ingenioRate: cfg.showRatePublic ? cfg.ingenioRate : null,
+      coursesEnabled: cfg.coursesEnabled,
     });
   } catch (error) {
     serverError(res, error, 'program');
@@ -71,13 +78,15 @@ router.get('/program', async (_req, res) => {
 // Registrar la visita de un enlace ?ref=CODIGO
 router.post('/track', async (req, res) => {
   try {
-    const { code, visitorId, productSlug, storeSlug } = req.body || {};
+    const { code, visitorId, productSlug, storeSlug, resourceType, courseSlug } = req.body || {};
     const viewer = await getOptionalUser(req);
     const click = await trackClick({
       code: String(code || ''),
       visitorId: String(visitorId || ''),
       productSlug: productSlug ? String(productSlug) : undefined,
       storeSlug: storeSlug ? String(storeSlug) : undefined,
+      resourceType: resourceType === 'ingenio' ? 'ingenio' : resourceType === 'course' ? 'course' : undefined,
+      courseSlug: courseSlug ? String(courseSlug) : undefined,
       userId: viewer?.userId ?? null,
       ip: req.ip,
     });
@@ -152,7 +161,36 @@ router.post('/links', authenticate, async (req: AuthRequest, res) => {
     const cfg = await getAffiliateConfig();
     if (!cfg.enabled) return res.status(403).json({ error: 'El programa de afiliados no está activo' });
 
-    const { productId, storeSlug, sellerId } = req.body || {};
+    const { productId, storeSlug, sellerId, resourceType, courseId } = req.body || {};
+
+    // Enlace de Ingenio Millonario o de un curso pago (recursos de OSCORP)
+    if (resourceType === 'ingenio' || resourceType === 'course' || courseId) {
+      let resId: string;
+      let resName: string;
+      let path: string;
+      if (resourceType === 'ingenio') {
+        if (getIngenioRate(cfg) === null) return res.status(400).json({ error: 'Ingenio Millonario no participa del programa de afiliados' });
+        resId = INGENIO_RESOURCE_ID;
+        resName = INGENIO_RESOURCE_NAME;
+        path = '/presentacion-e1';
+      } else {
+        const course = await prisma.course.findFirst({ where: { OR: [{ id: String(courseId) }, { slug: String(courseId) }] } });
+        if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+        if (getCourseRate(course, cfg) === null) return res.status(400).json({ error: 'Este curso no participa del programa de afiliados' });
+        resId = course.id;
+        resName = course.title;
+        path = `/app/cursos/${course.id}`;
+      }
+      const resType = resourceType === 'ingenio' ? 'ingenio' : 'course';
+      const existingRes = await prisma.affiliateLink.findFirst({
+        where: { affiliateId: profile.id, resourceType: resType, resourceId: resId },
+      });
+      const link = existingRes ?? await prisma.affiliateLink.create({
+        data: { affiliateId: profile.id, resourceType: resType, resourceId: resId, sellerId: null, productId: null },
+      });
+      return res.json({ link, path: `${path}?ref=${profile.code}`, code: profile.code });
+    }
+
     let seller;
     let product = null;
 
@@ -199,7 +237,7 @@ router.get('/links', authenticate, async (req: AuthRequest, res) => {
     const cfg = await getAffiliateConfig();
 
     const links = await prisma.affiliateLink.findMany({ where: { affiliateId: profile.id }, orderBy: { createdAt: 'desc' } });
-    const sellerIds = [...new Set(links.map((l) => l.sellerId))];
+    const sellerIds = [...new Set(links.map((l) => l.sellerId).filter((x): x is string => !!x))];
     const productIds = links.map((l) => l.productId).filter((x): x is string => !!x);
 
     const [sellers, products, clicks, commissions] = await Promise.all([
@@ -297,7 +335,44 @@ router.get('/explore', authenticate, async (req: AuthRequest, res) => {
     }
     const storeList = [...storeMap.values()].sort((a, b) => b.maxRate - a.maxRate);
 
-    res.json({ products: productList, stores: storeList });
+    // Cursos e Ingenio Millonario (recursos de OSCORP)
+    const resources: any[] = [];
+    const ingenioRate = getIngenioRate(cfg);
+    if (ingenioRate !== null) {
+      const priceSetting = await prisma.systemSetting.findUnique({ where: { key: 'ingenio_price' } });
+      const price = Number(priceSetting?.value) || 0;
+      resources.push({
+        type: 'ingenio',
+        id: INGENIO_RESOURCE_ID,
+        name: INGENIO_RESOURCE_NAME,
+        price,
+        rate: ingenioRate,
+        commission: Math.floor((price * ingenioRate) / 100),
+        path: '/presentacion-e1',
+      });
+    }
+    if (cfg.coursesEnabled) {
+      const courses = await prisma.course.findMany({
+        where: { affiliateEnabled: true, price: { gt: 0 }, isPublished: true },
+        select: { id: true, title: true, price: true, affiliateRate: true, coverImage: true },
+      });
+      for (const c of courses) {
+        const rate = getCourseRate(c, cfg);
+        if (rate === null) continue;
+        resources.push({
+          type: 'course',
+          id: c.id,
+          name: c.title,
+          price: c.price,
+          rate,
+          commission: Math.floor((c.price * rate) / 100),
+          image: c.coverImage,
+          path: `/app/cursos/${c.id}`,
+        });
+      }
+    }
+
+    res.json({ products: productList, stores: storeList, resources });
   } catch (error) {
     serverError(res, error, 'explore');
   }
@@ -315,7 +390,7 @@ router.get('/commissions', authenticate, async (req: AuthRequest, res) => {
       take: 500,
     });
     const sellers = await prisma.sellerProfile.findMany({
-      where: { id: { in: [...new Set(commissions.map((c) => c.sellerId))] } },
+      where: { id: { in: [...new Set(commissions.map((c) => c.sellerId).filter((x): x is string => !!x))] } },
       select: { id: true, storeName: true },
     });
     res.json(commissions.map(({ buyerId: _b, clickId: _c, walletTxId: _w, ...c }) => ({
@@ -562,7 +637,7 @@ router.get('/admin/commissions', ...admin, async (req: AuthRequest, res) => {
       take: 1000,
     });
     const sellers = await prisma.sellerProfile.findMany({
-      where: { id: { in: [...new Set(commissions.map((c) => c.sellerId))] } },
+      where: { id: { in: [...new Set(commissions.map((c) => c.sellerId).filter((x): x is string => !!x))] } },
       select: { id: true, storeName: true },
     });
     res.json(commissions.map((c) => ({ ...c, storeName: sellers.find((s) => s.id === c.sellerId)?.storeName || '' })));
@@ -668,7 +743,7 @@ router.get('/admin/reports', ...admin, async (req: AuthRequest, res) => {
     ]);
     const [affiliates, sellers] = await Promise.all([
       prisma.affiliateProfile.findMany({ where: { id: { in: byAffiliate.map((a) => a.affiliateId) } }, include: { user: { select: { firstName: true, lastName: true } } } }),
-      prisma.sellerProfile.findMany({ where: { id: { in: bySeller.map((s) => s.sellerId) } }, select: { id: true, storeName: true } }),
+      prisma.sellerProfile.findMany({ where: { id: { in: bySeller.map((s) => s.sellerId).filter((x): x is string => !!x) } }, select: { id: true, storeName: true } }),
     ]);
 
     res.json({
@@ -678,7 +753,7 @@ router.get('/admin/reports', ...admin, async (req: AuthRequest, res) => {
         const p = affiliates.find((x) => x.id === a.affiliateId);
         return { id: a.affiliateId, name: p ? `${p.user.firstName} ${p.user.lastName}` : '—', code: p?.code, sales: a._sum.baseAmount || 0, commission: a._sum.amount || 0, items: a._count._all };
       }),
-      topStores: bySeller.map((s) => ({ id: s.sellerId, name: sellers.find((x) => x.id === s.sellerId)?.storeName || '—', sales: s._sum.baseAmount || 0, commission: s._sum.amount || 0, items: s._count._all })),
+      topStores: bySeller.map((s) => ({ id: s.sellerId, name: s.sellerId ? (sellers.find((x) => x.id === s.sellerId)?.storeName || '—') : 'Ingenio / Cursos (OSCORP)', sales: s._sum.baseAmount || 0, commission: s._sum.amount || 0, items: s._count._all })),
       topProducts: byProduct.map((p) => ({ id: p.productId, name: p.productName, sales: p._sum.baseAmount || 0, commission: p._sum.amount || 0, items: p._count._all })),
     });
   } catch (error) {
