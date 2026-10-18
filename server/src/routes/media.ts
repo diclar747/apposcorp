@@ -1,9 +1,13 @@
 import { Router, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
+import { serveMediaFile } from '../services/mediaStore.js';
 
-// Sirve como archivo las imágenes guardadas en base64 (data:image/...;base64,...) para que puedan usarse
-// donde no se aceptan data URIs, como la vista previa de WhatsApp/Facebook. Si la imagen es una URL, redirige.
+// Imágenes subidas: /f/<hash> las sirve desde media_files (ver services/mediaStore.ts).
+// /product y /store dan la imagen actual de un producto o tienda (vista previa de WhatsApp/Facebook):
+// si el campo es una URL redirige; si todavía es base64 (antes de migrar) la sirve directo.
 const router = Router();
+
+router.get('/f/:file', serveMediaFile);
 
 const sendImage = (res: Response, src: string | null | undefined) => {
   if (!src) return res.status(404).json({ error: 'Imagen no encontrada' });

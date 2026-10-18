@@ -6,13 +6,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { productsApi } from '@/lib/api';
-import { trackReferral } from '@/lib/affiliate';
+import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
+import { AuctionPanel } from '@/components/auction/AuctionPanel';
+import { ProductComments } from '@/components/comments/ProductComments';
+import { OfferCountdown } from '@/components/offer/OfferCountdown';
+import { FavoriteButton } from '@/components/shared/FavoriteButton';
 
 interface PublicProduct {
   id: string;
@@ -37,6 +41,8 @@ interface PublicProduct {
     isVerified: boolean;
   };
   affiliate: { participates: boolean; rate: number | null };
+  auction: any | null;
+  offer: { active: boolean; expired: boolean; endsAt: string | null; discountPercent: number } | null;
 }
 
 export default function ProductDetailPage() {
@@ -59,7 +65,11 @@ export default function ProductDetailPage() {
     setLoading(true);
     productsApi
       .getPublic(slug)
-      .then((data) => { if (!cancelled) setProduct(data); })
+      .then((data) => {
+        if (cancelled) return;
+        setProduct(data);
+        if (!isPreview && data?.seller?.storeSlug) trackStoreVisit(data.seller.storeSlug); // también cuenta como visita a la tienda
+      })
       .catch(() => { if (!cancelled) setProduct(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     // Visita desde un enlace de afiliado (?ref=CODIGO)
@@ -91,7 +101,7 @@ export default function ProductDetailPage() {
   }
 
   const outOfStock = product.stock <= 0;
-  const canBuy = product.onlineSales && !isPreview && !outOfStock;
+  const canBuy = product.onlineSales && !isPreview && !outOfStock && !product.offer?.expired;
   const images = product.images.length ? product.images : [];
   const maxQty = Math.max(1, product.stock - inCart);
 
@@ -159,6 +169,7 @@ export default function ProductDetailPage() {
                 <span className="absolute -top-0.5 -right-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{inCart}</span>
               </Button>
             )}
+            <FavoriteButton productId={product.id} className="shadow-none" />
             <Button variant="ghost" size="icon" onClick={handleShare} aria-label="Compartir">
               <Share2 className="w-5 h-5" />
             </Button>
@@ -209,6 +220,8 @@ export default function ProductDetailPage() {
           </div>
           <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-tight">{product.name}</h1>
 
+          {product.offer && <OfferCountdown offer={product.offer} className="mt-3 self-start" />}
+          {!product.auction && (
           <div className="flex items-end gap-3 mt-4">
             <span className="text-3xl md:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
               {formatCurrency(product.price)}
@@ -218,6 +231,9 @@ export default function ProductDetailPage() {
             )}
           </div>
 
+          )}
+
+          {!product.auction && (
           <p className="mt-2 text-sm font-semibold">
             {outOfStock ? (
               <span className="text-red-500">Sin stock</span>
@@ -225,13 +241,25 @@ export default function ProductDetailPage() {
               <span className="text-emerald-600">Disponible ({product.stock})</span>
             )}
           </p>
+          )}
 
           {product.description && (
             <p className="mt-5 text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">{product.description}</p>
           )}
 
           <div className="mt-auto pt-6 space-y-3">
-            {canBuy ? (
+            {product.auction ? (
+              <AuctionPanel
+                productId={product.id}
+                initial={product.auction}
+                readOnly={isPreview}
+                onPay={() => {
+                  // El servidor deja pagar solo al ganador, al precio ganador
+                  if (!inCart) addItem({ ...(product as any), sellerId: product.sellerId }, 1);
+                  navigate('/app/checkout');
+                }}
+              />
+            ) : canBuy ? (
               <>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground">Cantidad</span>
@@ -287,6 +315,9 @@ export default function ProductDetailPage() {
             </Link>
           </div>
         </div>
+      </div>
+      <div className="max-w-6xl mx-auto px-4 py-8 md:max-w-3xl">
+        <ProductComments productId={product.id} />
       </div>
     </div>
   );

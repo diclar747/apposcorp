@@ -25,8 +25,11 @@ import {
   Wallet,
   BookOpen,
   Megaphone,
+  ShieldCheck,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAuthStore, useNotificationStore } from '@/stores';
+import { getManagedStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { cn, getInitials } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -64,8 +67,10 @@ export default function SellerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, stopManagingStore } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  // El superadmin gestionando esta tienda ("Gestionar tienda" en Admin → Tiendas)
+  const managedStore = getManagedStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
 
   // Fetch notifications on mount + poll every 30s
@@ -77,7 +82,7 @@ export default function SellerLayout() {
 
   useEffect(() => {
     if (user) {
-      if (!isPlanActive && !isOnPlansPage && !isOnNotificationsPage) {
+      if (!isPlanActive && !isOnPlansPage && !isOnNotificationsPage && !managedStore) {
         navigate('/vendedor/planes');
       }
       
@@ -87,9 +92,13 @@ export default function SellerLayout() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [user, fetchNotifications, isPlanActive, isOnPlansPage, navigate]);
+  }, [user, fetchNotifications, isPlanActive, isOnPlansPage, navigate, managedStore]);
 
   const handleLogout = () => {
+    if (managedStore) {
+      stopManagingStore();
+      return;
+    }
     logout();
     navigate('/login');
   };
@@ -147,13 +156,14 @@ export default function SellerLayout() {
             const isActive = location.pathname === item.href ||
               (item.href !== '/vendedor' && location.pathname.startsWith(item.href));
             
-            // Si el plan no está activo, bloqueamos visualmente casi todo
-            const isDisabled = !isPlanActive && item.href !== '/vendedor/planes';
+            // Si el plan no está activo, bloqueamos visualmente casi todo.
+            // El superadmin gestionando la tienda ve el menú completo, tenga o no plan.
+            const isDisabled = !managedStore && !isPlanActive && item.href !== '/vendedor/planes';
             
             if (isDisabled && !isOnPlansPage) return null;
 
             // Restricción por características del plan
-            if (isPlanActive) {
+            if (isPlanActive && !managedStore) {
                 const features = user?.sellerProfile?.plan?.features || [];
                 const tier = user?.sellerProfile?.plan?.tier?.toLowerCase() || 'basic';
                 const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
@@ -391,6 +401,19 @@ export default function SellerLayout() {
             </div>
           </div>
         </header>
+
+        {managedStore && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-500 px-4 py-2 text-sm font-medium text-white">
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              Estás gestionando <strong>{managedStore}</strong> como administrador. Los cambios se guardan en esta tienda.
+            </span>
+            <Button size="sm" variant="secondary" className="h-7" onClick={() => stopManagingStore()}>
+              <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+              Volver al admin
+            </Button>
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-hidden">

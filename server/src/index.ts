@@ -32,9 +32,15 @@ import reviewRoutes from './routes/reviews.js';
 import affiliateRoutes from './routes/affiliates.js';
 import mediaRoutes from './routes/media.js';
 import { ensureAffiliateSettings, startAffiliateScheduler } from './services/affiliateService.js';
-import { backfillProductSlugs } from './utils/slug.js';
+import { startAuctionScheduler } from './services/auctionService.js';
+import auctionRoutes from './routes/auctions.js';
+import favoriteRoutes from './routes/favorites.js';
+import commentRoutes from './routes/comments.js';
+import { startOfferScheduler } from './services/offerService.js';
+import { backfillProductSlugs, backfillStoreSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
 import { ensureSchema } from './utils/ensureSchema.js';
+import { externalizeBodyImages, migrateInlineImages } from './services/mediaStore.js';
 import { prisma } from './utils/prisma.js';
 import webpush from 'web-push';
 import { checkMaintenanceMode } from './middleware/maintenance.js';
@@ -107,8 +113,9 @@ app.use(checkMaintenanceMode);
 import campaignRoutes from './routes/campaigns.js';
 
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/products', productRoutes);
+// Productos, tiendas y avatares: las imágenes base64 se guardan en media_files y el campo queda con la URL
+app.use('/api/users', externalizeBodyImages, userRoutes);
+app.use('/api/products', externalizeBodyImages, productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/credits', creditRoutes);
@@ -130,6 +137,9 @@ app.use('/api/ingenio', ingenioRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/affiliates', affiliateRoutes);
+app.use('/api/auctions', auctionRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/comments', commentRoutes);
 app.use('/api/media', mediaRoutes);
 
 // Setup endpoint - crea usuarios de prueba. Solo en desarrollo y con ENABLE_DEV_SETUP=true:
@@ -408,11 +418,16 @@ ensureSchema()
   .catch((e) => console.error('[esquema] error al verificar la base:', e))
   .finally(() => app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  // Afiliados: claves de configuración por defecto, slugs de productos viejos y liberación de comisiones
+  // Afiliados: claves de configuración por defecto, slugs viejos de productos y tiendas, liberación de comisiones
   ensureAffiliateSettings()
     .then(() => backfillProductSlugs())
+    .then(() => backfillStoreSlugs())
     .catch((e) => console.error('[afiliados] inicialización:', e));
+  // Imágenes guardadas en base64 antes de esta versión → media_files
+  migrateInlineImages().catch((e) => console.error('[imágenes] migración:', e));
   startAffiliateScheduler();
+  startAuctionScheduler();
+  startOfferScheduler();
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
   if (process.env.NODE_ENV === 'production') {
     console.log(`🌐 Frontend servido desde /dist`);

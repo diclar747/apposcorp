@@ -291,6 +291,21 @@ model Product {
   affiliateEnabled Boolean?
   affiliateRate    Float?
   affiliateBlocked Boolean            @default(false)
+  // Remates (categoría "Remates"): price es la oferta más alta actual (o el precio inicial si nadie ofertó).
+  // null = no es un remate. open → ended (hay ganador, tiene plazo para pagar) → sold | unpaid; sin ofertas → unsold.
+  auctionStatus       String?
+  auctionEndsAt       DateTime?
+  auctionStartPrice   Float?
+  auctionMinIncrement Float?
+  auctionWinnerId     String?
+  auctionPayBy        DateTime?
+  auctionBids         AuctionBid[]
+  // Ofertas (categoría "Ofertas"): comparePrice es el precio anterior; la oferta vence en offerEndsAt
+  offerEndsAt         DateTime?
+  offerBlocked        Boolean  @default(false) // el superadmin oculta el precio anterior si no es verificable
+  offerAlertSent      Boolean  @default(false) // ya se avisó a los favoritos que está por vencer
+  favorites           ProductFavorite[]
+  comments            ProductComment[]
   cartItems        CartItem[]
   orderItems       OrderItem[]
   attributes       ProductAttribute[]
@@ -302,6 +317,60 @@ model Product {
   stockMovements   StockMovement[]
 
   @@map("products")
+}
+
+// Comentarios de compradores en un producto: se publican solo cuando la tienda o el superadmin los aprueban.
+model ProductComment {
+  id          String   @id @default(uuid())
+  productId   String
+  userId      String
+  body        String
+  status      String   @default("pending") // pending | approved | hidden
+  moderatedBy String?
+  createdAt   DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@index([status, createdAt])
+  @@map("product_comments")
+}
+
+// Visitas únicas por día a una tienda (visitante + día), para el panel del encargado.
+model StoreVisit {
+  id        String   @id @default(uuid())
+  sellerId  String
+  visitorId String
+  day       String // AAAA-MM-DD en hora de Paraguay
+  createdAt DateTime @default(now())
+
+  @@unique([sellerId, visitorId, day])
+  @@index([sellerId, day])
+  @@map("store_visits")
+}
+
+model ProductFavorite {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("product_favorites")
+}
+
+model AuctionBid {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  amount    Float
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, amount])
+  @@index([userId])
+  @@map("auction_bids")
 }
 
 model ProductVariant {
@@ -465,12 +534,15 @@ model Course {
   enrolledCount    Int          @default(0)
   rating           Float        @default(0)
   reviewCount      Int          @default(0)
-  // Programa de afiliados (cursos pagos). Ingenio Millonario se configura aparte en SystemSetting.
-  affiliateEnabled Boolean      @default(false)
-  affiliateRate    Float?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   updateYear       String?
+  // Programa de afiliados: cada curso tiene su propio % y se puede apagar por separado
+  affiliateEnabled Boolean      @default(false)
+  affiliateRate    Float?
+  // Tutores certificados: quienes terminaron el curso y lo enseñan a nuevos alumnos (40%-45%, todo incluido)
+  tutorEnabled     Boolean      @default(false)
+  tutorRate        Float?
   modules          Module[]
   resources        Resource[]
   userCourses      UserCourse[]
@@ -889,7 +961,7 @@ model SubscriptionPlan {
   isCommissionBased Boolean         @default(false)
   isActive          Boolean         @default(true)
   createdAt         DateTime        @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime        @updatedAt
   sellerProfiles    SellerProfile[]
   sellerSubscriptions SellerSubscription[]
 
@@ -1061,79 +1133,141 @@ model AffiliateProfile {
 }
 
 model AffiliateLink {
-  id           String           @id @default(uuid())
-  affiliateId  String
-  sellerId     String? // SellerProfile.id (null para cursos/Ingenio)
-  productId    String? // null = enlace de tienda
-  resourceType String           @default("product") // product | course | ingenio
-  resourceId   String? // id del curso, o 'ingenio' para la suscripción
-  createdAt    DateTime         @default(now())
-  affiliate    AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  clicks       AffiliateClick[]
+  id          String           @id @default(uuid())
+  affiliateId String
+  sellerId    String // SellerProfile.id
+  productId   String? // null = enlace de tienda
+  createdAt   DateTime         @default(now())
+  affiliate   AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  clicks      AffiliateClick[]
 
   @@unique([affiliateId, sellerId, productId])
   @@index([sellerId])
-  @@index([affiliateId, resourceType, resourceId])
   @@map("affiliate_links")
 }
 
 model AffiliateClick {
-  id           String           @id @default(uuid())
-  affiliateId  String
-  linkId       String?
-  sellerId     String? // SellerProfile.id (null para cursos/Ingenio)
-  productId    String?
-  resourceType String           @default("product") // product | course | ingenio
-  resourceId   String?
-  visitorId    String
-  userId       String?
-  ipHash       String?
-  createdAt    DateTime         @default(now())
-  affiliate    AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  link         AffiliateLink?   @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  id          String           @id @default(uuid())
+  affiliateId String
+  linkId      String?
+  sellerId    String // SellerProfile.id
+  productId   String?
+  courseId    String? // clic de un enlace de curso (sellerId = COURSE_SELLER_ID)
+  visitorId   String
+  userId      String?
+  ipHash      String?
+  createdAt   DateTime         @default(now())
+  affiliate   AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  link        AffiliateLink?   @relation(fields: [linkId], references: [id], onDelete: SetNull)
 
   @@index([visitorId, createdAt])
   @@index([userId, createdAt])
   @@index([affiliateId, createdAt])
-  @@index([resourceType, resourceId, createdAt])
   @@map("affiliate_clicks")
 }
 
 model AffiliateCommission {
-  id           String                    @id @default(uuid())
-  affiliateId  String
-  orderId      String? // null para comisiones de curso/Ingenio (no pasan por pedidos)
-  orderItemId  String?                   @unique // una sola comisión por producto de cada pedido
-  sellerId     String? // SellerProfile.id (null para cursos/Ingenio: los paga OSCORP)
-  productId    String?
-  resourceType String                    @default("product") // product | course | ingenio
-  resourceId   String? // id del curso, o 'ingenio' para la suscripción
-  productName  String // nombre del producto, curso o "Ingenio Millonario"
-  buyerId      String
-  clickId      String?
-  source       String // product | store | course | ingenio
-  baseAmount   Float
-  rate         Float
-  amount       Float
-  status       AffiliateCommissionStatus @default(pending)
+  id          String                    @id @default(uuid())
+  affiliateId String
+  orderId     String? // null en comisiones de cursos
+  orderItemId String?                   @unique // una sola comisión por producto de cada pedido
+  sellerId    String // SellerProfile.id; en cursos vale COURSE_SELLER_ID
+  productId   String?
+  courseId    String? // comisión de un curso de Ingenio Millonario
+  userCourseId String?                  @unique // una sola comisión por matrícula
+  refKey      String?                   @unique // una sola comisión por pago de suscripción de tienda (encargados)
+  productName String
+  buyerId     String
+  clickId     String?
+  source      String // product | store
+  baseAmount  Float
+  rate        Float
+  amount      Float
+  status      AffiliateCommissionStatus @default(pending)
   // Contra entrega: la comisión se cobra a la tienda al entregar. Con billetera ya está cubierta al comprar.
-  // Cursos/Ingenio: los paga OSCORP, así que quedan funded=true al crearse.
-  funded       Boolean                   @default(false)
-  availableAt  DateTime?
-  walletTxId   String?
-  note         String?
-  approvedAt   DateTime?
-  paidAt       DateTime?
-  cancelledAt  DateTime?
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
-  affiliate    AffiliateProfile          @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
-  order        Order?                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  buyer        User                      @relation("AffiliateCommissionBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  funded      Boolean                   @default(false)
+  availableAt DateTime?
+  walletTxId  String?
+  note        String?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  affiliate   AffiliateProfile          @relation(fields: [affiliateId], references: [id], onDelete: Restrict)
+  order       Order?                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  buyer       User                      @relation("AffiliateCommissionBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
 
   @@index([affiliateId, status])
   @@index([sellerId])
   @@index([status, availableAt])
-  @@index([resourceType, resourceId, buyerId])
   @@map("affiliate_commissions")
+}
+
+// Encargado de tiendas: administra y promociona hasta N tiendas y cobra un % de cada mensualidad que esas tiendas pagan.
+model StoreManager {
+  id          String                   @id @default(uuid())
+  userId      String                   @unique
+  status      String                   @default("active") // active | suspended
+  rate        Float                    @default(40) // % de lo que paga cada tienda
+  maxStores   Int                      @default(10)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  assignments StoreManagerAssignment[]
+
+  @@map("store_managers")
+}
+
+// Una tienda tiene un solo encargado.
+model StoreManagerAssignment {
+  id        String       @id @default(uuid())
+  managerId String
+  sellerId  String       @unique // SellerProfile.id
+  createdAt DateTime     @default(now())
+  manager   StoreManager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@index([managerId])
+  @@map("store_manager_assignments")
+}
+
+// Tutor certificado de un curso: terminó el curso y el admin lo autorizó a enseñarlo y cobrar la comisión de tutor.
+model CourseTutor {
+  id         String    @id @default(uuid())
+  userId     String
+  courseId   String
+  status     String    @default("pending") // pending | active | suspended
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@map("course_tutors")
+}
+
+// Quién cambió qué en el programa de afiliados (porcentajes, tutores, configuración, pagos).
+model AffiliateAuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("affiliate_audit_logs")
+}
+
+// Imágenes subidas (productos, logos, banners, avatares). Los campos de imagen guardan la URL
+// /api/media/f/<id>; el id es el hash del contenido, así la misma imagen se guarda una sola vez.
+model MediaFile {
+  id        String   @id
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@map("media_files")
 }

@@ -503,6 +503,7 @@ export default function IngenioDashboard() {
               <Label className="font-bold">Monto (₲)</Label>
               <Input
                 type="text"
+                inputMode="numeric"
                 placeholder="0"
                 value={newRecord.amount}
                 onChange={(e) => {

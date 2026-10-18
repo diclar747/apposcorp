@@ -27,6 +27,8 @@ import {
   Coins,
   BookOpen,
   Megaphone,
+  Heart,
+  Gavel,
 } from 'lucide-react';
 import { useAuthStore, useCartStore, useNotificationStore, useWalletStore } from '@/stores';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -79,6 +81,8 @@ const menuSections: MenuSection[] = [
       { icon: Store, label: 'Tiendas', href: '/app/tiendas' },
       { icon: ShoppingBag, label: 'Productos', href: '/app/tienda' },
       { icon: Package, label: 'Mis Pedidos', href: '/app/pedidos' },
+      { icon: Heart, label: 'Favoritos', href: '/app/favoritos' },
+      { icon: Gavel, label: 'Mis ofertas', href: '/app/mis-ofertas' },
       { icon: Megaphone, label: 'Afiliados', href: '/app/afiliados' },
     ]
   },

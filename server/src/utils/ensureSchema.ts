@@ -1,6 +1,6 @@
 import { prisma } from './prisma.js';
 
-// Al arrancar, crea en la base lo que falte para esta versión (programa de afiliados).
+// Al arrancar, crea en la base lo que falte para esta versión (programa de afiliados e imágenes).
 // Producción se actualiza con cada push y la base no, así que el servidor se encarga.
 //
 // REGLAS: solo sentencias que AGREGAN y con "si no existe". Nunca DROP, DELETE, TRUNCATE ni cambios
@@ -33,6 +33,120 @@ const STATEMENTS: string[] = [
   // Columnas nuevas en tablas existentes (opcionales o con valor por defecto)
   `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "affiliateAmount" DOUBLE PRECISION NOT NULL DEFAULT 0`,
   `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "checkoutGroup" TEXT`,
+  // Cursos de Ingenio Millonario en el mismo motor de afiliados (solo columnas nuevas)
+  // Aparte, a mano y con respaldo: database/afiliados_cursos.sql (vuelve opcional orderId/orderItemId)
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
+  // Encargados de tiendas
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "refKey" TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_commissions_refKey_key" ON "affiliate_commissions"("refKey")`,
+  `CREATE TABLE IF NOT EXISTS "store_managers" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'active',
+    "rate" DOUBLE PRECISION NOT NULL DEFAULT 40,
+    "maxStores" INTEGER NOT NULL DEFAULT 10,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "store_managers_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "store_managers_userId_key" ON "store_managers"("userId")`,
+  `CREATE TABLE IF NOT EXISTS "store_manager_assignments" (
+    "id" TEXT NOT NULL,
+    "managerId" TEXT NOT NULL,
+    "sellerId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "store_manager_assignments_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "store_manager_assignments_sellerId_key" ON "store_manager_assignments"("sellerId")`,
+  `CREATE INDEX IF NOT EXISTS "store_manager_assignments_managerId_idx" ON "store_manager_assignments"("managerId")`,
+  addForeignKey('store_manager_assignments_managerId_fkey', 'store_manager_assignments', `FOREIGN KEY ("managerId") REFERENCES "store_managers"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "tutorEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "tutorRate" DOUBLE PRECISION`,
+  `CREATE TABLE IF NOT EXISTS "course_tutors" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "approvedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "course_tutors_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "course_tutors_userId_courseId_key" ON "course_tutors"("userId", "courseId")`,
+  `CREATE INDEX IF NOT EXISTS "course_tutors_courseId_status_idx" ON "course_tutors"("courseId", "status")`,
+  `CREATE TABLE IF NOT EXISTS "affiliate_audit_logs" (
+    "id" TEXT NOT NULL,
+    "actorId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "entity" TEXT NOT NULL,
+    "entityId" TEXT,
+    "details" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "affiliate_audit_logs_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE INDEX IF NOT EXISTS "affiliate_audit_logs_createdAt_idx" ON "affiliate_audit_logs"("createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "affiliate_audit_logs_entity_entityId_idx" ON "affiliate_audit_logs"("entity", "entityId")`,
+  `ALTER TABLE "affiliate_clicks" ADD COLUMN IF NOT EXISTS "courseId" TEXT`,
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "courseId" TEXT`,
+  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "userCourseId" TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_commissions_userCourseId_key" ON "affiliate_commissions"("userCourseId")`,
+  // Comentarios moderados y visitas de tiendas
+  `CREATE TABLE IF NOT EXISTS "product_comments" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "moderatedBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "product_comments_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE INDEX IF NOT EXISTS "product_comments_productId_status_idx" ON "product_comments"("productId", "status")`,
+  `CREATE INDEX IF NOT EXISTS "product_comments_status_createdAt_idx" ON "product_comments"("status", "createdAt")`,
+  addForeignKey('product_comments_productId_fkey', 'product_comments', `FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  `CREATE TABLE IF NOT EXISTS "store_visits" (
+    "id" TEXT NOT NULL,
+    "sellerId" TEXT NOT NULL,
+    "visitorId" TEXT NOT NULL,
+    "day" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "store_visits_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "store_visits_sellerId_visitorId_day_key" ON "store_visits"("sellerId", "visitorId", "day")`,
+  `CREATE INDEX IF NOT EXISTS "store_visits_sellerId_day_idx" ON "store_visits"("sellerId", "day")`,
+  // Ofertas y favoritos
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerEndsAt" TIMESTAMP(3)`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerBlocked" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "offerAlertSent" BOOLEAN NOT NULL DEFAULT false`,
+  `CREATE TABLE IF NOT EXISTS "product_favorites" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "product_favorites_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "product_favorites_userId_productId_key" ON "product_favorites"("userId", "productId")`,
+  `CREATE INDEX IF NOT EXISTS "product_favorites_productId_idx" ON "product_favorites"("productId")`,
+  addForeignKey('product_favorites_productId_fkey', 'product_favorites', `FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  // Remates
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionStatus" TEXT`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionEndsAt" TIMESTAMP(3)`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionStartPrice" DOUBLE PRECISION`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionMinIncrement" DOUBLE PRECISION`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionWinnerId" TEXT`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "auctionPayBy" TIMESTAMP(3)`,
+  `CREATE TABLE IF NOT EXISTS "auction_bids" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "auction_bids_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE INDEX IF NOT EXISTS "auction_bids_productId_amount_idx" ON "auction_bids"("productId", "amount")`,
+  `CREATE INDEX IF NOT EXISTS "auction_bids_userId_idx" ON "auction_bids"("userId")`,
+  addForeignKey('auction_bids_productId_fkey', 'auction_bids', `FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateBlocked" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
@@ -42,24 +156,6 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateDefaultRate" DOUBLE PRECISION`,
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "googleId" TEXT`,
-
-  // v2 afiliados: cursos e Ingenio Millonario. Columnas nuevas + relajar NOT NULL (no borra datos).
-  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
-  `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
-  `ALTER TABLE "affiliate_links" ADD COLUMN IF NOT EXISTS "resourceType" TEXT NOT NULL DEFAULT 'product'`,
-  `ALTER TABLE "affiliate_links" ADD COLUMN IF NOT EXISTS "resourceId" TEXT`,
-  `ALTER TABLE "affiliate_links" ALTER COLUMN "sellerId" DROP NOT NULL`,
-  `ALTER TABLE "affiliate_clicks" ADD COLUMN IF NOT EXISTS "resourceType" TEXT NOT NULL DEFAULT 'product'`,
-  `ALTER TABLE "affiliate_clicks" ADD COLUMN IF NOT EXISTS "resourceId" TEXT`,
-  `ALTER TABLE "affiliate_clicks" ALTER COLUMN "sellerId" DROP NOT NULL`,
-  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "resourceType" TEXT NOT NULL DEFAULT 'product'`,
-  `ALTER TABLE "affiliate_commissions" ADD COLUMN IF NOT EXISTS "resourceId" TEXT`,
-  `ALTER TABLE "affiliate_commissions" ALTER COLUMN "orderId" DROP NOT NULL`,
-  `ALTER TABLE "affiliate_commissions" ALTER COLUMN "orderItemId" DROP NOT NULL`,
-  `ALTER TABLE "affiliate_commissions" ALTER COLUMN "sellerId" DROP NOT NULL`,
-  `CREATE INDEX IF NOT EXISTS "affiliate_links_affiliateId_resourceType_resourceId_idx" ON "affiliate_links"("affiliateId", "resourceType", "resourceId")`,
-  `CREATE INDEX IF NOT EXISTS "affiliate_clicks_resourceType_resourceId_createdAt_idx" ON "affiliate_clicks"("resourceType", "resourceId", "createdAt")`,
-  `CREATE INDEX IF NOT EXISTS "affiliate_commissions_resourceType_resourceId_buyerId_idx" ON "affiliate_commissions"("resourceType", "resourceId", "buyerId")`,
 
   // Tablas nuevas
   `CREATE TABLE IF NOT EXISTS "affiliate_profiles" (
@@ -119,6 +215,15 @@ const STATEMENTS: string[] = [
     CONSTRAINT "affiliate_commissions_pkey" PRIMARY KEY ("id")
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "media_files" (
+    "id" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "data" BYTEA NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "media_files_pkey" PRIMARY KEY ("id")
+  )`,
+
   // Índices
   `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_profiles_userId_key" ON "affiliate_profiles"("userId")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "affiliate_profiles_code_key" ON "affiliate_profiles"("code")`,
@@ -145,21 +250,13 @@ const STATEMENTS: string[] = [
 ];
 
 // Red de seguridad: si alguien agrega acá una sentencia destructiva, no se ejecuta.
-// Se bloquea borrar tablas/columnas/datos o cambiar el tipo de una columna.
-// "DROP NOT NULL" (relajar una regla) y "ON DELETE ..." (en relaciones nuevas) son seguros.
-const FORBIDDEN = /\b(DROP\s+(TABLE|COLUMN|CONSTRAINT|INDEX|DATABASE|SCHEMA|VIEW)|DELETE\s+FROM|TRUNCATE|RENAME|ALTER\s+COLUMN\s+"?\w+"?\s+TYPE|SET\s+DATA\s+TYPE)\b/i;
-
-const isDestructive = (sql: string) =>
-  FORBIDDEN.test(
-    sql
-      .replace(/ON\s+DELETE\s+(CASCADE|RESTRICT|SET\s+NULL)/gi, '')
-      .replace(/DROP\s+NOT\s+NULL/gi, ''),
-  );
+const FORBIDDEN = /\b(DROP|DELETE|TRUNCATE|RENAME|ALTER\s+COLUMN)\b/i;
 
 export const ensureSchema = async () => {
   let failed = 0;
   for (const sql of STATEMENTS) {
-    if (isDestructive(sql)) {
+    // "ON DELETE CASCADE/RESTRICT" en una relación nueva no borra nada: se ignora al revisar
+    if (FORBIDDEN.test(sql.replace(/ON\s+DELETE\s+(CASCADE|RESTRICT|SET\s+NULL)/gi, ''))) {
       console.error('[esquema] sentencia destructiva bloqueada:', sql.slice(0, 80));
       failed++;
       continue;
@@ -172,6 +269,6 @@ export const ensureSchema = async () => {
     }
   }
   if (failed) console.error(`[esquema] ${failed} sentencia(s) fallaron; revisar el log de arriba`);
-  else console.log('🗄️  Esquema verificado (afiliados)');
+  else console.log('🗄️  Esquema verificado (afiliados, imágenes)');
   return { total: STATEMENTS.length, failed };
 };

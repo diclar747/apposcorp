@@ -2,9 +2,27 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
 import { generateProductSlug } from '../utils/slug.js';
+import { sellerAllowsOnlineSales } from '../utils/plans.js';
 import { getAffiliateConfig, getEffectiveRate, parseRateInput, parseTriState } from '../services/affiliateService.js';
+import { OfferError, decorateOffer, isOfferCategory, notifyFavoritesPriceDrop, parseOfferInput } from '../services/offerService.js';
+import { AuctionError, closeDueAuctions, getAuctionView, isAuctionCategory, parseAuctionInput, stripAuctionPrivate } from '../services/auctionService.js';
 
 const router = Router();
+
+/** Costo, margen y proveedor son datos del negocio de la tienda: solo los ve su dueña o el superadmin. */
+const hidePrivateFields = async (req: any, products: any[], viewer?: Awaited<ReturnType<typeof getOptionalUser>>) => {
+  viewer = viewer !== undefined ? viewer : await getOptionalUser(req);
+  const isSuperadmin = !!viewer?.roles.includes('superadmin');
+  const ownSellerId = viewer && !isSuperadmin
+    ? (await prisma.sellerProfile.findUnique({ where: { userId: viewer.userId }, select: { id: true } }))?.id ?? null
+    : null;
+  return products.map((p) => {
+    // La tienda dueña y el superadmin ven el precio anterior real (para editar); el público, solo si la oferta está vigente
+    if (isSuperadmin || p.sellerId === ownSellerId) return { ...p, offer: decorateOffer(p).offer };
+    const { cost: _cost, profitPercentage: _profit, supplier: _supplier, supplierId: _supplierId, ...rest } = p;
+    return decorateOffer(stripAuctionPrivate(rest, false));
+  });
+};
 
 // Get all products (public)
 router.get('/', async (req, res) => {
@@ -12,13 +30,14 @@ router.get('/', async (req, res) => {
     const { category, search, sellerId } = req.query;
 
     const where: any = {};
+    const viewer = await getOptionalUser(req);
+    const isSuperadmin = !!viewer?.roles.includes('superadmin');
 
     // Solo la tienda dueña (o un superadmin) ve sus productos inactivos; el resto ve solo los activos
     if (sellerId && sellerId !== 'undefined' && sellerId !== 'null') {
       where.sellerId = sellerId as string;
-      const viewer = await getOptionalUser(req);
-      const isOwner = viewer && (viewer.roles.includes('superadmin') ||
-        !!(await prisma.sellerProfile.findFirst({ where: { id: sellerId as string, userId: viewer.userId }, select: { id: true } })));
+      const isOwner = isSuperadmin ||
+        !!(viewer && await prisma.sellerProfile.findFirst({ where: { id: sellerId as string, userId: viewer.userId }, select: { id: true } }));
       if (!isOwner) where.status = 'active';
     } else {
       where.status = 'active';
@@ -56,7 +75,7 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json(products);
+    res.json(await hidePrivateFields(req, products, viewer));
   } catch (error) {
     console.error('Get products error:', error);
     res.status(500).json({ error: 'Error al obtener productos', details: String(error) });
@@ -77,7 +96,7 @@ router.get('/featured', async (req, res) => {
       take: 10,
     });
 
-    res.json(products);
+    res.json(await hidePrivateFields(req, products));
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -98,6 +117,8 @@ router.get('/public/:slug', async (req, res) => {
             affiliateEnabled: true, affiliateDefaultRate: true, affiliateAllProducts: true, affiliateBlocked: true,
             user: { select: { isActive: true } },
             plan: { select: { name: true, features: true } },
+            planId: true,
+            planActive: true,
           },
         },
         variants: true,
@@ -112,17 +133,21 @@ router.get('/public/:slug', async (req, res) => {
     const [cfg, viewer] = await Promise.all([getAffiliateConfig(), getOptionalUser(req)]);
     const rate = getEffectiveRate(product.seller, product, cfg);
 
-    const { cost: _cost, profitPercentage: _profit, supplierId: _supplier, ...publicProduct } = product;
-    const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan, ...seller } = product.seller;
-    // Misma regla que la página de tienda: plan con "Tienda Online" que no sea el Básico
-    const planName = (plan?.name || '').toLowerCase();
-    const onlineSales = !!plan && !planName.includes('básico') && !planName.includes('basic') &&
-      (plan.features || []).some((f) => f.toLowerCase().includes('tienda online')) && product.visibility !== 'local';
+    await closeDueAuctions(product.id);
+    const fresh = await prisma.product.findUnique({ where: { id: product.id } });
+    const auction = fresh ? await getAuctionView(fresh, viewer?.userId) : null;
+    const { cost: _cost, profitPercentage: _profit, supplierId: _supplier, ...publicProduct0 } = { ...product, ...(fresh ? {
+      price: fresh.price, auctionStatus: fresh.auctionStatus, auctionEndsAt: fresh.auctionEndsAt, auctionWinnerId: fresh.auctionWinnerId, auctionPayBy: fresh.auctionPayBy,
+    } : {}) };
+    const publicProduct = decorateOffer(stripAuctionPrivate(publicProduct0, false));
+    const { affiliateDefaultRate: _r, affiliateAllProducts: _a, affiliateBlocked: _b, user: _u, plan: _p, planId: _pi, planActive: _pa, ...seller } = product.seller;
+    const onlineSales = sellerAllowsOnlineSales(product.seller) && product.visibility !== 'local';
 
     res.json({
       ...publicProduct,
       seller,
       onlineSales,
+      auction,
       affiliate: {
         participates: rate !== null,
         rate: rate !== null && (cfg.showRatePublic || viewer) ? rate : null,
@@ -139,8 +164,9 @@ router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id as string;
 
-    const product = await prisma.product.findUnique({
-      where: { id },
+    // Acepta id o slug: los enlaces del inicio usan el slug desde que todos los productos lo tienen
+    const product = await prisma.product.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
       include: {
         seller: {
           include: {
@@ -164,7 +190,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    res.json(product);
+    res.json((await hidePrivateFields(req, [product]))[0]);
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -230,6 +256,32 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: `El % de afiliado debe estar entre ${cfg.minRate}% y ${cfg.maxRate}%` });
     }
 
+    // Remate: la categoría "Remates" publica el producto como subasta de una sola unidad
+    let auctionData: Record<string, any> = {};
+    if (isAuctionCategory(category)) {
+      try {
+        const seller = await prisma.sellerProfile.findUnique({ where: { id: sellerId }, include: { plan: { select: { name: true, features: true } } } });
+        if (!seller || !sellerAllowsOnlineSales(seller) || visibility === 'local') {
+          return res.status(400).json({ error: 'Un remate necesita venta online habilitada: el ganador paga desde la tienda online' });
+        }
+        auctionData = parseAuctionInput({ price, endsAt: req.body.auctionEndsAt, minIncrement: req.body.auctionMinIncrement });
+      } catch (e) {
+        if (e instanceof AuctionError) return res.status(e.status).json({ error: e.message });
+        throw e;
+      }
+    }
+
+    // Oferta: la categoría "Ofertas" exige precio anterior real y fecha de vencimiento
+    let offerData: Record<string, any> = {};
+    if (isOfferCategory(category)) {
+      try {
+        offerData = parseOfferInput({ price: parseFloat(price), comparePrice, offerEndsAt: req.body.offerEndsAt });
+      } catch (e) {
+        if (e instanceof OfferError) return res.status(e.status).json({ error: e.message });
+        throw e;
+      }
+    }
+
     // Validate SKU uniqueness
     const finalSku = sku || `SKU-${Date.now()}`;
     const existingSku = await prisma.product.findUnique({ where: { sku: finalSku } });
@@ -259,7 +311,9 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     };
 
     // Add optional fields if they exist
-    if (comparePrice !== undefined) productData.comparePrice = parseFloat(comparePrice);
+    if (comparePrice !== undefined) productData.comparePrice = comparePrice === null || comparePrice === '' ? null : (parseFloat(comparePrice) || null);
+    Object.assign(productData, auctionData, offerData);
+    if (auctionData.auctionStatus) delete productData.comparePrice; // un remate no tiene "precio anterior"
 
     // Handle relations
     if (Array.isArray(attributes) && attributes.length > 0) {
@@ -329,7 +383,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (price !== undefined) updateData.price = parseFloat(price) || 0;
     if (cost !== undefined) updateData.cost = parseFloat(cost) || 0;
     if (profitPercentage !== undefined) updateData.profitPercentage = parseFloat(profitPercentage) || 0;
-    if (comparePrice !== undefined) updateData.comparePrice = parseFloat(comparePrice);
+    if (comparePrice !== undefined) updateData.comparePrice = comparePrice === null || comparePrice === '' ? null : (parseFloat(comparePrice) || null);
     if (stock !== undefined) updateData.stock = parseInt(stock) || 0;
     if (sku !== undefined) updateData.sku = sku;
     if (category !== undefined) updateData.category = category;
@@ -354,6 +408,79 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     }
     // Solo el superadmin puede apagar afiliados en un producto
     if (affiliateBlocked !== undefined && req.user!.roles.includes('superadmin')) updateData.affiliateBlocked = !!affiliateBlocked;
+    // Ofertas: se valida de nuevo solo si cambió algo de la oferta (editar la descripción de una oferta vencida no obliga a renovarla)
+    {
+      const body = req.body || {};
+      const willBeOffer = isOfferCategory(updateData.category ?? product.category);
+      const wasOffer = isOfferCategory(product.category);
+      if (willBeOffer) {
+        const sameEnd = body.offerEndsAt === undefined || (product.offerEndsAt && new Date(body.offerEndsAt).getTime() === product.offerEndsAt.getTime());
+        const changes = !wasOffer || !sameEnd ||
+          (updateData.price !== undefined && updateData.price !== product.price) ||
+          (updateData.comparePrice !== undefined && updateData.comparePrice !== product.comparePrice);
+        if (changes) {
+          try {
+            Object.assign(updateData, parseOfferInput({
+              price: updateData.price ?? product.price,
+              comparePrice: updateData.comparePrice ?? product.comparePrice,
+              offerEndsAt: body.offerEndsAt ?? product.offerEndsAt,
+            }));
+          } catch (e) {
+            if (e instanceof OfferError) return res.status(e.status).json({ error: e.message });
+            throw e;
+          }
+        }
+        if (body.offerBlocked !== undefined && req.user!.roles.includes('superadmin')) updateData.offerBlocked = !!body.offerBlocked;
+      } else if (wasOffer) {
+        Object.assign(updateData, { offerEndsAt: null, offerAlertSent: false, offerBlocked: false, comparePrice: null });
+      }
+      // Bajó el precio: se avisa a quienes lo tienen en favoritos
+      if (updateData.price !== undefined && updateData.price < product.price && product.auctionStatus === null) {
+        notifyFavoritesPriceDrop(product.id, updateData.name ?? product.name, product.slug, product.price, updateData.price).catch(() => {});
+      }
+    }
+
+    // Remates: con ofertas (o ya cerrado) solo se editan textos e imágenes; sin ofertas se puede reconfigurar
+    const wasAuction = product.auctionStatus !== null;
+    const willBeAuction = isAuctionCategory(updateData.category ?? product.category);
+    if (wasAuction || willBeAuction) {
+      try {
+        const bidCount = wasAuction ? await prisma.auctionBid.count({ where: { productId: id } }) : 0;
+        const body = req.body || {};
+        // El formulario reenvía los datos del remate tal cual están: solo cuenta lo que realmente cambió
+        const sameEnd = body.auctionEndsAt === undefined || (product.auctionEndsAt && new Date(body.auctionEndsAt).getTime() === product.auctionEndsAt.getTime());
+        const sameInc = body.auctionMinIncrement === undefined || Number(body.auctionMinIncrement) === product.auctionMinIncrement;
+        const changesAuction =
+          !sameEnd ||
+          !sameInc ||
+          (updateData.price !== undefined && updateData.price !== product.price) ||
+          (updateData.category !== undefined && updateData.category !== product.category) ||
+          (updateData.stock !== undefined && updateData.stock !== product.stock) ||
+          (updateData.status !== undefined && updateData.status !== product.status) ||
+          (updateData.visibility !== undefined && updateData.visibility !== product.visibility);
+
+        if (wasAuction && product.auctionStatus !== 'unsold' && (bidCount > 0 || product.auctionStatus !== 'open')) {
+          if (changesAuction) {
+            return res.status(400).json({ error: 'Un remate con ofertas o ya cerrado no se puede modificar. Solo podés editar la descripción y las fotos.' });
+          }
+        } else if (willBeAuction && (changesAuction || product.auctionStatus === 'unsold' || !wasAuction)) {
+          const seller = await prisma.sellerProfile.findUnique({ where: { id: product.sellerId }, include: { plan: { select: { name: true, features: true } } } });
+          if (!seller || !sellerAllowsOnlineSales(seller) || (updateData.visibility ?? product.visibility) === 'local') {
+            return res.status(400).json({ error: 'Un remate necesita venta online habilitada: el ganador paga desde la tienda online' });
+          }
+          const endsAt = body.auctionEndsAt ?? (product.auctionStatus === 'open' ? product.auctionEndsAt : undefined);
+          const minInc = body.auctionMinIncrement ?? product.auctionMinIncrement;
+          Object.assign(updateData, parseAuctionInput({ price: updateData.price ?? product.price, endsAt, minIncrement: minInc }));
+          updateData.comparePrice = null;
+        } else if (wasAuction && !willBeAuction) {
+          // Sin ofertas y cambió de categoría: deja de ser remate
+          Object.assign(updateData, { auctionStatus: null, auctionEndsAt: null, auctionStartPrice: null, auctionMinIncrement: null, auctionWinnerId: null, auctionPayBy: null });
+        }
+      } catch (e) {
+        if (e instanceof AuctionError) return res.status(e.status).json({ error: e.message });
+        throw e;
+      }
+    }
     if (!product.slug) updateData.slug = await generateProductSlug(updateData.name ?? product.name);
 
     const updatedProduct = await prisma.product.update({

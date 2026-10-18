@@ -19,6 +19,7 @@ import LoginPage from '@/pages/public/LoginPage';
 import RegisterPage from '@/pages/public/RegisterPage';
 import StorePage from '@/pages/public/StorePage';
 import ProductDetailPage from '@/pages/public/ProductDetailPage';
+import CoursePublicPage from '@/pages/public/CoursePublicPage';
 import PricingPage from '@/pages/public/PricingPage';
 import PresentacionE1 from '@/pages/public/PresentacionE1';
 import PresentacionE2 from '@/pages/public/PresentacionE2';
@@ -73,6 +74,8 @@ import ClientStores from '@/pages/client/Stores';
 import ClientStoreDetail from '@/pages/client/Store';
 import ClientScan from '@/pages/client/Scan';
 import ClientWallet from '@/pages/client/Wallet';
+import ClientFavorites from '@/pages/client/Favorites';
+import ClientMyBids from '@/pages/client/MyBids';
 import TransferMoney from '@/pages/client/TransferMoney';
 import DepositPage from '@/pages/client/Deposit';
 import ClientCard from '@/pages/client/Card';
@@ -170,6 +173,7 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/tienda/:slug" element={<StorePage />} />
         <Route path="/producto/:slug" element={<ProductDetailPage />} />
+        <Route path="/curso/:slug" element={<CoursePublicPage />} />
         <Route path="/precios" element={<PricingPage />} />
         <Route path="/presentacion-e1" element={<PresentacionE1 />} />
         <Route path="/presentacion-e2" element={<PresentacionE2 />} />
@@ -258,6 +262,8 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           <Route path="wallet/recargar" element={<DepositPage />} />
           <Route path="wallet/retirar" element={<SellerWithdrawals />} />
           <Route path="afiliados" element={<ClientAffiliates />} />
+          <Route path="favoritos" element={<ClientFavorites />} />
+          <Route path="mis-ofertas" element={<ClientMyBids />} />
           <Route path="tarjeta" element={<ClientCard />} />
           <Route path="pedidos" element={<ClientOrders />} />
           <Route path="pedidos/:id" element={<ClientOrderDetail />} />

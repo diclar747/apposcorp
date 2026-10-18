@@ -13,11 +13,10 @@ import { loginUrlFor } from '@/lib/redirect';
 import { cn } from '@/lib/utils';
 
 interface PromoteButtonProps {
-  kind: 'product' | 'store' | 'ingenio' | 'course';
+  kind: 'product' | 'store';
   productId?: string;
   storeSlug?: string;
-  courseId?: string;
-  /** Nombre del producto, tienda, curso o Ingenio, para el mensaje al compartir */
+  /** Nombre del producto o tienda, para el mensaje al compartir */
   title: string;
   rate?: number | null;
   className?: string;
@@ -25,7 +24,7 @@ interface PromoteButtonProps {
   size?: 'default' | 'sm' | 'lg';
 }
 
-export function PromoteButton({ kind, productId, storeSlug, courseId, title, rate, className, variant = 'outline', size = 'default' }: PromoteButtonProps) {
+export function PromoteButton({ kind, productId, storeSlug, title, rate, className, variant = 'outline', size = 'default' }: PromoteButtonProps) {
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,19 +36,10 @@ export function PromoteButton({ kind, productId, storeSlug, courseId, title, rat
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const label =
-    kind === 'product' ? 'Promocionar este producto'
-    : kind === 'store' ? 'Promocionar esta tienda'
-    : kind === 'course' ? 'Promocionar este curso'
-    : 'Promocionar Ingenio Millonario';
+  const label = kind === 'product' ? 'Promocionar este producto' : 'Promocionar esta tienda';
 
   const getLink = async () => {
-    const payload =
-      kind === 'product' ? { productId }
-      : kind === 'store' ? { storeSlug }
-      : kind === 'course' ? { courseId }
-      : { resourceType: 'ingenio' as const };
-    const { path } = await affiliatesApi.createLink(payload);
+    const { path } = await affiliatesApi.createLink(kind === 'product' ? { productId } : { storeSlug });
     setShareUrl(`${window.location.origin}${path}`);
   };
 
@@ -183,9 +173,9 @@ export function PromoteButton({ kind, productId, storeSlug, courseId, title, rat
           <DialogHeader>
             <DialogTitle>Tu enlace de afiliado</DialogTitle>
             <DialogDescription>
-              {kind === 'store'
-                ? `Ganás comisión por los productos de ${title} que participan, comprados desde este enlace.`
-                : `Ganás ${rate ? `${rate}% ` : 'comisión '}por cada venta de ${title} hecha desde este enlace.`}
+              {kind === 'product'
+                ? `Ganás ${rate ? `${rate}% ` : 'comisión '}por cada venta de ${title} hecha desde este enlace.`
+                : `Ganás comisión por los productos de ${title} que participan, comprados desde este enlace.`}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">

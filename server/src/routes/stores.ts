@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { getOptionalUser } from '../middleware/auth.js';
 import { getAffiliateConfig, getEffectiveRate, storeParticipates } from '../services/affiliateService.js';
+import { decorateOffer } from '../services/offerService.js';
+import { sellerAllowsOnlineSales } from '../utils/plans.js';
 
 const router = Router();
 
@@ -79,6 +81,23 @@ router.get('/', async (_req, res) => {
 });
 
 // GET /:slug - Get store by slug with all products (public)
+// Registra una visita única por visitante y día (para las estadísticas del encargado). Nunca falla la página.
+router.post('/:slug/visit', async (req, res) => {
+  try {
+    const visitorId = String(req.body?.visitorId || '');
+    if (!visitorId || visitorId.length > 64) return res.json({ counted: false });
+    const seller = await prisma.sellerProfile.findUnique({ where: { storeSlug: String(req.params.slug) }, select: { id: true, userId: true } });
+    if (!seller) return res.json({ counted: false });
+    const viewer = await getOptionalUser(req);
+    if (viewer?.userId === seller.userId) return res.json({ counted: false }); // la propia tienda no cuenta
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date());
+    const r = await prisma.storeVisit.createMany({ data: [{ sellerId: seller.id, visitorId, day }], skipDuplicates: true });
+    res.json({ counted: r.count > 0 });
+  } catch {
+    res.json({ counted: false });
+  }
+});
+
 router.get('/:slug', async (req, res) => {
   try {
     const slug = req.params.slug as string;
@@ -107,9 +126,9 @@ router.get('/:slug', async (req, res) => {
     const [cfg, viewer] = await Promise.all([getAffiliateConfig(), getOptionalUser(req)]);
     const showRate = cfg.showRatePublic || !!viewer;
     const storeAccepts = storeParticipates(store, cfg);
-    const products = store.products.map(({ cost: _cost, profitPercentage: _profit, ...p }) => {
+    const products = store.products.map(({ cost: _cost, profitPercentage: _profit, auctionWinnerId: _aw, auctionPayBy: _ap, ...p }) => {
       const rate = getEffectiveRate(store, p, cfg);
-      return { ...p, affiliateParticipates: rate !== null, affiliateRate: rate !== null && showRate ? rate : null };
+      return { ...decorateOffer(p), affiliateParticipates: rate !== null, affiliateRate: rate !== null && showRate ? rate : null };
     });
     const productRates = products.map((p) => p.affiliateRate).filter((r): r is number => r !== null);
 
@@ -143,6 +162,7 @@ router.get('/:slug', async (req, res) => {
         avatar: store.user.avatar,
       },
       plan: store.plan,
+      onlineSales: sellerAllowsOnlineSales(store),
       affiliate: {
         participates: storeAccepts && products.some((p) => p.affiliateParticipates),
         maxRate: showRate && productRates.length ? Math.max(...productRates) : null,

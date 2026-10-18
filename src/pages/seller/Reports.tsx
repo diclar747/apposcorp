@@ -130,7 +130,7 @@ export default function SellerReports() {
         setIsLoading(true);
         const [ord, prod, cust, purch, movData] = await Promise.all([
           ordersApi.getAll('seller').catch(() => []),
-          productsApi.getAll().catch(() => []),
+          productsApi.getAll({ sellerId: user?.sellerProfile?.id }).catch(() => []),
           customersApi.getAll().catch(() => []),
           purchasesApi.getAll().catch(() => []),
           managementApi.getMovements({ limit: 1000 }).catch(() => ({ movements: [] })),

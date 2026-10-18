@@ -49,13 +49,14 @@ interface Customer {
 
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
+import { getManagedStore } from '@/stores/authStore';
 
 export default function Customers() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (user && user.sellerProfile && user.sellerProfile.planActive) {
+        if (user && user.sellerProfile && user.sellerProfile.planActive && !getManagedStore()) {
             const plan = user.sellerProfile.plan;
             const tier = plan?.tier?.toLowerCase() || 'basic';
             const features = plan?.features || [];

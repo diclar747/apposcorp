@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PromoteButton } from '@/components/affiliate/PromoteButton';
 
 const shortDate = (d: string) => new Date(d).toLocaleDateString('es-PY', { day: 'numeric', month: 'short' });
@@ -30,6 +31,12 @@ function StatTile({ label, value, hint, className }: { label: string; value: str
 export default function ClientAffiliates() {
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<any>(null);
+  const [isManager, setIsManager] = useState(false);
+
+  // La pestaña "Tiendas" solo aparece si la persona es encargada de tiendas
+  useEffect(() => {
+    affiliatesApi.managerMe().then((d) => setIsManager(!!d.manager)).catch(() => setIsManager(false));
+  }, []);
   const [program, setProgram] = useState<AffiliateProgram | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -130,13 +137,17 @@ export default function ClientAffiliates() {
       </div>
 
       <Tabs defaultValue="explorar">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className={cn('grid w-full', isManager ? 'grid-cols-6' : 'grid-cols-5')}>
           <TabsTrigger value="explorar">Explorar</TabsTrigger>
+          <TabsTrigger value="cursos">Cursos</TabsTrigger>
+          {isManager && <TabsTrigger value="tiendas">Tiendas</TabsTrigger>}
           <TabsTrigger value="promociones">Promociones</TabsTrigger>
           <TabsTrigger value="estadisticas">Estadísticas</TabsTrigger>
           <TabsTrigger value="ganancias">Ganancias</TabsTrigger>
         </TabsList>
         <TabsContent value="explorar" className="mt-4"><ExploreTab /></TabsContent>
+        <TabsContent value="cursos" className="mt-4"><CoursesTab code={me?.profile?.code} /></TabsContent>
+        {isManager && <TabsContent value="tiendas" className="mt-4"><ManagerTab /></TabsContent>}
         <TabsContent value="promociones" className="mt-4"><LinksTab /></TabsContent>
         <TabsContent value="estadisticas" className="mt-4"><StatsTab /></TabsContent>
         <TabsContent value="ganancias" className="mt-4"><EarningsTab earnings={earnings} walletBalance={walletBalance} /></TabsContent>
@@ -146,65 +157,31 @@ export default function ClientAffiliates() {
 }
 
 function ExploreTab() {
-  const [data, setData] = useState<{ products: any[]; stores: any[]; resources?: any[] } | null>(null);
+  const [data, setData] = useState<{ products: any[]; stores: any[] } | null>(null);
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'products' | 'stores' | 'resources'>('products');
+  const [view, setView] = useState<'products' | 'stores'>('products');
 
   useEffect(() => {
     const t = setTimeout(() => {
-      affiliatesApi.explore(search).then(setData).catch(() => setData({ products: [], stores: [], resources: [] }));
+      affiliatesApi.explore(search).then(setData).catch(() => setData({ products: [], stores: [] }));
     }, 250);
     return () => clearTimeout(t);
   }, [search]);
 
-  const resources = data?.resources || [];
-
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[160px]">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos" className="pl-9" />
         </div>
         <div className="flex rounded-md border border-border p-0.5">
           <Button size="sm" variant={view === 'products' ? 'secondary' : 'ghost'} onClick={() => setView('products')}>Productos</Button>
           <Button size="sm" variant={view === 'stores' ? 'secondary' : 'ghost'} onClick={() => setView('stores')}>Tiendas</Button>
-          {resources.length > 0 && (
-            <Button size="sm" variant={view === 'resources' ? 'secondary' : 'ghost'} onClick={() => setView('resources')}>Cursos</Button>
-          )}
         </div>
       </div>
 
-      {view === 'resources' && data && (
-        <div className="space-y-2">
-          {resources.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-10">No hay cursos ni Ingenio para promocionar.</p>
-          ) : resources.map((r) => (
-            <Card key={`${r.type}-${r.id}`} className="border-violet-200 dark:border-violet-900/50">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-14 h-14 rounded-lg bg-violet-100 dark:bg-violet-900/40 overflow-hidden shrink-0 flex items-center justify-center">
-                  {r.image ? <img src={r.image} alt="" className="w-full h-full object-cover" /> : <Megaphone className="w-6 h-6 text-violet-600 dark:text-violet-300" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm line-clamp-1">{r.name}</p>
-                  <p className="text-xs text-muted-foreground">{r.type === 'ingenio' ? 'Ingenio Millonario' : 'Curso'} · {formatCurrency(r.price)}</p>
-                  <p className="text-xs font-bold text-violet-600 dark:text-violet-300 mt-0.5">{r.rate}% · ganás {formatCurrency(r.commission)} por venta</p>
-                </div>
-                <PromoteButton
-                  kind={r.type === 'ingenio' ? 'ingenio' : 'course'}
-                  courseId={r.type === 'course' ? r.id : undefined}
-                  title={r.name}
-                  rate={r.rate}
-                  size="sm"
-                  className="shrink-0 [&>svg]:mr-0"
-                />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {view !== 'resources' && (!data ? (
+      {!data ? (
         <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : view === 'products' ? (
         data.products.length === 0 ? (
@@ -249,7 +226,196 @@ function ExploreTab() {
             </Card>
           ))}
         </div>
-      ))}
+      )}
+    </div>
+  );
+}
+
+function ManagerTab() {
+  const [data, setData] = useState<any>(null);
+  const [sim, setSim] = useState({ stores: '10', fee: '100.000' });
+
+  useEffect(() => {
+    affiliatesApi.managerMe().then(setData).catch(() => setData({ manager: null }));
+  }, []);
+
+  if (!data) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (!data.manager) return <p className="text-center text-sm text-muted-foreground py-10">Todavía no administrás tiendas.</p>;
+
+  const { manager, stores, totals } = data;
+  const n = Math.max(0, Math.min(manager.maxStores, Number(sim.stores) || 0));
+  const fee = Number(sim.fee.replace(/\D/g, '')) || 0;
+  const mine = Math.floor((n * fee * manager.rate) / 100);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2">
+        <StatTile label="Tiendas" value={`${totals.stores} de ${manager.maxStores}`} hint={`${totals.activeSubscriptions} con suscripción activa`} />
+        <StatTile label="Por mes (estimado)" value={formatCurrency(totals.estimatedMonthly)} hint={`${manager.rate}% de cada mensualidad`} />
+        <StatTile label="Pagado" value={formatCurrency(totals.earnedPaid)} hint="ya en tu billetera" />
+        <StatTile label="Pendiente" value={formatCurrency(totals.earnedPending)} hint="se libera tras la garantía" />
+      </div>
+      <p className="text-xs text-muted-foreground">Esto es aparte de lo que ganás por tus ventas como afiliado. Cada comisión se genera solo cuando la tienda paga su mensualidad.</p>
+
+      {stores.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-6">Todavía no tenés tiendas asignadas.</p>
+      ) : (
+        <div className="space-y-2">
+          {stores.map((s: any) => (
+            <Card key={s.sellerId}>
+              <CardContent className="space-y-2 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-sm">{s.storeName}</p>
+                  <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', s.subscriptionStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+                    {s.subscriptionStatus === 'ACTIVE' ? 'Suscripción activa' : s.subscriptionStatus === 'PENDING_APPROVAL' ? 'Pago en revisión' : 'Sin pagar'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 text-center text-xs">
+                  <div><p className="font-black text-base tabular-nums">{s.visits30}</p><p className="text-muted-foreground">Visitas (30 d)</p></div>
+                  <div><p className="font-black text-base tabular-nums">{s.activeProducts}</p><p className="text-muted-foreground">Publicaciones</p></div>
+                  <div><p className="font-black text-base tabular-nums">{s.totalSales}</p><p className="text-muted-foreground">Ventas</p></div>
+                  <div><p className="font-black text-base tabular-nums">{formatCurrency(s.earnedPaid)}</p><p className="text-muted-foreground">Ganado</p></div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{s.subscriptionExpiresAt ? `Vence el ${new Date(s.subscriptionExpiresAt).toLocaleDateString('es-PY')}` : ''}</span>
+                  <Link to={`/tienda/${s.storeSlug}`} className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline">Ver tienda <ExternalLink className="w-3 h-3" /></Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2 rounded-md bg-muted/50 p-3 text-xs">
+        <p className="font-semibold text-sm">Simulador de ingresos</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input type="number" inputMode="numeric" min={0} max={manager.maxStores} value={sim.stores} onChange={(e) => setSim({ ...sim, stores: e.target.value })} className="h-8 w-16" aria-label="Cantidad de tiendas" />
+          <span className="text-muted-foreground">tiendas × Gs.</span>
+          <Input type="text" inputMode="numeric" value={sim.fee} onChange={(e) => { const r = e.target.value.replace(/\D/g, ''); setSim({ ...sim, fee: r ? Number(r).toLocaleString('es-PY') : '' }); }} className="h-8 w-28" aria-label="Mensualidad por tienda" />
+          <span className="text-muted-foreground">al {manager.rate}% =</span>
+          <span className="font-black tabular-nums">{formatCurrency(mine)} por mes</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground">Estimación suponiendo que todas las tiendas pagan la mensualidad completa, sin descuentos, impuestos ni otros costos.</p>
+      </div>
+    </div>
+  );
+}
+
+function CoursesTab({ code }: { code?: string }) {
+  const [data, setData] = useState<{ mode: string; courses: any[] } | null>(null);
+  const [sims, setSims] = useState<Record<string, string>>({});
+  const [requesting, setRequesting] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    affiliatesApi.getCourses().then(setData).catch(() => setData({ mode: 'open', courses: [] }));
+  }, []);
+  useEffect(load, [load]);
+
+  const linkOf = (c: any) => `${window.location.origin}${c.path}?ref=${code}`;
+  const copy = async (c: any) => {
+    try {
+      await navigator.clipboard.writeText(linkOf(c));
+      toast.success('Enlace copiado');
+    } catch {
+      toast.error('No se pudo copiar');
+    }
+  };
+  const requestTutor = async (c: any) => {
+    setRequesting(c.id);
+    try {
+      await affiliatesApi.requestTutor(c.id);
+      toast.success('Solicitud enviada');
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRequesting(null);
+    }
+  };
+
+  if (!data) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (data.courses.length === 0) {
+    return <p className="text-center text-sm text-muted-foreground py-10">Todavía no hay cursos habilitados para promocionar.</p>;
+  }
+
+  const lockedText = data.mode === 'completed' ? 'Terminá este curso para poder promocionarlo.' : 'Matriculate en este curso para poder promocionarlo.';
+
+  return (
+    <div className="space-y-2">
+      {data.courses.map((c) => {
+        const sales = Math.max(0, Math.min(10000, Number(sims[c.id] ?? 10) || 0));
+        return (
+          <Card key={c.id} className={cn(!c.allowed && 'opacity-90')}>
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-lg bg-muted overflow-hidden shrink-0">
+                  {c.coverImage ? <img src={c.coverImage} alt="" className="w-full h-full object-cover" /> : <Package className="w-5 h-5 m-3 text-muted-foreground" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm line-clamp-1">{c.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(c.price)}
+                    {c.allowed
+                      ? ` · ${c.role === 'tutor' ? 'Tutor' : 'Promotor'} ${c.rate}% · ganás ${formatCurrency(c.commissionPerSale)} por venta`
+                      : c.promoterRate ? ` · promotor ${c.promoterRate}%` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {c.allowed ? (
+                <>
+                  <div className="grid grid-cols-2 text-center text-xs">
+                    <div><p className="font-black text-base tabular-nums">{c.clicks}</p><p className="text-muted-foreground">Clics</p></div>
+                    <div><p className="font-black text-base tabular-nums">{c.sales}</p><p className="text-muted-foreground">Ventas</p></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => copy(c)}><Copy className="w-3.5 h-3.5 mr-1.5" />Copiar enlace</Button>
+                    <Button size="sm" variant="outline" className="flex-1" asChild>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(`${c.title} ${linkOf(c)}`)}`} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="w-3.5 h-3.5 mr-1.5" />WhatsApp
+                      </a>
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 p-2 text-xs">
+                    <span className="text-muted-foreground">Simulador:</span>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={sims[c.id] ?? '10'}
+                      onChange={(e) => setSims({ ...sims, [c.id]: e.target.value })}
+                      className="h-7 w-16 px-2 text-xs"
+                      aria-label="Ventas simuladas"
+                    />
+                    <span className="text-muted-foreground">ventas =</span>
+                    <span className="font-black tabular-nums">{formatCurrency(sales * c.commissionPerSale)}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Simulación sin descuentos, reembolsos ni cargos. El porcentaje definitivo lo configura el administrador.</p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">{lockedText}</p>
+              )}
+
+              {c.tutorRate && (
+                <div className="rounded-md border border-border p-2 text-xs flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">
+                    Tutor certificado: {c.tutorRate}% por alumno
+                    {c.tutorStatus === 'pending' && ' · solicitud en revisión'}
+                    {c.tutorStatus === 'suspended' && ' · suspendido'}
+                    {c.tutorStatus === 'active' && ' · activo'}
+                    {!c.tutorStatus && !c.completed && ' · terminá el curso para pedirlo'}
+                  </span>
+                  {c.canRequestTutor && (
+                    <Button size="sm" disabled={requesting === c.id} onClick={() => requestTutor(c)}>
+                      {requesting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Quiero ser tutor'}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -371,6 +537,9 @@ function StatsTab() {
 
 function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance: number }) {
   const [commissions, setCommissions] = useState<any[] | null>(null);
+  const [kind, setKind] = useState<'all' | 'product' | 'course' | 'manager'>('all');
+  const [status, setStatus] = useState<string>('all');
+  const [period, setPeriod] = useState<'all' | '7' | '30' | '90'>('all');
 
   useEffect(() => {
     affiliatesApi.getCommissions().then(setCommissions).catch(() => setCommissions([]));
@@ -407,7 +576,43 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
           <p className="text-sm text-muted-foreground text-center py-8">Todavía no tenés comisiones.</p>
         ) : (
           <div className="space-y-2">
-            {commissions.map((c) => (
+            <div className="grid grid-cols-3 gap-2">
+              <Select value={kind} onValueChange={(v) => setKind(v as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todo</SelectItem>
+                  <SelectItem value="product">Productos</SelectItem>
+                  <SelectItem value="course">Cursos</SelectItem>
+                  <SelectItem value="manager">Encargado de tiendas</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Cualquier estado</SelectItem>
+                  {Object.entries(COMMISSION_STATUS_LABELS).map(([k, label]) => <SelectItem key={k} value={k}>{label as string}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todo el tiempo</SelectItem>
+                  <SelectItem value="7">7 días</SelectItem>
+                  <SelectItem value="30">30 días</SelectItem>
+                  <SelectItem value="90">90 días</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {commissions
+              .filter((c) => {
+                if (kind === 'all') return true;
+                if (kind === 'manager') return c.source === 'store_manager';
+                if (kind === 'course') return !!c.courseId;
+                return !c.courseId && c.source !== 'store_manager';
+              })
+              .filter((c) => status === 'all' || c.status === status)
+              .filter((c) => period === 'all' || new Date(c.createdAt).getTime() >= Date.now() - Number(period) * 86400000)
+              .map((c) => (
               <Card key={c.id}>
                 <CardContent className="p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -418,9 +623,11 @@ function EarningsTab({ earnings, walletBalance }: { earnings: any; walletBalance
                     {c.status === 'pending' && c.availableAt && (
                       <p className="text-[11px] text-muted-foreground">Se libera el {shortDate(c.availableAt)}</p>
                     )}
-                    {c.status === 'pending' && !c.availableAt && (
+                    {c.status === 'pending' && !c.availableAt && !c.courseId && c.source !== 'store_manager' && (
                       <p className="text-[11px] text-muted-foreground">Esperando la entrega del pedido</p>
                     )}
+                    {c.source === 'course_tutor' && <p className="text-[11px] text-muted-foreground">Comisión de tutor</p>}
+                    {c.source === 'store_manager' && <p className="text-[11px] text-muted-foreground">Comisión de encargado de tiendas</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-black tabular-nums">{formatCurrency(c.amount)}</p>

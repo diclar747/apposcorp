@@ -35,13 +35,14 @@ const statusOptions = [
 
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
+import { getManagedStore } from '@/stores/authStore';
 
 export default function SellerOrders() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && user.sellerProfile && user.sellerProfile.planActive) {
+    if (user && user.sellerProfile && user.sellerProfile.planActive && !getManagedStore()) {
       const plan = user.sellerProfile.plan;
       const tier = (plan?.tier || 'basic').toLowerCase();
       const features = plan?.features || [];
@@ -262,7 +263,7 @@ export default function SellerOrders() {
                               )}
                             </Button>
                           )}
-                          {order.status !== 'cancelled' && order.status !== 'refunded' && (
+                          {!['cancelled', 'refunded', 'delivered'].includes(order.status) && (
                             <Button
                               variant="ghost"
                               size="sm"

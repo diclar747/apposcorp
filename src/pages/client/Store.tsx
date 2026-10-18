@@ -8,6 +8,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { sellerAllowsOnlineSales } from '@/lib/plans';
 
 const categories = ['Todos', 'Tecnología', 'Moda', 'Hogar', 'Deportes', 'Servicios', 'Gourmet'];
 
@@ -27,18 +28,9 @@ export default function ClientStore() {
 
   const canPurchaseItem = (p: any) => {
     // Si estamos en una vista de tienda específica, usamos el estado de esa tienda
-    if (storeSlug && store) {
-      const planName = store.sellerProfile?.plan?.name?.toLowerCase() || '';
-      if (planName.includes('básico') || planName.includes('basic')) return false;
-      const features = store.sellerProfile?.plan?.features || [];
-      return features.some((f: string) => f.toLowerCase().includes('tienda online'));
-    }
+    if (storeSlug && store) return !!store.onlineSales;
     // Si es vista general, revisamos el plan del vendedor del producto
-    const planName = p.seller?.plan?.name?.toLowerCase() || '';
-    if (planName.includes('básico') || planName.includes('basic')) return false;
-    const features = p.seller?.plan?.features || [];
-    if (features.length === 0) return false; // Por defecto restrictivo si no hay info de plan
-    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+    return sellerAllowsOnlineSales(p.seller);
   };
 
   useEffect(() => {

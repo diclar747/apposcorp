@@ -6,7 +6,7 @@ const API_URL = '/api';
 const getToken = () => localStorage.getItem('oscorp-token') || sessionStorage.getItem('oscorp-token');
 
 // Generic fetch with auth
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
+export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = getToken();
 
   const headers: Record<string, string> = {
@@ -75,6 +75,9 @@ export const authApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  impersonate: (userId: string) =>
+    fetchWithAuth(`/auth/impersonate/${userId}`, { method: 'POST' }),
 
   changePassword: (currentPassword: string, newPassword: string) =>
     fetchWithAuth('/auth/me/password', {
@@ -181,6 +184,31 @@ export const plansApi = {
 };
 
 // Products API
+export const commentsApi = {
+  list: (productId: string) => fetchWithAuth(`/comments/product/${productId}`),
+  create: (productId: string, body: string) =>
+    fetchWithAuth(`/comments/product/${productId}`, { method: 'POST', body: JSON.stringify({ body }) }),
+  moderation: () => fetchWithAuth('/comments/moderation'),
+  moderate: (id: string, status: 'approved' | 'hidden') =>
+    fetchWithAuth(`/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+};
+
+export const favoritesApi = {
+  ids: () => fetchWithAuth('/favorites/ids'),
+  list: () => fetchWithAuth('/favorites'),
+  add: (productId: string) => fetchWithAuth(`/favorites/${productId}`, { method: 'POST' }),
+  remove: (productId: string) => fetchWithAuth(`/favorites/${productId}`, { method: 'DELETE' }),
+};
+
+export const auctionsApi = {
+  get: (productId: string) => fetchWithAuth(`/auctions/${productId}`),
+  bid: (productId: string, amount: number) =>
+    fetchWithAuth(`/auctions/${productId}/bids`, { method: 'POST', body: JSON.stringify({ amount }) }),
+  mine: () => fetchWithAuth('/auctions/mine'),
+  bidders: (productId: string) => fetchWithAuth(`/auctions/${productId}/bidders`),
+  list: () => fetchWithAuth('/auctions'),
+};
+
 export const productsApi = {
   getAll: (params?: { category?: string; search?: string; sellerId?: string }) => {
     const query = new URLSearchParams(params as Record<string, string>).toString();
@@ -494,6 +522,7 @@ export const purchasesApi = {
 export const coursesApi = {
   getAll: (all?: boolean) => fetchWithAuth(`/courses${all ? '?all=true' : ''}`),
   getById: (id: string) => fetchWithAuth(`/courses/${id}`),
+  getPublic: (slug: string) => fetchWithAuth(`/courses/public/${encodeURIComponent(slug)}`),
   getMyCourses: () => fetchWithAuth('/courses/my/enrollments'),
   create: (data: any) =>
     fetchWithAuth('/courses', {
@@ -509,9 +538,10 @@ export const coursesApi = {
     fetchWithAuth(`/courses/${id}`, {
       method: 'DELETE',
     }),
-  enroll: (id: string) =>
+  enroll: (id: string, visitorId?: string) =>
     fetchWithAuth(`/courses/${id}/enroll`, {
       method: 'POST',
+      body: JSON.stringify({ visitorId }),
     }),
   requestAccess: (id: string) =>
     fetchWithAuth(`/courses/${id}/request`, {
@@ -565,6 +595,8 @@ export const coursesApi = {
       method: 'POST',
       body: JSON.stringify({ userId }),
     }),
+  refundAccess: (courseId: string, accessId: string) =>
+    fetchWithAuth(`/courses/${courseId}/access/${accessId}/refund`, { method: 'POST' }),
   removeAccess: (courseId: string, accessId: string) =>
     fetchWithAuth(`/courses/${courseId}/access/${accessId}`, {
       method: 'DELETE',
@@ -762,7 +794,7 @@ export const ingenioApi = {
 
   // Subscription
   getConfig: () => fetchWithAuth('/ingenio/config'),
-  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER', receiptUrl?: string, visitorId?: string }) => 
+  subscribe: (data: { installments: number; paymentMethod: 'WALLET' | 'BANK_TRANSFER', receiptUrl?: string }) => 
     fetchWithAuth('/ingenio/subscribe', { method: 'POST', body: JSON.stringify(data) }),
   getMySubscription: () => fetchWithAuth('/ingenio/me'),
   
@@ -857,18 +889,30 @@ export default {
 // Programa de afiliados (comisión de afiliado; no confundir con la comisión de plataforma)
 export const affiliatesApi = {
   getProgram: () => fetchWithAuth('/affiliates/program'),
-  track: (data: { code: string; visitorId: string; productSlug?: string; storeSlug?: string }) =>
+  track: (data: { code: string; visitorId: string; productSlug?: string; storeSlug?: string; courseSlug?: string }) =>
     fetchWithAuth('/affiliates/track', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => fetchWithAuth('/affiliates/me'),
   join: (visitorId?: string) =>
     fetchWithAuth('/affiliates/join', { method: 'POST', body: JSON.stringify({ acceptTerms: true, visitorId }) }),
   claimVisitor: (visitorId: string) =>
     fetchWithAuth('/affiliates/claim-visitor', { method: 'POST', body: JSON.stringify({ visitorId }) }),
-  createLink: (data: { productId?: string; storeSlug?: string; courseId?: string; resourceType?: 'ingenio' | 'course' }) =>
+  createLink: (data: { productId?: string; storeSlug?: string }) =>
     fetchWithAuth('/affiliates/links', { method: 'POST', body: JSON.stringify(data) }),
   getLinks: () => fetchWithAuth('/affiliates/links'),
   explore: (search?: string) => fetchWithAuth(`/affiliates/explore${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   getCommissions: () => fetchWithAuth('/affiliates/commissions'),
+  getCourses: () => fetchWithAuth('/affiliates/courses'),
+  managerMe: () => fetchWithAuth('/affiliates/manager/me'),
+  adminGetManagers: () => fetchWithAuth('/affiliates/admin/managers'),
+  adminCreateManager: (data: { email: string; rate?: number; maxStores?: number }) =>
+    fetchWithAuth('/affiliates/admin/managers', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateManager: (id: string, data: { status?: 'active' | 'suspended'; rate?: number; maxStores?: number }) =>
+    fetchWithAuth(`/affiliates/admin/managers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  adminAssignStore: (id: string, sellerId: string) =>
+    fetchWithAuth(`/affiliates/admin/managers/${id}/stores`, { method: 'POST', body: JSON.stringify({ sellerId }) }),
+  adminUnassignStore: (id: string, sellerId: string) =>
+    fetchWithAuth(`/affiliates/admin/managers/${id}/stores/${sellerId}`, { method: 'DELETE' }),
+  requestTutor: (courseId: string) => fetchWithAuth(`/affiliates/courses/${courseId}/tutor-request`, { method: 'POST' }),
   getStats: (days = 30) => fetchWithAuth(`/affiliates/stats?days=${days}`),
 
   // Vendedor
@@ -881,6 +925,13 @@ export const affiliatesApi = {
   adminGetAffiliates: () => fetchWithAuth('/affiliates/admin/affiliates'),
   adminSetAffiliateStatus: (id: string, status: 'pending' | 'active' | 'suspended') =>
     fetchWithAuth(`/affiliates/admin/affiliates/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminGetCourses: () => fetchWithAuth('/affiliates/admin/courses'),
+  adminGetTutors: () => fetchWithAuth('/affiliates/admin/tutors'),
+  adminSetTutorStatus: (id: string, status: 'pending' | 'active' | 'suspended') =>
+    fetchWithAuth(`/affiliates/admin/tutors/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminGetAudit: () => fetchWithAuth('/affiliates/admin/audit'),
+  adminUpdateCourse: (id: string, data: { affiliateEnabled?: boolean; affiliateRate?: number | null; tutorEnabled?: boolean; tutorRate?: number | null }) =>
+    fetchWithAuth(`/affiliates/admin/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   adminGetCommissions: (status?: string) => fetchWithAuth(`/affiliates/admin/commissions${status ? `?status=${status}` : ''}`),
   adminApproveCommissions: (ids: string[]) =>
     fetchWithAuth('/affiliates/admin/commissions/approve', { method: 'POST', body: JSON.stringify({ ids }) }),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store, MapPin, Phone, Clock, Star, ShoppingBag,
@@ -23,7 +23,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
-import { trackReferral } from '@/lib/affiliate';
+import { AuctionCardBadge } from '@/components/auction/AuctionCardBadge';
+import { OfferCountdown } from '@/components/offer/OfferCountdown';
+import { FavoriteButton } from '@/components/shared/FavoriteButton';
+import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -78,7 +81,10 @@ export default function StorePage() {
 
   // Visita desde un enlace de afiliado (?ref=CODIGO)
   useEffect(() => {
-    if (slug && !isPreview) trackReferral({ storeSlug: slug }, location.search);
+    if (slug && !isPreview) {
+      trackReferral({ storeSlug: slug }, location.search);
+      trackStoreVisit(slug);
+    }
   }, [slug, location.search, isPreview]);
 
   const handleShare = async () => {
@@ -126,18 +132,15 @@ export default function StorePage() {
 
   const canPurchase = useMemo(() => {
     if (isPreview) return false;
-    if (!store?.plan) return false;
-    const planName = store.plan.name.toLowerCase();
-    if (planName.includes('básico') || planName.includes('basic')) return false;
-
-    const features = store.plan.features || [];
-    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
+    return !!store?.onlineSales;
   }, [store, isPreview]);
 
   const categories = useMemo((): string[] => {
     if (!store?.products) return [];
     const cats = new Set<string>(store.products.map((p: any) => p.category));
-    return ['todos', ...Array.from(cats)];
+    // Ofertas y Remates van primero: son lo que más atrae al comprador
+    const featured = ['Ofertas', 'Remates'].filter((c) => cats.has(c));
+    return ['todos', ...featured, ...Array.from(cats).filter((c) => !featured.includes(c))];
   }, [store]);
 
   const filteredProducts = useMemo(() => {
@@ -190,7 +193,7 @@ export default function StorePage() {
     );
   }
 
-  const open = store.businessHours ? isStoreOpen(store.businessHours) : false;
+  const open = isStoreOpen(store.businessHours);
   const avgRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : "5.0";
@@ -856,10 +859,11 @@ export default function StorePage() {
                   </div>
                   <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight mb-4">{selectedProduct.name}</h2>
                   <div className="flex items-end gap-3 mb-6">
+                    {selectedProduct.auctionStatus && <span className="mb-1.5 text-sm font-semibold text-[#0B1F4B] dark:text-blue-300">{selectedProduct.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</span>}
                     <span className="text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
                       {formatCurrency(selectedProduct.price)}
                     </span>
-                    {selectedProduct.comparePrice && (
+                    {!selectedProduct.auctionStatus && selectedProduct.comparePrice && (
                       <span className="text-lg text-gray-400 line-through font-bold mb-1.5 opacity-60">
                         {formatCurrency(selectedProduct.comparePrice)}
                       </span>
@@ -895,6 +899,7 @@ export default function StorePage() {
                 </div>
 
                 <div className="mt-auto space-y-4 pt-6 border-t dark:border-slate-800">
+ {!selectedProduct.auctionStatus && (
                   <div className="flex items-center justify-between text-xs font-bold text-gray-400">
                     <span>
                       Disponibilidad: 
@@ -906,9 +911,20 @@ export default function StorePage() {
                     </span>
                     <span>SKU: {selectedProduct.sku || 'N/A'}</span>
                   </div>
+                  )}
                   <div className="flex flex-col gap-3">
+                    {selectedProduct.auctionStatus ? (
+                      <Button
+                        asChild
+                        className="flex-1 h-16 rounded-2xl font-black text-lg bg-[#0B1F4B] hover:bg-[#13306E] text-white"
+                      >
+                        <Link to={`/producto/${selectedProduct.slug || selectedProduct.id}`}>
+                          {selectedProduct.auctionStatus === 'open' ? 'Ver remate y ofertar' : 'Ver remate'}
+                        </Link>
+                      </Button>
+                    ) : (
                     <Button 
-                      disabled={isPreview || !canPurchase || selectedProduct.stock <= 0}
+                      disabled={isPreview || !canPurchase || selectedProduct.stock <= 0 || !!selectedProduct.offer?.expired}
                       onClick={() => {
                         addItem({ ...selectedProduct, storeName: store.name }, 1);
                         setSelectedProduct(null);
@@ -921,16 +937,19 @@ export default function StorePage() {
                           : "bg-gray-100 text-gray-400 border border-gray-200"
                       )}
                     >
-                      {isPreview 
+ {isPreview 
                         ? 'VISTA PREVIA - CARRITO DESACTIVADO' 
+                        : selectedProduct.offer?.expired
+                        ? 'Oferta terminada'
                         : selectedProduct.stock <= 0 
                         ? 'SIN STOCK' 
                         : canPurchase 
                         ? 'Añadir al Carrito' 
                         : 'Visitar tienda para comprar'}
                     </Button>
+                    )}
                     
-                    {!canPurchase && (
+                    {!canPurchase && !selectedProduct.auctionStatus && (
                       <Button 
                         onClick={() => {
                           const number = store.whatsappNumber || store.phone || '';
@@ -975,7 +994,11 @@ function ProductCard({
   onConsult: () => void,
   isPreview?: boolean
 }) {
-  const isOutOfStock = product.stock <= 0;
+  const isAuction = !!product.auctionStatus;
+  const offerOver = !isAuction && !!product.offer?.expired; // una oferta vencida no se compra hasta que la tienda la renueve
+  const navigate = useNavigate();
+  const goAuction = () => navigate(`/producto/${product.slug || product.id}`);
+  const isOutOfStock = !isAuction && product.stock <= 0; // un remate cerrado se muestra como tal, no como "sin stock"
   
   if (viewMode === 'list') {
     return (
@@ -988,7 +1011,10 @@ function ProductCard({
       >
         <div className="w-full md:w-60 h-60 rounded-3xl overflow-hidden relative bg-gray-50 dark:bg-slate-800">
           <img src={product.images[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-          {product.comparePrice && (
+          {isAuction && <AuctionCardBadge status={product.auctionStatus} endsAt={product.auctionEndsAt} className="absolute top-4 left-4 shadow-lg" />}
+          <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-10" />
+          {!isAuction && product.offer && <OfferCountdown offer={product.offer} className="absolute top-4 left-4 shadow-lg" />}
+          {!isAuction && !product.offer && product.comparePrice && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
               -{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
             </div>
@@ -1021,6 +1047,7 @@ function ProductCard({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="space-y-0.5">
+              {isAuction && <p className="text-xs font-semibold text-[#0B1F4B] dark:text-blue-300">{product.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</p>}
               <p className="text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tighter">
                 {formatCurrency(product.price)}
               </p>
@@ -1031,7 +1058,15 @@ function ProductCard({
               )}
             </div>
             <div className="flex flex-col gap-2">
-              {!isPreview && (
+              {!isPreview && isAuction && (
+                <Button onClick={goAuction} className="h-14 px-8 rounded-2xl font-black text-lg min-w-[200px] bg-[#0B1F4B] hover:bg-[#13306E] text-white">
+                  {product.auctionStatus === 'open' ? 'Ver remate y ofertar' : 'Ver remate'}
+                </Button>
+              )}
+              {!isPreview && offerOver && (
+                <Button disabled className="h-14 px-8 rounded-2xl font-black text-lg min-w-[200px] bg-gray-100 text-gray-400 border border-gray-200">Oferta terminada</Button>
+              )}
+              {!isPreview && !isAuction && !offerOver && (
                 <>
                   <Button
                     disabled={!canPurchase || isOutOfStock}
@@ -1098,7 +1133,10 @@ function ProductCard({
           </Button>
         </div>
 
-        {product.comparePrice && (
+        {isAuction && <AuctionCardBadge status={product.auctionStatus} endsAt={product.auctionEndsAt} className="absolute top-4 left-4 z-10 shadow-lg" />}
+        <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-20" />
+        {!isAuction && product.offer && <OfferCountdown offer={product.offer} className="absolute top-4 left-4 z-10 shadow-lg" />}
+        {!isAuction && !product.offer && product.comparePrice && (
           <div className="absolute top-4 left-4 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
             SALE
           </div>
@@ -1113,7 +1151,16 @@ function ProductCard({
         )}
 
         <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2 z-20">
-          {isPreview ? null : isOutOfStock ? (
+          {isPreview ? null : offerOver ? (
+            <Button disabled className="w-full h-14 bg-white/95 text-gray-400 rounded-2xl font-black shadow-2xl border-0">Oferta terminada</Button>
+          ) : isAuction ? (
+            <Button
+              onClick={goAuction}
+              className="w-full h-14 bg-[#0B1F4B] text-white hover:bg-[#13306E] rounded-2xl font-black shadow-2xl border-0"
+            >
+              {product.auctionStatus === 'open' ? 'Ver remate y ofertar' : 'Ver remate'}
+            </Button>
+          ) : isOutOfStock ? (
              <Button
                disabled
                className="w-full h-14 bg-red-600 text-white rounded-2xl font-black shadow-2xl border-0"
@@ -1165,14 +1212,15 @@ function ProductCard({
 
         <div className="mt-auto flex items-end justify-between">
           <div className="flex flex-col">
-            {product.comparePrice && (
+            {isAuction && <span className="text-xs font-semibold text-[#0B1F4B] dark:text-blue-300">{product.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</span>}
+            {!isAuction && product.comparePrice && (
               <span className="text-sm text-gray-400 line-through font-bold mb-0.5">{formatCurrency(product.comparePrice)}</span>
             )}
             <span className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
               {formatCurrency(product.price)}
             </span>
           </div>
-          {canPurchase && !isPreview && (
+          {canPurchase && !isPreview && !isAuction && !offerOver && (
             <button
               onClick={onAddToCart}
               className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"

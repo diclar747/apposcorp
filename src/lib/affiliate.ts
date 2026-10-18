@@ -1,4 +1,4 @@
-import { affiliatesApi } from '@/lib/api';
+import { affiliatesApi, fetchWithAuth } from '@/lib/api';
 
 // Identificador anónimo del navegador (cookie propia de 1 año). El servidor guarda cada clic de afiliado
 // con este id, así la referencia sobrevive aunque el visitante cierre el navegador o inicie sesión.
@@ -30,13 +30,23 @@ export const getVisitorId = (): string => {
 };
 
 /** Registra la visita si la URL trae ?ref=CODIGO. Falla en silencio: nunca debe romper la página. */
-export const trackReferral = async (target: { productSlug?: string; storeSlug?: string }, search: string) => {
+export const trackReferral = async (target: { productSlug?: string; storeSlug?: string; courseSlug?: string }, search: string) => {
   const code = new URLSearchParams(search).get('ref');
   if (!code || !/^[A-Za-z0-9]{4,16}$/.test(code)) return;
   try {
     await affiliatesApi.track({ code, visitorId: getVisitorId(), ...target });
   } catch {
     // sin conexión o programa apagado: se ignora
+  }
+};
+
+/** Cuenta la visita a una tienda (una por visitante y día). Falla en silencio. */
+export const trackStoreVisit = async (storeSlug: string) => {
+  if (!storeSlug) return;
+  try {
+    await fetchWithAuth(`/stores/${encodeURIComponent(storeSlug)}/visit`, { method: 'POST', body: JSON.stringify({ visitorId: getVisitorId() }) });
+  } catch {
+    // sin conexión: no importa
   }
 };
 

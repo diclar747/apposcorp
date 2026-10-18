@@ -7,6 +7,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { sellerAllowsOnlineSales } from '@/lib/plans';
 
 export default function ClientProduct() {
   const { id } = useParams<{ id: string }>();
@@ -49,14 +50,7 @@ export default function ClientProduct() {
     };
   }, [product]);
 
-  const canPurchase = useMemo(() => {
-    if (!store?.plan) return false;
-    const planName = store.plan.name.toLowerCase();
-    if (planName.includes('básico') || planName.includes('basic')) return false;
-    
-    const features = store.plan.features || [];
-    return features.some((f: string) => f.toLowerCase().includes('tienda online'));
-  }, [store]);
+  const canPurchase = useMemo(() => sellerAllowsOnlineSales(product?.seller), [product]);
 
   if (loading) {
     return (

@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import type { OrderStatus, Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { ensureWallet } from './userService.js';
+import { sellerAllowsOnlineSales } from '../utils/plans.js';
+import { offerExpired } from './offerService.js';
 import {
   getAffiliateConfig,
   createCommissionsForOrder,
@@ -74,7 +76,7 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
   const result = await prisma.$transaction(async (tx) => {
     const products = await tx.product.findMany({
       where: { id: { in: [...qtyByProduct.keys()] } },
-      include: { seller: { include: { user: { select: { isActive: true } } } } },
+      include: { seller: { include: { user: { select: { isActive: true } }, plan: { select: { name: true, features: true } } } } },
     });
     if (products.length !== qtyByProduct.size) throw new OrderError(404, 'Uno de los productos ya no está disponible.');
 
@@ -83,7 +85,25 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
         throw new OrderError(400, `El producto "${p.name}" no está disponible para compra online.`);
       }
       if (p.seller.userId === buyerId) throw new OrderError(400, 'No puedes comprar productos de tu propia tienda.');
+      if (!sellerAllowsOnlineSales(p.seller)) {
+        throw new OrderError(400, `La tienda "${p.seller.storeName}" no tiene habilitada la venta online.`);
+      }
       if (!(p.price > 0)) throw new OrderError(400, `El producto "${p.name}" no tiene un precio válido.`);
+
+      // Ofertas: una oferta vencida no se vende hasta que la tienda la renueve
+      if (offerExpired(p)) throw new OrderError(400, `La oferta de "${p.name}" ya terminó.`);
+
+      // Remates: solo el ganador compra, una unidad, al precio ganador y dentro del plazo. Se marca vendido al instante.
+      if (p.auctionStatus !== null) {
+        if (qtyByProduct.get(p.id) !== 1) throw new OrderError(400, 'Un remate es una sola unidad');
+        const claimed = await tx.product.updateMany({
+          where: { id: p.id, auctionStatus: 'ended', auctionWinnerId: buyerId, auctionPayBy: { gt: new Date() } },
+          data: { auctionStatus: 'sold' },
+        });
+        if (claimed.count === 0) {
+          throw new OrderError(400, `"${p.name}" es un remate: solo lo puede comprar quien ganó, dentro del plazo de pago.`);
+        }
+      }
     }
 
     // Agrupa por tienda (Product.sellerId = SellerProfile.id)
@@ -270,6 +290,9 @@ export const createPosOrder = async (userId: string, isSuperadmin: boolean, inpu
       const quantity = parseQuantity(item.quantity);
       const product = await tx.product.findUnique({ where: { id: item.productId } });
       if (!product || product.sellerId !== sellerProfile.id) throw new OrderError(404, 'Uno de los productos ya no está disponible.');
+      if (product.auctionStatus === 'open' || product.auctionStatus === 'ended') {
+        throw new OrderError(400, `"${product.name}" está en remate: no se puede vender por el POS hasta que termine y se cierre.`);
+      }
       await decrementStock(tx, product.id, quantity, product.name);
       const total = product.price * quantity;
       subtotal += total;

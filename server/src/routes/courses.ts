@@ -1,9 +1,42 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
-import { getAffiliateConfig, getCourseRate, createResourceCommission, notifyResourceCommission } from '../services/affiliateService.js';
+import { authenticate, authorize, AuthRequest, getOptionalUser } from '../middleware/auth.js';
+import { createCommissionForCourseSale, cancelCommissionForCourseAccess, notifyNewCommissions, auditAffiliate } from '../services/affiliateService.js';
+import { ensureWallet } from '../services/userService.js';
+import { sendPushToUser } from '../services/pushService.js';
 
 const router = Router();
+
+/**
+ * Los endpoints públicos de un curso no pueden regalar el contenido de pago ni los datos de los alumnos.
+ * Superadmin ve todo. El resto ve la lista de alumnos vacía y, si no está matriculado, solo las lecciones
+ * de vista previa (sin video ni materiales de las demás).
+ */
+const sanitizeCourseForViewer = async (course: any, req: any) => {
+  const viewer = await getOptionalUser(req);
+  if (viewer?.roles?.includes('superadmin')) return course;
+  // Acceso: matriculado en el curso, o miembro activo de Ingenio (las pantallas de Ingenio le abren todo el contenido)
+  let hasAccess = false;
+  if (viewer) {
+    const [enrolled, subscription, user] = await Promise.all([
+      prisma.userCourse.findUnique({ where: { userId_courseId: { userId: viewer.userId, courseId: course.id } } }),
+      prisma.ingenioSubscription.findUnique({ where: { userId: viewer.userId }, select: { status: true } }),
+      prisma.user.findUnique({ where: { id: viewer.userId }, select: { ingenioAccess: true } }),
+    ]);
+    hasAccess = !!enrolled || subscription?.status === 'ACTIVE' || !!user?.ingenioAccess;
+  }
+  return {
+    ...course,
+    userCourses: [],
+    resources: hasAccess ? course.resources : [],
+    modules: (course.modules || []).map((m: any) => ({
+      ...m,
+      lessons: (m.lessons || []).map((l: any) =>
+        hasAccess || l.isPreview ? l : { ...l, videoUrl: null, resources: [] },
+      ),
+    })),
+  };
+};
 
 // Get all courses (public gets published only, admin gets all)
 router.get('/', async (req: any, res) => {
@@ -64,6 +97,28 @@ router.get('/', async (req: any, res) => {
   }
 });
 
+// Página pública de venta del curso: solo datos para mostrar (nada del contenido de pago ni de los alumnos)
+router.get('/public/:slug', async (req, res) => {
+  try {
+    const course = await prisma.course.findFirst({
+      where: { OR: [{ slug: String(req.params.slug) }, { id: String(req.params.slug) }], isPublished: true },
+      select: {
+        id: true, title: true, slug: true, description: true, shortDescription: true, coverImage: true, previewVideo: true,
+        instructorName: true, category: true, level: true, price: true, comparePrice: true, duration: true,
+        enrolledCount: true, rating: true, reviewCount: true,
+        modules: {
+          orderBy: { order: 'asc' },
+          select: { id: true, title: true, lessons: { orderBy: { order: 'asc' }, select: { id: true, title: true, duration: true } } },
+        },
+      },
+    });
+    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // Get course by slug (public)
 router.get('/slug/:slug', async (req, res) => {
   try {
@@ -97,7 +152,7 @@ router.get('/slug/:slug', async (req, res) => {
       return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
-    res.json(course);
+    res.json(await sanitizeCourseForViewer(course, req));
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -224,7 +279,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Curso no encontrado' });
     }
 
-    res.json(course);
+    res.json(await sanitizeCourseForViewer(course, req));
   } catch (error) {
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -675,6 +730,61 @@ router.post('/:id/assign', authenticate, authorize('superadmin'), async (req: Au
   }
 });
 
+// Reembolso (admin): devuelve a la billetera lo que el alumno pagó, quita el acceso y revierte la comisión del afiliado o tutor
+router.post('/:id/access/:accessId/refund', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
+  try {
+    const accessId = req.params.accessId as string;
+    const userCourse = await prisma.userCourse.findUnique({ where: { id: accessId }, include: { course: { select: { id: true, title: true } } } });
+    if (!userCourse || userCourse.courseId !== req.params.id) return res.status(404).json({ error: 'Acceso no encontrado' });
+
+    const result = await prisma.$transaction(async (tx) => {
+      // La compra: por la matrícula (compras nuevas) o, en las anteriores, por el título del curso
+      const purchases = await tx.transaction.findMany({
+        where: { userId: userCourse.userId, type: 'purchase', status: 'completed', description: `Compra del curso: ${userCourse.course.title}` },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      });
+      const purchase = purchases.find((p) => (p.metadata as any)?.userCourseId === accessId) ?? purchases.find((p) => !(p.metadata as any)?.userCourseId);
+      if (!purchase) return { error: 'Este acceso no se compró con la billetera (lo asignó el administrador o viene de la suscripción): no hay nada que reembolsar. Podés quitar el acceso.' };
+
+      const already = await tx.transaction.findFirst({ where: { type: 'refund', metadata: { path: ['purchaseTxId'], equals: purchase.id } } });
+      if (already) return { error: 'Esta compra ya fue reembolsada' };
+
+      const amount = Math.abs(purchase.amount);
+      const wallet = await ensureWallet(userCourse.userId, tx);
+      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: amount }, totalIn: { increment: amount } } });
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: userCourse.userId,
+          type: 'refund',
+          amount,
+          description: `Reembolso del curso: ${userCourse.course.title}`,
+          status: 'completed',
+          metadata: { purchaseTxId: purchase.id, courseId: userCourse.courseId, userCourseId: accessId },
+        },
+      });
+      await cancelCommissionForCourseAccess(tx, accessId, 'Curso reembolsado');
+      await tx.userCourse.delete({ where: { id: accessId } });
+      await tx.course.update({ where: { id: userCourse.courseId }, data: { enrolledCount: { decrement: 1 } } });
+      return { amount };
+    });
+
+    if ('error' in result) return res.status(400).json({ error: result.error });
+    await auditAffiliate(req.user!.userId, 'course.refund', 'course', userCourse.courseId, { userId: userCourse.userId, amount: result.amount });
+    sendPushToUser(userCourse.userId, {
+      title: 'Te reembolsamos un curso',
+      body: `Se devolvieron Gs. ${result.amount.toLocaleString('es-PY')} a tu billetera por "${userCourse.course.title}".`,
+      url: '/app/wallet',
+      tag: 'refund',
+    }).catch(() => {});
+    res.json({ refunded: result.amount });
+  } catch (error) {
+    console.error('Refund course error:', error);
+    res.status(500).json({ error: 'Error al reembolsar' });
+  }
+});
+
 // Remove access (admin)
 router.delete('/:id/access/:accessId', authenticate, authorize('superadmin'), async (req: AuthRequest, res) => {
   try {
@@ -685,13 +795,15 @@ router.delete('/:id/access/:accessId', authenticate, authorize('superadmin'), as
       return res.status(404).json({ error: 'Acceso no encontrado' });
     }
 
-    await prisma.$transaction([
-      prisma.userCourse.delete({ where: { id: accessId } }),
-      prisma.course.update({
+    await prisma.$transaction(async (tx) => {
+      // Si el acceso se quita (reembolso/anulación), la comisión de afiliado de esa matrícula se anula o se revierte
+      await cancelCommissionForCourseAccess(tx, accessId, 'Acceso al curso quitado');
+      await tx.userCourse.delete({ where: { id: accessId } });
+      await tx.course.update({
         where: { id: userCourse.courseId },
         data: { enrolledCount: { decrement: 1 } },
-      }),
-    ]);
+      });
+    });
 
     res.json({ message: 'Acceso eliminado' });
   } catch (error) {
@@ -758,7 +870,7 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           },
         });
 
-        await tx.transaction.create({
+        const purchaseTx = await tx.transaction.create({
           data: {
             walletId: wallet.id,
             userId: req.user!.userId,
@@ -766,6 +878,7 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
             amount: -course.price,
             description: `Compra del curso: ${course.title}`,
             status: 'completed',
+            metadata: { courseId: id },
           },
         });
 
@@ -774,35 +887,30 @@ router.post('/:id/enroll', authenticate, async (req: AuthRequest, res) => {
           data: { enrolledCount: { increment: 1 } },
         });
 
-        return tx.userCourse.create({
+        const created = await tx.userCourse.create({
           data: {
             userId: req.user!.userId,
             courseId: id,
             status: 'active',
           },
         });
+
+        // El pago queda ligado a la matrícula: así un reembolso sabe cuánto y a quién devolver
+        await tx.transaction.update({ where: { id: purchaseTx.id }, data: { metadata: { courseId: id, userCourseId: created.id } } });
+
+        // Si llegó por el enlace de un afiliado, se genera su comisión (pendiente hasta que termine la garantía)
+        const commission = await createCommissionForCourseSale(tx, {
+          userCourseId: created.id,
+          buyerId: req.user!.userId,
+          visitorId: typeof req.body?.visitorId === 'string' ? req.body.visitorId.slice(0, 64) : null,
+          course,
+          amountPaid: course.price,
+        });
+        return { created, commission };
       });
 
-      // Comisión de afiliado por curso pago (si vino de un enlace). Idempotente.
-      try {
-        const rate = getCourseRate(course, await getAffiliateConfig());
-        if (rate !== null) {
-          const commission = await createResourceCommission({
-            resourceType: 'course',
-            resourceId: course.id,
-            resourceName: course.title,
-            price: course.price,
-            rate,
-            buyerId: req.user!.userId,
-            visitorId: typeof req.body?.visitorId === 'string' ? req.body.visitorId : null,
-          });
-          notifyResourceCommission(commission);
-        }
-      } catch (e) {
-        console.error('[afiliados] comisión curso:', e);
-      }
-
-      return res.status(201).json(userCourse);
+      if (userCourse.commission) notifyNewCommissions([userCourse.commission]);
+      return res.status(201).json(userCourse.created);
     } else {
       // Free course, just enroll
       await prisma.course.update({

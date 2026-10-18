@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { toast } from 'sonner';
 import type { Product, CartItem } from '@/types';
 
 const recalc = (items: CartItem[]) => ({
@@ -31,6 +32,12 @@ export const useCartStore = create<CartState>()(
       itemCount: 0,
 
       addItem: (product: Product, quantity: number) => {
+        // Un remate no se compra con el carrito mientras está abierto: se oferta. Solo se paga una vez adjudicado.
+        const auctionStatus = (product as any).auctionStatus;
+        if (auctionStatus && auctionStatus !== 'ended') {
+          toast.info('Los remates se compran ofertando. Abrí el remate para participar.');
+          return;
+        }
         // Validación global de Plan (Seguridad adicional)
         const sellerProfile = (product as any).seller?.sellerProfile || (product as any).sellerProfile;
         if (sellerProfile?.plan) {

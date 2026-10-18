@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye } from 'lucide-react';
+import { Gavel, Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye } from 'lucide-react';
+import { AuctionFormFields, defaultAuctionEnd, toLocalInput } from '@/components/auction/AuctionFormFields';
+import { AuctionBiddersDialog } from '@/components/auction/AuctionBiddersDialog';
+import { CommentsModerationDialog } from '@/components/comments/CommentsModerationDialog';
+import { OfferFormFields } from '@/components/offer/OfferFormFields';
 import { productsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { PriceFields } from '@/components/shared/PriceFields';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -45,6 +50,8 @@ import { usersApi } from '@/lib/api';
 import { ImageGalleryField } from '@/components/shared/ImageField';
 
 const PRODUCT_CATEGORIES = [
+  'Ofertas',
+  'Remates',
   'Tecnología',
   'Ropa y Accesorios',
   'Hogar y Muebles',
@@ -57,17 +64,6 @@ const PRODUCT_CATEGORIES = [
   'Servicios',
   'Otros'
 ];
-
-// Helper to format currency display with dots
-const formatInputCurrency = (value: number | undefined) => {
-  if (value === undefined || value === null) return '';
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
-// Helper to parse currency input back to number
-const parseInputCurrency = (value: string) => {
-  return parseInt(value.replace(/\./g, '')) || 0;
-};
 
 export default function AdminProducts() {
   const { user } = useAuthStore();
@@ -110,6 +106,8 @@ export default function AdminProducts() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [biddersFor, setBiddersFor] = useState<string | null>(null);
+  const [moderating, setModerating] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Product>>({
@@ -137,7 +135,19 @@ export default function AdminProducts() {
   const handleOpenModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
-      setFormData(product);
+      const auction = product as any;
+      setFormData({
+        ...product,
+        ...(product.category === 'Ofertas' ? {
+          offerCompare: product.comparePrice ? Number(product.comparePrice).toLocaleString('es-PY') : '',
+          offerEndsAt: toLocalInput((product as any).offerEndsAt),
+          offerBlocked: !!(product as any).offerBlocked,
+        } : {}),
+        ...(auction.auctionStatus ? {
+          auctionEndsAt: toLocalInput(auction.auctionEndsAt),
+          auctionMinIncrement: (auction.auctionMinIncrement ?? 10000).toLocaleString('es-PY'),
+        } : {}),
+      } as any);
     } else {
       setEditingProduct(null);
       setFormData({
@@ -158,17 +168,6 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  const handleCalculatePrice = (cost: number, margin: number) => {
-    const price = cost * (1 + margin / 100);
-    setFormData(prev => ({ ...prev, cost, profitPercentage: margin, price: Math.round(price) }));
-  };
-
-  const handleCalculateMargin = (cost: number, price: number) => {
-    if (cost === 0) return;
-    const margin = ((price - cost) / cost) * 100;
-    setFormData(prev => ({ ...prev, cost, price, profitPercentage: Math.round(margin * 100) / 100 }));
-  };
-
   const handleSaveProduct = async () => {
     if (!formData.name || !formData.sku || !formData.category) {
       toast.error('Por favor completa los campos obligatorios');
@@ -180,13 +179,42 @@ export default function AdminProducts() {
       return;
     }
 
+    // Remate: la fecha local del formulario viaja como ISO y el incremento como número
+    const fd = formData as any;
+    const payload: any = { ...formData };
+    if (formData.category === 'Remates') {
+      if (!fd.auctionEndsAt) {
+        toast.error('Indicá cuándo termina el remate');
+        return;
+      }
+      payload.auctionEndsAt = new Date(fd.auctionEndsAt).toISOString();
+      payload.auctionMinIncrement = Number(String(fd.auctionMinIncrement || '').replace(/\D/g, '')) || undefined;
+    } else {
+      delete payload.auctionEndsAt;
+      delete payload.auctionMinIncrement;
+    }
+    // Oferta: precio anterior y vencimiento
+    if (formData.category === 'Ofertas') {
+      const compare = Number(String(fd.offerCompare || '').replace(/\D/g, ''));
+      if (!compare || !fd.offerEndsAt) {
+        toast.error('Completá el precio anterior y cuándo vence la oferta');
+        return;
+      }
+      payload.comparePrice = compare;
+      payload.offerEndsAt = new Date(fd.offerEndsAt).toISOString();
+    } else {
+      delete payload.offerEndsAt;
+      delete payload.offerBlocked;
+    }
+    delete payload.offerCompare;
+
     try {
       if (editingProduct) {
-        await productsApi.update(editingProduct.id, formData);
+        await productsApi.update(editingProduct.id, payload);
         toast.success('Producto actualizado correctamente');
       } else {
         await productsApi.create({
-          ...formData,
+          ...payload,
           sellerId: selectedSellerId,
         });
         toast.success('Producto creado correctamente');
@@ -218,6 +246,7 @@ export default function AdminProducts() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Productos</h1>
           <p className="text-gray-500 dark:text-gray-400">Gestiona todos los productos del marketplace</p>
         </div>
+        <Button variant="outline" onClick={() => setModerating(true)}>Comentarios</Button>
         <Button className="bg-blue-600" onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Producto
@@ -322,6 +351,9 @@ export default function AdminProducts() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleOpenModal(product)} className="cursor-pointer"><Eye className="w-4 h-4 mr-2" /> Ver/Editar</DropdownMenuItem>
+                            {(product as any).auctionStatus && (
+                              <DropdownMenuItem onClick={() => setBiddersFor(product.id)} className="cursor-pointer"><Gavel className="w-4 h-4 mr-2" /> Ver ofertas</DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="w-4 h-4 mr-2" /> Eliminar</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -336,6 +368,8 @@ export default function AdminProducts() {
       </Card>
 
       {/* Product Modal */}
+      <AuctionBiddersDialog productId={biddersFor} onClose={() => setBiddersFor(null)} />
+      <CommentsModerationDialog open={moderating} onClose={() => setModerating(false)} />
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -407,7 +441,16 @@ export default function AdminProducts() {
                 <Label htmlFor="category">Categoría *</Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  onValueChange={(value) => setFormData({
+                    ...formData,
+                    category: value,
+                    ...(value === 'Ofertas' && !(formData as any).offerEndsAt
+                      ? { offerEndsAt: toLocalInput(new Date(Date.now() + 7 * 24 * 3600_000)), offerCompare: '' }
+                      : {}),
+                    ...(value === 'Remates' && !(formData as any).auctionEndsAt
+                      ? { auctionEndsAt: defaultAuctionEnd(), auctionMinIncrement: '10.000', stock: 1 }
+                      : {}),
+                  } as any)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
@@ -438,84 +481,36 @@ export default function AdminProducts() {
               </div>
             </div>
 
+            {formData.category === 'Remates' && (
+              <AuctionFormFields
+                endsAt={(formData as any).auctionEndsAt || ''}
+                minIncrement={(formData as any).auctionMinIncrement || ''}
+                locked={!!editingProduct && ['ended', 'sold', 'unpaid'].includes((editingProduct as any).auctionStatus)}
+                onChange={(v) => setFormData({ ...formData, ...v } as any)}
+              />
+            )}
+            {formData.category === 'Ofertas' && (
+              <OfferFormFields
+                price={Number(formData.price) || 0}
+                comparePrice={(formData as any).offerCompare || ''}
+                endsAt={(formData as any).offerEndsAt || ''}
+                blocked={!!(formData as any).offerBlocked}
+                isAdmin={true}
+                onChange={(v) => setFormData({ ...formData, ...(v.comparePrice !== undefined ? { offerCompare: v.comparePrice } : {}), ...(v.offerEndsAt !== undefined ? { offerEndsAt: v.offerEndsAt } : {}), ...(v.offerBlocked !== undefined ? { offerBlocked: v.offerBlocked } : {}) } as any)}
+              />
+            )}
+
+
             <div className="border-t pt-4 mt-2">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Package className="w-4 h-4" /> Gestión Financiera
               </h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cost">Costo (Compra)</Label>
-                  <Input
-                    id="cost"
-                    type="text"
-                    inputMode="numeric"
-                    value={formatInputCurrency(formData.cost)}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        setFormData(prev => ({ ...prev, cost: undefined, price: undefined, profitPercentage: undefined }));
-                        return;
-                      }
-                      const cost = parseInputCurrency(rawValue);
-                      handleCalculatePrice(cost, formData.profitPercentage || 0);
-                    }}
-                    className="rounded-lg h-9 text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="profit">Ganancia (%)</Label>
-                  <Input
-                    id="profit"
-                    type="number"
-                    min="0"
-                    max="100"
-                    onWheel={(e) => (e.target as HTMLElement).blur()}
-                    value={formData.profitPercentage ?? ''}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        setFormData(prev => ({ ...prev, profitPercentage: undefined }));
-                        return;
-                      }
-                      let margin = parseFloat(rawValue) || 0;
-                      margin = Math.min(100, Math.max(0, margin));
-                      handleCalculatePrice(formData.cost || 0, margin);
-                    }}
-                    className="rounded-lg h-9 text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price" className="text-emerald-500 font-bold">Precio Total (Venta)</Label>
-                  <Input
-                    id="price"
-                    type="text"
-                    inputMode="numeric"
-                    className="border-emerald-200 focus-visible:ring-emerald-500 font-bold rounded-lg h-9 text-sm bg-emerald-50/10"
-                    value={formatInputCurrency(formData.price)}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        setFormData(prev => ({ ...prev, price: undefined, profitPercentage: undefined }));
-                        return;
-                      }
-                      let price = parseInputCurrency(rawValue);
-                      
-                      // Prevent price from being lower than cost or exceeding 100% profit
-                      const currentCost = formData.cost || 0;
-                      if (price < currentCost) {
-                        price = currentCost;
-                      }
-                      
-                      const maxPrice = currentCost * 2;
-                      if (currentCost > 0 && price > maxPrice) {
-                        price = maxPrice;
-                      }
-                      
-                      handleCalculateMargin(currentCost, price);
-                    }}
-                  />
-                </div>
-              </div>
+              <PriceFields
+                cost={formData.cost}
+                profitPercentage={formData.profitPercentage}
+                price={formData.price}
+                onChange={(v) => setFormData(prev => ({ ...prev, ...v }))}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

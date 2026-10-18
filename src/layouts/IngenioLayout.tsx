@@ -58,9 +58,7 @@ export default function IngenioLayout() {
       {/* Mobile Menu Button & Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800">
         <Link to="/ingenio" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <Target className="w-5 h-5 text-white" />
-          </div>
+          <img src="/icons/icon-192x192.png" alt="Oscorp" className="w-8 h-8 rounded-lg object-cover" />
           <span className="font-bold text-lg text-slate-900 dark:text-white">Ingenio</span>
         </Link>
         <div className="flex items-center gap-2">
@@ -111,9 +109,7 @@ export default function IngenioLayout() {
           >
             <div className="p-5 flex items-center justify-between border-b md:border-none border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
-                  <Target className="w-6 h-6 text-white" />
-                </div>
+                <img src="/icons/icon-192x192.png" alt="Oscorp" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-indigo-200 dark:shadow-none" />
                 <div>
                   <h1 className="font-bold text-xl text-slate-900 dark:text-white leading-none tracking-tight">Ingenio</h1>
                   <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold tracking-widest uppercase mt-0.5">Millonario</p>

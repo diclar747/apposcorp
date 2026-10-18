@@ -2,15 +2,6 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/ingenio.js';
-import {
-  getAffiliateConfig,
-  getIngenioRate,
-  createResourceCommission,
-  notifyResourceCommission,
-  reverseResourceCommission,
-  INGENIO_RESOURCE_ID,
-  INGENIO_RESOURCE_NAME,
-} from '../services/affiliateService.js';
 
 const router = Router();
 
@@ -716,7 +707,7 @@ router.get('/subscription/me', requireAuth, async (req: AuthRequest, res) => {
 router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
     try {
         const userId = req.user!.userId;
-        const { installments, paymentMethod, receiptUrl, visitorId } = req.body;
+        const { installments, paymentMethod, receiptUrl } = req.body;
 
         // Validar configuración real
         const settings = await prisma.systemSetting.findMany({
@@ -849,29 +840,10 @@ router.post('/subscribe', requireAuth, async (req: AuthRequest, res) => {
                 });
             }
 
-            // Comisión de afiliado por la suscripción (si vino de un enlace). Idempotente: una sola vez.
-            try {
-                const rate = getIngenioRate(await getAffiliateConfig());
-                if (rate !== null) {
-                    const commission = await createResourceCommission({
-                        resourceType: 'ingenio',
-                        resourceId: INGENIO_RESOURCE_ID,
-                        resourceName: INGENIO_RESOURCE_NAME,
-                        price: realPrice,
-                        rate,
-                        buyerId: userId,
-                        visitorId: typeof visitorId === 'string' ? visitorId : null,
-                    });
-                    notifyResourceCommission(commission);
-                }
-            } catch (e) {
-                console.error('[afiliados] comisión Ingenio (wallet):', e);
-            }
-
-            return res.json({
-                message: isRevoked
-                    ? 'Pago realizado con éxito. Tu acceso ha sido restaurado.'
-                    : 'Pago realizado con éxito. Pendiente de aprobación.'
+            return res.json({ 
+                message: isRevoked 
+                    ? 'Pago realizado con éxito. Tu acceso ha sido restaurado.' 
+                    : 'Pago realizado con éxito. Pendiente de aprobación.' 
             });
         } else {
             // Transferencia bancaria
@@ -1030,24 +1002,6 @@ router.put('/admin/subscriptions/:id/approve', requireAdmin, async (req: AuthReq
             }
         });
 
-        // Comisión de afiliado al aprobar el pago por transferencia (idempotente)
-        try {
-            const rate = getIngenioRate(await getAffiliateConfig());
-            if (rate !== null) {
-                const commission = await createResourceCommission({
-                    resourceType: 'ingenio',
-                    resourceId: INGENIO_RESOURCE_ID,
-                    resourceName: INGENIO_RESOURCE_NAME,
-                    price: sub.totalAmount,
-                    rate,
-                    buyerId: sub.userId,
-                });
-                notifyResourceCommission(commission);
-            }
-        } catch (e) {
-            console.error('[afiliados] comisión Ingenio (aprobación):', e);
-        }
-
         res.json({ message: 'Acceso concedido exitosamente' });
     } catch (error) {
         res.status(500).json({ error: 'Error al aprobar suscripción' });
@@ -1085,14 +1039,6 @@ router.put('/admin/subscriptions/:id/revoke', requireAdmin, async (req: AuthRequ
                 }
             })
         ]);
-
-        // Revertir la comisión de afiliado si la suscripción se revoca
-        try {
-            await reverseResourceCommission('ingenio', INGENIO_RESOURCE_ID, sub.userId, 'Suscripción a Ingenio revocada');
-        } catch (e) {
-            console.error('[afiliados] reversión Ingenio (revoke):', e);
-        }
-
         res.json({ message: 'Acceso revocado exitosamente' });
     } catch (error) {
         res.status(500).json({ error: 'Error al revocar acceso' });

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '@/stores';
+import { getManagedStore } from '@/stores/authStore';
 import { productsApi, walletApi, customersApi, managementApi, ordersApi } from '@/lib/api';
 import { getSafeDate, formatDate } from '@/lib/utils';
 import { generateQRValue } from '@/lib/qr';
@@ -154,7 +155,7 @@ export default function SellerPOS() {
     ).slice(0, 5);
   }, [customers, customerSearch]);
   useEffect(() => {
-    if (user && user.sellerProfile && user.sellerProfile.planActive) {
+    if (user && user.sellerProfile && user.sellerProfile.planActive && !getManagedStore()) {
       const plan = user.sellerProfile.plan;
       const tier = plan?.tier?.toLowerCase() || 'basic';
       const features = plan?.features || [];
@@ -181,7 +182,7 @@ export default function SellerPOS() {
   // Trial Logic
   const isTrialExpired = useMemo(() => {
     if (!sellerProfile) return false;
-    if (sellerProfile.planActive) return false;
+    if (sellerProfile.planActive || getManagedStore()) return false;
     if (!sellerProfile.planExpiryDate) return false;
     return new Date() > new Date(sellerProfile.planExpiryDate);
   }, [sellerProfile]);

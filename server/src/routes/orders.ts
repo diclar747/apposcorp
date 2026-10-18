@@ -210,8 +210,15 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res) => {
     }
 
     // Only seller or admin can update status
-    if (!req.user!.roles.includes('superadmin') && order.sellerId !== req.user!.userId) {
+    const isAdmin = req.user!.roles.includes('superadmin');
+    if (!isAdmin && order.sellerId !== req.user!.userId) {
       return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    // Entregado es definitivo para la tienda: cancelarlo (o volverlo atrás y cancelarlo) le devolvería la
+    // comisión de afiliado ya cobrada y revertiría la del afiliado. Después de la entrega solo decide el admin.
+    if (!isAdmin && order.status === 'delivered' && status !== 'delivered') {
+      return res.status(403).json({ error: 'El pedido ya fue entregado. Para cancelarlo o cambiarlo, contactá a soporte de OSCORP.' });
     }
 
     const result = await updateOrderStatus(id, status, description);

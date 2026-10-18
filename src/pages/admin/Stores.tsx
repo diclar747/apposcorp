@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Filter, MoreHorizontal, Store, MapPin, Phone, Star, CheckCircle, XCircle, Loader2, Camera, Facebook, Instagram } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Store, MapPin, Phone, Star, CheckCircle, XCircle, Loader2, Camera, Facebook, Instagram, LayoutDashboard } from 'lucide-react';
 import { usersApi } from '@/lib/api';
+import { useAuthStore } from '@/stores';
 import { SingleImageField } from '@/components/shared/ImageField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ import {
 import { toast } from 'sonner';
 import { generateReportPDF } from '@/lib/utils';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
+import { AssignPlanDialog } from '@/components/admin/AssignPlanDialog';
 
 interface StoreData {
   id: string; // User ID
@@ -57,6 +59,8 @@ interface StoreData {
   whatsappNumber: string;
   facebook: string;
   instagram: string;
+  planName: string | null;
+  planActive: boolean;
 }
 
 export default function AdminStores() {
@@ -170,7 +174,9 @@ export default function AdminStores() {
         lastName: u.lastName || '',
         whatsappNumber: u.sellerProfile?.whatsappNumber || '',
         facebook: u.sellerProfile?.socialLinks?.facebook || '',
-        instagram: u.sellerProfile?.socialLinks?.instagram || ''
+        instagram: u.sellerProfile?.socialLinks?.instagram || '',
+        planName: u.sellerProfile?.plan?.name || null,
+        planActive: !!u.sellerProfile?.planActive
       }));
 
       setStores(formattedSellers);
@@ -209,7 +215,8 @@ export default function AdminStores() {
           password: formData.password,
           phone: formData.phone,
           address: formData.address,
-          roles: ['seller']
+          roles: ['seller'],
+          storeName: formData.storeName, // así el enlace de la tienda sale legible desde el inicio
         });
         userId = registerRes.user.id;
       }
@@ -251,6 +258,24 @@ export default function AdminStores() {
       logo: '', banner: '', facebook: '', instagram: ''
     });
     setEditingId(null);
+  };
+
+  const { startManagingStore } = useAuthStore();
+  const [planStore, setPlanStore] = useState<StoreData | null>(null);
+  const [managingId, setManagingId] = useState<string | null>(null);
+
+  // Abre el panel de vendedor de esta tienda con control completo (productos, pedidos, afiliados...)
+  const handleManage = async (store: StoreData) => {
+    if (!store.isActive) {
+      toast.error('La tienda está desactivada. Activala antes de gestionarla.');
+      return;
+    }
+    setManagingId(store.id);
+    const ok = await startManagingStore(store.id, store.name);
+    if (!ok) {
+      toast.error(useAuthStore.getState().error || 'No se pudo abrir la tienda');
+      setManagingId(null);
+    }
   };
 
   const handleEditClick = (store: StoreData) => {
@@ -570,6 +595,8 @@ export default function AdminStores() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="font-semibold text-blue-600" onClick={() => handleManage(store)}>Gestionar tienda</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPlanStore(store)}>Asignar plan</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setViewingStore(store)}>Ver detalles</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEditClick(store)}>Editar tienda</DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteClick(store.id)}>Eliminar tienda</DropdownMenuItem>
@@ -620,6 +647,24 @@ export default function AdminStores() {
                       <span>{store.phone || 'Sin teléfono'}</span>
                     </div>
                   </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-4 text-sm">
+                    <span className={store.planActive ? 'text-gray-600 dark:text-gray-400' : 'text-amber-600 font-medium'}>
+                      {store.planActive ? `Plan: ${store.planName || 'por comisión'}` : 'Sin plan: no vende online'}
+                    </span>
+                    <Button variant="outline" size="sm" className="h-7" onClick={() => setPlanStore(store)}>
+                      {store.planActive ? 'Cambiar plan' : 'Asignar plan'}
+                    </Button>
+                  </div>
+
+                  <Button
+                    className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleManage(store)}
+                    disabled={managingId === store.id}
+                  >
+                    {managingId === store.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LayoutDashboard className="w-4 h-4 mr-2" />}
+                    Gestionar tienda
+                  </Button>
 
                   {/* Footer */}
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
@@ -770,6 +815,15 @@ export default function AdminStores() {
           </DialogContent>
         )}
       </Dialog>
+      {planStore && (
+        <AssignPlanDialog
+          open={!!planStore}
+          onOpenChange={(open) => !open && setPlanStore(null)}
+          userId={planStore.id}
+          storeName={planStore.name}
+          onAssigned={fetchStores}
+        />
+      )}
     </div>
   );
 }
