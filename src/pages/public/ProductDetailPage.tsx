@@ -10,6 +10,7 @@ import { productsApi } from '@/lib/api';
 import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
 import { formatCurrency } from '@/lib/utils';
 import { useCartStore } from '@/stores/cartStore';
+import { SiteFooter } from '@/components/shared/SiteFooter';
 import type { Product } from '@/types';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
 import { AuctionPanel } from '@/components/auction/AuctionPanel';
@@ -312,6 +313,7 @@ export default function ProductDetailPage() {
         </section>
         {!isDemo && <div className="product-comments"><ProductComments productId={product.id} /></div>}
       </main>
+      <SiteFooter />
     </div>
   );
 }

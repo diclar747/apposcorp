@@ -10,6 +10,7 @@ import { productsApi, storesApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useAuthStore, useCartStore } from '@/stores';
 import { FavoriteButton } from '@/components/shared/FavoriteButton';
+import { SiteFooter } from '@/components/shared/SiteFooter';
 import { AuctionCardBadge } from '@/components/auction/AuctionCardBadge';
 import './MarketplacePage.css';
 
@@ -275,7 +276,7 @@ export default function MarketplacePage() {
         </div>
       </main>
 
-      <footer className="mp-footer"><div className="mp-container"><div className="mp-footer-brand"><img src="/oscorp-logo.png" alt="OSCORP Ingenio Empresarial" /><span>Tu multitienda en Paraguay</span></div><div><Link to="/">Sobre OSCORP</Link><Link to="/precios">Planes para vender</Link><Link to="/app/afiliados">Afiliados</Link><Link to="/login">Mi cuenta</Link></div><p>© {new Date().getFullYear()} OSCORP. Hecho para Paraguay.</p></div></footer>
+      <SiteFooter />
     </div>
   );
 }

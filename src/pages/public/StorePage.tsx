@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
+import { SiteFooter } from '@/components/shared/SiteFooter';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
 import { AuctionCardBadge } from '@/components/auction/AuctionCardBadge';
 import { OfferCountdown } from '@/components/offer/OfferCountdown';
@@ -796,15 +797,7 @@ export default function StorePage() {
         </Tabs>
       </div>
 
-      <footer className="store-footer" aria-label="Pie de página de la tienda">
-        <div className="store-footer-inner">
-          <div className="store-footer-brand"><span className="store-footer-logo">{store.logo ? <img src={store.logo} alt="" /> : <Store size={26} />}</span><div><strong>{store.name}</strong><p>{store.description || 'Tienda en el Marketplace OSCORP'}</p>{store.isVerified && <small><ShieldCheck size={14} /> Tienda verificada</small>}</div></div>
-          <div className="store-footer-column"><h3>Explorar</h3><button type="button" onClick={() => { setActiveStoreTab('productos'); document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>Productos</button><button type="button" onClick={() => { setActiveStoreTab('info'); document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>Información y horarios</button>{!isDemoStore && <button type="button" onClick={() => { setActiveStoreTab('opiniones'); document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>Calificaciones</button>}</div>
-          <div className="store-footer-column"><h3>Contacto</h3>{!isDemoStore && store.phone && <a href={`tel:${String(store.phone).replace(/[^+\d]/g, '')}`}><Phone size={15} /> {store.phone}</a>}{!isDemoStore && store.email && <a href={`mailto:${store.email}`}><Mail size={15} /> {store.email}</a>}{!isDemoStore && sellerWhatsApp && <a href={sellerWhatsApp} target="_blank" rel="noopener noreferrer"><MessageCircle size={15} /> WhatsApp</a>}{isDemoStore && <span>Este catálogo permite probar la tienda sin pedidos reales.</span>}</div>
-          <div className="store-footer-column"><h3>{isDemoStore ? 'Redes de OSCORP' : 'Redes de la tienda'}</h3><div className="store-footer-socials">{(isDemoStore ? 'https://www.facebook.com/share/1BfdPwqaZN/' : facebookUrl) && <a href={isDemoStore ? 'https://www.facebook.com/share/1BfdPwqaZN/' : facebookUrl!} target="_blank" rel="noopener noreferrer"><Facebook size={18} /> Facebook</a>}{(isDemoStore ? 'https://www.instagram.com/oscorp_py/' : instagramUrl) && <a href={isDemoStore ? 'https://www.instagram.com/oscorp_py/' : instagramUrl!} target="_blank" rel="noopener noreferrer"><Instagram size={18} /> Instagram</a>}</div>{!isDemoStore && !facebookUrl && !instagramUrl && <span>El vendedor todavía no agregó sus redes.</span>}{!isDemoStore && <div className="store-footer-oscorp"><small>Seguí OSCORP</small><a href="https://www.facebook.com/share/1BfdPwqaZN/" target="_blank" rel="noopener noreferrer"><Facebook size={16} /> Facebook OSCORP</a><a href="https://www.instagram.com/oscorp_py/" target="_blank" rel="noopener noreferrer"><Instagram size={16} /> Instagram OSCORP</a></div>}<Link to="/marketplace">Marketplace OSCORP <ArrowRight size={15} /></Link></div>
-        </div>
-        <div className="store-footer-bottom"><span>© {new Date().getFullYear()} {store.name} · OSCORP</span><Link to="/">Volver a OSCORP</Link></div>
-      </footer>
+      <SiteFooter />
 
       {/* Modern Cart Drawer with Vaul - Moved higher when in-app to avoid BottomNav overlap */}
       {!isPreview && canPurchase && (
