@@ -151,6 +151,9 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliateRate" DOUBLE PRECISION`,
   `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "slug" TEXT`,
+  // Entrega de productos (rediseño de tienda)
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "deliveryMode" TEXT NOT NULL DEFAULT 'arrange'`,
+  `ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "deliveryFee" DOUBLE PRECISION NOT NULL DEFAULT 0`,
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateAllProducts" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateBlocked" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateDefaultRate" DOUBLE PRECISION`,
