@@ -234,7 +234,7 @@ export default function StorePage() {
 
 
   return (
-    <div className="storefront-page min-h-screen bg-[#F5F8FE] pb-20 text-[#071A46]">
+    <div className="storefront-page flex flex-col min-h-screen bg-[#F5F8FE] text-[#071A46]">
       {/* Premium Banner Section */}
       <div className="store-banner relative h-[25vh] md:h-[35vh] overflow-hidden">
         {store.banner ? (
@@ -797,7 +797,7 @@ export default function StorePage() {
         </Tabs>
       </div>
 
-      <SiteFooter />
+      <div className="mt-auto w-full"><SiteFooter /></div>
 
       {/* Modern Cart Drawer with Vaul - Moved higher when in-app to avoid BottomNav overlap */}
       {!isPreview && canPurchase && (

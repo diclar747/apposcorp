@@ -1,4 +1,5 @@
-.product-page{min-height:100vh;background:#f5f8fd;color:#071a46;padding-bottom:66px}
+.product-shell{display:flex;flex-direction:column;min-height:100vh;background:#f5f8fd}
+.product-page{flex:1 0 auto;background:#f5f8fd;color:#071a46}
 .product-page *{box-sizing:border-box}
 .product-header{position:sticky;top:0;z-index:40;background:#fffefef2;border-bottom:1px solid #e6edf7;backdrop-filter:blur(16px)}
 .product-header-inner{max-width:1320px;margin:auto;height:74px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;gap:20px}

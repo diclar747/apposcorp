@@ -182,7 +182,8 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="product-page">
+    <div className="product-shell">
+      <div className="product-page">
       <header className="product-header">
         <div className="product-header-inner">
           <button type="button" className="product-header-back" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/tienda/${product.seller.storeSlug}`))}>
@@ -313,6 +314,7 @@ export default function ProductDetailPage() {
         </section>
         {!isDemo && <div className="product-comments"><ProductComments productId={product.id} /></div>}
       </main>
+      </div>
       <SiteFooter />
     </div>
   );
