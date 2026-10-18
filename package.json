@@ -18,7 +18,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "dev:full": "concurrently \"npm run server:dev\" \"npm run dev\"",
-    "start": "NODE_ENV=production tsx server/src/index.ts"
+    "start": "NODE_ENV=production tsx server/src/index.ts",
+    "db:seed:marketplace-demo": "tsx scripts/seed-marketplace-demo.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -130,6 +130,8 @@ export default function SellerProducts() {
     category: '',
     type: 'physical',
     visibility: 'both',
+    deliveryMode: 'arrange',
+    deliveryFee: 0,
     status: 'active',
     images: [],
     supplierId: null
@@ -240,6 +242,8 @@ export default function SellerProducts() {
         category: '',
         type: 'physical',
         visibility: 'both',
+        deliveryMode: 'arrange',
+        deliveryFee: 0,
         status: 'active',
         images: [],
         supplierId: null,
@@ -253,6 +257,10 @@ export default function SellerProducts() {
   const handleSaveProduct = async () => {
     if (!formData.name || !formData.sku || !formData.category) {
       toast.error('Por favor completa los campos obligatorios');
+      return;
+    }
+    if (formData.type === 'physical' && formData.deliveryMode === 'paid' && !(Number(formData.deliveryFee) > 0)) {
+      toast.error('Indicá el costo de delivery para este producto');
       return;
     }
 
@@ -743,6 +751,15 @@ export default function SellerProducts() {
                 </Select>
               </div>
             </div>
+
+            {formData.type === 'physical' && <div className="space-y-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+              <div><h3 className="font-semibold text-slate-900">Entrega del producto</h3><p className="text-xs text-slate-600">Esta información se muestra en tu tienda y se calcula al pagar.</p></div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2"><Label>Modalidad</Label><Select value={formData.deliveryMode || 'arrange'} onValueChange={(value) => setFormData({ ...formData, deliveryMode: value as Product['deliveryMode'], deliveryFee: value === 'paid' ? formData.deliveryFee : 0 })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="arrange">A coordinar con el vendedor</SelectItem><SelectItem value="pickup">Solo retiro en tienda</SelectItem><SelectItem value="free">Delivery gratis</SelectItem><SelectItem value="paid">Delivery con costo</SelectItem></SelectContent></Select></div>
+                {formData.deliveryMode === 'paid' && <div className="space-y-2"><Label htmlFor="product-delivery-fee">Costo de delivery (Gs.)</Label><Input id="product-delivery-fee" type="number" min="1" step="1" value={formData.deliveryFee ?? 0} onChange={(event) => setFormData({ ...formData, deliveryFee: Number(event.target.value) })} /></div>}
+              </div>
+              {formData.visibility === 'local' && <p className="text-xs text-blue-800">Solo POS / Local: este producto no se puede comprar en línea.</p>}
+            </div>}
 
             {affiliateProgram?.enabled && (() => {
               const seller = user?.sellerProfile;

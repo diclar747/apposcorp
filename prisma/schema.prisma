@@ -278,6 +278,8 @@ model Product {
   subcategory      String?
   type             ProductType        @default(physical)
   visibility       ProductVisibility  @default(both)
+  deliveryMode     String             @default("arrange") // arrange | pickup | free | paid
+  deliveryFee      Float              @default(0)
   status           String             @default("active")
   weight           Float?
   dimensions       Json?

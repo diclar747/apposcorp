@@ -46,6 +46,7 @@ export interface CheckoutInput {
   deliveryAddress?: any;
   deliveryNotes?: string;
   visitorId?: string | null;
+  expectedTotal?: unknown;
 }
 
 /**
@@ -60,6 +61,8 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
     throw new OrderError(400, 'Método de pago inválido');
   }
   const paidWithWallet = input.paymentMethod === 'wallet';
+  const deliveryType = input.deliveryType || 'delivery';
+  if (!['delivery', 'pickup'].includes(deliveryType)) throw new OrderError(400, 'Método de entrega inválido');
 
   // Unifica cantidades del mismo producto
   const qtyByProduct = new Map<string, number>();
@@ -79,6 +82,9 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
       include: { seller: { include: { user: { select: { isActive: true } }, plan: { select: { name: true, features: true } } } } },
     });
     if (products.length !== qtyByProduct.size) throw new OrderError(404, 'Uno de los productos ya no está disponible.');
+    if (deliveryType === 'delivery' && products.some((product) => product.type === 'physical') && (!String(input.deliveryAddress?.street || '').trim() || !String(input.deliveryAddress?.city || '').trim())) {
+      throw new OrderError(400, 'Indicá la dirección y la ciudad para recibir el pedido');
+    }
 
     for (const p of products) {
       if (p.status !== 'active' || p.visibility === 'local' || !p.seller.user.isActive) {
@@ -89,6 +95,10 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
         throw new OrderError(400, `La tienda "${p.seller.storeName}" no tiene habilitada la venta online.`);
       }
       if (!(p.price > 0)) throw new OrderError(400, `El producto "${p.name}" no tiene un precio válido.`);
+      if (deliveryType === 'delivery' && p.type === 'physical') {
+        if (p.deliveryMode === 'pickup') throw new OrderError(400, `"${p.name}" solo admite retiro en tienda.`);
+        if (p.deliveryMode === 'arrange') throw new OrderError(400, `Coordiná el envío de "${p.name}" con el vendedor o elegí retiro en tienda.`);
+      }
 
       // Ofertas: una oferta vencida no se vende hasta que la tienda la renueve
       if (offerExpired(p)) throw new OrderError(400, `La oferta de "${p.name}" ya terminó.`);
@@ -114,7 +124,14 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
       byStore.set(p.sellerId, list);
     }
 
-    const grandTotal = products.reduce((sum, p) => sum + p.price * qtyByProduct.get(p.id)!, 0);
+    const shippingFor = (p: typeof products[number]) => deliveryType === 'delivery' && p.type === 'physical' && p.deliveryMode === 'paid' ? p.deliveryFee : 0;
+    const grandTotal = products.reduce((sum, p) => sum + p.price * qtyByProduct.get(p.id)! + shippingFor(p), 0);
+    if (input.expectedTotal !== undefined) {
+      const expectedTotal = Number(input.expectedTotal);
+      if (!Number.isFinite(expectedTotal) || expectedTotal < 0 || Math.abs(expectedTotal - grandTotal) > 0.01) {
+        throw new OrderError(409, 'El precio o el costo de envío cambió. Quitá y volvé a agregar los productos para ver el importe actual.');
+      }
+    }
 
     let buyerWalletId: string | null = null;
     if (paidWithWallet) {
@@ -155,6 +172,8 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
       // Comisión de plataforma: igual que antes, solo para tiendas sin plan fijo
       const platformRate = seller.planId ? 0 : (seller.commissionRate ? seller.commissionRate / 100 : 0.05);
       const commissionAmount = subtotal * platformRate;
+      const shippingCost = storeProducts.reduce((sum, p) => sum + shippingFor(p), 0);
+      const orderTotal = subtotal + shippingCost;
       const orderNumber = newOrderNumber();
 
       const order = await tx.order.create({
@@ -164,15 +183,15 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
           sellerId: sellerUserId,
           subtotal,
           tax: 0,
-          shippingCost: 0,
-          total: subtotal,
-          deliveryType: input.deliveryType || 'delivery',
+          shippingCost,
+          total: orderTotal,
+          deliveryType,
           deliveryAddress: input.deliveryAddress ?? undefined,
           deliveryNotes: input.deliveryNotes || null,
           paymentMethod: input.paymentMethod as any,
           paymentStatus: paidWithWallet ? 'paid' : 'pending',
           commissionAmount,
-          sellerEarnings: subtotal - commissionAmount,
+          sellerEarnings: orderTotal - commissionAmount,
           isPosSale: false,
           checkoutGroup,
           items: { create: itemsData },
@@ -196,7 +215,7 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
       });
       newCommissions.push(...commissions);
 
-      const sellerEarnings = subtotal - commissionAmount - affiliateAmount;
+      const sellerEarnings = orderTotal - commissionAmount - affiliateAmount;
       const finalOrder = affiliateAmount > 0
         ? await tx.order.update({ where: { id: order.id }, data: { affiliateAmount, sellerEarnings }, include: { items: true } })
         : order;
@@ -207,7 +226,7 @@ export const createCheckoutOrders = async (buyerId: string, input: CheckoutInput
             walletId: buyerWalletId!,
             userId: buyerId,
             type: 'purchase',
-            amount: -subtotal,
+            amount: -orderTotal,
             description: `Compra en ${seller.storeName} - ${orderNumber}`,
             status: 'completed',
             relatedOrderId: order.id,

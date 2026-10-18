@@ -16,6 +16,7 @@ router.get('/', async (_req, res) => {
         user: { isActive: true },
       },
       include: {
+        _count: { select: { products: { where: { status: 'active' } } } },
         products: {
           where: { status: 'active' },
           select: { id: true, name: true, price: true, images: true, category: true },
@@ -61,7 +62,7 @@ router.get('/', async (_req, res) => {
       rating: s.rating,
       reviewCount: s.reviewCount,
       totalSales: s.totalSales,
-      productCount: s.products.length,
+      productCount: s._count.products,
       products: s.products,
       category: deriveCategory(s),
       socialLinks: s.socialLinks,

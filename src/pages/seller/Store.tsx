@@ -378,9 +378,9 @@ export default function SellerStore() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <h2 className="text-3xl font-bold text-gray-900">{formData.storeName || 'Nombre de Tienda'}</h2>
-                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">
+                    {user.sellerProfile?.isVerified && <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">
                       <Check className="w-3 h-3 mr-1" /> Verificada
-                    </Badge>
+                    </Badge>}
                     {formData.ruc && (
                       <Badge variant="outline" className="border-gray-200 text-gray-500 font-mono">
                         RUC: {formData.ruc}

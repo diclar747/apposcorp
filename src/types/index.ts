@@ -225,6 +225,8 @@ export interface Product {
   subcategory?: string;
   type: ProductType;
   visibility: ProductVisibility;
+  deliveryMode?: 'arrange' | 'pickup' | 'free' | 'paid';
+  deliveryFee?: number;
   status: 'active' | 'inactive' | 'out_of_stock';
   attributes?: ProductAttribute[];
   variants?: ProductVariant[];

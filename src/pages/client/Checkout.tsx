@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 const paymentMethods = [
@@ -17,28 +19,35 @@ const paymentMethods = [
 ];
 
 const deliveryMethods = [
-  { id: 'delivery', label: 'Delivery', icon: Truck, price: 0 },
-  { id: 'pickup', label: 'Retiro en tienda', icon: MapPin, price: 0 },
+  { id: 'delivery', label: 'Delivery', icon: Truck },
+  { id: 'pickup', label: 'Retiro en tienda', icon: MapPin },
 ];
 
 export default function ClientCheckout() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { items, total, clearCart } = useCartStore();
+  const hasDemoProducts = items.some((item) => item.product.tags?.includes('oscorp-demo'));
   const { wallet } = useWalletStore();
+  const needsAddress = items.some((item) => item.product.type === 'physical');
 
   const [paymentMethod, setPaymentMethod] = useState('wallet');
-  const [deliveryMethod, setDeliveryMethod] = useState('delivery');
+  const canDeliver = items.every((item) => item.product.type !== 'physical' || ['free', 'paid'].includes(item.product.deliveryMode || 'arrange'));
+  const [deliveryMethod, setDeliveryMethod] = useState(() => canDeliver ? 'delivery' : 'pickup');
+  const [deliveryStreet, setDeliveryStreet] = useState(user?.address || '');
+  const [deliveryCity, setDeliveryCity] = useState(user?.city || '');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const selectedDelivery = deliveryMethods.find(d => d.id === deliveryMethod);
-  const finalTotal = total + (selectedDelivery?.price || 0);
+  const offeredShipping = items.reduce((sum, item) => sum + (item.product.deliveryMode === 'paid' ? Number(item.product.deliveryFee || 0) : 0), 0);
+  const shippingCost = deliveryMethod === 'delivery' ? offeredShipping : 0;
+  const finalTotal = total + shippingCost;
 
   // Un pedido por tienda: el carrito puede mezclar productos de varias
   const storeGroups = useMemo(() => {
     const groups = new Map<string, { storeName: string; items: typeof items; subtotal: number }>();
     for (const item of items) {
-      const product: any = item.product;
+      const product = item.product as typeof item.product & { seller?: { id?: string; storeName?: string }; storeName?: string };
       const key = product.sellerId || product.seller?.id || 'tienda';
       const storeName = product.seller?.storeName || product.storeName || 'Tienda';
       const group = groups.get(key) || { storeName, items: [] as typeof items, subtotal: 0 };
@@ -50,6 +59,19 @@ export default function ClientCheckout() {
   }, [items]);
 
   const handleCheckout = async () => {
+    if (hasDemoProducts) {
+      toast.error('Quitá los productos de muestra antes de continuar');
+      navigate('/carrito');
+      return;
+    }
+    if (deliveryMethod === 'delivery' && !canDeliver) {
+      toast.error('Hay productos cuyo envío debe coordinarse con el vendedor. Elegí retiro en tienda.');
+      return;
+    }
+    if (deliveryMethod === 'delivery' && needsAddress && (!deliveryStreet.trim() || !deliveryCity.trim())) {
+      toast.error('Completá la dirección y la ciudad para recibir el pedido');
+      return;
+    }
     if (paymentMethod === 'wallet' && (wallet?.balance || 0) < finalTotal) {
       toast.error('Saldo insuficiente en tu wallet');
       return;
@@ -66,12 +88,13 @@ export default function ClientCheckout() {
         visitorId: getVisitorId(), // atribución de afiliados (el servidor valida los clics)
         deliveryType: deliveryMethod,
         deliveryAddress: {
-          street: user?.address || '',
+          street: deliveryStreet.trim(),
           number: '',
-          city: user?.city || '',
+          city: deliveryCity.trim(),
         },
-        deliveryNotes: '',
+        deliveryNotes: deliveryNotes.trim(),
         paymentMethod,
+        expectedTotal: finalTotal,
       };
 
       const { orders } = await ordersApi.checkout(orderData);
@@ -86,9 +109,9 @@ export default function ClientCheckout() {
         const { fetchWallet } = useWalletStore.getState();
         if (user?.id) fetchWallet(user.id);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Checkout error:', error);
-      toast.error(error.message || 'Error al procesar la compra');
+      toast.error(error instanceof Error ? error.message : 'Error al procesar la compra');
     } finally {
       setIsProcessing(false);
     }
@@ -101,6 +124,18 @@ export default function ClientCheckout() {
         <Button onClick={() => navigate('/app/tiendas')} className="mt-4">
           Ir a la tienda
         </Button>
+      </div>
+    );
+  }
+
+  if (hasDemoProducts) {
+    return (
+      <div className="mx-auto mt-8 max-w-md rounded-3xl border border-blue-200 bg-blue-50 p-8 text-center">
+        <h1 className="text-2xl font-black text-blue-950">Hay productos de muestra en tu carrito</h1>
+        <p className="mt-3 text-sm leading-relaxed text-blue-800">
+          El catálogo demo sirve para probar el carrito. Quitá esos productos para comprar los productos reales.
+        </p>
+        <Button className="mt-6 w-full" onClick={() => navigate('/carrito')}>Revisar carrito</Button>
       </div>
     );
   }
@@ -162,18 +197,20 @@ export default function ClientCheckout() {
               <div className="space-y-2">
                 {deliveryMethods.map((method) => (
                   <div key={method.id} className="flex items-center space-x-3 p-3 border border-border rounded-lg">
-                    <RadioGroupItem value={method.id} id={method.id} />
+                    <RadioGroupItem value={method.id} id={method.id} disabled={method.id === 'delivery' && !canDeliver} />
                     <Label htmlFor={method.id} className="flex-1 flex items-center gap-3 cursor-pointer">
                       <method.icon className="w-5 h-5 text-muted-foreground" />
                       <div className="flex-1">
                         <p className="font-medium text-foreground">{method.label}</p>
                       </div>
-                      <span className="text-green-600 dark:text-green-400 font-medium">Gratis</span>
+                      <span className="font-medium text-foreground">{method.id === 'pickup' ? 'Sin costo' : !canDeliver ? 'A coordinar' : offeredShipping > 0 ? formatCurrency(offeredShipping) : 'Gratis'}</span>
                     </Label>
                   </div>
                 ))}
               </div>
             </RadioGroup>
+            {!canDeliver && <p className="mt-3 text-xs text-muted-foreground">Uno o más vendedores todavía no fijaron un costo de envío. Podés retirar en tienda o contactarles antes de comprar.</p>}
+            {deliveryMethod === 'delivery' && needsAddress && <div className="mt-5 grid gap-3 border-t border-border pt-4"><h4 className="font-semibold text-foreground">Dirección de entrega</h4><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label htmlFor="delivery-street">Calle y número *</Label><Input id="delivery-street" value={deliveryStreet} onChange={(event) => setDeliveryStreet(event.target.value)} placeholder="Dirección completa" /></div><div className="space-y-1"><Label htmlFor="delivery-city">Ciudad *</Label><Input id="delivery-city" value={deliveryCity} onChange={(event) => setDeliveryCity(event.target.value)} placeholder="Ciudad" /></div></div><div className="space-y-1"><Label htmlFor="delivery-notes">Indicaciones para el repartidor</Label><Textarea id="delivery-notes" value={deliveryNotes} onChange={(event) => setDeliveryNotes(event.target.value)} placeholder="Referencia o indicaciones opcionales" rows={2} /></div></div>}
           </CardContent>
         </Card>
       </div>
@@ -219,6 +256,7 @@ export default function ClientCheckout() {
             <span className="text-lg font-bold text-foreground">Total a pagar</span>
             <span className="text-2xl font-bold text-foreground">{formatCurrency(finalTotal)}</span>
           </div>
+          <p className="mb-3 text-right text-xs text-muted-foreground">Envío: {shippingCost ? formatCurrency(shippingCost) : 'sin costo'}</p>
           <Button
             className="w-full"
             onClick={handleCheckout}

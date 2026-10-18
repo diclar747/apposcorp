@@ -240,6 +240,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       images,
       type,
       visibility,
+      deliveryMode,
+      deliveryFee,
       status,
       variants,
       attributes,
@@ -290,6 +292,13 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     }
 
     // Prepare Prisma data object
+    if (deliveryMode !== undefined && !['arrange', 'pickup', 'free', 'paid'].includes(deliveryMode)) {
+      return res.status(400).json({ error: 'Modalidad de entrega inválida' });
+    }
+    const parsedDeliveryFee = Number(deliveryFee ?? 0);
+    if (!Number.isFinite(parsedDeliveryFee) || parsedDeliveryFee < 0 || (deliveryMode === 'paid' && parsedDeliveryFee <= 0)) {
+      return res.status(400).json({ error: 'El costo de delivery debe ser mayor a cero' });
+    }
     const productData: any = {
       sellerId,
       name,
@@ -302,6 +311,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       category,
       type,
       visibility,
+      deliveryMode: type === 'physical' ? (deliveryMode || 'arrange') : 'free',
+      deliveryFee: type === 'physical' && deliveryMode === 'paid' ? parsedDeliveryFee : 0,
       status: status || 'active',
       images: Array.isArray(images) ? images : [],
       supplierId: supplierId || null,
@@ -372,7 +383,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 
     const {
       name, description, price, cost, profitPercentage, comparePrice,
-      stock, sku, category, subcategory, images, type, visibility,
+      stock, sku, category, subcategory, images, type, visibility, deliveryMode, deliveryFee,
       status, weight, dimensions, tags, isFeatured, supplierId,
       affiliateEnabled, affiliateRate, affiliateBlocked,
     } = req.body;
@@ -391,6 +402,19 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (images !== undefined) updateData.images = Array.isArray(images) ? images : [];
     if (type !== undefined) updateData.type = type;
     if (visibility !== undefined) updateData.visibility = visibility;
+    if (deliveryMode !== undefined) {
+      if (!['arrange', 'pickup', 'free', 'paid'].includes(deliveryMode)) return res.status(400).json({ error: 'Modalidad de entrega inválida' });
+      updateData.deliveryMode = deliveryMode;
+      if (deliveryMode !== 'paid') updateData.deliveryFee = 0;
+    }
+    if (deliveryFee !== undefined) {
+      const parsed = Number(deliveryFee);
+      if (!Number.isFinite(parsed) || parsed < 0) return res.status(400).json({ error: 'Costo de delivery inválido' });
+      updateData.deliveryFee = parsed;
+    }
+    if ((updateData.deliveryMode ?? product.deliveryMode) === 'paid' && (updateData.deliveryFee ?? product.deliveryFee) <= 0) {
+      return res.status(400).json({ error: 'Indicá un costo de delivery mayor a cero' });
+    }
     if (status !== undefined) updateData.status = status;
     if (weight !== undefined) updateData.weight = weight;
     if (dimensions !== undefined) updateData.dimensions = dimensions;

@@ -15,6 +15,7 @@ import IngenioLayout from '@/layouts/IngenioLayout';
 
 // Public Pages
 import LandingPage from '@/pages/public/LandingPage';
+import MarketplacePage from '@/pages/public/MarketplacePage';
 import LoginPage from '@/pages/public/LoginPage';
 import RegisterPage from '@/pages/public/RegisterPage';
 import StorePage from '@/pages/public/StorePage';
@@ -152,6 +153,9 @@ function App() {
 
 function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boolean, isAdmin: boolean }) {
   const location = useLocation();
+  useEffect(() => {
+    if (!location.hash) window.scrollTo(0, 0);
+  }, [location.pathname, location.hash]);
   const isLoginPage = location.pathname === '/login';
   const isRegisterPage = location.pathname === '/register';
 
@@ -169,6 +173,9 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/institucional" element={<LandingPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/carrito" element={<ClientCart />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/tienda/:slug" element={<StorePage />} />
