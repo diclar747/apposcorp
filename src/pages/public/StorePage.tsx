@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Store, MapPin, Phone, Clock, Star, ShoppingBag,
+  Store, MapPin, Clock, Star, ShoppingBag,
   MessageCircle, Search, Filter, X, Plus, Minus,
-  ChevronRight, ArrowLeft, Share2, ShieldCheck,
-  CheckCircle2, Info, StarHalf, MessageSquare,
-  Package, LayoutGrid, List, Loader2
+  ChevronRight, ArrowLeft, ArrowRight, Share2, ShieldCheck,
+  CheckCircle2, Info, MessageSquare,
+  Package, LayoutGrid, List, Loader2, Truck, Facebook, Instagram, Mail, Phone, ExternalLink
 } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { storesApi } from '@/lib/api';
@@ -27,18 +27,40 @@ import { AuctionCardBadge } from '@/components/auction/AuctionCardBadge';
 import { OfferCountdown } from '@/components/offer/OfferCountdown';
 import { FavoriteButton } from '@/components/shared/FavoriteButton';
 import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
+import './StorePage.css';
+
+const socialUrl = (value: unknown, network: 'facebook' | 'instagram') => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw.startsWith('www.') || raw.startsWith(`${network}.com`) ? raw : `${network}.com/${raw.replace(/^@/, '')}`}`;
+  try {
+    const parsed = new URL(url);
+    return ['https:', 'http:'].includes(parsed.protocol) && (parsed.hostname === `${network}.com` || parsed.hostname === `www.${network}.com`) ? parsed.href : null;
+  } catch { return null; }
+};
+
+const whatsappUrl = (value: unknown, storeName: string) => {
+  let number = String(value || '').replace(/\D/g, '');
+  if (number.startsWith('0')) number = `595${number.slice(1)}`;
+  else if (number.length === 9 && !number.startsWith('595')) number = `595${number}`;
+  return number ? `https://wa.me/${number}?text=${encodeURIComponent(`Hola ${storeName}, encontré tu tienda en OSCORP y quisiera consultar.`)}` : null;
+};
+
+const deliveryLabel = (product: any) => product.type !== 'physical' ? 'Entrega digital o servicio' : product.deliveryMode === 'free' ? 'Delivery gratis' : product.deliveryMode === 'paid' ? `Delivery: ${formatCurrency(Number(product.deliveryFee || 0))}` : product.deliveryMode === 'pickup' ? 'Retiro en tienda' : 'Envío a coordinar';
 
 export default function StorePage() {
   const { slug } = useParams<{ slug: string }>();
+  const isDemoStore = slug === 'catalogo-demo-oscorp';
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const isInApp = location.pathname.startsWith('/app');
   const from = searchParams.get('from');
   const isPreview = from === 'vendedor';
-  const backUrl = from === 'vendedor' ? '/vendedor' : (isInApp ? '/app/tiendas' : '/');
+  const backUrl = from === 'vendedor' ? '/vendedor' : (isDemoStore ? '/marketplace' : (isInApp ? '/app/tiendas' : '/'));
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activeStoreTab, setActiveStoreTab] = useState('productos');
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -68,8 +90,10 @@ export default function StorePage() {
         }
 
         // Fetch real reviews
-        const reviewsData = await reviewsApi.getByStore(data.id);
-        setReviews(reviewsData);
+        if (!isDemoStore) {
+          const reviewsData = await reviewsApi.getByStore(data.id);
+          setReviews(reviewsData);
+        }
       } catch (error) {
         console.error('Error fetching store:', error);
       } finally {
@@ -77,15 +101,15 @@ export default function StorePage() {
       }
     };
     fetchStore();
-  }, [slug]);
+  }, [slug, isDemoStore]);
 
   // Visita desde un enlace de afiliado (?ref=CODIGO)
   useEffect(() => {
-    if (slug && !isPreview) {
+    if (slug && !isDemoStore && !isPreview) {
       trackReferral({ storeSlug: slug }, location.search);
       trackStoreVisit(slug);
     }
-  }, [slug, location.search, isPreview]);
+  }, [slug, location.search, isPreview, isDemoStore]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/tienda/${slug}`;
@@ -131,9 +155,9 @@ export default function StorePage() {
   };
 
   const canPurchase = useMemo(() => {
-    if (isPreview) return false;
+    if (isPreview || isDemoStore) return false;
     return !!store?.onlineSales;
-  }, [store, isPreview]);
+  }, [store, isPreview, isDemoStore]);
 
   const categories = useMemo((): string[] => {
     if (!store?.products) return [];
@@ -149,17 +173,17 @@ export default function StorePage() {
       const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'todos' || p.category === selectedCategory;
-      const isVisible = p.visibility !== 'local';
+      const isVisible = p.visibility !== 'local' || (isDemoStore && p.tags?.includes('oscorp-demo'));
       
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
 
       return matchesSearch && matchesCategory && isVisible && matchesPrice;
-    });
-  }, [store, searchQuery, selectedCategory, priceRange]);
+    }).sort((a: any, b: any) => isDemoStore ? (a.sku || '').localeCompare(b.sku || '') : 0);
+  }, [store, searchQuery, selectedCategory, priceRange, isDemoStore]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 ">
         <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
       </div>
     );
@@ -167,19 +191,19 @@ export default function StorePage() {
 
   if (!store) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 ">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center p-8 bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-md border border-gray-100 dark:border-slate-800"
+          className="text-center p-8 bg-white  rounded-3xl shadow-xl max-w-md border border-gray-100 "
         >
-          <div className="w-20 h-20 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-gray-100  rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Store className="w-10 h-10 text-gray-400" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600   bg-clip-text text-transparent mb-2">
             Tienda no encontrada
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mb-8">
+          <p className="text-gray-500  mb-8">
             Lo sentimos, la tienda que buscas no está disponible en este momento.
           </p>
           <Link to="/app/tiendas">
@@ -193,16 +217,25 @@ export default function StorePage() {
     );
   }
 
-  const open = isStoreOpen(store.businessHours);
+  const hasHours = !!store.businessHours && Object.values(store.businessHours).some((value: any) => value && typeof value === 'object' && 'isOpen' in value);
+  const open = hasHours ? isStoreOpen(store.businessHours) : false;
+  const reviewCount = reviews.length || Number(store.reviewCount || 0);
   const avgRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
-    : "5.0";
+    : Number(store.rating) > 0 && reviewCount > 0 ? Number(store.rating).toFixed(1) : null;
+  const facebookUrl = socialUrl(store.socialLinks?.facebook, 'facebook');
+  const instagramUrl = socialUrl(store.socialLinks?.instagram, 'instagram');
+  const sellerWhatsApp = whatsappUrl(store.whatsappNumber || store.phone, store.name);
+  const deliveryProducts = (store.products || []).filter((product: any) => product.type === 'physical' && product.visibility !== 'local');
+  const freeDeliveryCount = deliveryProducts.filter((product: any) => product.deliveryMode === 'free').length;
+  const paidDeliveryCount = deliveryProducts.filter((product: any) => product.deliveryMode === 'paid').length;
+  const selectedProductIsDemo = !!selectedProduct?.tags?.includes('oscorp-demo');
 
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 pb-20">
+    <div className="storefront-page min-h-screen bg-[#F5F8FE] pb-20 text-[#071A46]">
       {/* Premium Banner Section */}
-      <div className="relative h-[25vh] md:h-[35vh] overflow-hidden">
+      <div className="store-banner relative h-[25vh] md:h-[35vh] overflow-hidden">
         {store.banner ? (
           <motion.img
             initial={{ scale: 1.1 }}
@@ -212,16 +245,7 @@ export default function StorePage() {
             alt={store.name}
             className="w-full h-full object-cover"
           />
-        ) : (
-          <div className="w-full h-full relative">
-            <img
-              src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&q=80"
-              alt="Agroferia Banner"
-              className="w-full h-full object-cover opacity-60"
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/40 via-indigo-600/40 to-violet-600/40 mix-blend-multiply" />
-          </div>
-        )}
+        ) : <img src="/images/marketplace-modern/hero-screen.png" alt="" className="h-full w-full object-cover object-center" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
         {/* Navigation Overlays */}
@@ -248,45 +272,46 @@ export default function StorePage() {
         )}
 
         {/* Floating Store Header Info */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
+        <div className="store-brand-header absolute bottom-0 left-0 right-0 p-6 md:p-12">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
             <motion.div
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-white dark:bg-slate-900 p-1.5 shadow-2xl relative z-10 overflow-hidden shrink-0"
+              className="store-logo w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-white  p-1.5 shadow-2xl relative z-10 overflow-hidden shrink-0"
             >
               {store.logo ? (
                 <img src={store.logo} alt={store.name} className="w-full h-full rounded-[2.2rem] object-cover" />
               ) : (
-                <div className="w-full h-full rounded-[2.2rem] bg-gray-50 flex items-center justify-center">
-                  <Store className="w-16 h-16 text-gray-300" />
+                <div className="store-logo-fallback w-full h-full rounded-[2.2rem] flex items-center justify-center" aria-hidden="true">
+                  {String(store.name || 'T').slice(0, 1).toUpperCase()}
                 </div>
               )}
             </motion.div>
             <div className="flex-1 pb-2 flex flex-col items-center md:items-start">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
-                <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg tracking-tight">
+                <h1 className="store-title text-2xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg tracking-tight">
                   {store.name}
                 </h1>
                 {store.isVerified && (
                   <CheckCircle2 className="w-6 h-6 text-blue-400 fill-white" />
                 )}
-                <Badge className={cn(
+                {isDemoStore ? <Badge className="border border-blue-300/50 bg-blue-500/25 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-100">Catálogo de muestra</Badge> : hasHours ? <Badge className={cn(
                   "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
                   open ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" : "bg-red-500/20 text-red-400 border border-red-500/50"
                 )}>
                   {open ? 'Abierto Ahora' : 'Cerrado'}
-                </Badge>
+                </Badge> : <Badge className="border border-white/30 bg-white/10 text-white">Consultar horario</Badge>}
               </div>
               <p className="text-gray-300 text-lg max-w-2xl font-light mb-4 line-clamp-1">
                 {store.description}
               </p>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 text-sm text-gray-200 font-medium">
-                <div className="flex items-center gap-1.5">
+                {!isDemoStore && avgRating && <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-white text-base font-bold">{avgRating}</span>
-                  <span className="opacity-70">({reviews.length})</span>
-                </div>
+                  <span className="opacity-70">({reviewCount})</span>
+                </div>}
+                {!isDemoStore && !avgRating && <span className="text-sm text-white/85">Aún sin calificaciones</span>}
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-blue-400" />
                   <span className="line-clamp-1">{store.address}</span>
@@ -301,12 +326,27 @@ export default function StorePage() {
         </div>
       </div>
 
-      {store.affiliate?.participates && !isPreview && (
+      {isDemoStore && <div className="max-w-7xl mx-auto px-6 mt-8">
+        <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5 text-sm font-medium leading-relaxed text-blue-950   ">
+          Las fotos y los precios son ilustrativos. Podés probar el carrito con estos productos; no generan pedidos ni cobros.
+        </div>
+      </div>}
+
+      <section className="store-info-overview max-w-7xl mx-auto px-6 mt-7" aria-label="Información de la tienda">
+        <div className="store-info-overview-grid">
+          <div><span className="store-info-icon"><Star size={20} /></span><span><strong>{isDemoStore ? 'Catálogo de muestra' : avgRating ? `${avgRating} de 5` : 'Sin calificaciones aún'}</strong><small>{isDemoStore ? 'Prueba sin compras reales' : reviewCount ? `${reviewCount} ${reviewCount === 1 ? 'opinión' : 'opiniones'} de clientes` : 'Sé el primero en opinar'}</small></span></div>
+          <div><span className="store-info-icon"><Clock size={20} /></span><span><strong>{isDemoStore ? 'Solo demostración' : hasHours ? open ? 'Abierto ahora' : 'Cerrado ahora' : 'Horario por confirmar'}</strong><small>{isDemoStore ? 'Sin horario comercial' : hasHours ? 'Ver atención por día en Información' : 'Consultá con la tienda'}</small></span></div>
+          <div><span className="store-info-icon"><Truck size={20} /></span><span><strong>{isDemoStore ? 'Envíos de muestra' : freeDeliveryCount ? `${freeDeliveryCount} con envío gratis` : paidDeliveryCount ? 'Delivery disponible' : 'Entrega a coordinar'}</strong><small>{isDemoStore ? 'No se realizan pedidos' : paidDeliveryCount ? 'Costo visible en cada producto' : 'También podés consultar por retiro'}</small></span></div>
+          <div className="store-overview-contact"><span className="store-info-icon"><MessageCircle size={20} /></span><span><strong>{isDemoStore ? 'Ayuda de OSCORP' : 'Contactar vendedor'}</strong><small>{isDemoStore ? 'Catálogo de demostración' : sellerWhatsApp ? 'Consultas por WhatsApp' : store.email || 'Datos en Información'}</small></span>{!isDemoStore && sellerWhatsApp && <a href={sellerWhatsApp} target="_blank" rel="noopener noreferrer" aria-label={`Escribir a ${store.name} por WhatsApp`}><ChevronRight size={18} /></a>}</div>
+        </div>
+      </section>
+
+      {store.affiliate?.participates && !isPreview && !isDemoStore && (
         <div className="max-w-7xl mx-auto px-6 mt-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/70 dark:bg-violet-950/20 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-violet-200  bg-violet-50/70  p-5">
             <div>
-              <p className="font-black text-violet-900 dark:text-violet-200">Esta tienda paga comisión a sus afiliados</p>
-              <p className="text-sm text-violet-800/80 dark:text-violet-300/80">
+              <p className="font-black text-violet-900 ">Esta tienda paga comisión a sus afiliados</p>
+              <p className="text-sm text-violet-800/80 ">
                 {store.affiliate.maxRate
                   ? `Recomendá sus productos y ganá hasta ${store.affiliate.maxRate}% por cada venta.`
                   : 'Recomendá sus productos y ganá una comisión por cada venta.'}
@@ -316,37 +356,38 @@ export default function StorePage() {
               kind="store"
               storeSlug={store.slug}
               title={store.name}
-              className="shrink-0 h-11 rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:border-violet-800 dark:hover:bg-violet-900/40"
+              className="shrink-0 h-11 rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100   "
             />
           </div>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 mt-12">
-        <Tabs defaultValue="productos" className="w-full">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-12">
-            <TabsList className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-1 rounded-2xl border border-white/20 w-full lg:w-auto overflow-x-auto no-scrollbar justify-start sm:justify-center">
-              <TabsTrigger value="productos" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
+      <div id="store-tabs" className="store-tabs-wrap max-w-7xl mx-auto px-6 mt-12">
+        <Tabs value={activeStoreTab} onValueChange={setActiveStoreTab} className="w-full">
+          <div className="store-toolbar flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-12">
+            <TabsList className="bg-white/50  backdrop-blur-xl p-1 rounded-2xl border border-white/20 w-full lg:w-auto overflow-x-auto no-scrollbar justify-start sm:justify-center">
+              <TabsTrigger value="productos" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white  data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
                 <LayoutGrid className="w-4 h-4 mr-2" />
                 Catálogo
               </TabsTrigger>
-              <TabsTrigger value="info" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
+              <TabsTrigger value="info" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white  data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
                 <Info className="w-4 h-4 mr-2" />
                 Info
               </TabsTrigger>
-              <TabsTrigger value="opiniones" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg font-bold flex-1 sm:flex-none">
+              {!isDemoStore && <TabsTrigger value="opiniones" className="rounded-xl px-4 sm:px-8 py-2.5 data-[state=active]:bg-white  font-bold flex-1 sm:flex-none">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Opiniones
-              </TabsTrigger>
+              </TabsTrigger>}
             </TabsList>
 
             <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto relative">
               {/* Search Bar */}
-              <div className="relative flex-1 lg:w-80 group">
+              <div className="store-search relative flex-1 lg:w-80 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 <Input
+                  aria-label="Buscar en la tienda"
                   placeholder="Buscar en la tienda..."
-                  className="pl-11 h-12 bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="pl-11 h-12 bg-white  border-gray-100  rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -354,18 +395,22 @@ export default function StorePage() {
 
               <Button 
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
+                aria-label="Filtrar por precio"
+                aria-expanded={isFilterOpen}
                 variant="outline" 
                 className={cn(
-                  "h-12 w-12 rounded-2xl p-0 border-gray-100 dark:border-slate-800 transition-colors",
+                  "h-12 w-12 rounded-2xl p-0 border-gray-100  transition-colors",
                   isFilterOpen && "bg-blue-600 text-white border-blue-600"
                 )}
               >
                 <Filter className="w-5 h-5" />
               </Button>
 
-              <div className="bg-white dark:bg-slate-900 p-1 rounded-2xl border border-gray-100 dark:border-slate-800 flex gap-1 shadow-sm h-12">
+              <div className="bg-white  p-1 rounded-2xl border border-gray-100  flex gap-1 shadow-sm h-12">
                 <Button
                   onClick={() => setViewMode('grid')}
+                  aria-label="Vista en cuadrícula"
+                  aria-pressed={viewMode === 'grid'}
                   variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                   size="icon"
                   className="rounded-xl w-10 h-10"
@@ -374,6 +419,8 @@ export default function StorePage() {
                 </Button>
                 <Button
                   onClick={() => setViewMode('list')}
+                  aria-label="Vista en lista"
+                  aria-pressed={viewMode === 'list'}
                   variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                   size="icon"
                   className="rounded-xl w-10 h-10"
@@ -388,7 +435,7 @@ export default function StorePage() {
                     initial={{ opacity: 0, y: 15, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                    className="absolute top-full right-0 mt-4 w-80 p-7 bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.2)] border border-gray-100 dark:border-slate-800 z-50"
+                    className="absolute top-full right-0 mt-4 w-80 p-7 bg-white  rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.2)] border border-gray-100  z-50"
                   >
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
@@ -429,7 +476,7 @@ export default function StorePage() {
                         </Button>
                         <Button 
                           size="sm"
-                          className="rounded-xl bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 dark:shadow-none"
+                          className="rounded-xl bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 "
                           onClick={() => {
                             setPriceRange(tempPriceRange);
                             setIsFilterOpen(false);
@@ -446,12 +493,12 @@ export default function StorePage() {
           </div>
 
           <TabsContent value="productos" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+            <div className="store-catalog-layout grid grid-cols-1 lg:grid-cols-5 gap-10">
               {/* Sidebar Filters */}
-              <div className="lg:col-span-1 space-y-8">
+              <div className="store-sidebar lg:col-span-1 space-y-8">
                 <div>
                   <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Categorías</h3>
-                  <div className="space-y-1">
+                  <div className="store-category-list space-y-1">
                     {categories.map((cat) => (
                       <button
                         key={cat}
@@ -460,7 +507,7 @@ export default function StorePage() {
                           "w-full text-left px-4 py-3 rounded-xl transition-all font-bold text-sm capitalize",
                           selectedCategory === cat
                             ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-                            : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-900"
+                            : "text-gray-500 hover:bg-gray-100  "
                         )}
                       >
                         {cat}
@@ -469,20 +516,23 @@ export default function StorePage() {
                   </div>
                 </div>
 
-                <div className="p-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl shadow-indigo-100 dark:shadow-none">
+                <div className="store-trust-card p-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl shadow-indigo-100 ">
                   <ShieldCheck className="w-10 h-10 mb-4 opacity-80" />
-                  <h4 className="font-black text-xl mb-2 leading-tight">Compra con Confianza</h4>
+                  <h4 className="font-black text-xl mb-2 leading-tight">{isDemoStore ? 'Catálogo de muestra' : 'Compra con Confianza'}</h4>
                   <p className="text-white/80 text-sm leading-relaxed mb-4 font-medium">
-                    Todos tus pagos están protegidos por el sistema de seguridad de Oscorp.
+                    {isDemoStore ? 'Explorá los productos y probá el carrito sin realizar pagos ni pedidos.' : 'Todos tus pagos están protegidos por el sistema de seguridad de Oscorp.'}
                   </p>
-                  <Button variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white hover:text-indigo-600 border-0 backdrop-blur-md">
+                  {!isDemoStore && <Button variant="outline" onClick={() => {
+                    setActiveStoreTab('info');
+                    document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }} className="w-full bg-white/10 border-white/20 text-white hover:bg-white hover:text-indigo-600 border-0 backdrop-blur-md">
                     Saber más
-                  </Button>
+                  </Button>}
                 </div>
               </div>
 
               {/* Product Grid */}
-              <div className="lg:col-span-4">
+              <div className="store-products lg:col-span-4">
                 <AnimatePresence mode="popLayout">
                   {filteredProducts.length > 0 ? (
                     <motion.div
@@ -517,10 +567,10 @@ export default function StorePage() {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="py-20 text-center bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-dashed border-gray-100 dark:border-slate-800"
+                      className="py-20 text-center bg-white  rounded-[3rem] border-2 border-dashed border-gray-100 "
                     >
                       <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">Sin resultados</h3>
+                      <h3 className="text-xl font-bold text-gray-900 ">Sin resultados</h3>
                       <p className="text-gray-500">Prueba con otra búsqueda o categoría.</p>
                       <Button
                         variant="link"
@@ -545,51 +595,66 @@ export default function StorePage() {
           <TabsContent value="info">
             <div className="grid md:grid-cols-3 gap-8">
               <div className="md:col-span-2 space-y-8">
-                <section className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm">
+                <section className="bg-white  p-8 rounded-[2.5rem] border border-gray-100  shadow-sm">
                   <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
                     <Store className="w-6 h-6 text-blue-600" />
                     Sobre nosotros
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed font-light">
+                  <p className="text-gray-600  text-lg leading-relaxed font-light">
                     {store.description}
                   </p>
+                  {!isDemoStore && <div className="store-social-links mt-6">
+                    {facebookUrl && <a href={facebookUrl} target="_blank" rel="noopener noreferrer"><Facebook size={18} /> Facebook de la tienda <ExternalLink size={14} /></a>}
+                    {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer"><Instagram size={18} /> Instagram de la tienda <ExternalLink size={14} /></a>}
+                    {sellerWhatsApp && <a href={sellerWhatsApp} target="_blank" rel="noopener noreferrer"><MessageCircle size={18} /> WhatsApp del vendedor <ExternalLink size={14} /></a>}
+                  </div>}
                 </section>
 
-                <section className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm">
+                {!isDemoStore && <section className="store-delivery-panel">
+                  <h3><Truck size={23} /> Entregas y retiros</h3>
+                  <p>La modalidad y el costo se muestran en cada producto. En el pago vas a ver el total antes de confirmar.</p>
+                  <div>{freeDeliveryCount > 0 && <span>{freeDeliveryCount} con delivery gratis</span>}{paidDeliveryCount > 0 && <span>{paidDeliveryCount} con delivery de costo fijo</span>}{deliveryProducts.filter((product: any) => product.deliveryMode === 'pickup').length > 0 && <span>{deliveryProducts.filter((product: any) => product.deliveryMode === 'pickup').length} solo para retiro</span>}{freeDeliveryCount + paidDeliveryCount === 0 && <span>Entrega a coordinar con el vendedor</span>}</div>
+                  <small>Los productos sin tarifa publicada requieren consultar al vendedor antes de pedir delivery.</small>
+                </section>}
+
+                {!isDemoStore && <section className="bg-white  p-8 rounded-[2.5rem] border border-gray-100  shadow-sm">
                   <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
                     <MapPin className="w-6 h-6 text-red-500" />
                     Ubicación y Contacto
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                      <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                      <div className="p-4 bg-gray-50  rounded-2xl">
                         <p className="text-xs font-black text-gray-400 uppercase mb-1">Dirección Física</p>
-                        <p className="font-bold text-gray-900 dark:text-white">{store.address}</p>
+                        <p className="font-bold text-gray-900 ">{store.address}</p>
                       </div>
-                      <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                      <div className="p-4 bg-gray-50  rounded-2xl">
                         <p className="text-xs font-black text-gray-400 uppercase mb-1">WhatsApp / Celular</p>
-                        <p className="font-bold text-gray-900 dark:text-white">{store.phone}</p>
+                        <p className="font-bold text-gray-900 ">{store.phone}</p>
                       </div>
-                      <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                      <div className="p-4 bg-gray-50  rounded-2xl">
                         <p className="text-xs font-black text-gray-400 uppercase mb-1">Correo Electrónico</p>
-                        <p className="font-bold text-gray-900 dark:text-white">{store.email}</p>
+                        <p className="font-bold text-gray-900 ">{store.email}</p>
                       </div>
                     </div>
                     {typeof store.latitude === 'number' && typeof store.longitude === 'number' ? (
                       <StoreLocationMap latitude={store.latitude} longitude={store.longitude} height="256px" />
                     ) : (
-                      <div className="h-64 bg-gray-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center relative overflow-hidden group">
+                      <div className="h-64 bg-gray-100  rounded-3xl flex items-center justify-center relative overflow-hidden group">
                         <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
                         <MapPin className="w-12 h-12 text-gray-300 group-hover:text-blue-500 transition-all duration-500 transform group-hover:scale-110" />
                         <span className="absolute bottom-4 text-xs font-black text-gray-400">UBICACIÓN NO DISPONIBLE</span>
                       </div>
                     )}
                   </div>
-                </section>
+                </section>}
               </div>
 
               <div className="space-y-8">
-                <section className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm">
+                {isDemoStore ? <section className="rounded-[2.5rem] border border-blue-200 bg-blue-50 p-8 text-blue-950   ">
+                  <h3 className="mb-3 text-xl font-black">Tienda de muestra</h3>
+                  <p className="text-sm leading-relaxed">Los datos de contacto, las compras y las reseñas no están habilitados en este catálogo de demostración.</p>
+                </section> : <><section className="bg-white  p-8 rounded-[2.5rem] border border-gray-100  shadow-sm">
                   <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
                     <Clock className="w-6 h-6 text-violet-600" />
                     Horarios
@@ -603,19 +668,12 @@ export default function StorePage() {
                       };
                       
                       // Use stored hours or a sensible default if missing
-                      const hoursData = store.businessHours || {
-                        monday: { isOpen: true, open: '08:00', close: '18:00' },
-                        tuesday: { isOpen: true, open: '08:00', close: '18:00' },
-                        wednesday: { isOpen: true, open: '08:00', close: '18:00' },
-                        thursday: { isOpen: true, open: '08:00', close: '18:00' },
-                        friday: { isOpen: true, open: '08:00', close: '18:00' },
-                        saturday: { isOpen: true, open: '08:00', close: '13:00' },
-                        sunday: { isOpen: false, open: '00:00', close: '00:00' },
-                      };
+                      const hoursData = store.businessHours || {};
 
                       const todayIndex = new Date().getDay(); // 0 is Sunday
                       const todayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][todayIndex];
 
+                      if (!hasHours) return <p key="no-hours" className="text-sm text-slate-600">El vendedor todavía no publicó sus horarios. Consultá antes de ir.</p>;
                       return days.map((day) => {
                         const hours = hoursData[day];
                         const isToday = day === todayName;
@@ -625,17 +683,17 @@ export default function StorePage() {
                             key={day} 
                             className={cn(
                               "flex justify-between items-center py-2 px-3 rounded-xl transition-all",
-                              isToday ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800" : "border-b border-gray-50 dark:border-slate-800 last:border-0"
+                              isToday ? "bg-blue-50  border border-blue-100 " : "border-b border-gray-50  last:border-0"
                             )}
                           >
                             <div className="flex items-center gap-2">
-                              <span className={cn("text-sm", isToday ? "text-blue-700 dark:text-blue-400 font-black" : "text-gray-500 font-bold")}>
+                              <span className={cn("text-sm", isToday ? "text-blue-700  font-black" : "text-gray-500 font-bold")}>
                                 {dayLabels[day]}
                               </span>
                               {isToday && <Badge className="bg-blue-600 text-[8px] h-4 px-1.5 uppercase tracking-tighter">Hoy</Badge>}
                             </div>
                             {hours?.isOpen ? (
-                              <span className={cn("text-sm font-black", isToday ? "text-blue-900 dark:text-white" : "text-gray-900 dark:text-gray-300")}>
+                              <span className={cn("text-sm font-black", isToday ? "text-blue-900 " : "text-gray-900 ")}>
                                 {hours.open} - {hours.close}
                               </span>
                             ) : (
@@ -648,18 +706,15 @@ export default function StorePage() {
                   </div>
                 </section>
 
-                <Button 
+                {sellerWhatsApp && <Button
                   onClick={() => {
-                    const number = store.whatsappNumber || store.phone;
-                    const cleanNumber = number.replace(/\D/g, '');
-                    const message = `Hola ${store.name}, vengo de tu tienda en Oscorp y me gustaría realizar una consulta.`;
-                    window.open(`https://wa.me/${cleanNumber.startsWith('595') ? cleanNumber : '595' + cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                    window.open(sellerWhatsApp, '_blank', 'noopener,noreferrer');
                   }}
-                  className="w-full bg-green-600 hover:bg-green-700 h-16 rounded-3xl text-lg font-black shadow-xl shadow-green-100 dark:shadow-none transition-all hover:scale-[1.02]"
+                  className="w-full bg-green-600 hover:bg-green-700 h-16 rounded-3xl text-lg font-black shadow-xl shadow-green-100  transition-all hover:scale-[1.02]"
                 >
                   <MessageCircle className="w-6 h-6 mr-3" />
                   Escribir por WhatsApp
-                </Button>
+                </Button>}</>}
               </div>
             </div>
           </TabsContent>
@@ -667,17 +722,14 @@ export default function StorePage() {
           <TabsContent value="opiniones">
             <div className="grid md:grid-cols-3 gap-10">
               <div className="md:col-span-1 space-y-6">
-                <div className="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm text-center">
+                <div className="bg-white  p-10 rounded-[2.5rem] border border-gray-100  shadow-sm text-center">
                   <p className="text-sm font-black text-gray-400 uppercase tracking-widest mb-2">Promedio General</p>
-                  <div className="text-7xl font-black text-gray-900 dark:text-white mb-2 leading-none">{avgRating}</div>
-                  <div className="flex justify-center gap-1 mb-6">
-                    {[1, 2, 3, 4].map(i => <Star key={i} className="w-6 h-6 fill-yellow-400 text-yellow-400" />)}
-                    <StarHalf className="w-6 h-6 fill-yellow-400 text-yellow-400" />
-                  </div>
-                  <p className="text-gray-500 font-medium">Basado en {reviews.length} experiencias reales de clientes.</p>
+                  <div className="text-7xl font-black text-gray-900  mb-2 leading-none">{avgRating || '—'}</div>
+                  {avgRating && <div className="flex justify-center gap-1 mb-6">{Array.from({ length: 5 }, (_, index) => <Star key={index} className={cn('w-6 h-6', index < Math.round(Number(avgRating)) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200')} />)}</div>}
+                  <p className="text-gray-500 font-medium">{reviewCount ? `Basado en ${reviewCount} experiencias reales de clientes.` : 'Todavía no hay opiniones de clientes.'}</p>
                 </div>
 
-                <div className="p-8 bg-blue-600 rounded-[2.5rem] text-white shadow-xl shadow-blue-100 dark:shadow-none">
+                <div className="p-8 bg-blue-600 rounded-[2.5rem] text-white shadow-xl shadow-blue-100 ">
                   <h4 className="font-black text-2xl mb-4 leading-tight">¿Qué te pareció esta tienda?</h4>
                   <p className="text-blue-100 text-sm mb-6 leading-relaxed">Tu opinión ayuda a otros compradores y hace crecer a nuestros vendedores.</p>
                   <Button 
@@ -697,10 +749,10 @@ export default function StorePage() {
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 }}
-                      className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm relative overflow-hidden"
+                      className="bg-white  p-8 rounded-[2.5rem] border border-gray-100  shadow-sm relative overflow-hidden"
                     >
                       <div className="flex gap-4 mb-6">
-                        <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-slate-700">
+                        <div className="w-14 h-14 rounded-2xl bg-gray-100  flex items-center justify-center overflow-hidden border border-gray-100 ">
                           {review.user?.avatar ? (
                             <img src={review.user.avatar} className="w-full h-full object-cover" />
                           ) : (
@@ -708,7 +760,7 @@ export default function StorePage() {
                           )}
                         </div>
                         <div>
-                          <h4 className="font-black text-gray-900 dark:text-white text-lg">{review.user?.firstName} {review.user?.lastName}</h4>
+                          <h4 className="font-black text-gray-900  text-lg">{review.user?.firstName} {review.user?.lastName}</h4>
                           <div className="flex gap-1 mt-1">
                             {Array.from({ length: 5 }).map((_, i) => (
                               <Star
@@ -725,7 +777,7 @@ export default function StorePage() {
                           {new Date(review.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-gray-600 dark:text-gray-400 text-lg font-light leading-relaxed">
+                      <p className="text-gray-600  text-lg font-light leading-relaxed">
                         "{review.comment}"
                       </p>
                       <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -734,7 +786,7 @@ export default function StorePage() {
                     </motion.div>
                   ))
                 ) : (
-                  <div className="text-center py-20 bg-gray-50 dark:bg-slate-900/40 rounded-[3rem] border-2 border-dashed border-gray-100 dark:border-slate-800">
+                  <div className="text-center py-20 bg-gray-50  rounded-[3rem] border-2 border-dashed border-gray-100 ">
                     <p className="text-gray-400 font-bold">Aún no hay reseñas para esta tienda.</p>
                   </div>
                 )}
@@ -743,6 +795,16 @@ export default function StorePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <footer className="store-footer" aria-label="Pie de página de la tienda">
+        <div className="store-footer-inner">
+          <div className="store-footer-brand"><span className="store-footer-logo">{store.logo ? <img src={store.logo} alt="" /> : <Store size={26} />}</span><div><strong>{store.name}</strong><p>{store.description || 'Tienda en el Marketplace OSCORP'}</p>{store.isVerified && <small><ShieldCheck size={14} /> Tienda verificada</small>}</div></div>
+          <div className="store-footer-column"><h3>Explorar</h3><button type="button" onClick={() => { setActiveStoreTab('productos'); document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>Productos</button><button type="button" onClick={() => { setActiveStoreTab('info'); document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>Información y horarios</button>{!isDemoStore && <button type="button" onClick={() => { setActiveStoreTab('opiniones'); document.getElementById('store-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>Calificaciones</button>}</div>
+          <div className="store-footer-column"><h3>Contacto</h3>{!isDemoStore && store.phone && <a href={`tel:${String(store.phone).replace(/[^+\d]/g, '')}`}><Phone size={15} /> {store.phone}</a>}{!isDemoStore && store.email && <a href={`mailto:${store.email}`}><Mail size={15} /> {store.email}</a>}{!isDemoStore && sellerWhatsApp && <a href={sellerWhatsApp} target="_blank" rel="noopener noreferrer"><MessageCircle size={15} /> WhatsApp</a>}{isDemoStore && <span>Este catálogo permite probar la tienda sin pedidos reales.</span>}</div>
+          <div className="store-footer-column"><h3>{isDemoStore ? 'Redes de OSCORP' : 'Redes de la tienda'}</h3><div className="store-footer-socials">{(isDemoStore ? 'https://www.facebook.com/share/1BfdPwqaZN/' : facebookUrl) && <a href={isDemoStore ? 'https://www.facebook.com/share/1BfdPwqaZN/' : facebookUrl!} target="_blank" rel="noopener noreferrer"><Facebook size={18} /> Facebook</a>}{(isDemoStore ? 'https://www.instagram.com/oscorp_py/' : instagramUrl) && <a href={isDemoStore ? 'https://www.instagram.com/oscorp_py/' : instagramUrl!} target="_blank" rel="noopener noreferrer"><Instagram size={18} /> Instagram</a>}</div>{!isDemoStore && !facebookUrl && !instagramUrl && <span>El vendedor todavía no agregó sus redes.</span>}{!isDemoStore && <div className="store-footer-oscorp"><small>Seguí OSCORP</small><a href="https://www.facebook.com/share/1BfdPwqaZN/" target="_blank" rel="noopener noreferrer"><Facebook size={16} /> Facebook OSCORP</a><a href="https://www.instagram.com/oscorp_py/" target="_blank" rel="noopener noreferrer"><Instagram size={16} /> Instagram OSCORP</a></div>}<Link to="/marketplace">Marketplace OSCORP <ArrowRight size={15} /></Link></div>
+        </div>
+        <div className="store-footer-bottom"><span>© {new Date().getFullYear()} {store.name} · OSCORP</span><Link to="/">Volver a OSCORP</Link></div>
+      </footer>
 
       {/* Modern Cart Drawer with Vaul - Moved higher when in-app to avoid BottomNav overlap */}
       {!isPreview && canPurchase && (
@@ -754,10 +816,16 @@ export default function StorePage() {
           bottomOffset={isInApp ? "bottom-24" : "bottom-10"}
         />
       )}
+      {!isPreview && isDemoStore && items.some((item) => item.product.tags?.includes('oscorp-demo')) && (
+        <Link to="/carrito" className="store-demo-cart-link" aria-label="Ver carrito de prueba">
+          <ShoppingBag className="h-6 w-6" />
+          <span>{items.filter((item) => item.product.tags?.includes('oscorp-demo')).reduce((count, item) => count + item.quantity, 0)}</span>
+        </Link>
+      )}
 
       {/* Opinion Modal */}
       <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2rem] p-0 overflow-hidden border-none dark:bg-slate-900">
+        <DialogContent className="sm:max-w-[500px] rounded-[2rem] p-0 overflow-hidden border-none ">
           <DialogHeader className="p-8 pb-4">
             <DialogTitle className="text-3xl font-black tracking-tight">Tu Experiencia</DialogTitle>
             <DialogDescription className="text-gray-500 font-medium pt-2">
@@ -766,7 +834,7 @@ export default function StorePage() {
           </DialogHeader>
           
           <div className="px-8 space-y-8 pb-8">
-            <div className="flex flex-col items-center gap-4 py-4 bg-gray-50 dark:bg-slate-800 rounded-3xl">
+            <div className="flex flex-col items-center gap-4 py-4 bg-gray-50  rounded-3xl">
               <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Selecciona tu calificación</p>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -780,7 +848,7 @@ export default function StorePage() {
                     <Star 
                       className={cn(
                         "w-10 h-10 transition-colors",
-                        star <= reviewForm.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300 dark:text-slate-700"
+                        star <= reviewForm.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300 "
                       )}
                     />
                   </motion.button>
@@ -792,7 +860,7 @@ export default function StorePage() {
               <label className="text-xs font-black text-gray-400 uppercase tracking-widest pl-2">¿Qué te pareció?</label>
               <Textarea 
                 placeholder="Escribe aquí tu comentario, sugerencia o agradecimiento..."
-                className="min-h-[120px] rounded-2xl bg-gray-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-blue-500 text-base"
+                className="min-h-[120px] rounded-2xl bg-gray-50  border-none focus:ring-2 focus:ring-blue-500 text-base"
                 value={reviewForm.comment}
                 onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
               />
@@ -806,7 +874,7 @@ export default function StorePage() {
               onClick={() => setIsReviewModalOpen(false)}
             >Cancelar</Button>
             <Button 
-              className="flex-[2] h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest shadow-xl shadow-blue-100 dark:shadow-none"
+              className="flex-[2] h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest shadow-xl shadow-blue-100 "
               onClick={handleLeaveReview}
             >Enviar Opinión</Button>
           </DialogFooter>
@@ -815,18 +883,20 @@ export default function StorePage() {
       
       {/* Product Details Modal */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="sm:max-w-[800px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 border-none bg-white dark:bg-slate-900 shadow-3xl">
+        <DialogContent className="sm:max-w-[800px] w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 border-none bg-white  shadow-3xl">
           {selectedProduct && (
             <div className="flex flex-col md:flex-row gap-0">
               {/* Product Image Gallery */}
-              <div className="md:w-1/2 bg-gray-50 dark:bg-slate-800 p-6 flex flex-col items-center justify-center min-h-[300px] sm:min-h-[400px]">
+              <div className="md:w-1/2 bg-gray-50  p-6 flex flex-col items-center justify-center min-h-[300px] sm:min-h-[400px]">
                 <div className="w-full aspect-square rounded-[2rem] overflow-hidden shadow-2xl">
                   <img 
-                    src={selectedProduct.images[activeImageIndex] || selectedProduct.images[0]} 
+                    src={selectedProduct.images?.[activeImageIndex] || selectedProduct.images?.[0] || illustrativeImageForProduct(selectedProduct) || undefined}
                     alt={selectedProduct.name}
                     className="w-full h-full object-cover transition-all duration-500"
+                    onError={(event) => { const fallback = illustrativeImageForProduct(selectedProduct); if (fallback && event.currentTarget.src !== new URL(fallback, window.location.origin).href) event.currentTarget.src = fallback; }}
                   />
                 </div>
+                {!selectedProduct.images?.[0] && illustrativeImageForProduct(selectedProduct) && <p className="mt-3 text-xs font-semibold text-blue-700">Foto ilustrativa</p>}
                 {selectedProduct.images.length > 1 && (
                   <div className="flex gap-2 mt-4 overflow-x-auto pb-2 w-full">
                     {selectedProduct.images.map((img: string, i: number) => (
@@ -849,18 +919,15 @@ export default function StorePage() {
               <div className="md:w-1/2 p-8 md:p-10 flex flex-col h-full">
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-[0.2em] text-blue-600 border-blue-100 dark:border-blue-900/30 px-3 py-1">
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-[0.2em] text-blue-600 border-blue-100  px-3 py-1">
                       {selectedProduct.category}
                     </Badge>
-                    <div className="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 px-3 py-1 rounded-full text-xs font-black">
-                      <Star className="w-3.5 h-3.5 fill-yellow-600" />
-                      <span>4.9 (24 reseñas)</span>
-                    </div>
+                    {selectedProductIsDemo && <Badge className="bg-blue-950 text-white hover:bg-blue-950">Producto demo</Badge>}
                   </div>
-                  <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight mb-4">{selectedProduct.name}</h2>
+                  <h2 className="text-3xl font-black text-gray-900  leading-tight mb-4">{selectedProduct.name}</h2>
                   <div className="flex items-end gap-3 mb-6">
-                    {selectedProduct.auctionStatus && <span className="mb-1.5 text-sm font-semibold text-[#0B1F4B] dark:text-blue-300">{selectedProduct.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</span>}
-                    <span className="text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
+                    {selectedProduct.auctionStatus && <span className="mb-1.5 text-sm font-semibold text-[#0B1F4B] ">{selectedProduct.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</span>}
+                    <span className="text-4xl font-black text-blue-600  tracking-tighter">
                       {formatCurrency(selectedProduct.price)}
                     </span>
                     {!selectedProduct.auctionStatus && selectedProduct.comparePrice && (
@@ -869,8 +936,10 @@ export default function StorePage() {
                       </span>
                     )}
                   </div>
-                  {selectedProduct.affiliateRate && !isPreview && (
-                    <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/20 p-4 space-y-3">
+                  {selectedProductIsDemo && <p className="mb-5 text-sm font-semibold text-blue-700 ">Precio ilustrativo · Producto de muestra</p>}
+                  {!selectedProductIsDemo && <p className="mb-5 flex items-center gap-2 text-sm font-semibold text-blue-800"><Truck size={17} /> {deliveryLabel(selectedProduct)}</p>}
+                  {selectedProduct.affiliateRate && !isPreview && !selectedProductIsDemo && (
+                    <div className="mb-6 rounded-2xl border border-violet-200  bg-violet-50/60  p-4 space-y-3">
                       <AffiliateBadge rate={selectedProduct.affiliateRate} />
                       <PromoteButton
                         kind="product"
@@ -878,7 +947,7 @@ export default function StorePage() {
                         title={selectedProduct.name}
                         rate={selectedProduct.affiliateRate}
                         size="sm"
-                        className="w-full rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:border-violet-800"
+                        className="w-full rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100  "
                       />
                     </div>
                   )}
@@ -892,14 +961,14 @@ export default function StorePage() {
                   )}
                   <div className="space-y-4">
                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Descripción</h4>
-                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                    <p className="text-gray-600  leading-relaxed font-medium">
                       {selectedProduct.description || 'Este producto no cuenta con una descripción detallada.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-auto space-y-4 pt-6 border-t dark:border-slate-800">
- {!selectedProduct.auctionStatus && (
+                <div className="mt-auto space-y-4 pt-6 border-t ">
+ {!selectedProduct.auctionStatus && !selectedProductIsDemo && (
                   <div className="flex items-center justify-between text-xs font-bold text-gray-400">
                     <span>
                       Disponibilidad: 
@@ -913,7 +982,25 @@ export default function StorePage() {
                   </div>
                   )}
                   <div className="flex flex-col gap-3">
-                    {selectedProduct.auctionStatus ? (
+                    {selectedProductIsDemo ? (
+                      <>
+                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-relaxed text-blue-950">
+                          Producto de muestra: podés probar el carrito, cambiar cantidades y quitarlo. No genera pedidos ni cobros.
+                        </div>
+                        <Button
+                          onClick={() => {
+                            addItem({ ...selectedProduct, stock: 99, storeName: store.name }, 1);
+                            toast.success('Producto añadido al carrito de prueba');
+                          }}
+                          className="h-14 rounded-2xl bg-blue-600 font-black text-white hover:bg-blue-700"
+                        >
+                          <ShoppingBag className="mr-2 h-5 w-5" /> Añadir al carrito de prueba
+                        </Button>
+                        <Button asChild variant="outline" className="h-12 rounded-2xl border-blue-200 font-bold text-blue-700">
+                          <Link to="/carrito">Ver carrito</Link>
+                        </Button>
+                      </>
+                    ) : selectedProduct.auctionStatus ? (
                       <Button
                         asChild
                         className="flex-1 h-16 rounded-2xl font-black text-lg bg-[#0B1F4B] hover:bg-[#13306E] text-white"
@@ -933,7 +1020,7 @@ export default function StorePage() {
                       className={cn(
                         "flex-1 h-16 rounded-2xl font-black text-lg transition-all active:scale-95",
                         !isPreview && canPurchase && selectedProduct.stock > 0
-                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 dark:shadow-none"
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 "
                           : "bg-gray-100 text-gray-400 border border-gray-200"
                       )}
                     >
@@ -949,7 +1036,7 @@ export default function StorePage() {
                     </Button>
                     )}
                     
-                    {!canPurchase && !selectedProduct.auctionStatus && (
+                    {!canPurchase && !selectedProduct.auctionStatus && !selectedProductIsDemo && (
                       <Button 
                         onClick={() => {
                           const number = store.whatsappNumber || store.phone || '';
@@ -977,6 +1064,28 @@ export default function StorePage() {
 
 // --- Sub-components ---
 
+function illustrativeImageForProduct(product: any): string | null {
+  const name = `${product.name || ''} ${product.category || ''}`.toLowerCase();
+  const base = '/images/marketplace-modern/products/';
+  if (/iphone|tel[eé]fono|celular|smartphone/.test(name)) return `${base}smartphone.png`;
+  if (/auricular|aud[ií]fono/.test(name)) return `${base}headphones.png`;
+  if (/notebook|laptop|computadora/.test(name)) return `${base}laptop.png`;
+  if (/reloj|smartwatch/.test(name)) return `${base}smartwatch.png`;
+  return null;
+}
+
+function StoreProductImage({ product, className, onClick }: { product: any; className: string; onClick?: () => void }) {
+  const [failed, setFailed] = useState(false);
+  const fallback = illustrativeImageForProduct(product);
+  const hasOriginal = !!product.images?.[0] && !failed;
+  const src = hasOriginal ? product.images[0] : fallback;
+  if (!src) return <div className="flex h-full w-full items-center justify-center bg-blue-50 text-blue-300"><ShoppingBag className="h-12 w-12" /></div>;
+  return <>
+    <img src={src} alt={product.name} loading="lazy" className={className} onClick={onClick} onError={() => setFailed(true)} />
+    {!hasOriginal && <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-blue-950 shadow">Foto ilustrativa</span>}
+  </>;
+}
+
 function ProductCard({ 
   product, 
   onAddToCart, 
@@ -994,25 +1103,27 @@ function ProductCard({
   onConsult: () => void,
   isPreview?: boolean
 }) {
+  const isDemo = !!product.tags?.includes('oscorp-demo');
   const isAuction = !!product.auctionStatus;
   const offerOver = !isAuction && !!product.offer?.expired; // una oferta vencida no se compra hasta que la tienda la renueve
   const navigate = useNavigate();
   const goAuction = () => navigate(`/producto/${product.slug || product.id}`);
-  const isOutOfStock = !isAuction && product.stock <= 0; // un remate cerrado se muestra como tal, no como "sin stock"
+  const isOutOfStock = !isDemo && !isAuction && product.stock <= 0; // un remate cerrado se muestra como tal, no como "sin stock"
   
   if (viewMode === 'list') {
     return (
       <motion.div
         layout
         className={cn(
-          "group bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-gray-100 dark:border-slate-800 flex flex-col md:flex-row gap-8 hover:shadow-2xl transition-all duration-500",
+          "group bg-white  rounded-[2.5rem] p-6 border border-gray-100  flex flex-col md:flex-row gap-8 hover:shadow-2xl transition-all duration-500",
           isOutOfStock && "opacity-60 grayscale"
         )}
       >
-        <div className="w-full md:w-60 h-60 rounded-3xl overflow-hidden relative bg-gray-50 dark:bg-slate-800">
-          <img src={product.images[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <div className="w-full md:w-60 h-60 rounded-3xl overflow-hidden relative bg-gray-50 ">
+          <StoreProductImage product={product} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
           {isAuction && <AuctionCardBadge status={product.auctionStatus} endsAt={product.auctionEndsAt} className="absolute top-4 left-4 shadow-lg" />}
-          <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-10" />
+          {isDemo && <span className="absolute left-4 top-4 rounded-full bg-blue-950 px-3 py-1.5 text-xs font-black text-white">Producto demo</span>}
+          {!isDemo && <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-10" />}
           {!isAuction && product.offer && <OfferCountdown offer={product.offer} className="absolute top-4 left-4 shadow-lg" />}
           {!isAuction && !product.offer && product.comparePrice && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
@@ -1031,26 +1142,24 @@ function ProductCard({
           <div>
             <div className="flex justify-between items-start mb-2 font-black">
               <Badge variant="outline" className="text-[10px] uppercase tracking-widest text-blue-600 border-blue-100">{product.category}</Badge>
-              <div className="flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                <span className="text-sm">4.9</span>
-              </div>
             </div>
             <h3 
               onClick={onViewProduct}
-              className="text-2xl font-black text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 cursor-pointer transition-colors leading-tight"
+              className="text-2xl font-black text-gray-900  mb-3 group-hover:text-blue-600 cursor-pointer transition-colors leading-tight"
             >
               {product.name}
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 line-clamp-2 mb-6 font-light leading-relaxed">{product.description}</p>
-            {!isPreview && <AffiliateBadge rate={product.affiliateRate} className="mb-4" />}
+            <p className="text-gray-500  line-clamp-2 mb-6 font-light leading-relaxed">{product.description}</p>
+            {!isPreview && !isDemo && <AffiliateBadge rate={product.affiliateRate} className="mb-4" />}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="space-y-0.5">
-              {isAuction && <p className="text-xs font-semibold text-[#0B1F4B] dark:text-blue-300">{product.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</p>}
-              <p className="text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tighter">
+              {isAuction && <p className="text-xs font-semibold text-[#0B1F4B] ">{product.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</p>}
+              <p className="text-3xl font-black text-gray-900  leading-none tracking-tighter">
                 {formatCurrency(product.price)}
               </p>
+              {isDemo && <p className="mt-1 text-xs font-semibold text-blue-700 ">Precio ilustrativo · Sin compra online</p>}
+              {!isDemo && <p className="mt-1 text-xs font-semibold text-blue-700">{deliveryLabel(product)}</p>}
               {product.comparePrice && (
                 <p className="text-gray-400 line-through text-sm font-bold opacity-70">
                   {formatCurrency(product.comparePrice)}
@@ -1058,6 +1167,7 @@ function ProductCard({
               )}
             </div>
             <div className="flex flex-col gap-2">
+              {isDemo ? <Button onClick={onViewProduct} className="h-14 min-w-[200px] rounded-2xl bg-blue-600 px-8 text-lg font-black text-white hover:bg-blue-700">Ver producto</Button> : <>
               {!isPreview && isAuction && (
                 <Button onClick={goAuction} className="h-14 px-8 rounded-2xl font-black text-lg min-w-[200px] bg-[#0B1F4B] hover:bg-[#13306E] text-white">
                   {product.auctionStatus === 'open' ? 'Ver remate y ofertar' : 'Ver remate'}
@@ -1074,7 +1184,7 @@ function ProductCard({
                     className={cn(
                       "h-14 px-8 rounded-2xl font-black text-lg min-w-[200px]",
                       canPurchase && !isOutOfStock
-                        ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 dark:shadow-none" 
+                        ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
                         : "bg-gray-100 text-gray-400 border border-gray-200"
                     )}
                   >
@@ -1099,6 +1209,7 @@ function ProductCard({
                   )}
                 </>
               )}
+              </>}
             </div>
           </div>
         </div>
@@ -1110,17 +1221,12 @@ function ProductCard({
     <motion.div
       layout
       className={cn(
-        "group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 h-full flex flex-col transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] group",
+        "group relative bg-white  rounded-[2.5rem] border border-gray-100  h-full flex flex-col transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] group",
         isOutOfStock && "opacity-60 grayscale"
       )}
     >
-      <div className="aspect-[4/5] overflow-hidden relative rounded-[2.3rem] m-2.5 bg-gray-50 dark:bg-slate-800">
-        <img
-          src={product.images[0]}
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 cursor-pointer"
-          onClick={onViewProduct}
-        />
+      <div className="aspect-[4/5] overflow-hidden relative rounded-[2.3rem] m-2.5 bg-gray-50 ">
+        <StoreProductImage product={product} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 cursor-pointer" onClick={onViewProduct} />
 
         {/* Floating Actions */}
         <div className="absolute top-4 right-4 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
@@ -1134,7 +1240,8 @@ function ProductCard({
         </div>
 
         {isAuction && <AuctionCardBadge status={product.auctionStatus} endsAt={product.auctionEndsAt} className="absolute top-4 left-4 z-10 shadow-lg" />}
-        <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-20" />
+        {isDemo && <span className="absolute left-4 top-4 z-10 rounded-full bg-blue-950 px-3 py-1.5 text-xs font-black text-white">Producto demo</span>}
+        {!isDemo && <FavoriteButton productId={product.id} className="absolute top-4 right-4 z-20" />}
         {!isAuction && product.offer && <OfferCountdown offer={product.offer} className="absolute top-4 left-4 z-10 shadow-lg" />}
         {!isAuction && !product.offer && product.comparePrice && (
           <div className="absolute top-4 left-4 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg">
@@ -1151,7 +1258,7 @@ function ProductCard({
         )}
 
         <div className="absolute bottom-4 left-4 right-4 translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex flex-col gap-2 z-20">
-          {isPreview ? null : offerOver ? (
+          {isDemo ? <Button onClick={onViewProduct} className="h-14 w-full rounded-2xl bg-white/95 font-black text-blue-700 shadow-2xl hover:bg-blue-600 hover:text-white">Ver producto</Button> : isPreview ? null : offerOver ? (
             <Button disabled className="w-full h-14 bg-white/95 text-gray-400 rounded-2xl font-black shadow-2xl border-0">Oferta terminada</Button>
           ) : isAuction ? (
             <Button
@@ -1197,33 +1304,31 @@ function ProductCard({
       <div className="p-7 pt-4 flex-1 flex flex-col">
         <div className="flex justify-between items-center mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
           <span>{product.category}</span>
-          <div className="flex items-center gap-1 text-yellow-500">
-            <Star className="w-3 h-3 fill-yellow-500" />
-            <span>4.9</span>
-          </div>
         </div>
         <h4 
           onClick={onViewProduct}
-          className="font-black text-gray-900 dark:text-white text-xl mb-3 leading-tight group-hover:text-blue-600 cursor-pointer transition-colors line-clamp-1"
+          className="font-black text-gray-900  text-xl mb-3 leading-tight group-hover:text-blue-600 cursor-pointer transition-colors line-clamp-1"
         >
           {product.name}
         </h4>
-        {!isPreview && <AffiliateBadge rate={product.affiliateRate} className="self-start mb-3" />}
+        {!isPreview && !isDemo && <AffiliateBadge rate={product.affiliateRate} className="self-start mb-3" />}
 
         <div className="mt-auto flex items-end justify-between">
           <div className="flex flex-col">
-            {isAuction && <span className="text-xs font-semibold text-[#0B1F4B] dark:text-blue-300">{product.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</span>}
+            {isAuction && <span className="text-xs font-semibold text-[#0B1F4B] ">{product.auctionStatus === 'open' ? 'Oferta actual' : 'Se adjudicó en'}</span>}
             {!isAuction && product.comparePrice && (
               <span className="text-sm text-gray-400 line-through font-bold mb-0.5">{formatCurrency(product.comparePrice)}</span>
             )}
-            <span className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
+            <span className="text-2xl font-black text-gray-900  tracking-tighter">
               {formatCurrency(product.price)}
             </span>
+            {isDemo && <span className="mt-1 text-xs font-semibold text-blue-700 ">Precio ilustrativo</span>}
+            {!isDemo && <span className="mt-1 text-xs font-semibold text-blue-700">{deliveryLabel(product)}</span>}
           </div>
           {canPurchase && !isPreview && !isAuction && !offerOver && (
             <button
               onClick={onAddToCart}
-              className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"
+              className="w-12 h-12 flex items-center justify-center bg-gray-50  text-gray-900  rounded-2xl transition-all hover:bg-blue-600 hover:text-white hover:rotate-90"
             >
               <Plus className="w-6 h-6 stroke-[3]" />
             </button>
@@ -1236,11 +1341,14 @@ function ProductCard({
 
 function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "bottom-10" }: { items: any[], total: number, removeItem: (id: string) => void, updateQuantity: (id: string, q: number) => void, bottomOffset?: string }) {
   const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+  const hasDemoProducts = items.some((item) => item.product.tags?.includes('oscorp-demo'));
 
   return (
     <Drawer.Root direction="right">
       <Drawer.Trigger asChild>
         <motion.button
+          type="button"
+          aria-label={`Abrir carrito, ${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           className={cn(
@@ -1260,14 +1368,14 @@ function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "
       </Drawer.Trigger>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]" />
-        <Drawer.Content className="fixed top-0 bottom-0 right-0 w-full max-w-[500px] h-full bg-white dark:bg-slate-900 z-[101] shadow-2xl flex flex-col outline-none">
-          <div className="p-8 border-b dark:border-slate-800 flex items-center justify-between bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl sticky top-0 z-10">
+        <Drawer.Content className="store-cart-drawer fixed top-0 bottom-0 right-0 w-full max-w-[500px] h-full bg-white z-[101] shadow-2xl flex flex-col outline-none">
+          <div className="p-8 border-b  flex items-center justify-between bg-white/50  backdrop-blur-xl sticky top-0 z-10">
             <div>
-              <Drawer.Title className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Tu Carrito</Drawer.Title>
-              <p className="text-gray-500 font-medium">{itemCount} productos seleccionados</p>
+              <Drawer.Title className="text-3xl font-black text-gray-900  tracking-tight">Tu Carrito</Drawer.Title>
+              <p className="text-gray-500 font-medium">{itemCount} {itemCount === 1 ? 'producto seleccionado' : 'productos seleccionados'}</p>
             </div>
             <Drawer.Close asChild>
-              <Button size="icon" variant="ghost" className="rounded-2xl w-12 h-12">
+              <Button size="icon" variant="ghost" aria-label="Cerrar carrito" className="rounded-2xl w-12 h-12">
                 <X className="w-6 h-6" />
               </Button>
             </Drawer.Close>
@@ -1277,13 +1385,17 @@ function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "
             {items.length > 0 ? (
               items.map((item) => (
                 <div key={item.product.id} className="flex gap-6 group">
-                  <div className="w-24 h-24 rounded-3xl overflow-hidden bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                    <img src={item.product.images[0]} className="w-full h-full object-cover" />
+                  <div className="w-24 h-24 rounded-3xl overflow-hidden bg-gray-50  border border-gray-100 ">
+                    {item.product.images?.[0] || illustrativeImageForProduct(item.product)
+                      ? <img src={item.product.images?.[0] || illustrativeImageForProduct(item.product)!} alt={item.product.name} className="w-full h-full object-cover" />
+                      : <div className="flex h-full items-center justify-center text-blue-300"><ShoppingBag className="h-8 w-8" /></div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
-                      <h4 className="font-black text-gray-900 dark:text-white truncate pr-4">{item.product.name}</h4>
+                      <h4 className="font-black text-gray-900  truncate pr-4">{item.product.name}</h4>
                       <button
+                        type="button"
+                        aria-label={`Quitar ${item.product.name}`}
                         onClick={() => removeItem(item.product.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors"
                       >
@@ -1292,8 +1404,9 @@ function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "
                     </div>
                     <p className="text-blue-600 font-bold mb-4">{formatCurrency(item.product.price)}</p>
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center bg-gray-50 dark:bg-slate-800 rounded-2xl p-1 gap-1">
+                      <div className="flex items-center bg-gray-50  rounded-2xl p-1 gap-1">
                         <Button
+                          aria-label={`Reducir cantidad de ${item.product.name}`}
                           onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
                           size="icon" variant="ghost" className="h-8 w-8 rounded-xl"
                         >
@@ -1301,6 +1414,8 @@ function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "
                         </Button>
                         <span className="w-8 text-center font-black text-sm">{item.quantity}</span>
                         <Button
+                          aria-label={`Aumentar cantidad de ${item.product.name}`}
+                          disabled={item.quantity >= item.product.stock}
                           onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                           size="icon" variant="ghost" className="h-8 w-8 rounded-xl"
                         >
@@ -1314,33 +1429,42 @@ function CartDrawer({ items, total, removeItem, updateQuantity, bottomOffset = "
               ))
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center py-20">
-                <div className="w-24 h-24 bg-gray-50 dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mb-6">
+                <div className="w-24 h-24 bg-gray-50  rounded-[2.5rem] flex items-center justify-center mb-6">
                   <ShoppingBag className="w-10 h-10 text-gray-300" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2 underline decoration-blue-500 decoration-4">El carrito está vacío</h3>
+                <h3 className="text-2xl font-black text-gray-900  mb-2 underline decoration-blue-500 decoration-4">El carrito está vacío</h3>
                 <p className="text-gray-500 max-w-xs font-medium">Empieza a añadir los mejores productos de la tienda ahora mismo.</p>
               </div>
             )}
           </div>
 
-          <div className="p-8 border-t dark:border-slate-800 bg-gray-50 dark:bg-slate-900/80 backdrop-blur-xl">
+          <div className="p-8 border-t  bg-gray-50  backdrop-blur-xl">
             <div className="flex justify-between items-end mb-8">
-              <span className="text-gray-500 font-bold text-xl uppercase tracking-tighter">Total a Pagar</span>
-              <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{formatCurrency(total)}</span>
+              <span className="text-gray-500 font-bold text-xl uppercase tracking-tighter">{hasDemoProducts ? 'Total ilustrativo' : 'Subtotal'}</span>
+              <span className="text-4xl font-black text-gray-900  tracking-tighter">{formatCurrency(total)}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <button className="h-16 rounded-3xl border border-gray-200 dark:border-slate-800 font-black text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-all">
-                Cotizar Envío
-              </button>
-              <Link to="/app/checkout" className="block w-full">
-                <Button className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black text-xl shadow-2xl shadow-blue-100 dark:shadow-none group">
-                  Pagar Ahora
-                  <ChevronRight className="w-6 h-6 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
+            <div className={hasDemoProducts ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-2 gap-4'}>
+              {hasDemoProducts ? (
+                <Link to="/carrito" className="flex h-16 items-center justify-center rounded-3xl bg-blue-600 px-3 text-center font-black text-white hover:bg-blue-700">
+                  Ver carrito de prueba
+                </Link>
+              ) : <>
+                <Link to="/carrito" className="flex h-16 items-center justify-center rounded-3xl border border-gray-200 bg-white font-black text-gray-900 transition-all hover:bg-blue-50">
+                  Ver carrito
+                </Link>
+                {itemCount > 0 ? (
+                <Link to="/app/checkout" className="flex h-16 items-center justify-center rounded-3xl bg-blue-600 font-black text-white shadow-xl shadow-blue-100 hover:bg-blue-700">
+                  Continuar <ChevronRight className="ml-2 h-5 w-5" />
+                </Link>
+                ) : (
+                <Link to="/marketplace" className="flex h-16 items-center justify-center rounded-3xl bg-blue-100 px-3 text-center font-black text-blue-800">
+                  Explorar productos
+                </Link>
+                )}
+              </>}
             </div>
             <p className="text-center text-[10px] font-bold text-gray-400 mt-6 tracking-widest uppercase">
-              Procesado de forma segura por Oscorp Pay
+              {hasDemoProducts ? 'Los productos demo no generan pedidos ni cobros' : 'El envío se confirma en el checkout'}
             </p>
           </div>
         </Drawer.Content>

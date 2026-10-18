@@ -1,22 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Share2, ShoppingBag, Store, CheckCircle2, MessageCircle, Plus, Minus, Package, Loader2, ShoppingCart,
+  ArrowLeft, ArrowRight, CheckCircle2, ChevronRight,
+  Info, Loader2, MessageCircle, Minus, Package, Plus, Share2,
+  ShieldCheck, ShoppingBag, ShoppingCart, Store, Truck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { productsApi } from '@/lib/api';
 import { trackReferral, trackStoreVisit } from '@/lib/affiliate';
-import { formatCurrency, cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/lib/utils';
 import { useCartStore } from '@/stores/cartStore';
-import { useAuthStore } from '@/stores';
+import type { Product } from '@/types';
 import { PromoteButton, AffiliateBadge } from '@/components/affiliate/PromoteButton';
 import { AuctionPanel } from '@/components/auction/AuctionPanel';
 import { ProductComments } from '@/components/comments/ProductComments';
 import { OfferCountdown } from '@/components/offer/OfferCountdown';
 import { FavoriteButton } from '@/components/shared/FavoriteButton';
+import './ProductDetailPage.css';
 
 interface PublicProduct {
   id: string;
@@ -29,7 +29,10 @@ interface PublicProduct {
   images: string[];
   category: string;
   type: string;
+  deliveryMode?: 'arrange' | 'pickup' | 'free' | 'paid';
+  deliveryFee?: number;
   sku: string;
+  tags?: string[];
   sellerId: string;
   onlineSales: boolean;
   seller: {
@@ -41,9 +44,34 @@ interface PublicProduct {
     isVerified: boolean;
   };
   affiliate: { participates: boolean; rate: number | null };
-  auction: any | null;
+  auction: ComponentProps<typeof AuctionPanel>['initial'];
   offer: { active: boolean; expired: boolean; endsAt: string | null; discountPercent: number } | null;
 }
+
+const toCartProduct = (product: PublicProduct, stock = product.stock): Product => ({
+  ...product,
+  slug: product.slug ?? undefined,
+  comparePrice: product.comparePrice ?? undefined,
+  type: product.type as Product['type'],
+  stock,
+  visibility: product.tags?.includes('oscorp-demo') ? 'local' : 'online',
+  status: 'active',
+  tags: product.tags ?? [],
+  isFeatured: false,
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+});
+
+const illustrativeImage = (name: string, category: string) => {
+  const value = `${name} ${category}`.toLowerCase();
+  const base = '/images/marketplace-modern/products/';
+  if (/iphone|tel[eé]fono|celular|smartphone/.test(value)) return `${base}smartphone.png`;
+  if (/auricular|aud[ií]fono/.test(value)) return `${base}headphones.png`;
+  if (/notebook|laptop|computadora/.test(value)) return `${base}laptop.png`;
+  if (/reloj|smartwatch/.test(value)) return `${base}smartwatch.png`;
+  if (/bolso|cartera/.test(value)) return `${base}handbag.png`;
+  return null;
+};
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -51,77 +79,80 @@ export default function ProductDetailPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('from') === 'vendedor';
-  const { isAuthenticated } = useAuthStore();
-  const { addItem, items } = useCartStore();
-
+  const { addItem, items, itemCount } = useCartStore();
   const [product, setProduct] = useState<PublicProduct | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedForSlug, setLoadedForSlug] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [failedImage, setFailedImage] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
-    setLoading(true);
-    productsApi
-      .getPublic(slug)
+    productsApi.getPublic(slug)
       .then((data) => {
         if (cancelled) return;
         setProduct(data);
-        if (!isPreview && data?.seller?.storeSlug) trackStoreVisit(data.seller.storeSlug); // también cuenta como visita a la tienda
+        setSelectedImage(0);
+        setQuantity(1);
+        setFailedImage(false);
+        if (!isPreview && data?.seller?.storeSlug && !data.tags?.includes('oscorp-demo')) {
+          trackStoreVisit(data.seller.storeSlug);
+        }
       })
       .catch(() => { if (!cancelled) setProduct(null); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    // Visita desde un enlace de afiliado (?ref=CODIGO)
+      .finally(() => { if (!cancelled) setLoadedForSlug(slug); });
     trackReferral({ productSlug: slug }, location.search);
     return () => { cancelled = true; };
-  }, [slug, location.search]);
+  }, [slug, location.search, isPreview]);
 
-  const inCart = useMemo(() => items.find((i) => i.product.id === product?.id)?.quantity || 0, [items, product]);
+  const inCart = useMemo(
+    () => items.find((item) => item.product.id === product?.id)?.quantity || 0,
+    [items, product?.id],
+  );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
-    );
+  if (loadedForSlug !== slug) {
+    return <div className="product-page product-state"><Loader2 className="animate-spin" size={38} /><span>Cargando producto…</span></div>;
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 px-4">
-        <div className="text-center p-10 bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-md w-full border border-gray-100 dark:border-slate-800">
-          <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-5" />
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Producto no disponible</h1>
-          <p className="text-gray-500 mb-6">El producto que buscas ya no está publicado.</p>
-          <Button onClick={() => navigate('/')} className="w-full h-12 rounded-xl font-bold">Ir al inicio</Button>
-        </div>
+      <div className="product-page product-state">
+        <ShoppingBag size={52} />
+        <h1>Producto no disponible</h1>
+        <p>Esta publicación ya no está disponible.</p>
+        <Link to="/marketplace" className="product-primary-link">Explorar productos <ArrowRight size={18} /></Link>
       </div>
     );
   }
 
+  const isDemo = product.tags?.includes('oscorp-demo') ?? false;
   const outOfStock = product.stock <= 0;
-  const canBuy = product.onlineSales && !isPreview && !outOfStock && !product.offer?.expired;
-  const images = product.images.length ? product.images : [];
-  const maxQty = Math.max(1, product.stock - inCart);
+  const canBuy = !isDemo && product.onlineSales && !isPreview && !outOfStock && !product.offer?.expired;
+  const canTryCart = isDemo && !isPreview;
+  const maxQty = Math.max(1, (isDemo ? 99 : product.stock) - inCart);
+  const fallbackImage = illustrativeImage(product.name, product.category);
+  const activeImage = failedImage ? fallbackImage : (product.images[selectedImage] || product.images[0] || fallbackImage);
+  const isIllustrative = failedImage || (!product.images.length && !!fallbackImage);
+  const savings = product.comparePrice && product.comparePrice > product.price
+    ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
+    : 0;
 
   const addToCart = () => {
-    if (quantity + inCart > product.stock) {
-      toast.error('No hay stock suficiente');
+    if (quantity + inCart > (isDemo ? 99 : product.stock)) {
+      toast.error(isDemo ? 'Máximo 99 unidades en el carrito de prueba' : 'No hay stock suficiente');
       return false;
     }
-    // El carrito guarda el producto; el precio real lo vuelve a calcular el servidor al comprar
-    addItem({ ...(product as any), sellerId: product.sellerId }, quantity);
+    addItem(toCartProduct(product, isDemo ? 99 : product.stock), quantity);
     return true;
   };
 
   const handleAdd = () => {
-    if (addToCart()) toast.success(`${product.name} añadido al carrito`);
+    if (addToCart()) toast.success(isDemo ? 'Producto añadido al carrito de prueba' : 'Producto añadido al carrito');
   };
 
   const handleBuyNow = () => {
     if (!inCart && !addToCart()) return;
-    // /app/checkout pide sesión: si no la hay, el login vuelve al checkout
     navigate('/app/checkout');
   };
 
@@ -134,191 +165,153 @@ export default function ProductDetailPage() {
         toast.success('Enlace copiado');
       }
     } catch {
-      // cancelado
+      // El usuario canceló la acción de compartir.
     }
   };
 
   const whatsapp = () => {
     const clean = (product.seller.whatsappNumber || '').replace(/\D/g, '');
+    if (!clean) {
+      toast.error('Esta tienda no tiene WhatsApp disponible');
+      return;
+    }
     const number = clean.startsWith('595') ? clean : `595${clean.replace(/^0/, '')}`;
-    const msg = `Hola ${product.seller.storeName}, me interesa "${product.name}". ¿Sigue disponible?`;
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    const message = `Hola ${product.seller.storeName}, me interesa "${product.name}". ¿Sigue disponible?`;
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 pb-16">
-      {/* Barra superior */}
-      <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-gray-100 dark:border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/tienda/${product.seller.storeSlug}`))}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Volver
-          </Button>
-          <Link to={`/tienda/${product.seller.storeSlug}`} className="flex items-center gap-2 min-w-0">
-            {product.seller.logo ? (
-              <img src={product.seller.logo} alt="" className="w-7 h-7 rounded-lg object-cover" />
-            ) : (
-              <Store className="w-5 h-5 text-gray-400" />
-            )}
-            <span className="font-bold text-sm truncate">{product.seller.storeName}</span>
-            {product.seller.isVerified && <CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" />}
-          </Link>
-          <div className="flex items-center gap-1">
-            {isAuthenticated && inCart > 0 && (
-              <Button variant="ghost" size="icon" onClick={() => navigate('/app/carrito')} aria-label="Ver carrito" className="relative">
-                <ShoppingCart className="w-5 h-5" />
-                <span className="absolute -top-0.5 -right-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{inCart}</span>
-              </Button>
-            )}
-            <FavoriteButton productId={product.id} className="shadow-none" />
-            <Button variant="ghost" size="icon" onClick={handleShare} aria-label="Compartir">
-              <Share2 className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 pt-6 grid md:grid-cols-2 gap-8">
-        {/* Galería */}
-        <div>
-          <motion.div
-            key={selectedImage}
-            initial={{ opacity: 0.4 }}
-            animate={{ opacity: 1 }}
-            className="aspect-square rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800"
-          >
-            {images.length ? (
-              <img src={images[selectedImage] || images[0]} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="w-20 h-20 text-gray-200" />
-              </div>
-            )}
-          </motion.div>
-          {images.length > 1 && (
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-              {images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedImage(i)}
-                  className={cn(
-                    'w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition',
-                    selectedImage === i ? 'border-blue-600' : 'border-transparent opacity-70 hover:opacity-100',
-                  )}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Información */}
-        <div className="flex flex-col">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Badge variant="outline" className="uppercase tracking-wider text-[10px]">{product.category}</Badge>
-            <AffiliateBadge rate={product.affiliate.rate} />
-          </div>
-          <h1 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white leading-tight">{product.name}</h1>
-
-          {product.offer && <OfferCountdown offer={product.offer} className="mt-3 self-start" />}
-          {!product.auction && (
-          <div className="flex items-end gap-3 mt-4">
-            <span className="text-3xl md:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
-              {formatCurrency(product.price)}
-            </span>
-            {product.comparePrice && product.comparePrice > product.price && (
-              <span className="text-lg text-gray-400 line-through font-bold mb-1">{formatCurrency(product.comparePrice)}</span>
-            )}
-          </div>
-
-          )}
-
-          {!product.auction && (
-          <p className="mt-2 text-sm font-semibold">
-            {outOfStock ? (
-              <span className="text-red-500">Sin stock</span>
-            ) : (
-              <span className="text-emerald-600">Disponible ({product.stock})</span>
-            )}
-          </p>
-          )}
-
-          {product.description && (
-            <p className="mt-5 text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">{product.description}</p>
-          )}
-
-          <div className="mt-auto pt-6 space-y-3">
-            {product.auction ? (
-              <AuctionPanel
-                productId={product.id}
-                initial={product.auction}
-                readOnly={isPreview}
-                onPay={() => {
-                  // El servidor deja pagar solo al ganador, al precio ganador
-                  if (!inCart) addItem({ ...(product as any), sellerId: product.sellerId }, 1);
-                  navigate('/app/checkout');
-                }}
-              />
-            ) : canBuy ? (
-              <>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">Cantidad</span>
-                  <div className="flex items-center border border-gray-200 dark:border-slate-700 rounded-xl">
-                    <Button variant="ghost" size="icon" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Menos">
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="w-10 text-center font-bold">{quantity}</span>
-                    <Button variant="ghost" size="icon" onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))} aria-label="Más">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  {inCart > 0 && <span className="text-xs text-muted-foreground">{inCart} en el carrito</span>}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="h-12 rounded-xl font-bold" onClick={handleAdd}>
-                    Agregar al carrito
-                  </Button>
-                  <Button className="h-12 rounded-xl font-bold bg-blue-600 hover:bg-blue-700" onClick={handleBuyNow}>
-                    Comprar ahora
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-green-200 text-green-700 hover:bg-green-50" onClick={whatsapp}>
-                <MessageCircle className="w-5 h-5 mr-2" />
-                {outOfStock ? 'Consultar disponibilidad por WhatsApp' : 'Consultar por WhatsApp'}
-              </Button>
-            )}
-
-            {product.affiliate.participates && !isPreview && (
-              <div className="rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/60 dark:bg-violet-950/20 p-4">
-                <p className="text-sm text-violet-900 dark:text-violet-200 mb-3">
-                  {product.affiliate.rate
-                    ? <>Recomendá este producto y ganá <strong>{formatCurrency(Math.floor((product.price * product.affiliate.rate) / 100))}</strong> ({product.affiliate.rate}%) por cada venta.</>
-                    : <>Este producto paga comisión a quien lo recomiende. Iniciá sesión para ver cuánto.</>}
-                </p>
-                <PromoteButton
-                  kind="product"
-                  productId={product.id}
-                  title={product.name}
-                  rate={product.affiliate.rate}
-                  className="w-full h-11 rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:border-violet-800 dark:hover:bg-violet-900/40"
-                />
-              </div>
-            )}
-
-            <Link
-              to={`/tienda/${product.seller.storeSlug}`}
-              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground pt-1"
-            >
-              <Store className="w-4 h-4" /> Ver más productos de {product.seller.storeName}
+    <div className="product-page">
+      <header className="product-header">
+        <div className="product-header-inner">
+          <button type="button" className="product-header-back" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/tienda/${product.seller.storeSlug}`))}>
+            <ArrowLeft size={18} /> <span>Volver</span>
+          </button>
+          <Link to="/" className="product-header-brand"><span className="product-brand-mark"><ShoppingCart size={18} /></span><span>OSCORP<small>Tu multitienda en Paraguay</small></span></Link>
+          <div className="product-header-actions">
+            <button type="button" onClick={handleShare} aria-label="Compartir producto"><Share2 size={19} /></button>
+            <Link to="/carrito" aria-label={`Ver carrito, ${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`} className="product-header-cart">
+              <ShoppingBag size={19} />{itemCount > 0 && <b>{itemCount}</b>}
             </Link>
           </div>
         </div>
-      </div>
-      <div className="max-w-6xl mx-auto px-4 py-8 md:max-w-3xl">
-        <ProductComments productId={product.id} />
-      </div>
+      </header>
+
+      <main className="product-container">
+        <nav className="product-breadcrumb" aria-label="Ruta de navegación">
+          <Link to="/">Inicio</Link><ChevronRight size={15} />
+          <Link to="/marketplace">Marketplace</Link><ChevronRight size={15} />
+          <Link to={`/tienda/${product.seller.storeSlug}`}>{product.seller.storeName}</Link><ChevronRight size={15} />
+          <span>{product.name}</span>
+        </nav>
+
+        <div className="product-layout">
+          <div className="product-gallery">
+            <div className="product-image-frame">
+              {activeImage ? (
+                <img src={activeImage} alt={product.name} onError={() => setFailedImage(true)} />
+              ) : (
+                <div className="product-no-image"><Package size={70} /><span>Imagen no disponible</span></div>
+              )}
+              {isDemo && <span className="product-photo-badge">Muestra OSCORP</span>}
+              {isIllustrative && <span className="product-photo-caption">Foto ilustrativa</span>}
+              {savings > 0 && !isDemo && <span className="product-discount-badge">-{savings}%</span>}
+            </div>
+            {product.images.length > 1 && (
+              <div className="product-thumbnails" aria-label="Fotos del producto">
+                {product.images.map((image, index) => (
+                  <button key={image} type="button" className={selectedImage === index ? 'active' : ''} onClick={() => { setSelectedImage(index); setFailedImage(false); }} aria-label={`Ver foto ${index + 1}`} aria-pressed={selectedImage === index}>
+                    <img src={image} alt="" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="product-gallery-assurance">
+              <span><ShieldCheck size={19} /> Tiendas verificadas</span>
+              <span><Truck size={19} /> Opciones de entrega</span>
+              <span><MessageCircle size={19} /> Atención directa</span>
+            </div>
+          </div>
+
+          <section className="product-info-card">
+            <div className="product-topline">
+              <span className="product-category">{product.category}</span>
+              {isDemo && <span className="product-demo-pill">Producto de muestra</span>}
+              {!isDemo && product.seller.isVerified && <span className="product-verified"><CheckCircle2 size={15} /> Tienda verificada</span>}
+              {!isDemo && <FavoriteButton productId={product.id} className="product-favorite" />}
+            </div>
+            <h1>{product.name}</h1>
+            <Link to={`/tienda/${product.seller.storeSlug}`} className="product-seller-link"><Store size={16} /> Vendido por <strong>{product.seller.storeName}</strong><ArrowRight size={15} /></Link>
+            {product.offer && <OfferCountdown offer={product.offer} className="product-offer" />}
+            {!product.auction && (
+              <div className="product-price-block">
+                <div className="product-price-line">
+                  <strong>{formatCurrency(product.price)}</strong>
+                  {savings > 0 && <del>{formatCurrency(product.comparePrice!)}</del>}
+                </div>
+                <span className={isDemo ? 'product-demo-price' : outOfStock ? 'product-out-of-stock' : 'product-in-stock'}>
+                  {isDemo ? 'Precio ilustrativo · Sin cobro' : outOfStock ? 'Sin stock' : `Disponible · ${product.stock} en stock`}
+                </span>
+              </div>
+            )}
+            {!isDemo && <div className="product-delivery-info"><Truck size={19} /><span><strong>{product.type !== 'physical' ? 'Entrega digital o servicio' : product.deliveryMode === 'free' ? 'Delivery gratis' : product.deliveryMode === 'paid' ? `Delivery: ${formatCurrency(Number(product.deliveryFee || 0))}` : product.deliveryMode === 'pickup' ? 'Retiro en tienda' : 'Delivery a coordinar'}</strong><small>{product.deliveryMode === 'paid' ? 'Este costo se suma una vez por producto al finalizar la compra.' : product.deliveryMode === 'arrange' || !product.deliveryMode ? 'Consultá con el vendedor por el envío o elegí retiro en tienda.' : 'Vas a confirmar la modalidad al pagar.'}</small></span></div>}
+
+            <div className="product-description">
+              <h2>Sobre este producto</h2>
+              <p>{product.description || 'La tienda aún no agregó una descripción detallada.'}</p>
+            </div>
+
+            {(canBuy || canTryCart) && !product.auction && (
+              <div className="product-purchase">
+                <div className="product-quantity-row">
+                  <label>Cantidad</label>
+                  <div className="product-stepper">
+                    <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} disabled={quantity <= 1} aria-label="Reducir cantidad"><Minus size={16} /></button>
+                    <span aria-live="polite">{quantity}</span>
+                    <button type="button" onClick={() => setQuantity((value) => Math.min(maxQty, value + 1))} disabled={quantity >= maxQty} aria-label="Aumentar cantidad"><Plus size={16} /></button>
+                  </div>
+                  {inCart > 0 && <small>{inCart} en el carrito</small>}
+                </div>
+                <div className="product-actions">
+                  <button type="button" className="product-add-button" onClick={handleAdd}><ShoppingBag size={20} /> {isDemo ? 'Añadir al carrito de prueba' : 'Añadir al carrito'}</button>
+                  {isDemo ? (
+                    <Link to="/carrito" className="product-buy-button">Ver carrito <ArrowRight size={18} /></Link>
+                  ) : (
+                    <button type="button" className="product-buy-button" onClick={handleBuyNow}>Comprar ahora <ArrowRight size={18} /></button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isDemo && (
+              <div className="product-demo-notice"><Info size={19} /><p><strong>Así funciona el carrito.</strong> Podés agregar este producto, cambiar cantidades y quitarlo para probar la experiencia. No se hará un pedido ni un cobro.</p></div>
+            )}
+            {!isDemo && product.auction && (
+              <AuctionPanel productId={product.id} initial={product.auction} readOnly={isPreview} onPay={() => {
+                if (!inCart) addItem(toCartProduct(product), 1);
+                navigate('/app/checkout');
+              }} />
+            )}
+            {!isDemo && !product.auction && !canBuy && (
+              <button type="button" className="product-whatsapp-button" onClick={whatsapp}><MessageCircle size={19} /> {outOfStock ? 'Consultar disponibilidad' : 'Consultar por WhatsApp'}</button>
+            )}
+            {!isDemo && product.affiliate.participates && !isPreview && (
+              <div className="product-affiliate">
+                <AffiliateBadge rate={product.affiliate.rate} />
+                <p>{product.affiliate.rate ? `Recomendá este producto y ganá ${formatCurrency(Math.floor(product.price * product.affiliate.rate / 100))} por venta.` : 'Este producto participa en el programa de afiliados.'}</p>
+                <PromoteButton kind="product" productId={product.id} title={product.name} rate={product.affiliate.rate} />
+              </div>
+            )}
+            <div className="product-safety"><ShieldCheck size={20} /><span>{isDemo ? 'Carrito de prueba sin pagos' : 'Compra protegida por OSCORP'}</span></div>
+          </section>
+        </div>
+        <section className="product-store-band">
+          <div className="product-store-icon">{product.seller.logo ? <img src={product.seller.logo} alt="" /> : <Store size={29} />}</div>
+          <div><span>CONOCÉ LA TIENDA</span><h2>{product.seller.storeName}</h2><p>{isDemo ? 'Explorá más productos de muestra' : 'Mirá todos sus productos y datos de contacto'}</p></div>
+          <Link to={`/tienda/${product.seller.storeSlug}`}>Visitar tienda <ArrowRight size={18} /></Link>
+        </section>
+        {!isDemo && <div className="product-comments"><ProductComments productId={product.id} /></div>}
+      </main>
     </div>
   );
 }

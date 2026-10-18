@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Facebook, Instagram, X, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export function FloatingSocialButtons() {
@@ -45,12 +44,12 @@ export function FloatingSocialButtons() {
                         initial={{ opacity: 0, y: 10, scale: 0.8 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
-                        className="pointer-events-none bg-white dark:bg-slate-900 px-4 py-2 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 mb-2 relative"
+                        className="pointer-events-none bg-white px-4 py-2 rounded-2xl shadow-xl border border-gray-100 mb-2 relative"
                     >
-                        <p className="text-xs font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                            ¿Necesitas ayuda? 👋
+                        <p className="text-xs font-bold text-gray-600 whitespace-nowrap">
+                            ¿Necesitás ayuda? 👋
                         </p>
-                        <div className="absolute -bottom-1 right-6 w-2 h-2 bg-white dark:bg-slate-900 rotate-45 border-r border-b border-gray-100 dark:border-slate-800" />
+                        <div className="absolute -bottom-1 right-6 w-2 h-2 bg-white rotate-45 border-r border-b border-gray-100" />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -71,16 +70,16 @@ export function FloatingSocialButtons() {
                                 transition={{ delay: btn.delay }}
                                 className={cn(
                                     "flex items-center gap-3 p-2 pr-4 rounded-2xl shadow-lg group transition-all hover:scale-110",
-                                    "bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20"
+                                    "bg-[#f4f6fa]/95 backdrop-blur-xl border border-white/80"
                                 )}
                             >
                                 <div className={cn(
-                                    "w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-inner",
+                                    "w-10 h-10 rounded-full flex items-center justify-center text-white shadow-inner",
                                     btn.color
                                 )}>
                                     <btn.icon className="w-5 h-5" />
                                 </div>
-                                <span className="text-sm font-black text-gray-700 dark:text-gray-200">
+                                <span className="text-sm font-black" style={{ color: '#334155' }}>
                                     {btn.label}
                                 </span>
                             </motion.a>
@@ -91,13 +90,16 @@ export function FloatingSocialButtons() {
 
             {/* main FAB */}
             <motion.button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label={isOpen ? 'Cerrar redes sociales' : 'Abrir redes sociales'}
+                aria-expanded={isOpen}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className={cn(
                     "w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all duration-300",
                     isOpen
-                        ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 rotate-90"
+                        ? "bg-[#071735] text-white rotate-90"
                         : "bg-blue-600 text-white hover:bg-blue-700"
                 )}
             >

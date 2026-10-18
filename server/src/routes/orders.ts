@@ -156,10 +156,11 @@ const notifyNewOrder = (
 // Checkout online: un pedido por tienda. Responde { orders: [...] }
 router.post('/checkout', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { items, paymentMethod, deliveryType, deliveryAddress, deliveryNotes, visitorId } = req.body;
+    const { items, paymentMethod, deliveryType, deliveryAddress, deliveryNotes, visitorId, expectedTotal } = req.body;
     const created = await createCheckoutOrders(req.user!.userId, {
       items, paymentMethod, deliveryType, deliveryAddress, deliveryNotes,
       visitorId: typeof visitorId === 'string' ? visitorId : null,
+      expectedTotal,
     });
     res.status(201).json({ orders: created.map((c) => c.order) });
     for (const c of created) notifyNewOrder(req.user!.userId, c.order, c.storeName);
@@ -174,7 +175,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
     const {
       isPosSale, sellerId, items, paymentMethod, paymentStatus, orderNumber,
-      deliveryType, deliveryAddress, deliveryNotes, visitorId,
+      deliveryType, deliveryAddress, deliveryNotes, visitorId, expectedTotal,
     } = req.body;
 
     if (isPosSale) {
@@ -189,6 +190,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     const created = await createCheckoutOrders(req.user!.userId, {
       items, paymentMethod, deliveryType, deliveryAddress, deliveryNotes,
       visitorId: typeof visitorId === 'string' ? visitorId : null,
+      expectedTotal,
     });
     // Compatibilidad: la respuesta vieja era un solo pedido
     res.status(201).json(created.length === 1 ? created[0].order : { orders: created.map((c) => c.order) });

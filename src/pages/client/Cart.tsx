@@ -1,145 +1,109 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, Package } from 'lucide-react';
+import {
+  ArrowLeft, ArrowRight, Info, Minus, Package, Plus, ShieldCheck,
+  ShoppingBag, ShoppingCart, Store, Trash2, Truck,
+} from 'lucide-react';
 import { useCartStore } from '@/stores';
 import { formatCurrency } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
+import './Cart.css';
+
+const isDemo = (tags?: string[]) => tags?.includes('oscorp-demo') ?? false;
+const imageFor = (name: string) => {
+  const value = name.toLowerCase();
+  const base = '/images/marketplace-modern/products/';
+  if (/iphone|celular|tel[eé]fono/.test(value)) return `${base}smartphone.png`;
+  if (/auricular|aud[ií]fono/.test(value)) return `${base}headphones.png`;
+  if (/notebook|laptop/.test(value)) return `${base}laptop.png`;
+  if (/bolso|cartera/.test(value)) return `${base}handbag.png`;
+  return null;
+};
 
 export default function ClientCart() {
   const navigate = useNavigate();
   const { items, total, itemCount, updateQuantity, removeItem, clearCart } = useCartStore();
+  const demoCount = items.filter((item) => isDemo(item.product.tags)).length;
+  const realCount = items.length - demoCount;
+  const canCheckout = items.length > 0 && demoCount === 0;
+  const deliveryNeedsContact = items.some((item) => item.product.type === 'physical' && !['free', 'paid'].includes(item.product.deliveryMode || 'arrange'));
+  const deliveryEstimate = items.reduce((sum, item) => sum + (item.product.deliveryMode === 'paid' ? Number(item.product.deliveryFee || 0) : 0), 0);
 
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-        <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-          <ShoppingCart className="w-12 h-12 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-bold text-foreground">Tu carrito está vacío</h2>
-        <p className="text-muted-foreground text-center mt-2">Agrega productos para comenzar a comprar</p>
-        <Link to="/app/tiendas">
-          <Button className="mt-6">Explorar tienda</Button>
-        </Link>
-      </div>
-    );
-  }
+  const handleRemove = (id: string) => {
+    removeItem(id);
+    toast.success('Producto quitado del carrito');
+  };
 
   return (
-    <div className="space-y-4 pb-32">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-2">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Carrito</h1>
-          <p className="text-sm text-muted-foreground">{itemCount} productos</p>
+    <div className="cart-page">
+      <header className="cart-topbar">
+        <div className="cart-topbar-inner">
+          <Link to="/marketplace" className="cart-back"><ArrowLeft size={18} /> <span>Seguir comprando</span></Link>
+          <Link to="/" className="cart-brand"><span><ShoppingCart size={20} /></span>OSCORP</Link>
+          <span className="cart-topbar-label">Carrito de compras</span>
         </div>
-        <button
-          onClick={clearCart}
-          className="text-sm text-red-600 dark:text-red-400 hover:underline"
-        >
-          Vaciar
-        </button>
-      </div>
-
-      {/* Items */}
-      <div className="px-4 space-y-3">
-        {items.map((item, index) => (
-          <motion.div
-            key={item.product.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex gap-3">
-                  {/* Image */}
-                  <Link to={`/app/producto/${item.product.id}`}>
-                    <div className="w-20 h-20 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-                      {item.product.images[0] ? (
-                        <img
-                          src={item.product.images[0]}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/app/producto/${item.product.id}`}>
-                      <p className="font-medium text-foreground line-clamp-2">{item.product.name}</p>
+      </header>
+      <main className="cart-container">
+        <div className="cart-heading">
+          <div><span className="cart-eyebrow">TU SELECCIÓN</span><h1>Mi carrito <span>({itemCount})</span></h1><p>Revisá los productos antes de continuar.</p></div>
+          {items.length > 0 && <button type="button" className="cart-clear" onClick={clearCart}><Trash2 size={16} /> Vaciar carrito</button>}
+        </div>
+        {items.length === 0 ? (
+          <div className="cart-empty">
+            <div className="cart-empty-icon"><ShoppingBag size={42} /></div>
+            <h2>Tu carrito está vacío</h2>
+            <p>Descubrí productos de nuestras tiendas y agregá tus favoritos.</p>
+            <Link to="/marketplace">Explorar el marketplace <ArrowRight size={18} /></Link>
+          </div>
+        ) : (
+          <div className="cart-layout">
+            <section className="cart-items" aria-label="Productos del carrito">
+              {demoCount > 0 && (
+                <div className="cart-demo-banner"><Info size={20} /><div><strong>Carrito de prueba</strong><p>{realCount > 0 ? 'Quitá los productos de muestra para continuar con la compra real.' : 'Podés probar cantidades y eliminar productos. No se hará un pedido ni un cobro.'}</p></div></div>
+              )}
+              {items.map(({ product, quantity }) => {
+                const demo = isDemo(product.tags);
+                const image = product.images?.[0] || imageFor(product.name);
+                const catalogProduct = product as typeof product & { seller?: { storeName?: string }; storeName?: string };
+                return (
+                  <article className="cart-item" key={product.id}>
+                    <Link to={`/producto/${product.slug || product.id}`} className="cart-item-image" aria-label={`Ver ${product.name}`}>
+                      {image ? <img src={image} alt={product.name} /> : <Package size={35} />}
                     </Link>
-                    <p className="text-lg font-bold text-foreground mt-1">
-                      {formatCurrency(item.product.price * item.quantity)}
-                    </p>
-
-                    {/* Quantity Controls */}
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                          className="w-7 h-7 flex items-center justify-center hover:bg-background rounded-md transition-colors"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          className="w-7 h-7 flex items-center justify-center hover:bg-background rounded-md transition-colors"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                    <div className="cart-item-info">
+                      <div className="cart-item-topline"><span>{demo ? 'PRODUCTO DE MUESTRA' : product.category}</span><button type="button" onClick={() => handleRemove(product.id)} aria-label={`Quitar ${product.name}`}><Trash2 size={18} /></button></div>
+                      <Link to={`/producto/${product.slug || product.id}`} className="cart-item-name">{product.name}</Link>
+                      <span className="cart-item-store"><Store size={14} /> {catalogProduct.seller?.storeName || catalogProduct.storeName || 'Tienda OSCORP'}</span>
+                      {!demo && <span className="cart-item-shipping"><Truck size={14} /> {product.deliveryMode === 'paid' ? `Delivery ${formatCurrency(Number(product.deliveryFee || 0))}` : product.deliveryMode === 'free' ? 'Delivery gratis' : product.deliveryMode === 'pickup' ? 'Solo retiro en tienda' : 'Delivery a coordinar'}</span>}
+                      <div className="cart-item-bottom">
+                        <div className="cart-stepper" aria-label={`Cantidad de ${product.name}`}>
+                          <button type="button" onClick={() => updateQuantity(product.id, quantity - 1)} aria-label={`Reducir cantidad de ${product.name}`}><Minus size={15} /></button>
+                          <span aria-live="polite">{quantity}</span>
+                          <button type="button" onClick={() => updateQuantity(product.id, quantity + 1)} disabled={quantity >= product.stock} aria-label={`Aumentar cantidad de ${product.name}`}><Plus size={15} /></button>
+                        </div>
+                        <div className="cart-item-price"><strong>{formatCurrency(product.price * quantity)}</strong><small>{demo ? 'Total ilustrativo' : quantity > 1 ? `${formatCurrency(product.price)} c/u` : 'Precio por unidad'}</small></div>
                       </div>
-
-                      <button
-                        onClick={() => {
-                          removeItem(item.product.id);
-                          toast.success('Producto eliminado');
-                        }}
-                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 z-30">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-medium text-foreground">{formatCurrency(total)}</span>
+                  </article>
+                );
+              })}
+              <Link to="/marketplace" className="cart-continue"><ArrowLeft size={16} /> Seguir comprando</Link>
+            </section>
+            <aside className="cart-summary">
+              <div className="cart-summary-title"><ShoppingBag size={22} /><h2>Resumen del pedido</h2></div>
+              <div className="cart-summary-row"><span>Productos ({itemCount})</span><strong>{formatCurrency(total)}</strong></div>
+              <div className="cart-summary-row"><span>Envío</span><span>{demoCount ? 'No aplica a muestras' : deliveryNeedsContact ? 'Retiro o consultar vendedor' : deliveryEstimate ? `Desde ${formatCurrency(deliveryEstimate)}` : 'Gratis'}</span></div>
+              <div className="cart-summary-total"><span>{demoCount ? 'Total ilustrativo' : 'Subtotal'}</span><strong>{formatCurrency(total)}</strong></div>
+              {demoCount > 0 ? (
+                <div className="cart-checkout-blocked"><Info size={18} /><p>Los productos de muestra no se pueden comprar. {realCount > 0 && 'Quitalos para continuar con los productos reales.'}</p></div>
+              ) : (
+                <button type="button" className="cart-checkout" disabled={!canCheckout} onClick={() => navigate('/app/checkout')}>Continuar con la compra <ArrowRight size={18} /></button>
+              )}
+              <div className="cart-summary-trust"><ShieldCheck size={18} /><span>{demoCount ? 'Prueba sin pagos ni pedidos' : 'Pago seguro con OSCORP'}</span></div>
+            </aside>
           </div>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-muted-foreground">Envío</span>
-            <span className="font-medium text-green-600 dark:text-green-400">Gratis</span>
-          </div>
-          <div className="flex items-center justify-between mb-4 pt-3 border-t border-border">
-            <span className="text-lg font-bold text-foreground">Total</span>
-            <span className="text-2xl font-bold text-foreground">{formatCurrency(total)}</span>
-          </div>
-          <Button
-            className="w-full"
-            onClick={() => navigate('/app/checkout')}
-          >
-            Continuar
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-        </div>
-      </div>
+        )}
+        <div className="cart-benefits"><span><ShieldCheck size={20} /> Tiendas verificadas</span><span><Truck size={20} /> Opciones de entrega</span><span><ShoppingBag size={20} /> Comprá en un solo lugar</span></div>
+      </main>
     </div>
   );
 }
