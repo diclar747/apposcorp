@@ -210,6 +210,8 @@ export default function LandingPage() {
           <nav className={mobileMenuOpen ? 'ip-nav ip-nav-open' : 'ip-nav'} aria-label="Navegación principal">
             {navLinks.map((link) => <a key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}>{link.label}</a>)}
             <Link className="ip-mobile-market" to="/marketplace" onClick={() => setMobileMenuOpen(false)}>Entrar a la tienda <ArrowRight size={16} /></Link>
+            <Link className="ip-mobile-auth" to="/login" onClick={() => setMobileMenuOpen(false)}>Iniciar sesión</Link>
+            {settings.maintenance_mode !== 'true' && <Link className="ip-mobile-auth ip-mobile-auth-primary" to="/register" onClick={() => setMobileMenuOpen(false)}>Crear cuenta <ArrowRight size={16} /></Link>}
           </nav>
           <div className="ip-header-actions">
             <Link className="ip-login" to="/login">Iniciar sesión</Link>
