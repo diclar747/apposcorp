@@ -10,7 +10,7 @@ interface FileUploadProps {
   className?: string;
 }
 
-const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB (Vercel Serverless Limit)
+const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB
 
 export function FilePicker({
   value,
@@ -24,7 +24,7 @@ export function FilePicker({
 
   const handleFile = async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('El archivo supera el límite de 4.5MB para Vercel Production');
+      toast.error('El archivo supera el límite de 4.5MB');
       return;
     }
 

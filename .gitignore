@@ -48,7 +48,6 @@ coverage
 .cache
 .temp
 .tmp
-.vercel
 
 # Backups y datos (nunca a git)
 db_backup/
