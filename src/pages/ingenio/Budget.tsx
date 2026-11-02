@@ -83,13 +83,9 @@ export default function IngenioBudget() {
   const { status, isActive, isReadOnly } = useIngenioSubscription();
   const { openPaywall } = usePaywallStore();
 
-  if (status !== 'ACTIVE') {
-    return <AccessDenied status={status} />;
-  }
-
   useEffect(() => {
-    fetchBudget();
-  }, []);
+    if (status === 'ACTIVE') fetchBudget();
+  }, [status]);
 
   const fetchBudget = async () => {
     try {
@@ -262,14 +258,18 @@ export default function IngenioBudget() {
   const incomeProgress = budget.incomeGoal > 0 ? (actuals.income / budget.incomeGoal) * 100 : 0;
   const expenseProgress = budget.expenseLimit > 0 ? (actuals.expenses / budget.expenseLimit) * 100 : 0;
 
-  if (loading) return <div className="p-8 animate-pulse text-slate-500">Calculando tus proyecciones...</div>;
+  if (status !== 'ACTIVE') {
+    return <AccessDenied status={status} />;
+  }
+
+  if (loading) return <div className="p-6 sm:p-8 animate-pulse text-slate-500">Calculando tus proyecciones...</div>;
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-5 sm:space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Presupuesto y Metas</h1>
-          <p className="text-slate-500 font-medium tracking-tight">
+          <h1 className="text-[clamp(1.6rem,6vw,2rem)] font-black text-slate-900 dark:text-white tracking-tight leading-none">Presupuesto y Metas</h1>
+          <p className="text-slate-500 font-medium tracking-tight text-sm sm:text-base mt-1">
             Vigencia: <span className="text-indigo-600 font-bold">{budget.durationMonths} {budget.durationMonths === 1 ? 'mes' : 'meses'}</span> 
             {budget.startDate && ` desde ${formatDate(budget.startDate)}`}
           </p>
@@ -483,20 +483,20 @@ export default function IngenioBudget() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="p-8 pb-4 border-b dark:border-slate-800 flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-black dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-emerald-500" /> Estado de Metas
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8">
+        <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="p-5 sm:p-8 sm:pb-4 border-b dark:border-slate-800 flex flex-row items-center justify-between gap-3">
+            <CardTitle className="text-lg sm:text-xl font-black dark:text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 shrink-0" /> Estado de Metas
             </CardTitle>
-            <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-none">Balance Actual</Badge>
+            <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-none shrink-0 text-[11px] sm:text-xs">Balance Actual</Badge>
           </CardHeader>
-          <CardContent className="p-8 space-y-10">
+          <CardContent className="p-5 sm:p-8 space-y-8 sm:space-y-10">
             <div className="space-y-4">
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Monto de Ingresos</p>
-                  <p className="text-2xl font-black dark:text-white">{formatCurrency(actuals.income)} <span className="text-slate-300 font-bold">/ {formatCurrency(budget.incomeGoal)}</span></p>
+                  <p className="text-xl sm:text-2xl font-black dark:text-white tnum">{formatCurrency(actuals.income)} <span className="text-slate-300 font-bold">/ {formatCurrency(budget.incomeGoal)}</span></p>
                 </div>
                 <Badge className="bg-emerald-100 text-emerald-700 border-none font-black h-8 px-3 rounded-full">{incomeProgress.toFixed(0)}%</Badge>
               </div>
@@ -507,7 +507,7 @@ export default function IngenioBudget() {
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Control de Gastos</p>
-                  <p className="text-2xl font-black dark:text-white">{formatCurrency(actuals.expenses)} <span className="text-slate-300 font-bold">/ {formatCurrency(budget.expenseLimit)}</span></p>
+                  <p className="text-xl sm:text-2xl font-black dark:text-white tnum">{formatCurrency(actuals.expenses)} <span className="text-slate-300 font-bold">/ {formatCurrency(budget.expenseLimit)}</span></p>
                 </div>
                 <Badge className={cn(
                   "font-black border-none h-8 px-3 rounded-full",
@@ -554,14 +554,14 @@ export default function IngenioBudget() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="p-8 pb-4 border-b dark:border-slate-800">
-            <CardTitle className="text-xl font-black dark:text-white flex items-center gap-2">
-              <PieChartIcon className="w-6 h-6 text-indigo-500" /> Diagnóstico Visual
+        <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="p-5 sm:p-8 sm:pb-4 border-b dark:border-slate-800">
+            <CardTitle className="text-lg sm:text-xl font-black dark:text-white flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500 shrink-0" /> Diagnóstico Visual
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8 flex items-center justify-center">
-            <div className="h-72 w-full relative">
+          <CardContent className="p-5 sm:p-8 flex items-center justify-center">
+            <div className="h-64 sm:h-72 w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -589,7 +589,7 @@ export default function IngenioBudget() {
               <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Libre</p>
                 <p className={cn(
-                  "text-3xl font-black leading-none",
+                  "text-[clamp(1.4rem,6vw,1.875rem)] font-black leading-none tnum",
                   budget.expenseLimit - actuals.expenses < 0 ? 'text-rose-500' : 'text-slate-900 dark:text-white'
                 )}>
                   {formatCurrency(Math.max(0, budget.expenseLimit - actuals.expenses))}
@@ -602,7 +602,7 @@ export default function IngenioBudget() {
 
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Detalle de Presupuestos</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Detalle de Presupuestos</h2>
           <div className="relative w-full md:w-80">
             <Input 
               placeholder="Buscar meta o descripción..." 
@@ -629,8 +629,8 @@ export default function IngenioBudget() {
                 "border-none shadow-md bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all border border-slate-100 dark:border-slate-800",
                 isExpired && "opacity-80 grayscale-[0.5]"
               )}>
-                <CardContent className="p-8">
-                  <div className="flex justify-between items-start mb-6">
+                <CardContent className="p-5 sm:p-7">
+                  <div className="flex justify-between items-start mb-5 sm:mb-6">
                     <div className="flex flex-col gap-1">
                       <Badge className={cn(
                         "font-bold uppercase tracking-widest text-[10px] px-3 py-1 rounded-full border-none w-fit",

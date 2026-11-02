@@ -224,13 +224,13 @@ export default function IngenioCourseDetail() {
   const completedLessons = enrollment?.completedLessons || [];
 
   return (
-    <div className="space-y-8 pb-32">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="rounded-2xl h-12 w-12 shadow-sm">
+    <div className="space-y-5 sm:space-y-8">
+      <div className="flex items-start gap-3 sm:gap-4">
+        <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="rounded-2xl h-11 w-11 sm:h-12 sm:w-12 shadow-sm shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">{course.title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-[clamp(1.4rem,5.5vw,1.875rem)] font-black text-slate-900 dark:text-white leading-tight break-words">{course.title}</h1>
           <div className="flex items-center gap-3 mt-1">
             <Badge className="bg-indigo-600 text-white border-none font-black">{course.category}</Badge>
             {!hasAccess && <Badge variant="outline" className="text-slate-400 font-bold">Bloqueado</Badge>}
@@ -238,27 +238,27 @@ export default function IngenioCourseDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div className="lg:col-span-12 space-y-8">
-           <div className="aspect-video relative rounded-[3rem] overflow-hidden bg-slate-900 shadow-2xl overflow-hidden group">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
+        <div className="lg:col-span-12 space-y-5 sm:space-y-8">
+           <div className="aspect-video relative rounded-3xl sm:rounded-[3rem] overflow-hidden bg-slate-900 shadow-2xl group">
               {hasAccess ? (
                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/40 backdrop-blur-sm">
-                    <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md mb-4 group-hover:scale-110 transition-transform cursor-pointer" onClick={() => {
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md mb-4 group-hover:scale-110 transition-transform cursor-pointer" onClick={() => {
                         const firstMod = course.modules?.[0];
                         if (firstMod) toggleModule(firstMod.id);
                     }}>
-                        <Play className="w-10 h-10 text-white" />
+                        <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                     </div>
-                    <p className="text-white font-black text-xl mb-1 uppercase tracking-tighter">Plan de Estudio Habilitado</p>
-                    <p className="text-slate-300 font-medium">Selecciona una lección debajo para comenzar.</p>
+                    <p className="text-white font-black text-base sm:text-xl mb-1 uppercase tracking-tighter text-center">Plan de Estudio Habilitado</p>
+                    <p className="text-slate-300 font-medium text-sm sm:text-base text-center">Selecciona una lección debajo para comenzar.</p>
                  </div>
               ) : (
                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60 backdrop-blur-md">
                     <div className="w-16 h-16 rounded-3xl bg-white/10 flex items-center justify-center mb-6 border border-white/20 shadow-2xl">
                         <Lock className="w-8 h-8 text-white" />
                     </div>
-                    <h2 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">Contenido Exclusivo</h2>
-                    <Button onClick={handleAction} className="bg-white hover:bg-slate-200 text-slate-950 font-black h-14 px-10 rounded-2xl shadow-2xl shadow-white/10">
+                    <h2 className="text-xl sm:text-2xl font-black text-white mb-4 uppercase tracking-tighter">Contenido Exclusivo</h2>
+                    <Button onClick={handleAction} className="bg-white hover:bg-slate-200 text-slate-950 font-black h-12 sm:h-14 px-6 sm:px-10 rounded-2xl shadow-2xl shadow-white/10 active:scale-[0.98] transition-transform">
                         Desbloquear con Acceso Full
                     </Button>
                  </div>
@@ -268,8 +268,8 @@ export default function IngenioCourseDetail() {
 
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
-                <div className="h-full rounded-[2.5rem] bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-8 shadow-xl shadow-indigo-500/5">
-                  <h3 className="text-xl font-black mb-4 flex items-center gap-2 text-slate-900 dark:text-white uppercase tracking-tighter">
+                <div className="h-full rounded-3xl sm:rounded-[2.5rem] bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-indigo-500/5">
+                  <h3 className="text-lg sm:text-xl font-black mb-4 flex items-center gap-2 text-slate-900 dark:text-white uppercase tracking-tighter">
                     <Sparkles className="w-6 h-6 text-indigo-500" /> Acerca del Curso
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
@@ -298,7 +298,7 @@ export default function IngenioCourseDetail() {
                 <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
                    Plan de Estudio
                 </h3>
               </div>
@@ -311,7 +311,7 @@ export default function IngenioCourseDetail() {
                             "rounded-[2rem] border transition-all overflow-hidden",
                             hasAccess ? "bg-white dark:bg-slate-900 border-slate-100" : "bg-slate-50/50 dark:bg-slate-900 opacity-60 pointer-events-none"
                         )}>
-                            <button onClick={() => toggleModule(mod.id)} className="w-full p-6 flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                            <button onClick={() => toggleModule(mod.id)} className="w-full p-5 sm:p-6 flex items-center justify-between gap-3 font-bold text-slate-900 dark:text-white text-left">
                                 <div className="flex items-center gap-4">
                                     <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center font-black text-indigo-600 text-xs">{i+1}</div>
                                     <span>{mod.title}</span>

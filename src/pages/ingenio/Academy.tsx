@@ -31,13 +31,9 @@ export default function IngenioAcademy() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("IM E1");
 
-  if (status !== 'ACTIVE') {
-    return <AccessDenied status={status} />;
-  }
-
   useEffect(() => {
-    fetchData();
-  }, [user?.id]);
+    if (status === 'ACTIVE') fetchData();
+  }, [user?.id, status]);
 
   const fetchData = async () => {
     try {
@@ -166,18 +162,22 @@ export default function IngenioAcademy() {
   };
 
 
+  if (status !== 'ACTIVE') {
+    return <AccessDenied status={status} />;
+  }
+
   return (
-    <div className="space-y-8 pb-10">
-      <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+    <div className="space-y-5 sm:space-y-8">
+      <div className="bg-slate-900 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 text-white relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 blur-[100px] rounded-full -mr-40 -mt-40" />
         <div className="relative z-10">
           <Badge className="bg-indigo-500/20 text-indigo-300 border-none mb-4 font-black px-4 h-8 rounded-full">
             <Sparkles className="w-4 h-4 mr-2" /> Programas de Éxito
           </Badge>
-          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter">
+          <h1 className="text-[clamp(2rem,8vw,3rem)] font-black mb-3 sm:mb-4 tracking-tighter leading-none">
             Academia <span className="text-indigo-400">Premium</span>
           </h1>
-          <p className="text-slate-400 text-lg max-w-2xl font-medium leading-relaxed">
+          <p className="text-slate-400 text-sm sm:text-lg max-w-2xl font-medium leading-relaxed">
             Formación avanzada diseñada para tu crecimiento exponencial. Aprende a dominar las finanzas, inversiones y el sistema de negocios.
           </p>
         </div>
@@ -185,12 +185,12 @@ export default function IngenioAcademy() {
 
 
       {wheelSegments.length > 0 && (
-         <div className="flex flex-col lg:flex-row items-center gap-10 bg-slate-900 dark:bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl relative overflow-hidden">
+         <div className="flex flex-col lg:flex-row items-center gap-6 sm:gap-10 bg-slate-900 dark:bg-slate-900 p-6 sm:p-10 rounded-3xl sm:rounded-[4rem] text-white shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px]" />
             <div className="flex-1 relative z-10 text-center lg:text-left">
                <Badge className="bg-amber-400 text-amber-950 border-none mb-4 font-black">¿INDECISO?</Badge>
-               <h2 className="text-3xl md:text-4xl font-black mb-4 leading-tight">Gira la <span className="text-indigo-400">Rueda del Éxito</span></h2>
-               <p className="text-slate-400 font-medium mb-8 max-w-md mx-auto lg:mx-0">Deja que el destino sugiera tu próxima gran lección para acelerar tu libertad financiera.</p>
+               <h2 className="text-[clamp(1.6rem,6vw,2.25rem)] font-black mb-3 sm:mb-4 leading-tight">Gira la <span className="text-indigo-400">Rueda del Éxito</span></h2>
+               <p className="text-slate-400 font-medium text-sm sm:text-base mb-6 sm:mb-8 max-w-md mx-auto lg:mx-0">Deja que el destino sugiera tu próxima gran lección para acelerar tu libertad financiera.</p>
                <div className="flex gap-4">
                   <div className="p-4 bg-white/5 rounded-3xl border border-white/10 text-center flex-1">
                      <p className="text-2xl font-black text-indigo-400">100%</p>
@@ -208,14 +208,14 @@ export default function IngenioAcademy() {
          </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6 items-center">
+      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <Input 
-            placeholder="¿Qué quieres aprender hoy?..." 
+          <Input
+            placeholder="¿Qué quieres aprender hoy?..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-14 text-lg rounded-2xl bg-white dark:bg-slate-950 border-slate-200 shadow-xl shadow-slate-200/50"
+            className="pl-12 h-12 sm:h-14 text-base sm:text-lg rounded-2xl bg-white dark:bg-slate-950 border-slate-200 shadow-xl shadow-slate-200/50"
           />
         </div>
         <div className="flex items-center gap-4 text-slate-400 font-black text-xs uppercase tracking-widest">
@@ -225,7 +225,7 @@ export default function IngenioAcademy() {
       </div>
 
       <Tabs defaultValue="IM E1" value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto mb-10 overflow-x-auto whitespace-nowrap">
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto mb-6 sm:mb-10 overflow-x-auto whitespace-nowrap">
           {['IM E1', 'IM E2'].map(cat => (
             <TabsTrigger key={cat} value={cat} className="rounded-xl px-8 py-3 font-black text-sm leading-none data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-lg">
               {cat}

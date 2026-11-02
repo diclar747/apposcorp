@@ -88,17 +88,17 @@ export default function IngenioMaterials() {
     };
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-5 sm:space-y-8">
             {/* Header */}
-            <div className="bg-gradient-to-br from-violet-900 via-indigo-950 to-slate-950 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
+            <div className="bg-gradient-to-br from-violet-900 via-indigo-950 to-slate-950 rounded-3xl sm:rounded-[3rem] p-6 sm:p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/10 blur-[120px] rounded-full -mr-40 -mt-20" />
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-8">
                     <div className="max-w-xl">
                         <Badge className="bg-violet-500/20 text-violet-300 border-none mb-4 font-black">BIBLIOTECA EXCLUSIVA</Badge>
-                        <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter">
+                        <h1 className="text-[clamp(2rem,8vw,3rem)] font-black mb-3 sm:mb-4 tracking-tighter leading-none">
                             Rueda del <span className="text-violet-400">Éxito</span>
                         </h1>
-                        <p className="text-slate-400 text-lg font-medium leading-relaxed mb-6">
+                        <p className="text-slate-400 text-sm sm:text-lg font-medium leading-relaxed mb-5 sm:mb-6">
                             Gira la rueda o selecciona una etapa para profundizar en los pilares fundamentales de tu libertad financiera.
                         </p>
                         <div className="flex gap-3">
@@ -125,7 +125,7 @@ export default function IngenioMaterials() {
             {/* Content Area */}
             <div className="space-y-6">
                 <div className="flex items-center justify-between px-2">
-                    <h2 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2 min-w-0">
                         {currentSegmentData ? (
                             <>
                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: currentSegmentData.color }}>

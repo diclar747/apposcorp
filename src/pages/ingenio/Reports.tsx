@@ -360,16 +360,16 @@ export default function IngenioReports() {
   const totalExpense = combinedRows.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-5 sm:space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
                <FileText className="w-5 h-5 text-white" />
              </div>
-             <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Reportes Ingenio</h1>
+             <h1 className="text-[clamp(1.6rem,6vw,2rem)] font-black text-slate-900 dark:text-white tracking-tight leading-none">Reportes Ingenio</h1>
           </div>
-          <p className="text-slate-500 font-medium tracking-tight">Exportación profesional de estados financieros</p>
+          <p className="text-slate-500 font-medium tracking-tight text-sm sm:text-base">Exportación profesional de estados financieros</p>
         </div>
         
         {hasSearched && (activeTab === 'movements' ? records.length > 0 : budgetRecords.length > 0) && (
@@ -394,20 +394,20 @@ export default function IngenioReports() {
         setActiveTab(v);
         setHasSearched(false);
       }} className="w-full">
-        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto mb-8 grid grid-cols-2 max-w-md">
-           <TabsTrigger value="movements" className="rounded-xl px-6 py-2.5 font-black text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
-             Movimientos de Patrimonio
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto mb-6 sm:mb-8 grid grid-cols-2 w-full max-w-md">
+           <TabsTrigger value="movements" className="rounded-xl px-2 sm:px-6 py-2.5 font-black text-xs sm:text-sm leading-tight data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
+             Movimientos
            </TabsTrigger>
-           <TabsTrigger value="budgets" className="rounded-xl px-6 py-2.5 font-black text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
+           <TabsTrigger value="budgets" className="rounded-xl px-2 sm:px-6 py-2.5 font-black text-xs sm:text-sm leading-tight data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
              Presupuesto y Metas
            </TabsTrigger>
         </TabsList>
 
         <TabsContent value="movements" className="space-y-8">
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden border-t-4 border-indigo-600">
-            <CardContent className="p-8">
+          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden border-t-4 border-indigo-600">
+            <CardContent className="p-5 sm:p-8">
                {/* Filters form stays here but adjusted */}
-               <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
+               <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4 sm:gap-6 items-end">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Tipo Mov.</label>
               <Select value={filters.type} onValueChange={(val) => setFilters({...filters, type: val})}>
@@ -493,7 +493,7 @@ export default function IngenioReports() {
         )}
       </div>
       {(
-        <Card className="border-none shadow-2xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
+        <Card className="border-none shadow-2xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50 dark:bg-slate-900/50 border-none">
@@ -607,9 +607,9 @@ export default function IngenioReports() {
 </TabsContent>
 
         <TabsContent value="budgets" className="space-y-8">
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden border-t-4 border-emerald-500">
-             <CardContent className="p-8">
-               <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden border-t-4 border-emerald-500">
+             <CardContent className="p-5 sm:p-8">
+               <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6 items-end">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Desde</label>
                   <div className="relative">
@@ -657,11 +657,11 @@ export default function IngenioReports() {
           </Card>
 
           {!hasSearched ? (
-            <Card className="border-none shadow-md bg-white/50 dark:bg-slate-900/30 rounded-[3rem] p-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800">
-               <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-slate-100 dark:shadow-none">
-                 <Calendar className="w-10 h-10 text-emerald-600" />
+            <Card className="border-none shadow-md bg-white/50 dark:bg-slate-900/30 rounded-3xl sm:rounded-[3rem] p-10 sm:p-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800">
+               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-xl shadow-slate-100 dark:shadow-none">
+                 <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-600" />
                </div>
-               <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Análisis de Metas</h2>
+               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-2">Análisis de Metas</h2>
                <p className="text-slate-500 font-medium max-w-sm mx-auto">Selecciona el rango de fechas para visualizar el estado de tus objetivos presupuestarios.</p>
             </Card>
           ) : (

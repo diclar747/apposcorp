@@ -108,11 +108,11 @@ export default function IngenioProfile() {
   }
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Mi Perfil</h1>
-          <p className="text-slate-500 font-medium tracking-tight">Gestiona tu identidad y seguridad en la plataforma</p>
+          <h1 className="text-[clamp(1.6rem,6vw,2rem)] font-black text-slate-900 dark:text-white tracking-tight leading-none">Mi Perfil</h1>
+          <p className="text-slate-500 font-medium tracking-tight text-sm sm:text-base mt-1">Gestiona tu identidad y seguridad en la plataforma</p>
         </div>
         <div className="flex items-center gap-2">
             <Badge className={cn(
@@ -126,27 +126,27 @@ export default function IngenioProfile() {
       </div>
 
       <Tabs defaultValue="personal" className="w-full">
-        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto flex flex-wrap gap-1">
-          <TabsTrigger value="personal" className="rounded-xl px-6 py-2.5 font-black text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
-            <User className="w-3.5 h-3.5 mr-2" /> Datos Personales
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto grid grid-cols-3 gap-1 w-full">
+          <TabsTrigger value="personal" className="flex items-center justify-center gap-1.5 rounded-xl px-2 sm:px-6 py-2.5 font-black text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
+            <User className="w-3.5 h-3.5 shrink-0" /> Personal
           </TabsTrigger>
-          <TabsTrigger value="security" className="rounded-xl px-6 py-2.5 font-black text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
-            <Shield className="w-3.5 h-3.5 mr-2" /> Seguridad
+          <TabsTrigger value="security" className="flex items-center justify-center gap-1.5 rounded-xl px-2 sm:px-6 py-2.5 font-black text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
+            <Shield className="w-3.5 h-3.5 shrink-0" /> Seguridad
           </TabsTrigger>
-          <TabsTrigger value="subscription" className="rounded-xl px-6 py-2.5 font-black text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
-            <CreditCard className="w-3.5 h-3.5 mr-2" /> Suscripción
+          <TabsTrigger value="subscription" className="flex items-center justify-center gap-1.5 rounded-xl px-2 sm:px-6 py-2.5 font-black text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md">
+            <CreditCard className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Suscripción</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="personal" className="mt-8">
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="p-8 pb-4">
-              <CardTitle className="text-2xl font-black">Información Básica</CardTitle>
+        <TabsContent value="personal" className="mt-6 sm:mt-8">
+          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="p-5 sm:p-8 sm:pb-4">
+              <CardTitle className="text-xl sm:text-2xl font-black">Información Básica</CardTitle>
               <CardDescription className="font-medium">Tu identidad pública en Ingenio Millonario.</CardDescription>
             </CardHeader>
-            <CardContent className="p-8 pt-4">
-              <form onSubmit={handleProfileSubmit} className="space-y-8">
-                <div className="flex flex-col sm:flex-row items-center gap-8 p-6 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+            <CardContent className="p-5 pt-0 sm:p-8 sm:pt-4">
+              <form onSubmit={handleProfileSubmit} className="space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
                   <ImageUpload
                     value={profileData.avatar}
                     onChange={(val) => setProfileData({ ...profileData, avatar: val })}
@@ -198,17 +198,17 @@ export default function IngenioProfile() {
         </TabsContent>
 
 
-        <TabsContent value="security" className="mt-8">
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="p-8 pb-4">
-              <CardTitle className="text-2xl font-black flex items-center gap-2">
-                <Shield className="w-7 h-7 text-indigo-600" /> Seguridad
+        <TabsContent value="security" className="mt-6 sm:mt-8">
+          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="p-5 sm:p-8 sm:pb-4">
+              <CardTitle className="text-xl sm:text-2xl font-black flex items-center gap-2">
+                <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600" /> Seguridad
               </CardTitle>
               <CardDescription className="font-medium">
                 Mantén tu cuenta protegida cambiando tu contraseña regularmente.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-8 pt-4">
+            <CardContent className="p-5 pt-0 sm:p-8 sm:pt-4">
               <form onSubmit={handlePasswordSubmit} className="max-w-md space-y-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-black">Contraseña Actual</Label>
@@ -291,27 +291,27 @@ export default function IngenioProfile() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="subscription" className="mt-8">
-          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="p-8 pb-4 border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <CardTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
-                 <Sparkles className="w-6 h-6 text-indigo-500" /> Pase de Acceso Global
+        <TabsContent value="subscription" className="mt-6 sm:mt-8">
+          <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="p-5 sm:p-8 sm:pb-4 border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <CardTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500 shrink-0" /> Pase de Acceso Global
               </CardTitle>
               <CardDescription className="font-bold text-slate-500">Gestiona tu vinculación con el ecosistema Ingenio Millonario.</CardDescription>
             </CardHeader>
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row items-center gap-10 p-10 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 rounded-[3rem] border border-white dark:border-slate-800">
+            <CardContent className="p-5 sm:p-8">
+              <div className="flex flex-col md:flex-row items-center gap-6 sm:gap-10 p-6 sm:p-10 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 rounded-3xl sm:rounded-[3rem] border border-white dark:border-slate-800">
                 <div className={cn(
-                  "w-24 h-24 rounded-[2rem] flex items-center justify-center shadow-2xl shrink-0",
+                  "w-20 h-20 sm:w-24 sm:h-24 rounded-3xl sm:rounded-[2rem] flex items-center justify-center shadow-2xl shrink-0",
                   isActive ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white"
                 )}>
-                  {isActive ? <ShieldCheck className="w-12 h-12" /> : <CreditCard className="w-12 h-12" />}
+                  {isActive ? <ShieldCheck className="w-10 h-10 sm:w-12 sm:h-12" /> : <CreditCard className="w-10 h-10 sm:w-12 sm:h-12" />}
                 </div>
-                
-                <div className="flex-1 text-center md:text-left space-y-6">
+
+                <div className="flex-1 text-center md:text-left space-y-5 sm:space-y-6">
                   <div>
-                    <h3 className="text-3xl font-black dark:text-white uppercase tracking-tighter mb-2">Estado: <span className={isActive ? "text-emerald-600" : "text-indigo-600"}>{status === 'PENDING_APPROVAL' ? 'Validando' : (isActive ? 'Activo' : 'Inactivo')}</span></h3>
-                    <p className="text-slate-500 font-bold text-lg leading-snug">
+                    <h3 className="text-[clamp(1.5rem,6vw,1.875rem)] font-black dark:text-white uppercase tracking-tighter mb-2 leading-none">Estado: <span className={isActive ? "text-emerald-600" : "text-indigo-600"}>{status === 'PENDING_APPROVAL' ? 'Validando' : (isActive ? 'Activo' : 'Inactivo')}</span></h3>
+                    <p className="text-slate-500 font-bold text-base sm:text-lg leading-snug">
                        {isActive 
                         ? "Tu cuenta cuenta con todos los permisos habilitados para la gestión financiera y académica." 
                         : (status === 'PENDING_APPROVAL' 
@@ -321,18 +321,18 @@ export default function IngenioProfile() {
                   </div>
 
                   {subscription && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-8 py-8 border-t border-dashed border-indigo-200 dark:border-indigo-900/50">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-5 sm:gap-8 py-6 sm:py-8 border-t border-dashed border-indigo-200 dark:border-indigo-900/50 text-left">
                       <div>
                         <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Monto de Acceso</p>
-                        <p className="text-2xl font-black dark:text-white">{formatCurrency(subscription.totalAmount)}</p>
+                        <p className="text-xl sm:text-2xl font-black dark:text-white tnum">{formatCurrency(subscription.totalAmount)}</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Total Abonado</p>
-                        <p className="text-2xl font-black text-emerald-600">{formatCurrency(subscription.paidAmount)}</p>
+                        <p className="text-xl sm:text-2xl font-black text-emerald-600 tnum">{formatCurrency(subscription.paidAmount)}</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Plan</p>
-                        <p className="text-xl font-black dark:text-white">{subscription.installments === 1 ? 'Pago Único' : `${subscription.installments} Cuotas`}</p>
+                        <p className="text-lg sm:text-xl font-black dark:text-white">{subscription.installments === 1 ? 'Pago Único' : `${subscription.installments} Cuotas`}</p>
                       </div>
                     </div>
                   )}
@@ -340,7 +340,7 @@ export default function IngenioProfile() {
                   {!isActive && (
                     <Button 
                       onClick={openPaywall}
-                      className="bg-indigo-600 hover:bg-indigo-700 h-16 px-12 rounded-2xl text-xl font-black shadow-2xl shadow-indigo-600/30 w-full md:w-auto"
+                      className="bg-indigo-600 hover:bg-indigo-700 h-14 sm:h-16 px-8 sm:px-12 rounded-2xl text-lg sm:text-xl font-black shadow-2xl shadow-indigo-600/30 w-full md:w-auto active:scale-[0.98] transition-transform"
                     >
                       {status === 'PENDING_APPROVAL' ? 'Ver Detalles de Solicitud' : 'Solicitar Acceso Full'}
                     </Button>
