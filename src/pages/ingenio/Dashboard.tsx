@@ -237,24 +237,24 @@ export default function IngenioDashboard() {
     : listRecords.reduce((sum, r) => sum + r.amount, 0);
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-5 sm:space-y-6 pb-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Finanzas Master</h1>
-          <p className="text-slate-500 font-medium">Control absoluto sobre tu flujo de caja y patrimonio neto.</p>
+          <h1 className="text-[clamp(1.6rem,6vw,2rem)] font-black text-slate-900 dark:text-white tracking-tight leading-none">Finanzas Master</h1>
+          <p className="text-slate-500 font-medium text-sm sm:text-base mt-1">Control absoluto sobre tu flujo de caja y patrimonio neto.</p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3 md:flex md:gap-3">
           <Button
             onClick={() => openCreate('income')}
-            className="h-12 px-5 rounded-xl shadow-lg transition-all font-bold bg-emerald-600 hover:bg-emerald-700"
+            className="w-full md:w-auto h-12 px-5 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98]"
           >
             {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
             Ingreso
           </Button>
           <Button
             onClick={() => openCreate('expense')}
-            className="h-12 px-5 rounded-xl shadow-lg transition-all font-bold bg-rose-600 hover:bg-rose-700"
+            className="w-full md:w-auto h-12 px-5 rounded-2xl shadow-lg shadow-rose-600/20 transition-all font-bold bg-rose-600 hover:bg-rose-700 active:scale-[0.98]"
           >
             {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
             Gasto
@@ -283,123 +283,122 @@ export default function IngenioDashboard() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
         <Card
           onClick={() => openList('networth')}
-          className="bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white border-none shadow-2xl relative overflow-hidden rounded-[2rem] cursor-pointer active:scale-[0.99] transition-transform"
+          className="bg-gradient-to-br from-[#0b1b3a] via-[#122a55] to-[#0a1120] text-white border-none shadow-2xl relative overflow-hidden rounded-3xl sm:rounded-[2rem] cursor-pointer active:scale-[0.99] transition-transform"
         >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32" />
-          <CardContent className="p-8 relative z-10">
-            <div className="flex justify-between items-start mb-10">
-              <div>
-                <p className="text-indigo-200 text-sm font-bold uppercase tracking-widest mb-2">Patrimonio Neto Global</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black tracking-tight">{formatCurrency(summary.netWorth)}</span>
-                </div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl -mr-32 -mt-32" />
+          <div className="absolute bottom-0 left-0 w-56 h-56 bg-indigo-500/10 rounded-full blur-3xl -ml-24 -mb-24" />
+          <CardContent className="p-6 sm:p-8 relative z-10">
+            <div className="flex justify-between items-start gap-3 mb-6 sm:mb-8">
+              <div className="min-w-0">
+                <p className="text-amber-200/90 text-xs sm:text-sm font-bold uppercase tracking-[0.2em] mb-2">Patrimonio Neto Global</p>
+                <span className="block text-[clamp(2.1rem,10vw,3.25rem)] font-black tracking-tight tnum leading-none">{formatCurrency(summary.netWorth)}</span>
               </div>
               <Badge className={cn(
-                "h-10 px-4 font-black rounded-full border-none",
+                "shrink-0 h-9 px-3 sm:h-10 sm:px-4 font-black rounded-full border-none tnum",
                 summary.netWorthGrowth >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
               )}>
-                {summary.netWorthGrowth >= 0 ? <TrendingUp className="w-5 h-5 mr-1.5" /> : <TrendingDown className="w-5 h-5 mr-1.5" />}
+                {summary.netWorthGrowth >= 0 ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-1" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />}
                 {summary.netWorthGrowth.toFixed(1)}%
               </Badge>
             </div>
 
-            <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
-              <div>
-                <div className="flex items-center gap-2 mb-2 opacity-80">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Activos Totales</span>
+            <div className="grid grid-cols-2 gap-4 sm:gap-8 pt-5 sm:pt-7 border-t border-white/10">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1.5 opacity-80">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest truncate">Activos Totales</span>
                 </div>
-                <p className="text-2xl font-black">{formatCurrency(summary.assets)}</p>
+                <p className="text-lg sm:text-2xl font-black tnum">{formatCurrency(summary.assets)}</p>
               </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2 opacity-80">
-                  <div className="w-2 h-2 rounded-full bg-rose-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Pasivos Totales</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1.5 opacity-80">
+                  <div className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest truncate">Pasivos Totales</span>
                 </div>
-                <p className="text-2xl font-black">{formatCurrency(summary.liabilities)}</p>
+                <p className="text-lg sm:text-2xl font-black tnum">{formatCurrency(summary.liabilities)}</p>
               </div>
             </div>
-            <p className="text-[11px] font-bold text-white/40 mt-6 uppercase tracking-widest">Toca para ver activos y pasivos</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-white/40 mt-5 sm:mt-6 uppercase tracking-widest">Toca para ver activos y pasivos</p>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6">
           <Card
             onClick={() => openList('income')}
             className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
           >
-            <div className="absolute left-0 top-0 bottom-0 w-2 bg-emerald-500" />
-            <CardContent className="p-8 pl-10">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Ingresos del Mes</p>
-                  <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.income)}</p>
-                  <p className="text-xs font-bold mt-2 text-emerald-500">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 sm:w-2 bg-emerald-500" />
+            <CardContent className="p-5 pl-7 sm:p-7 sm:pl-9">
+              <div className="flex justify-between items-center gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Ingresos del Mes</p>
+                  <p className="text-[clamp(1.6rem,7vw,2.25rem)] font-black text-slate-900 dark:text-white leading-none tnum">{formatCurrency(summary.income)}</p>
+                  <p className="text-xs font-bold mt-2 text-emerald-500 tnum">
                     Hoy: +{formatCurrency(summary.todayIncome)}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shadow-inner shrink-0">
-                  <ArrowDownRight className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shadow-inner shrink-0">
+                  <ArrowDownRight className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
-              <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-3 sm:mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
           <Card
             onClick={() => openList('expense')}
             className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
           >
-            <div className="absolute left-0 top-0 bottom-0 w-2 bg-rose-500" />
-            <CardContent className="p-8 pl-10">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Egresos del Mes</p>
-                  <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.expenses)}</p>
-                  <p className="text-xs font-bold mt-2 text-rose-500">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 sm:w-2 bg-rose-500" />
+            <CardContent className="p-5 pl-7 sm:p-7 sm:pl-9">
+              <div className="flex justify-between items-center gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Egresos del Mes</p>
+                  <p className="text-[clamp(1.6rem,7vw,2.25rem)] font-black text-slate-900 dark:text-white leading-none tnum">{formatCurrency(summary.expenses)}</p>
+                  <p className="text-xs font-bold mt-2 text-rose-500 tnum">
                     Hoy: -{formatCurrency(summary.todayExpenses)}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center shadow-inner shrink-0">
-                  <ArrowUpRight className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center shadow-inner shrink-0">
+                  <ArrowUpRight className="w-6 h-6 sm:w-8 sm:h-8 text-rose-600 dark:text-rose-400" />
                 </div>
               </div>
-              <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-3 sm:mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
           <Card
             onClick={() => openList('balance')}
             className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl cursor-pointer active:scale-[0.99] transition-transform"
           >
-            <div className={cn("absolute left-0 top-0 bottom-0 w-2", summary.balance >= 0 ? "bg-indigo-500" : "bg-rose-500")} />
-            <CardContent className="p-8 pl-10">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Saldo de Caja</p>
-                  <p className="text-4xl font-black text-slate-900 dark:text-white leading-tight">{formatCurrency(summary.balance)}</p>
-                  <p className={cn("text-xs font-bold mt-2", summary.todayBalance >= 0 ? "text-emerald-500" : "text-rose-500")}>
+            <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 sm:w-2", summary.balance >= 0 ? "bg-indigo-500" : "bg-rose-500")} />
+            <CardContent className="p-5 pl-7 sm:p-7 sm:pl-9">
+              <div className="flex justify-between items-center gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Saldo de Caja</p>
+                  <p className="text-[clamp(1.6rem,7vw,2.25rem)] font-black text-slate-900 dark:text-white leading-none tnum">{formatCurrency(summary.balance)}</p>
+                  <p className={cn("text-xs font-bold mt-2 tnum", summary.todayBalance >= 0 ? "text-emerald-500" : "text-rose-500")}>
                     Hoy: {summary.todayBalance >= 0 ? '+' : ''}{formatCurrency(summary.todayBalance)}
                   </p>
                 </div>
-                <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner", summary.balance >= 0 ? "bg-indigo-50 dark:bg-indigo-500/10" : "bg-rose-50 dark:bg-rose-500/10")}>
-                  <Wallet className={cn("w-8 h-8", summary.balance >= 0 ? "text-indigo-600 dark:text-indigo-400" : "text-rose-600 dark:text-rose-400")} />
+                <div className={cn("w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-inner shrink-0", summary.balance >= 0 ? "bg-indigo-50 dark:bg-indigo-500/10" : "bg-rose-50 dark:bg-rose-500/10")}>
+                  <Wallet className={cn("w-6 h-6 sm:w-8 sm:h-8", summary.balance >= 0 ? "text-indigo-600 dark:text-indigo-400" : "text-rose-600 dark:text-rose-400")} />
                 </div>
               </div>
-              <p className="text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-3 sm:mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-     <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-[2rem] overflow-hidden">
-          <div className="p-8 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-            <h2 className="text-xl font-black dark:text-white">Flujo de Caja Real</h2>
-            <Badge variant="outline" className="font-bold border-slate-200">Balance Mensual</Badge>
+     <Card className="border-none shadow-xl bg-white dark:bg-slate-950 rounded-3xl sm:rounded-[2rem] overflow-hidden">
+          <div className="p-5 sm:p-8 border-b dark:border-slate-800 flex justify-between items-center gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+            <h2 className="text-lg sm:text-xl font-black dark:text-white">Flujo de Caja Real</h2>
+            <Badge variant="outline" className="font-bold border-slate-200 shrink-0 text-[11px] sm:text-xs">Balance Mensual</Badge>
           </div>
-          <CardContent className="p-8">
-            <div className="h-80 mt-4">
+          <CardContent className="p-3 sm:p-8">
+            <div className="h-60 sm:h-80 mt-2 sm:mt-4">
               {summary && (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
