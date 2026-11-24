@@ -10,8 +10,11 @@ import {
   Lock,
   Pencil,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Landmark,
+  ChevronRight
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AccessDenied } from '@/components/ingenio/AccessDenied';
 import { useAuthStore } from '@/stores';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -35,16 +38,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { toast } from 'sonner';
-import { financesApi } from '@/lib/api';
+import { financesApi, financeAccountsApi } from '@/lib/api';
+import { kindMeta, type AccountsTotals, type FinanceAccount } from '@/lib/ingenioAccounts';
 import { useWalletStore } from '@/stores/walletStore';
 import { useIngenioSubscription } from '@/hooks/useIngenioSubscription';
 import { usePaywallStore } from '@/stores';
+
+// Última cuenta usada al registrar: se propone de nuevo en el próximo movimiento
+const LAST_ACCOUNT_KEY = 'ingenio-last-account';
+const readLastAccount = () => {
+  try { return localStorage.getItem(LAST_ACCOUNT_KEY) || ''; } catch { return ''; }
+};
+const saveLastAccount = (id: string) => {
+  try { localStorage.setItem(LAST_ACCOUNT_KEY, id); } catch { /* sin almacenamiento */ }
+};
 
 const emptyRecord = () => ({
   type: 'expense',
   amount: '',
   description: '',
   notes: '',
+  accountId: '',
   date: new Date().toLocaleDateString('en-CA')
 });
 
@@ -61,8 +75,12 @@ export default function IngenioDashboard() {
     todayBalance: 0,
     todayIncome: 0,
     todayExpenses: 0,
-    balance: 0
+    balance: 0,
+    available: 0
   });
+  // Cuentas (efectivo, bancos, billeteras, tarjetas) para elegir de dónde sale/entra cada movimiento
+  const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
+  const [accountsTotals, setAccountsTotals] = useState<AccountsTotals | null>(null);
   const [allRecords, setAllRecords] = useState<any[]>([]);
   const { status, isActive, isReadOnly, subscription } = useIngenioSubscription();
   const { openPaywall } = usePaywallStore();
@@ -106,12 +124,15 @@ export default function IngenioDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [data, records] = await Promise.all([
+      const [data, records, overview] = await Promise.all([
         financesApi.getSummary(),
         // Pull every record, not just the current month: the drill-in lists have to
         // reach older movements that still feed Saldo de Caja / Patrimonio Neto.
-        financesApi.getAll()
+        financesApi.getAll(),
+        financeAccountsApi.getOverview().catch(() => null)
       ]);
+      setAccounts(overview?.accounts || []);
+      setAccountsTotals(overview?.totals || null);
       setSummary({
         income: data.monthIncome || 0,
         expenses: data.monthExpenses || 0,
@@ -122,7 +143,8 @@ export default function IngenioDashboard() {
         todayBalance: data.todayBalance || 0,
         todayIncome: data.todayIncome || 0,
         todayExpenses: data.todayExpenses || 0,
-        balance: data.balance || 0
+        balance: data.balance || 0,
+        available: data.available ?? data.balance ?? 0
       });
       setAllRecords(Array.isArray(records) ? records : []);
     } catch (error) {
@@ -139,7 +161,9 @@ export default function IngenioDashboard() {
     }
     setEditingId(null);
     setShowAdvancedType(type === 'asset' || type === 'liability');
-    setNewRecord({ ...emptyRecord(), type });
+    const last = readLastAccount();
+    const lastValid = accounts.some((a) => a.id === last && !a.isArchived) ? last : '';
+    setNewRecord({ ...emptyRecord(), type, accountId: lastValid });
     setIsFormOpen(true);
   };
 
@@ -151,6 +175,7 @@ export default function IngenioDashboard() {
       amount: Number(record.amount).toLocaleString('es-PY'),
       description: record.description || '',
       notes: record.notes || '',
+      accountId: record.accountId || '',
       date: new Date(record.date).toLocaleDateString('en-CA')
     });
     setListType(null);
@@ -170,10 +195,13 @@ export default function IngenioDashboard() {
     }
 
     try {
+      const usesAccount = newRecord.type === 'income' || newRecord.type === 'expense';
       const payload = {
         ...newRecord,
-        amount: Number(newRecord.amount.replace(/\D/g, ''))
+        amount: Number(newRecord.amount.replace(/\D/g, '')),
+        accountId: usesAccount && newRecord.accountId ? newRecord.accountId : null
       };
+      if (usesAccount && !editingId) saveLastAccount(newRecord.accountId || '');
 
       if (editingId) {
         await financesApi.update(editingId, payload);
@@ -389,6 +417,32 @@ export default function IngenioDashboard() {
               <p className="text-[10px] sm:text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-3 sm:mt-4 uppercase tracking-widest">Toca para ver el detalle</p>
             </CardContent>
           </Card>
+          <Link to="/ingenio/cuentas" className="block">
+            <Card className="border-none shadow-xl bg-white dark:bg-slate-950 relative overflow-hidden rounded-3xl active:scale-[0.99] transition-transform">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 sm:w-2 bg-amber-400" />
+              <CardContent className="p-5 pl-7 sm:p-7 sm:pl-9">
+                <div className="flex justify-between items-center gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Mis Cuentas · Dinero disponible</p>
+                    <p className="text-[clamp(1.6rem,7vw,2.25rem)] font-black text-slate-900 dark:text-white leading-none tnum">{formatCurrency(accountsTotals?.available ?? summary.balance)}</p>
+                    <p className="text-xs font-bold mt-2 text-slate-500">
+                      {accountsTotals && accountsTotals.creditDebt > 0
+                        ? `Deuda en tarjetas ${formatCurrency(accountsTotals.creditDebt)} · Neto ${formatCurrency(accountsTotals.net)}`
+                        : accounts.filter((a) => !a.isArchived).length
+                          ? `${accounts.filter((a) => !a.isArchived).length} cuenta(s): efectivo, bancos y billeteras`
+                          : 'Agregá tu efectivo, caja de ahorro, cuenta corriente o tarjeta'}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-inner shrink-0 bg-amber-50 dark:bg-amber-500/10">
+                    <Landmark className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+                <p className="flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-slate-300 dark:text-slate-600 mt-3 sm:mt-4 uppercase tracking-widest">
+                  Ver mis cuentas <ChevronRight className="w-3 h-3" />
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 
@@ -498,6 +552,32 @@ export default function IngenioDashboard() {
               )}
             </div>
 
+            {(newRecord.type === 'income' || newRecord.type === 'expense') && (
+              <div className="space-y-2">
+                <Label className="font-bold">{newRecord.type === 'income' ? '¿A qué cuenta entra?' : '¿De qué cuenta sale?'}</Label>
+                {accounts.some((a) => !a.isArchived || a.id === newRecord.accountId) ? (
+                  <Select
+                    value={newRecord.accountId || 'none'}
+                    onValueChange={(val) => setNewRecord({ ...newRecord, accountId: val === 'none' ? '' : val })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin cuenta</SelectItem>
+                      {accounts.filter((a) => !a.isArchived || a.id === newRecord.accountId).map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.name} · {kindMeta(a.kind).short}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    <Link to="/ingenio/cuentas" className="font-bold text-indigo-600">Agregá tus cuentas</Link> (efectivo, banco, tarjeta) para ver el saldo de cada una.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="font-bold">Monto (₲)</Label>
               <Input
@@ -574,7 +654,7 @@ export default function IngenioDashboard() {
             </p>
             {isNetWorthList ? (
               <p className="text-xs font-bold text-slate-400">
-                Activos {formatCurrency(summary.assets)} · Pasivos {formatCurrency(summary.liabilities)}
+                Caja y cuentas {formatCurrency(summary.available)} · Activos {formatCurrency(summary.assets)} · Pasivos {formatCurrency(summary.liabilities)}
               </p>
             ) : (
               <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-full p-1 mt-1 w-fit">
@@ -629,6 +709,7 @@ export default function IngenioDashboard() {
                       {new Date(r.date).toLocaleDateString('es-PY', showAllScope
                         ? { day: '2-digit', month: 'short', year: '2-digit' }
                         : { day: '2-digit', month: 'short' })}
+                      {r.account?.name ? ` • ${r.account.name}` : ''}
                       {r.notes ? ` • ${r.notes}` : ''}
                     </p>
                   </div>

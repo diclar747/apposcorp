@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma.js';
 import { authenticate, authorize, AuthRequest, invalidateUserActiveCache } from '../middleware/auth.js';
 import { createUserAccount, sanitizeRoles, validatePassword, ALL_ROLES, EMAIL_REGEX } from '../services/userService.js';
 import { generateStoreSlug } from '../utils/slug.js';
+import { newSellerPlanData, trialProfileData, MAX_TRIAL_DAYS } from '../services/trialService.js';
 
 const router = Router();
 
@@ -256,8 +257,7 @@ router.put('/seller-profile', authenticate, authorize('seller'), async (req: Aut
         ruc: ruc || '',
         socialLinks: socialLinks || {},
         businessHours: businessHours || {},
-        planActive: true,
-        planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ...(await newSellerPlanData()),
       }
     });
 
@@ -335,8 +335,7 @@ router.put('/:id/seller-profile', authenticate, authorize('superadmin'), async (
         banner: banner || '',
         ruc: ruc || '',
         socialLinks: socialLinks || {},
-        planActive: true,
-        planExpiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ...(await newSellerPlanData()),
       }
     });
 
@@ -699,6 +698,7 @@ const assignPlanHandler = async (req: any, res: any) => {
       update: {
         planId: isCommissionBased ? null : planId,
         planActive: true,
+        isTrial: false,
         planExpiryDate: expiryDate,
         commissionRate: isCommissionBased ? (parseFloat(customCommission) || 0) : (plan?.commissionRate || 0),
       },
@@ -727,6 +727,61 @@ const assignPlanHandler = async (req: any, res: any) => {
 
 router.post('/:id/plan', authenticate, authorize('superadmin'), assignPlanHandler);
 router.patch('/:id/plan', authenticate, authorize('superadmin'), assignPlanHandler);
+
+// Prueba gratis manual (admin): da o extiende días de prueba a una tienda.
+// Si ya está en prueba activa, los días se suman al fin actual; si no, cuentan desde hoy.
+router.post('/:id/trial', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id as string;
+    const days = parseInt(req.body?.days, 10);
+    if (!Number.isFinite(days) || days < 1 || days > MAX_TRIAL_DAYS) {
+      return res.status(400).json({ error: `Los días de prueba deben estar entre 1 y ${MAX_TRIAL_DAYS}` });
+    }
+
+    const profile = await prisma.sellerProfile.findUnique({ where: { userId } });
+    if (!profile) {
+      return res.status(404).json({ error: 'La cuenta no tiene tienda' });
+    }
+    const now = new Date();
+    const hasPaidPlan = profile.planActive && !profile.isTrial
+      && (!profile.planExpiryDate || profile.planExpiryDate > now);
+    if (hasPaidPlan) {
+      return res.status(409).json({ error: 'La tienda ya tiene un plan activo; no necesita prueba gratis' });
+    }
+
+    const inActiveTrial = profile.isTrial && profile.planActive && profile.planExpiryDate && profile.planExpiryDate > now;
+    const from = inActiveTrial ? profile.planExpiryDate! : now;
+    const updated = await prisma.sellerProfile.update({
+      where: { userId },
+      data: trialProfileData(days, from),
+    });
+    console.log(`[prueba] ${(req as AuthRequest).user!.email} dio ${days} día(s) de prueba a ${userId} (hasta ${updated.planExpiryDate?.toISOString()})`);
+    res.json(updated);
+  } catch (error) {
+    console.error('Grant trial error:', error);
+    res.status(500).json({ error: 'Error al dar la prueba gratis' });
+  }
+});
+
+// Finaliza ya la prueba gratis de una tienda (queda bloqueada hasta que tenga plan).
+router.delete('/:id/trial', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id as string;
+    const profile = await prisma.sellerProfile.findUnique({ where: { userId } });
+    if (!profile || !profile.isTrial) {
+      return res.status(404).json({ error: 'La tienda no está en prueba gratis' });
+    }
+    const now = new Date();
+    const updated = await prisma.sellerProfile.update({
+      where: { userId },
+      data: { planActive: false, isTrial: false, planExpiryDate: now, trialEndsAt: now },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error('End trial error:', error);
+    res.status(500).json({ error: 'Error al finalizar la prueba gratis' });
+  }
+});
 
 // Assign course to user (admin only)
 

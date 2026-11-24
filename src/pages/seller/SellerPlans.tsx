@@ -79,6 +79,35 @@ export default function SellerPlans() {
                 </p>
             </div>
 
+            {(() => {
+                // Aviso de prueba gratis: activa (días restantes) o terminada (sin plan)
+                const sp = user?.sellerProfile;
+                const onTrial = !!(sp?.isTrial && sp?.planActive && sp?.planExpiryDate);
+                const trialOver = !sp?.planActive && !!sp?.trialEndsAt && new Date(sp.trialEndsAt) < new Date();
+                if (!onTrial && !trialOver) return null;
+                const left = onTrial ? Math.max(1, Math.ceil((new Date(sp!.planExpiryDate!).getTime() - Date.now()) / 86_400_000)) : 0;
+                return (
+                    <div className={cn(
+                        "max-w-2xl mx-auto mb-10 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-4 border-2",
+                        onTrial ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-red-500/10 border-red-500/30 text-red-300"
+                    )}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5">
+                            {onTrial ? <Clock className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                        </div>
+                        <div className="text-center sm:text-left">
+                            <p className="font-black text-sm uppercase tracking-wider mb-0.5">
+                                {onTrial ? (left === 1 ? 'Prueba gratis: queda 1 día' : `Prueba gratis: quedan ${left} días`) : 'Tu prueba gratis terminó'}
+                            </p>
+                            <p className="text-xs opacity-80">
+                                {onTrial
+                                    ? 'Mientras tanto tenés acceso completo. Elegí un plan para seguir sin cortes cuando termine.'
+                                    : 'Elegí un plan para volver a usar tu panel, el POS y vender online.'}
+                            </p>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {currentSubscription && ['PENDING_PAYMENT', 'PENDING_APPROVAL', 'REVOKED', 'EXPIRED'].includes(currentSubscription.status) && (
                 <div className={cn(
                     "max-w-2xl mx-auto mb-10 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-4 border-2",

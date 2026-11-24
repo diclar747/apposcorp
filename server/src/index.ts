@@ -15,6 +15,7 @@ import walletRoutes from './routes/wallet.js';
 import creditRoutes from './routes/credits.js';
 import notificationRoutes from './routes/notifications.js';
 import financeRoutes from './routes/finances.js';
+import financeAccountRoutes from './routes/financeAccounts.js';
 import settingsRoutes from './routes/settings.js';
 import supplierRoutes from './routes/suppliers.js';
 import customerRoutes from './routes/customers.js';
@@ -40,6 +41,7 @@ import { startOfferScheduler } from './services/offerService.js';
 import { backfillProductSlugs, backfillStoreSlugs } from './utils/slug.js';
 import { renderSharePreview } from './services/sharePreview.js';
 import { ensureSchema } from './utils/ensureSchema.js';
+import { ensureTrialSetting, startTrialScheduler } from './services/trialService.js';
 import { externalizeBodyImages, migrateInlineImages } from './services/mediaStore.js';
 import { prisma } from './utils/prisma.js';
 import webpush from 'web-push';
@@ -122,6 +124,7 @@ app.use('/api/credits', creditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/finances', financeRoutes);
+app.use('/api/finance-accounts', financeAccountRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/customers', customerRoutes);
@@ -428,6 +431,9 @@ ensureSchema()
   startAffiliateScheduler();
   startAuctionScheduler();
   startOfferScheduler();
+  // Prueba gratis de tiendas: clave en Configuración y cierre de pruebas vencidas cada hora
+  ensureTrialSetting().catch((e) => console.error('[prueba] configuración:', e));
+  startTrialScheduler();
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
   if (process.env.NODE_ENV === 'production') {
     console.log(`🌐 Frontend servido desde /dist`);

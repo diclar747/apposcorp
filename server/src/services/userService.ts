@@ -3,6 +3,7 @@ import pkg from 'bcryptjs';
 import type { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateStoreSlug } from '../utils/slug.js';
+import { newSellerPlanData } from './trialService.js';
 const { hash } = pkg;
 
 // Roles que alguien puede elegir al registrarse solo. 'superadmin' únicamente lo asigna otro superadmin.
@@ -77,6 +78,9 @@ export const createUserAccount = async (input: CreateUserInput) => {
   const hashedPassword = await hash(input.password, 10);
   const needsWallet = input.roles.includes('client') || input.roles.includes('seller');
 
+  // Prueba gratis según Configuración (se lee antes de abrir la transacción)
+  const sellerPlan = input.roles.includes('seller') ? await newSellerPlanData() : null;
+
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
@@ -111,8 +115,7 @@ export const createUserAccount = async (input: CreateUserInput) => {
           phone: input.phone || '',
           email: input.email,
           whatsappNumber: input.phone || '',
-          planActive: false,
-          planExpiryDate: null,
+          ...sellerPlan,
         },
       });
     }

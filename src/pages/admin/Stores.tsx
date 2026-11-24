@@ -35,9 +35,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { generateReportPDF } from '@/lib/utils';
+import { cn, generateReportPDF } from '@/lib/utils';
 import { StoreLocationMap } from '@/components/shared/StoreLocationMap';
 import { AssignPlanDialog } from '@/components/admin/AssignPlanDialog';
+import { GrantTrialDialog } from '@/components/admin/GrantTrialDialog';
 
 interface StoreData {
   id: string; // User ID
@@ -61,7 +62,14 @@ interface StoreData {
   instagram: string;
   planName: string | null;
   planActive: boolean;
+  // Prueba gratis activa: fin de la prueba (null si no está en prueba)
+  trialEnd: string | null;
 }
+
+const trialDaysLeft = (end: string) => {
+  const days = Math.ceil((new Date(end).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  return days <= 1 ? 'queda 1 día' : `quedan ${days} días`;
+};
 
 export default function AdminStores() {
   const [stores, setStores] = useState<StoreData[]>([]);
@@ -176,7 +184,11 @@ export default function AdminStores() {
         facebook: u.sellerProfile?.socialLinks?.facebook || '',
         instagram: u.sellerProfile?.socialLinks?.instagram || '',
         planName: u.sellerProfile?.plan?.name || null,
-        planActive: !!u.sellerProfile?.planActive
+        planActive: !!u.sellerProfile?.planActive,
+        trialEnd: u.sellerProfile?.isTrial && u.sellerProfile?.planActive && u.sellerProfile?.planExpiryDate
+          && new Date(u.sellerProfile.planExpiryDate) > new Date()
+          ? u.sellerProfile.planExpiryDate
+          : null
       }));
 
       setStores(formattedSellers);
@@ -262,6 +274,7 @@ export default function AdminStores() {
 
   const { startManagingStore } = useAuthStore();
   const [planStore, setPlanStore] = useState<StoreData | null>(null);
+  const [trialStore, setTrialStore] = useState<StoreData | null>(null);
   const [managingId, setManagingId] = useState<string | null>(null);
 
   // Abre el panel de vendedor de esta tienda con control completo (productos, pedidos, afiliados...)
@@ -597,6 +610,11 @@ export default function AdminStores() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem className="font-semibold text-blue-600" onClick={() => handleManage(store)}>Gestionar tienda</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setPlanStore(store)}>Asignar plan</DropdownMenuItem>
+                        {(!store.planActive || store.trialEnd) && (
+                          <DropdownMenuItem className="text-emerald-600" onClick={() => setTrialStore(store)}>
+                            {store.trialEnd ? 'Extender prueba gratis' : 'Dar días de prueba'}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => setViewingStore(store)}>Ver detalles</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEditClick(store)}>Editar tienda</DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteClick(store.id)}>Eliminar tienda</DropdownMenuItem>
@@ -648,13 +666,31 @@ export default function AdminStores() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 mt-4 text-sm">
-                    <span className={store.planActive ? 'text-gray-600 dark:text-gray-400' : 'text-amber-600 font-medium'}>
-                      {store.planActive ? `Plan: ${store.planName || 'por comisión'}` : 'Sin plan: no vende online'}
-                    </span>
-                    <Button variant="outline" size="sm" className="h-7" onClick={() => setPlanStore(store)}>
-                      {store.planActive ? 'Cambiar plan' : 'Asignar plan'}
-                    </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 mt-4 text-sm">
+                    {store.trialEnd ? (
+                      <button
+                        type="button"
+                        className="text-emerald-600 dark:text-emerald-400 font-medium text-left hover:underline"
+                        onClick={() => setTrialStore(store)}
+                        title="Extender o finalizar la prueba"
+                      >
+                        Prueba gratis · {trialDaysLeft(store.trialEnd)}
+                      </button>
+                    ) : (
+                      <span className={cn('min-w-0', store.planActive ? 'text-gray-600 dark:text-gray-400' : 'text-amber-600 font-medium')}>
+                        {store.planActive ? `Plan: ${store.planName || 'por comisión'}` : 'Sin plan: no vende online'}
+                      </span>
+                    )}
+                    <div className="flex gap-1.5 shrink-0 ml-auto">
+                      {!store.planActive && (
+                        <Button variant="outline" size="sm" className="h-7 text-emerald-600" onClick={() => setTrialStore(store)}>
+                          Prueba
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" className="h-7" onClick={() => setPlanStore(store)}>
+                        {store.planActive && !store.trialEnd ? 'Cambiar plan' : 'Asignar plan'}
+                      </Button>
+                    </div>
                   </div>
 
                   <Button
@@ -822,6 +858,16 @@ export default function AdminStores() {
           userId={planStore.id}
           storeName={planStore.name}
           onAssigned={fetchStores}
+        />
+      )}
+      {trialStore && (
+        <GrantTrialDialog
+          open={!!trialStore}
+          onOpenChange={(open) => !open && setTrialStore(null)}
+          userId={trialStore.id}
+          storeName={trialStore.name}
+          trialEnd={trialStore.trialEnd}
+          onChanged={fetchStores}
         />
       )}
     </div>

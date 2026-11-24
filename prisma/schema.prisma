@@ -38,6 +38,8 @@ model User {
   credits                  Credit[]
   financialCategories      FinancialCategory[]
   financialRecords         FinancialRecord[]
+  financialAccounts        FinancialAccount[]
+  accountMovements         AccountMovement[]
   ingenioReferredBy        IngenioStudent[]     @relation("StudentReferredBy")
   ingenioStudent           IngenioStudent?
   ingenioSubscription      IngenioSubscription?
@@ -89,6 +91,9 @@ model SellerProfile {
   isVerified       Boolean           @default(false)
   planActive       Boolean           @default(false)
   planExpiryDate   DateTime?
+  // Prueba gratis: activa = isTrial && planActive; vence en planExpiryDate. trialEndsAt queda como historial.
+  isTrial          Boolean           @default(false)
+  trialEndsAt      DateTime?
   commissionRate   Float             @default(5.0)
   totalSales       Int               @default(0)
   totalRevenue     Float             @default(0)
@@ -702,10 +707,60 @@ model FinancialRecord {
   attachments       String[]
   createdAt         DateTime          @default(now())
   notes             String?
+  // Cuenta de la que sale / a la que entra (solo ingresos y gastos; null = sin cuenta asignada)
+  accountId         String?
+  account           FinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   category          FinancialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([accountId])
   @@map("financial_records")
+}
+
+// Cuentas de Ingenio Millonario: efectivo, caja de ahorro, cuenta corriente, billetera, tarjeta de crédito.
+// Saldo = saldo inicial + ingresos − gastos + transferencias recibidas − enviadas + ajustes.
+model FinancialAccount {
+  id             String            @id @default(uuid())
+  userId         String
+  name           String
+  kind           String            @default("savings") // cash | savings | checking | wallet | credit_card
+  bankName       String?
+  accountNumber  String?
+  openingBalance Float             @default(0) // tarjeta de crédito: negativo = deuda
+  creditLimit    Float?
+  color          String?
+  isArchived     Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records        FinancialRecord[]
+  movementsOut   AccountMovement[] @relation("MovementFrom")
+  movementsIn    AccountMovement[] @relation("MovementTo")
+
+  @@index([userId])
+  @@map("financial_accounts")
+}
+
+// Movimientos entre cuentas que no son ingreso ni gasto.
+// transfer: de fromAccountId a toAccountId (amount > 0). adjustment: solo toAccountId, amount con signo.
+model AccountMovement {
+  id            String            @id @default(uuid())
+  userId        String
+  type          String // transfer | adjustment
+  fromAccountId String?
+  toAccountId   String?
+  amount        Float
+  date          DateTime          @default(now())
+  description   String?
+  createdAt     DateTime          @default(now())
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount   FinancialAccount? @relation("MovementFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccount     FinancialAccount? @relation("MovementTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@map("account_movements")
 }
 
 model BudgetItem {

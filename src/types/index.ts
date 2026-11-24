@@ -117,6 +117,9 @@ export interface SellerProfile {
   plan?: SubscriptionPlan;
   planActive: boolean;
   planExpiryDate?: Date;
+  // Prueba gratis: activa si isTrial && planActive; vence en planExpiryDate
+  isTrial?: boolean;
+  trialEndsAt?: string | Date | null;
   planBillingCycle?: BillingCycle;
   commissionRate: number; // For commission-based model
   // Programa de afiliados (comisión de afiliado, distinta de commissionRate)

@@ -179,20 +179,21 @@ export default function SellerPOS() {
     }).catch(() => {});
   }, []);
 
-  // Trial Logic
+  // Prueba gratis: activa si isTrial && planActive; al vencer el servidor pone planActive en false
+  const isOnTrial = !!(sellerProfile?.isTrial && sellerProfile?.planActive);
   const isTrialExpired = useMemo(() => {
     if (!sellerProfile) return false;
     if (sellerProfile.planActive || getManagedStore()) return false;
-    if (!sellerProfile.planExpiryDate) return false;
-    return new Date() > new Date(sellerProfile.planExpiryDate);
+    if (!sellerProfile.trialEndsAt) return false;
+    return new Date() > new Date(sellerProfile.trialEndsAt);
   }, [sellerProfile]);
 
   const daysLeft = useMemo(() => {
-    if (!sellerProfile?.planExpiryDate) return 0;
+    if (!isOnTrial || !sellerProfile?.planExpiryDate) return 0;
     const diff = new Date(sellerProfile.planExpiryDate).getTime() - new Date().getTime();
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 0;
-  }, [sellerProfile]);
+  }, [sellerProfile, isOnTrial]);
 
   const storeName = sellerProfile?.storeName || 'Mi Tienda';
   const storeAddress = sellerProfile?.address || '';
@@ -524,7 +525,7 @@ export default function SellerPOS() {
             Tu acceso gratuito ha expirado. Para continuar utilizando el POS, adquiere una suscripción.
           </p>
           <div className="space-y-4">
-            <Button className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-lg font-black shadow-xl shadow-blue-500/20">
+            <Button className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-lg font-black shadow-xl shadow-blue-500/20" onClick={() => navigate('/vendedor/planes')}>
               ADQUIRIR SUSCRIPCIÓN
             </Button>
             <Button variant="ghost" className="w-full text-muted-foreground font-bold">
@@ -634,9 +635,9 @@ export default function SellerPOS() {
           <h1 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2 truncate">
             <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
             <span className="truncate">POS</span>
-            {!sellerProfile?.planActive && (
+            {isOnTrial && (
               <Badge variant="secondary" className="bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 text-[10px] font-black uppercase shrink-0">
-                Trial: {daysLeft}d
+                Prueba: {daysLeft}d
               </Badge>
             )}
           </h1>

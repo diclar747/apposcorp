@@ -158,6 +158,9 @@ const STATEMENTS: string[] = [
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateBlocked" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateDefaultRate" DOUBLE PRECISION`,
   `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "affiliateEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  // Prueba gratis de tiendas
+  `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "isTrial" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "trialEndsAt" TIMESTAMP(3)`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "googleId" TEXT`,
 
   // Tablas nuevas
@@ -218,6 +221,36 @@ const STATEMENTS: string[] = [
     CONSTRAINT "affiliate_commissions_pkey" PRIMARY KEY ("id")
   )`,
 
+  // Ingenio: cuentas (efectivo, banco, billetera, tarjeta), transferencias y ajustes
+  `CREATE TABLE IF NOT EXISTS "financial_accounts" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "kind" TEXT NOT NULL DEFAULT 'savings',
+    "bankName" TEXT,
+    "accountNumber" TEXT,
+    "openingBalance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "creditLimit" DOUBLE PRECISION,
+    "color" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "financial_accounts_pkey" PRIMARY KEY ("id")
+  )`,
+  `CREATE TABLE IF NOT EXISTS "account_movements" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "fromAccountId" TEXT,
+    "toAccountId" TEXT,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "account_movements_pkey" PRIMARY KEY ("id")
+  )`,
+  `ALTER TABLE "financial_records" ADD COLUMN IF NOT EXISTS "accountId" TEXT`,
+
   `CREATE TABLE IF NOT EXISTS "media_files" (
     "id" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
@@ -241,6 +274,11 @@ const STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS "affiliate_commissions_status_availableAt_idx" ON "affiliate_commissions"("status", "availableAt")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "products_slug_key" ON "products"("slug")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "users_googleId_key" ON "users"("googleId")`,
+  `CREATE INDEX IF NOT EXISTS "financial_accounts_userId_idx" ON "financial_accounts"("userId")`,
+  `CREATE INDEX IF NOT EXISTS "account_movements_userId_idx" ON "account_movements"("userId")`,
+  `CREATE INDEX IF NOT EXISTS "account_movements_fromAccountId_idx" ON "account_movements"("fromAccountId")`,
+  `CREATE INDEX IF NOT EXISTS "account_movements_toAccountId_idx" ON "account_movements"("toAccountId")`,
+  `CREATE INDEX IF NOT EXISTS "financial_records_accountId_idx" ON "financial_records"("accountId")`,
 
   // Relaciones
   addForeignKey('affiliate_profiles_userId_fkey', 'affiliate_profiles', `FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
@@ -250,6 +288,11 @@ const STATEMENTS: string[] = [
   addForeignKey('affiliate_commissions_affiliateId_fkey', 'affiliate_commissions', `FOREIGN KEY ("affiliateId") REFERENCES "affiliate_profiles"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
   addForeignKey('affiliate_commissions_orderId_fkey', 'affiliate_commissions', `FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
   addForeignKey('affiliate_commissions_buyerId_fkey', 'affiliate_commissions', `FOREIGN KEY ("buyerId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  addForeignKey('financial_records_accountId_fkey', 'financial_records', `FOREIGN KEY ("accountId") REFERENCES "financial_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE`),
+  addForeignKey('financial_accounts_userId_fkey', 'financial_accounts', `FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  addForeignKey('account_movements_userId_fkey', 'account_movements', `FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  addForeignKey('account_movements_fromAccountId_fkey', 'account_movements', `FOREIGN KEY ("fromAccountId") REFERENCES "financial_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  addForeignKey('account_movements_toAccountId_fkey', 'account_movements', `FOREIGN KEY ("toAccountId") REFERENCES "financial_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
 ];
 
 // Red de seguridad: si alguien agrega acá una sentencia destructiva, no se ejecuta.
@@ -272,6 +315,6 @@ export const ensureSchema = async () => {
     }
   }
   if (failed) console.error(`[esquema] ${failed} sentencia(s) fallaron; revisar el log de arriba`);
-  else console.log('🗄️  Esquema verificado (afiliados, imágenes)');
+  else console.log('🗄️  Esquema verificado (afiliados, imágenes, prueba de tiendas, cuentas de Ingenio)');
   return { total: STATEMENTS.length, failed };
 };

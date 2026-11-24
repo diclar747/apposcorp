@@ -8,6 +8,7 @@ import { generateToken } from '../utils/jwt.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { createUserAccount, sanitizeRoles, validatePassword, PUBLIC_ROLES } from '../services/userService.js';
 import { generateStoreSlug } from '../utils/slug.js';
+import { expireTrials, newSellerPlanData } from '../services/trialService.js';
 
 const router = Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -53,7 +54,20 @@ async function sendVerificationEmail(email: string, firstName: string, token: st
 }
 
 // Helper: fetch user with all relations, with fallback for DB schema mismatches
+// Al leer el usuario (login, /me, Google, gestionar tienda) se cierra su prueba gratis si ya venció,
+// así el bloqueo no depende de que corra el programador horario.
 async function findUserWithRelations(where: { id?: string; email?: string; googleId?: string }) {
+  const user = await fetchUserWithRelations(where);
+  const sp = (user as any)?.sellerProfile;
+  if (user && sp?.isTrial && sp.planActive && sp.planExpiryDate && new Date(sp.planExpiryDate) < new Date()) {
+    await expireTrials(user.id).catch((e) => console.error('[prueba] vencimiento al leer usuario', e));
+    sp.planActive = false;
+    sp.isTrial = false;
+  }
+  return user;
+}
+
+async function fetchUserWithRelations(where: { id?: string; email?: string; googleId?: string }) {
   // Try full query first
   try {
     return await prisma.user.findUnique({
@@ -394,8 +408,7 @@ router.post('/google', async (req, res) => {
               phone: '',
               email,
               whatsappNumber: '',
-              planActive: false,
-              planExpiryDate: null,
+              ...(await newSellerPlanData()),
             },
           });
         }

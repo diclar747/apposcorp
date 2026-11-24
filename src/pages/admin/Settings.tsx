@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Globe, Shield, Bell, Wrench, RefreshCw, Mail, Phone, MapPin, BookOpen, ArrowRight, Lock, Eye, EyeOff } from 'lucide-react';
+import { Save, Globe, Shield, Bell, Wrench, RefreshCw, Mail, Phone, MapPin, BookOpen, ArrowRight, Lock, Eye, EyeOff, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -209,6 +209,51 @@ export default function AdminSettings() {
                                 </Select>
                                 <p className="text-xs text-muted-foreground">Define el plan de financiamiento máximo disponible para los clientes.</p>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="mt-6">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Store className="w-5 h-5 text-emerald-500" />
+                                Prueba gratis para tiendas
+                            </CardTitle>
+                            <CardDescription>
+                                Días que cada vendedor nuevo puede usar su tienda gratis al registrarse: panel, carga de productos, POS y venta online.
+                                Al terminar queda bloqueado hasta elegir un plan. A una tienda puntual podés darle o extender días desde Tiendas → "Dar días de prueba".
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <Label htmlFor="seller_trial_days">Días de prueba gratis</Label>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Input
+                                    id="seller_trial_days"
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    max={365}
+                                    className="w-28"
+                                    value={getSettingValue('seller_trial_days', '0')}
+                                    onChange={(e) => {
+                                        const n = Math.min(365, Math.max(0, parseInt(e.target.value.replace(/\D/g, '') || '0', 10)));
+                                        updateLocalSetting('seller_trial_days', String(n), 'general', true);
+                                    }}
+                                />
+                                {['0', '3', '7', '15', '30'].map((d) => (
+                                    <Button
+                                        key={d}
+                                        type="button"
+                                        size="sm"
+                                        variant={getSettingValue('seller_trial_days', '0') === d ? 'default' : 'outline'}
+                                        onClick={() => updateLocalSetting('seller_trial_days', d, 'general', true)}
+                                    >
+                                        {d === '0' ? 'Sin prueba' : `${d} días`}
+                                    </Button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                0 = sin prueba (el vendedor nuevo queda bloqueado hasta tener plan). Aplica solo a registros nuevos; no cambia las tiendas existentes. Recordá guardar los cambios.
+                            </p>
                         </CardContent>
                     </Card>
                 </TabsContent>

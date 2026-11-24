@@ -151,6 +151,14 @@ export const usersApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  // Prueba gratis manual (admin): da o extiende días; endTrial la cierra ya
+  grantTrial: (userId: string, days: number) =>
+    fetchWithAuth(`/users/${userId}/trial`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    }),
+  endTrial: (userId: string) =>
+    fetchWithAuth(`/users/${userId}/trial`, { method: 'DELETE' }),
   assignCourse: (userId: string, courseId: string) =>
     fetchWithAuth(`/users/${userId}/courses/${courseId}`, {
       method: 'POST',
@@ -624,6 +632,28 @@ export const settingsApi = {
 };
 
 // Finances API
+// Ingenio: cuentas (efectivo, caja de ahorro, cuenta corriente, billetera, tarjeta), transferencias y ajustes
+export const financeAccountsApi = {
+  getOverview: () => fetchWithAuth('/finance-accounts'),
+  getDetail: (id: string, params?: { month?: number; year?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.month) q.set('month', String(params.month));
+    if (params?.year) q.set('year', String(params.year));
+    const qs = q.toString();
+    return fetchWithAuth(`/finance-accounts/${id}${qs ? `?${qs}` : ''}`);
+  },
+  create: (data: Record<string, unknown>) =>
+    fetchWithAuth('/finance-accounts', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Record<string, unknown>) =>
+    fetchWithAuth(`/finance-accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id: string) => fetchWithAuth(`/finance-accounts/${id}`, { method: 'DELETE' }),
+  transfer: (data: { fromAccountId: string; toAccountId: string; amount: number; date?: string; description?: string }) =>
+    fetchWithAuth('/finance-accounts/transfer', { method: 'POST', body: JSON.stringify(data) }),
+  adjust: (id: string, data: { actualBalance: number; date?: string; description?: string }) =>
+    fetchWithAuth(`/finance-accounts/${id}/adjust`, { method: 'POST', body: JSON.stringify(data) }),
+  removeMovement: (id: string) => fetchWithAuth(`/finance-accounts/movements/${id}`, { method: 'DELETE' }),
+};
+
 export const financesApi = {
   getAll: (params?: { month?: number; year?: number; type?: string; startDate?: string; endDate?: string; query?: string }) => {
     const searchParams = new URLSearchParams();

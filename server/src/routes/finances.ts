@@ -2,21 +2,10 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/ingenio.js';
+import { parseClientDate } from '../utils/clientDate.js';
+import { findOwnAccount, getAccountsExtraBalance } from '../services/accountService.js';
 
 const router = Router();
-
-// The client sends dates as date-only strings ("YYYY-MM-DD"). `new Date("2026-09-01")`
-// parses to UTC midnight, which in a negative-offset zone (Paraguay is UTC-3) lands on
-// the previous day — so a movement can silently jump to the previous month and vanish
-// from month-scoped views while still counting in the all-time totals. Pin date-only
-// values to 12:00 UTC so no real-world offset can push them across a day boundary.
-const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
-
-function parseClientDate(input?: string | null): Date {
-    if (!input) return new Date();
-    if (DATE_ONLY.test(input)) return new Date(`${input}T12:00:00.000Z`);
-    return new Date(input);
-}
 
 // Get all financial records
 router.get('/', authenticate, async (req: AuthRequest, res) => {
@@ -63,6 +52,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
             orderBy: { date: 'desc' },
             include: {
                 category: true,
+                account: { select: { id: true, name: true, kind: true } },
             },
         });
 
@@ -91,9 +81,13 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
         
         // Balance is Income - Expenses (liquid cash on hand)
         const balance = totalIncome - totalExpenses;
+        // Cuentas (efectivo, banco, billetera, tarjeta): sus saldos iniciales y ajustes también son plata.
+        // available = todo lo que hay en caja y cuentas (las transferencias entre cuentas se anulan).
+        const accountsExtra = await getAccountsExtraBalance(userId);
+        const available = balance + accountsExtra;
         // Net worth = liquid cash + other assets - liabilities.
         // A liability (debt) must reduce net worth against the cash you already have.
-        const netWorth = balance + totalAssets - totalLiabilities;
+        const netWorth = available + totalAssets - totalLiabilities;
 
         // 2. Today's stats
         // "Hoy" / "mes" se calculan en hora de Paraguay (UTC-3), no en la hora del servidor (UTC),
@@ -124,6 +118,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
             totalAssets,
             totalLiabilities,
             balance,
+            available,
             netWorth,
             todayIncome,
             todayExpenses,
@@ -143,7 +138,16 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
 router.post('/', authenticate, requireActiveSubscription, async (req: AuthRequest, res) => {
     try {
         const userId = req.user!.userId;
-        const { amount, description, type, categoryId, date, notes } = req.body;
+        const { amount, description, type, categoryId, date, notes, accountId } = req.body;
+
+        // Cuenta (opcional, solo ingresos y gastos): tiene que ser del usuario
+        let finalAccountId: string | null = null;
+        if (accountId && (type === 'income' || type === 'expense')) {
+            if (!(await findOwnAccount(userId, accountId))) {
+                return res.status(400).json({ error: 'Cuenta no encontrada' });
+            }
+            finalAccountId = accountId;
+        }
 
         // If categoryId is not provided, find or create "General" category for the type
         let finalCategoryId = categoryId;
@@ -175,10 +179,12 @@ router.post('/', authenticate, requireActiveSubscription, async (req: AuthReques
                 notes,
                 type,
                 categoryId: finalCategoryId,
+                accountId: finalAccountId,
                 date: parseClientDate(date),
             },
             include: {
-                category: true
+                category: true,
+                account: { select: { id: true, name: true, kind: true } },
             }
         });
 
@@ -194,7 +200,19 @@ router.put('/:id', authenticate, requireActiveSubscription, async (req: AuthRequ
     try {
         const userId = req.user!.userId;
         const id = req.params.id as string;
-        const { amount, description, type, categoryId, date, notes } = req.body;
+        const { amount, description, type, categoryId, date, notes, accountId } = req.body;
+
+        // accountId: string = asignar cuenta, null/'' = quitarla, undefined = no tocar.
+        // Activos y pasivos no van en cuentas.
+        let accountData: { accountId: string | null } | undefined;
+        if (type === 'asset' || type === 'liability') {
+            accountData = { accountId: null };
+        } else if (accountId !== undefined) {
+            if (accountId && !(await findOwnAccount(userId, accountId))) {
+                return res.status(400).json({ error: 'Cuenta no encontrada' });
+            }
+            accountData = { accountId: accountId || null };
+        }
 
         const record = await prisma.financialRecord.update({
             where: { id, userId },
@@ -205,9 +223,11 @@ router.put('/:id', authenticate, requireActiveSubscription, async (req: AuthRequ
                 ...(type !== undefined && { type }),
                 ...(categoryId !== undefined && { categoryId }),
                 ...(date !== undefined && { date: parseClientDate(date) }),
+                ...accountData,
             },
             include: {
-                category: true
+                category: true,
+                account: { select: { id: true, name: true, kind: true } },
             }
         });
 

@@ -98,6 +98,7 @@ router.post('/init', authenticate, authorize('superadmin'), async (req, res) => 
             { key: 'maintenance_mode', value: 'false', group: 'maintenance', isPublic: true, description: 'Modo Mantenimiento' },
             { key: 'ingenio_price', value: '700000', group: 'general', isPublic: true, description: 'Costo Ingenio Millonario' },
             { key: 'ingenio_max_installments', value: '3', group: 'general', isPublic: true, description: 'Máximo de Cuotas' },
+            { key: 'seller_trial_days', value: '0', group: 'general', isPublic: true, description: 'Días de prueba gratis para vendedores nuevos (0 = sin prueba)' },
         ];
 
         const result = await prisma.$transaction(

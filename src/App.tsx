@@ -100,6 +100,8 @@ import { getVisitorId } from '@/lib/affiliate';
 // Ingenio Pages
 import IngenioDashboard from '@/pages/ingenio/Dashboard';
 import IngenioBudget from '@/pages/ingenio/Budget';
+import IngenioAccounts from '@/pages/ingenio/Accounts';
+import IngenioAccountDetail from '@/pages/ingenio/AccountDetail';
 import IngenioReports from '@/pages/ingenio/Reports';
 import IngenioAcademy from '@/pages/ingenio/Academy';
 import IngenioMaterials from '@/pages/ingenio/Materials';
@@ -295,6 +297,8 @@ function AppContent({ isMaintenanceActive, isAdmin }: { isMaintenanceActive: boo
           }
         >
           <Route index element={<IngenioDashboard />} />
+          <Route path="cuentas" element={<IngenioAccounts />} />
+          <Route path="cuentas/:id" element={<IngenioAccountDetail />} />
           <Route path="presupuesto" element={<IngenioBudget />} />
           <Route path="reportes" element={<IngenioReports />} />
           <Route path="academia" element={<IngenioAcademy />} />

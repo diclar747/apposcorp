@@ -27,6 +27,7 @@ import {
   Megaphone,
   ShieldCheck,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { getManagedStore } from '@/stores/authStore';
@@ -67,7 +68,7 @@ export default function SellerLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, stopManagingStore } = useAuthStore();
+  const { user, logout, stopManagingStore, fetchCurrentUser } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   // El superadmin gestionando esta tienda ("Gestionar tienda" en Admin → Tiendas)
   const managedStore = getManagedStore();
@@ -77,6 +78,10 @@ export default function SellerLayout() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const isPlanActive = user?.sellerProfile?.planActive;
+  // Prueba gratis activa: acceso completo hasta planExpiryDate
+  const trialEnd = user?.sellerProfile?.isTrial && isPlanActive ? user?.sellerProfile?.planExpiryDate : null;
+  const [renderedAt] = useState(() => Date.now());
+  const trialDaysLeft = trialEnd ? Math.max(0, Math.ceil((new Date(trialEnd).getTime() - renderedAt) / 86_400_000)) : 0;
   const isOnPlansPage = location.pathname === '/vendedor/planes';
   const isOnNotificationsPage = location.pathname === '/vendedor/notificaciones';
 
@@ -93,6 +98,15 @@ export default function SellerLayout() {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [user, fetchNotifications, isPlanActive, isOnPlansPage, navigate, managedStore]);
+
+  // Si la prueba vence con la pestaña abierta, se vuelve a pedir el usuario: el servidor la cierra y el panel se bloquea
+  useEffect(() => {
+    if (!trialEnd) return;
+    const ms = new Date(trialEnd).getTime() - Date.now() + 5_000;
+    if (ms > 24 * 60 * 60 * 1000) return;
+    const t = setTimeout(() => { fetchCurrentUser(); }, Math.max(ms, 0));
+    return () => clearTimeout(t);
+  }, [trialEnd, fetchCurrentUser]);
 
   const handleLogout = () => {
     if (managedStore) {
@@ -162,8 +176,8 @@ export default function SellerLayout() {
             
             if (isDisabled && !isOnPlansPage) return null;
 
-            // Restricción por características del plan
-            if (isPlanActive && !managedStore) {
+            // Restricción por características del plan (en prueba gratis: acceso completo)
+            if (isPlanActive && !managedStore && !trialEnd) {
                 const features = user?.sellerProfile?.plan?.features || [];
                 const tier = user?.sellerProfile?.plan?.tier?.toLowerCase() || 'basic';
                 const hasFeature = (name: string) => features.some(f => f.toLowerCase().includes(name.toLowerCase()));
@@ -411,6 +425,19 @@ export default function SellerLayout() {
             <Button size="sm" variant="secondary" className="h-7" onClick={() => stopManagingStore()}>
               <ArrowLeft className="mr-1 h-3.5 w-3.5" />
               Volver al admin
+            </Button>
+          </div>
+        )}
+
+        {trialEnd && !managedStore && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
+            <span className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0" />
+              {trialDaysLeft <= 1 ? 'Prueba gratis: te queda menos de 1 día.' : `Prueba gratis: te quedan ${trialDaysLeft} días.`}
+              <span className="hidden sm:inline font-normal opacity-90">Elegí un plan para no perder el acceso.</span>
+            </span>
+            <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate('/vendedor/planes')}>
+              Ver planes
             </Button>
           </div>
         )}

@@ -264,7 +264,7 @@ router.post('/:id/approve', authenticate, authorize('superadmin'), async (req: A
     if (sellerProfile) {
       await prisma.sellerProfile.update({
         where: { userId: sub.userId },
-        data: { planActive: true, planId: sub.planId }
+        data: { planActive: true, planId: sub.planId, isTrial: false, planExpiryDate: expiresAt }
       });
     }
 

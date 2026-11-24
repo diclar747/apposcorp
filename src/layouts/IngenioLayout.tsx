@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  Target, User, BookOpen, Wallet, PieChart, LogOut, Sun, Moon, FileText, ChevronRight
+  Target, User, BookOpen, Wallet, PieChart, LogOut, Sun, Moon, FileText, ChevronRight, Landmark
 } from "lucide-react";
 import { useAuthStore, useThemeStore } from "@/stores";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -16,6 +16,7 @@ import { IngenioBottomNav, type IngenioNavItem } from "@/components/ingenio/Inge
 
 const menuItems: (IngenioNavItem & { label: string })[] = [
   { icon: Target, label: "Finanzas Master", short: "Finanzas", href: "/ingenio" },
+  { icon: Landmark, label: "Mis Cuentas", short: "Cuentas", href: "/ingenio/cuentas" },
   { icon: PieChart, label: "Presupuesto", short: "Presupuesto", href: "/ingenio/presupuesto" },
   { icon: FileText, label: "Reportes", short: "Reportes", href: "/ingenio/reportes" },
   { icon: BookOpen, label: "Academia", short: "Academia", href: "/ingenio/academia" },
@@ -178,7 +179,8 @@ export default function IngenioLayout() {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <IngenioBottomNav items={menuItems} />
+      {/* En el celular el Perfil se abre desde el encabezado: la barra queda en 5 pestañas */}
+      <IngenioBottomNav items={menuItems.filter((item) => item.href !== '/ingenio/profile')} />
 
       {/* Account Sheet (mobile) */}
       <Sheet open={accountOpen} onOpenChange={setAccountOpen}>

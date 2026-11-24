@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Store, MapPin, Phone, Mail, Globe, Instagram, Facebook, Edit, Camera, Check, Save, X, Loader2, Clock } from 'lucide-react';
 import { useAuthStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ const withDefaultHours = (saved: unknown) => ({ ...DEFAULT_BUSINESS_HOURS, ...((
 
 export default function SellerStore() {
   const { user, fetchCurrentUser } = useAuthStore();
+  const trialDays = parseInt(useSettingsStore((st) => st.settings.seller_trial_days) || '0', 10) || 0;
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -160,7 +162,7 @@ export default function SellerStore() {
             <Store className="w-10 h-10 text-blue-600" />
           </div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Configura tu Tienda</h1>
-          <p className="text-gray-500 mt-2">Completa los datos de tu negocio para comenzar a vender. Tienes 7 días de prueba gratis.</p>
+          <p className="text-gray-500 mt-2">Completa los datos de tu negocio para comenzar a vender.{trialDays > 0 && ` Tienes ${trialDays} días de prueba gratis.`}</p>
         </div>
 
         <Card>
